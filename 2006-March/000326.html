@@ -1,0 +1,675 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r423 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file/system
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r423%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/field%20branches/hachoir-yield/file/system&In-Reply-To=%3C200603040018.k240IUju030357%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000342.html">
+   <LINK REL="Next"  HREF="000327.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r423 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file/system</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r423%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/field%20branches/hachoir-yield/file/system&In-Reply-To=%3C200603040018.k240IUju030357%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r423 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file/system">haypo at berlios.de
+       </A><BR>
+    <I>Sat Mar  4 01:18:30 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000342.html">[Happyboom-svn] r422 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/fallback branches/hachoir-yield/field branches/hachoir-yield/file branches/hachoir-yield/file/image branches/hachoir-yield/file/system branches/hachoir-yield/generic
+</A></li>
+        <LI>Next message: <A HREF="000327.html">[Happyboom-svn] r424 - in haypo/hachoir: . branches/hachoir-yield/stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#326">[ date ]</a>
+              <a href="thread.html#326">[ thread ]</a>
+              <a href="subject.html#326">[ subject ]</a>
+              <a href="author.html#326">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-04 01:18:28 +0100 (Sat, 04 Mar 2006)
+New Revision: 423
+
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/field/__init__.py
+   haypo/hachoir/branches/hachoir-yield/field/integer.py
+   haypo/hachoir/branches/hachoir-yield/field/string_field.py
+   haypo/hachoir/branches/hachoir-yield/file/system/ext2.py
+   haypo/hachoir/branches/hachoir-yield/hachoir.py
+   haypo/hachoir/branches/hachoir-yield/text_ui.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r17 at haypopc</A>:  haypo | 2006-03-02 02:28:51 +0100
+  * Add assertion to check parent argument in constructor of Integer, String
+    and Bits class
+  * Continue to convert EXT2/EXT3 parser to new syntax
+  * displayFieldSet() can now display values in bits or bytes
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:16
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:17
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/__init__.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/__init__.py	2006-03-04 00:18:07 UTC (rev 422)
++++ haypo/hachoir/branches/hachoir-yield/field/__init__.py	2006-03-04 00:18:28 UTC (rev 423)
+@@ -1,4 +1,4 @@
+ from field import Field
+-from integer import Integer, IntegerHex, Bits, Bit
++from integer import Integer, IntegerHex, Enum, Bits, Bit
+ from string_field import String
+ from field_set import FieldSet, ParserError
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/integer.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/integer.py	2006-03-04 00:18:07 UTC (rev 422)
++++ haypo/hachoir/branches/hachoir-yield/field/integer.py	2006-03-04 00:18:28 UTC (rev 423)
+@@ -4,6 +4,7 @@
+ 
+ class Bits(Field):
+     def __init__(self, parent, name, size, description=None):
++        assert issubclass(parent.__class__, Field)
+         Field.__init__(self, parent, name, None, size, description=description)
+ 
+     def _getValue(self):
+@@ -31,6 +32,7 @@
+    
+ class Integer(Field):
+     def __init__(self, parent, name, format, description=None):
++        assert issubclass(parent.__class__, Field)
+         if format[0] not in &quot;!&lt;&gt;&quot;:
+             self.format = parent.endian + format
+         else:
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/string_field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/string_field.py	2006-03-04 00:18:07 UTC (rev 422)
++++ haypo/hachoir/branches/hachoir-yield/field/string_field.py	2006-03-04 00:18:28 UTC (rev 423)
+@@ -4,6 +4,7 @@
+ 
+ class String(Field):
+     def __init__(self, parent, name, format, description=None):
++        assert issubclass(parent.__class__, Field)
+         self.format = format
+         size = getFormatSize(format)*8
+         Field.__init__(self, parent, name, None, size, description=description)
+
+Modified: haypo/hachoir/branches/hachoir-yield/file/system/ext2.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/file/system/ext2.py	2006-03-04 00:18:07 UTC (rev 422)
++++ haypo/hachoir/branches/hachoir-yield/file/system/ext2.py	2006-03-04 00:18:28 UTC (rev 423)
+@@ -9,9 +9,20 @@
+ &quot;&quot;&quot;
+ 
+ from text_handler import unixTimestamp
+-from field import FieldSet, Integer, String
++from field import FieldSet, Integer, Enum, String, ParserError
+ from tools import humanDuration, getUnixRWX, humanFilesize
++from bits import str2hex
+ 
++class FieldSetWithSeek(FieldSet):
++    def seekField(self, to):
++        size = to - self._total_field_size 
++        assert 0 &lt;= size
++        if 0 &lt; size:
++            assert (size % 8) == 0
++            return String(self, &quot;raw[]&quot;, &quot;string[%u]&quot; % (size / 8))
++        else:
++            return None
++
+ class DirectoryEntry(FieldSet):
+     file_type = {
+         1: &quot;Regular&quot;,
+@@ -24,25 +35,29 @@
+         8: &quot;Max&quot;
+     }
+     endian = &quot;&lt;&quot;
++
++    # TODO: write constructor to set: self._size = self[&quot;rec_len&quot;].value * 8 (or something like that)
+     
+     def createFields(self):
+-        yield Integer(&quot;inode&quot;, &quot;uint32&quot;, &quot;Inode&quot;)
+-        yield Integer(&quot;rec_len&quot;, &quot;uint16&quot;, &quot;Record length&quot;)
+-        name_length = self.doRead(&quot;name_len&quot;, &quot;B&quot;, &quot;Name length&quot;, (FormatChunk, &quot;uint8&quot;)).value
+-        yield Integer(&quot;file_type&quot;, &quot;uint8&quot;, DirectoryEntry.file_type, &quot;File type&quot;)
+-        self.read(&quot;name&quot;, &quot;File name&quot;, (FormatChunk, &quot;string[%u]&quot; % name_length))
+-        size = self[&quot;rec_len&quot;]-8-name_length 
++        yield Integer(self, &quot;inode&quot;, &quot;uint32&quot;, &quot;Inode&quot;)
++        yield Integer(self, &quot;rec_len&quot;, &quot;uint16&quot;, &quot;Record length&quot;)
++        name_length = Integer(self, &quot;name_len&quot;, &quot;B&quot;, &quot;Name length&quot;, (FormatChunk, &quot;uint8&quot;)).value
++        yield name_length
++        yield Enum(self, &quot;file_type&quot;, &quot;uint8&quot;, DirectoryEntry.file_type, &quot;File type&quot;)
++        yield String(self, &quot;name&quot;, &quot;string[%u]&quot; % name_length, &quot;File name&quot;)
++        size = self[&quot;rec_len&quot;].value-8-name_length 
+         if size != 0:
+-            self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++            yield String(self, &quot;padding&quot;, &quot;string[%u]&quot; % size, &quot;Padding&quot;)
+ 
+-    def updateParent(self, chunk):        
+-        name = self[&quot;name&quot;].strip(&quot;\0&quot;)
+-        if name != &quot;&quot;:
+-            desc = &quot;Directory entry: %s&quot; % name
+-        else:
+-            desc = &quot;Directory entry (empty)&quot;
+-        chunk.description = desc
+-        self.setDescription(desc)
++#  TODO: Re-enable that, maybe using event 'all fields are read'
++#    def updateParent(self, chunk):        
++#        name = self[&quot;name&quot;].strip(&quot;\0&quot;)
++#        if name != &quot;&quot;:
++#            desc = &quot;Directory entry: %s&quot; % name
++#        else:
++#            desc = &quot;Directory entry (empty)&quot;
++#        chunk.description = desc
++#        self.setDescription(desc)
+ 
+ class Inode(FieldSet):
+     name = {
+@@ -80,42 +95,42 @@
+             self.description = desc
+ 
+     def createFields(self):
+-        self.read(&quot;mode&quot;, &quot;Mode&quot;, (FormatChunk, &quot;uint16&quot;), {&quot;post&quot;: self.postMode})
+-        yield Integer(&quot;uid&quot;, &quot;uint16&quot;, &quot;User ID&quot;)
+-        yield Integer(&quot;size&quot;, &quot;uint32&quot;, &quot;File size (in bytes)&quot;)
+-        yield Integer(&quot;atime&quot;, &quot;uint32&quot;, &quot;Last access time&quot;) # {&quot;post&quot;: unixTimestamp}
+-        yield Integer(&quot;ctime&quot;, &quot;uint32&quot;, &quot;Creation time&quot;) # {&quot;post&quot;: unixTimestamp}
+-        yield Integer(&quot;mtime&quot;, &quot;uint32&quot;, &quot;Last modification time&quot;) # {&quot;post&quot;: unixTimestamp}
+-        yield Integer(&quot;dtime&quot;, &quot;uint32&quot;, &quot;Delete time&quot;) #  {&quot;post&quot;: unixTimestamp}
+-        yield Integer(&quot;gid&quot;, &quot;uint16&quot;, &quot;Group ID&quot;)
+-        yield Integer(&quot;links_count&quot;, &quot;uint16&quot;, &quot;Links count&quot;)
+-        yield Integer(&quot;blocks&quot;, &quot;uint32&quot;, &quot;Number of blocks&quot;)
+-        yield Integer(&quot;flags&quot;, &quot;uint32&quot;, &quot;Flags&quot;)
+-        yield Integer(&quot;reserved1&quot;, &quot;uint32&quot;, &quot;Reserved&quot;)
++        yield Integer(self, &quot;mode&quot;, &quot;uint16&quot;, &quot;Mode&quot;) # {&quot;post&quot;: self.postMode}
++        yield Integer(self, &quot;uid&quot;, &quot;uint16&quot;, &quot;User ID&quot;)
++        yield Integer(self, &quot;size&quot;, &quot;uint32&quot;, &quot;File size (in bytes)&quot;)
++        yield Integer(self, &quot;atime&quot;, &quot;uint32&quot;, &quot;Last access time&quot;) # {&quot;post&quot;: unixTimestamp}
++        yield Integer(self, &quot;ctime&quot;, &quot;uint32&quot;, &quot;Creation time&quot;) # {&quot;post&quot;: unixTimestamp}
++        yield Integer(self, &quot;mtime&quot;, &quot;uint32&quot;, &quot;Last modification time&quot;) # {&quot;post&quot;: unixTimestamp}
++        yield Integer(self, &quot;dtime&quot;, &quot;uint32&quot;, &quot;Delete time&quot;) #  {&quot;post&quot;: unixTimestamp}
++        yield Integer(self, &quot;gid&quot;, &quot;uint16&quot;, &quot;Group ID&quot;)
++        yield Integer(self, &quot;links_count&quot;, &quot;uint16&quot;, &quot;Links count&quot;)
++        yield Integer(self, &quot;blocks&quot;, &quot;uint32&quot;, &quot;Number of blocks&quot;)
++        yield Integer(self, &quot;flags&quot;, &quot;uint32&quot;, &quot;Flags&quot;)
++        yield Integer(self, &quot;reserved1&quot;, &quot;uint32&quot;, &quot;Reserved&quot;)
+         for i in range(0,15):
+-            yield Integer(&quot;block[]&quot;, &quot;uint32&quot;, &quot;Block %i&quot; % i)
+-        yield Integer(&quot;version&quot;, &quot;uint32&quot;, &quot;Version&quot;)
+-        yield Integer(&quot;file_acl&quot;, &quot;uint32&quot;, &quot;File ACL&quot;)
+-        yield Integer(&quot;dir_acl&quot;, &quot;uint32&quot;, &quot;Directory ACL&quot;)
+-        yield Integer(&quot;faddr&quot;, &quot;uint32&quot;, &quot;Block where the fragment of the file resides&quot;)
++            yield Integer(self, &quot;block[]&quot;, &quot;uint32&quot;, &quot;Block %i&quot; % i)
++        yield Integer(self, &quot;version&quot;, &quot;uint32&quot;, &quot;Version&quot;)
++        yield Integer(self, &quot;file_acl&quot;, &quot;uint32&quot;, &quot;File ACL&quot;)
++        yield Integer(self, &quot;dir_acl&quot;, &quot;uint32&quot;, &quot;Directory ACL&quot;)
++        yield Integer(self, &quot;faddr&quot;, &quot;uint32&quot;, &quot;Block where the fragment of the file resides&quot;)
+         
+         os = self[&quot;/superblock/creator_os&quot;].value
+         if os == SuperBlock.OS_LINUX:
+-            yield Integer(&quot;frag&quot;, &quot;uint8&quot;, &quot;Number of fragments in the block&quot;)
+-            yield Integer(&quot;fsize&quot;, &quot;uint8&quot;, &quot;Fragment size&quot;)
+-            yield Integer(&quot;padding&quot;, &quot;uint16&quot;, &quot;Padding&quot;)
+-            yield Integer(&quot;uid_high&quot;, &quot;uint16&quot;, &quot;High 16 bits of user ID&quot;)
+-            yield Integer(&quot;gid_high&quot;, &quot;uint16&quot;, &quot;High 16 bits of group ID&quot;)
+-            yield Integer(&quot;reserved&quot;, &quot;uint32&quot;, &quot;Reserved&quot;)
++            yield Integer(self, &quot;frag&quot;, &quot;uint8&quot;, &quot;Number of fragments in the block&quot;)
++            yield Integer(self, &quot;fsize&quot;, &quot;uint8&quot;, &quot;Fragment size&quot;)
++            yield Integer(self, &quot;padding&quot;, &quot;uint16&quot;, &quot;Padding&quot;)
++            yield Integer(self, &quot;uid_high&quot;, &quot;uint16&quot;, &quot;High 16 bits of user ID&quot;)
++            yield Integer(self, &quot;gid_high&quot;, &quot;uint16&quot;, &quot;High 16 bits of group ID&quot;)
++            yield Integer(self, &quot;reserved&quot;, &quot;uint32&quot;, &quot;Reserved&quot;)
+         elif os == SuperBlock.OS_HURD:
+-            yield Integer(&quot;frag&quot;, &quot;uint8&quot;, &quot;Number of fragments in the block&quot;)
+-            yield Integer(&quot;fsize&quot;, &quot;uint8&quot;, &quot;Fragment size&quot;)
+-            yield Integer(&quot;mode_high&quot;, &quot;uint16&quot;, &quot;High 16 bits of mode&quot;)
+-            yield Integer(&quot;uid_high&quot;, &quot;uint16&quot;, &quot;High 16 bits of user ID&quot;)
+-            yield Integer(&quot;gid_high&quot;, &quot;uint16&quot;, &quot;High 16 bits of group ID&quot;)
+-            yield Integer(&quot;author&quot;, &quot;uint32&quot;, &quot;Author ID (?)&quot;)
++            yield Integer(self, &quot;frag&quot;, &quot;uint8&quot;, &quot;Number of fragments in the block&quot;)
++            yield Integer(self, &quot;fsize&quot;, &quot;uint8&quot;, &quot;Fragment size&quot;)
++            yield Integer(self, &quot;mode_high&quot;, &quot;uint16&quot;, &quot;High 16 bits of mode&quot;)
++            yield Integer(self, &quot;uid_high&quot;, &quot;uint16&quot;, &quot;High 16 bits of user ID&quot;)
++            yield Integer(self, &quot;gid_high&quot;, &quot;uint16&quot;, &quot;High 16 bits of group ID&quot;)
++            yield Integer(self, &quot;author&quot;, &quot;uint32&quot;, &quot;Author ID (?)&quot;)
+         else:
+-            yield String(&quot;raw&quot;, &quot;string[12]&quot;, &quot;Reserved&quot;)
++            yield String(self, &quot;raw&quot;, &quot;string[12]&quot;, &quot;Reserved&quot;)
+ 
+     def postMode(self, chunk):
+         mode = chunk.value
+@@ -146,12 +161,12 @@
+             description = &quot;%s: %s items&quot; % (description, count)
+         FieldSet.__init__(self, parent, name, stream, description)
+         assert (count % 8) == 0
+-        self._size = count / 8
++        self._size = count
+         self.start = start
+         self.count = count
+ 
+     def createFields(self):
+-        yield String(&quot;block_bitmap&quot;, &quot;string[%u]&quot; % self._size, &quot;Bitmap&quot;)
++        yield String(self, &quot;block_bitmap&quot;, &quot;string[%u]&quot; % self._size, &quot;Bitmap&quot;)
+ 
+ #    def showFree(self, type=&quot;Block&quot;):
+ #        data = self[&quot;block_bitmap&quot;]
+@@ -184,14 +199,14 @@
+         self.description = &quot;Group descriptor: blocks %s-%s&quot; % (start, end)
+ 
+     def createFields(self):
+-        yield Integer(&quot;block_bitmap&quot;, &quot;uint32&quot;, &quot;Points to the blocks bitmap block&quot;)
+-        yield Integer(&quot;inode_bitmap&quot;, &quot;uint32&quot;, &quot;Points to the inodes bitmap block&quot;)
+-        yield Integer(&quot;inode_table&quot;, &quot;uint32&quot;, &quot;Points to the inodes table first block&quot;)
+-        yield Integer(&quot;free_blocks_count&quot;, &quot;uint16&quot;, &quot;Number of free blocks&quot;)
+-        yield Integer(&quot;free_inodes_count&quot;, &quot;uint16&quot;, &quot;Number of free inodes&quot;)
+-        yield Integer(&quot;used_dirs_count&quot;, &quot;uint16&quot;, &quot;Number of inodes allocated to directories&quot;)
+-        yield Integer(&quot;padding&quot;, &quot;uint16&quot;, &quot;Padding&quot;)
+-        yield String(&quot;reserved&quot;, &quot;string[12]&quot;, &quot;Reserved&quot;)
++        yield Integer(self, &quot;block_bitmap&quot;, &quot;uint32&quot;, &quot;Points to the blocks bitmap block&quot;)
++        yield Integer(self, &quot;inode_bitmap&quot;, &quot;uint32&quot;, &quot;Points to the inodes bitmap block&quot;)
++        yield Integer(self, &quot;inode_table&quot;, &quot;uint32&quot;, &quot;Points to the inodes table first block&quot;)
++        yield Integer(self, &quot;free_blocks_count&quot;, &quot;uint16&quot;, &quot;Number of free blocks&quot;)
++        yield Integer(self, &quot;free_inodes_count&quot;, &quot;uint16&quot;, &quot;Number of free inodes&quot;)
++        yield Integer(self, &quot;used_dirs_count&quot;, &quot;uint16&quot;, &quot;Number of inodes allocated to directories&quot;)
++        yield Integer(self, &quot;padding&quot;, &quot;uint16&quot;, &quot;Padding&quot;)
++        yield String(self, &quot;reserved&quot;, &quot;string[12]&quot;, &quot;Reserved&quot;)
+    
+ class SuperBlock(FieldSet):
+     error_handling = {
+@@ -213,6 +228,7 @@
+     }
+  
+     static_size = 433*8
++    endian = &quot;&lt;&quot;
+  
+     def __init__(self, parent, name, stream, description=&quot;Super block&quot;):
+         FieldSet.__init__(self, parent, name, stream, description)
+@@ -221,68 +237,74 @@
+         else:
+             type = &quot;ext2&quot;
+         self.description = &quot;Superblock: %s file system&quot; % type
++        self._group_count = None
+ 
+     def createFields(self):
+-        yield Integer(&quot;inodes_count&quot;, &quot;uint32&quot;, &quot;Inodes count&quot;)
+-        yield Integer(&quot;blocks_count&quot;, &quot;uint32&quot;, &quot;Blocks count&quot;)
+-        yield Integer(&quot;r_blocks_count&quot;, &quot;uint32&quot;, &quot;Reserved blocks count&quot;)
+-        yield Integer(&quot;free_blocks_count&quot;, &quot;uint32&quot;, &quot;Free blocks count&quot;)
+-        yield Integer(&quot;free_inodes_count&quot;, &quot;uint32&quot;, &quot;Free inodes count&quot;)
+-        yield Integer(&quot;first_data_block&quot;, &quot;uint32&quot;, &quot;First data block&quot;)
++        yield Integer(self, &quot;inodes_count&quot;, &quot;uint32&quot;, &quot;Inodes count&quot;)
++        yield Integer(self, &quot;blocks_count&quot;, &quot;uint32&quot;, &quot;Blocks count&quot;)
++        yield Integer(self, &quot;r_blocks_count&quot;, &quot;uint32&quot;, &quot;Reserved blocks count&quot;)
++        yield Integer(self, &quot;free_blocks_count&quot;, &quot;uint32&quot;, &quot;Free blocks count&quot;)
++        yield Integer(self, &quot;free_inodes_count&quot;, &quot;uint32&quot;, &quot;Free inodes count&quot;)
++        yield Integer(self, &quot;first_data_block&quot;, &quot;uint32&quot;, &quot;First data block&quot;)
+         if self[&quot;first_data_block&quot;].value != 0:
+             raise ParserError(
+                 &quot;Stream doesn't looks like EXT2/EXT3 partition &quot;
+                 &quot;(first data block is %s instead of 0)&quot; %
+                 self[&quot;first_data_block&quot;].value)                
+-        yield Integer(&quot;log_block_size&quot;, &quot;uint32&quot;, &quot;Block size&quot;)
+-        yield Integer(&quot;log_frag_size&quot;, &quot;uint32&quot;, &quot;Fragment size&quot;)
+-        yield Integer(&quot;blocks_per_group&quot;, &quot;uint32&quot;, &quot;Blocks per group&quot;)
+-        yield Integer(&quot;frags_per_group&quot;, &quot;uint32&quot;, &quot;Fragments per group&quot;)
+-        yield Integer(&quot;inodes_per_group&quot;, &quot;uint32&quot;, &quot;Inodes per group&quot;)
+-        yield Integer(&quot;mtime&quot;, &quot;uint32&quot;, &quot;Mount time&quot;) #  {&quot;post&quot;: unixTimestamp}
+-        yield Integer(&quot;wtime&quot;, &quot;uint32&quot;, &quot;Write time&quot;) #  {&quot;post&quot;: unixTimestamp}
+-        yield Integer(&quot;mnt_count&quot;, &quot;uint16&quot;, &quot;Mount count&quot;)
+-        yield Integer(&quot;max_mnt_count&quot;, &quot;int16&quot;, &quot;Max mount count&quot;)
+-        yield String(&quot;magic&quot;, &quot;string[2]&quot;, &quot;Magic number (0x53EF)&quot;)
++        yield Integer(self, &quot;log_block_size&quot;, &quot;uint32&quot;, &quot;Block size&quot;)
++        yield Integer(self, &quot;log_frag_size&quot;, &quot;uint32&quot;, &quot;Fragment size&quot;)
++        yield Integer(self, &quot;blocks_per_group&quot;, &quot;uint32&quot;, &quot;Blocks per group&quot;)
++        yield Integer(self, &quot;frags_per_group&quot;, &quot;uint32&quot;, &quot;Fragments per group&quot;)
++        yield Integer(self, &quot;inodes_per_group&quot;, &quot;uint32&quot;, &quot;Inodes per group&quot;)
++        yield Integer(self, &quot;mtime&quot;, &quot;uint32&quot;, &quot;Mount time&quot;) #  {&quot;post&quot;: unixTimestamp}
++        yield Integer(self, &quot;wtime&quot;, &quot;uint32&quot;, &quot;Write time&quot;) #  {&quot;post&quot;: unixTimestamp}
++        yield Integer(self, &quot;mnt_count&quot;, &quot;uint16&quot;, &quot;Mount count&quot;)
++        yield Integer(self, &quot;max_mnt_count&quot;, &quot;int16&quot;, &quot;Max mount count&quot;)
++        yield String(self, &quot;magic&quot;, &quot;string[2]&quot;, &quot;Magic number (0x53EF)&quot;)
+         if self[&quot;magic&quot;].value != &quot;\x53\xEF&quot;:
+             raise ParserError(
+                 &quot;Stream doesn't looks like EXT2/EXT3 partition &quot;
+-                &quot;(invalid magic value)&quot;)
+-        yield Integer(&quot;state&quot;, &quot;uint16&quot;, SuperBlock.state, &quot;File system state&quot;)
+-        yield Enum(&quot;errors&quot;, &quot;uint16&quot;, SuperBlock.error_handling, &quot;Behaviour when detecting errors&quot;)
+-        yield Integer(&quot;minor_rev_level&quot;, &quot;uint16&quot;, &quot;Minor revision level&quot;)
+-        yield Integer(&quot;last_check&quot;, &quot;uint32&quot;, &quot;Time of last check&quot;) #  {&quot;post&quot;: unixTimestamp}
+-        yield Integer(&quot;check_interval&quot;, &quot;uint32&quot;, &quot;Maximum time between checks&quot;) #  {&quot;post&quot;: self.postMaxTime}
+-        yield Enum(&quot;creator_os&quot;, &quot;uint32&quot;, SuperBlock.os_name, &quot;Creator OS&quot;)        
+-        yield Integer(&quot;rev_level&quot;, &quot;uint32&quot;, &quot;Revision level&quot;)
+-        yield Integer(&quot;def_resuid&quot;, &quot;uint16&quot;, &quot;Default uid for reserved blocks&quot;)
+-        yield Integer(&quot;def_resgid&quot;, &quot;uint16&quot;, &quot;Default guid for reserverd blocks&quot;)
+-        yield Integer(&quot;first_ino&quot;, &quot;uint32&quot;, &quot;First non-reserved inode&quot;)
+-        yield Integer(&quot;inode_size&quot;, &quot;uint16&quot;, &quot;Size of inode structure&quot;)
++                &quot;(invalid magic value: %s instead of %s)&quot; %
++                (str2hex(self[&quot;magic&quot;].value), str2hex(&quot;\x53\xEF&quot;)))
++        yield Enum(self, &quot;state&quot;, &quot;uint16&quot;, SuperBlock.state, &quot;File system state&quot;)
++        yield Enum(self, &quot;errors&quot;, &quot;uint16&quot;, SuperBlock.error_handling, &quot;Behaviour when detecting errors&quot;)
++        yield Integer(self, &quot;minor_rev_level&quot;, &quot;uint16&quot;, &quot;Minor revision level&quot;)
++        yield Integer(self, &quot;last_check&quot;, &quot;uint32&quot;, &quot;Time of last check&quot;) #  {&quot;post&quot;: unixTimestamp}
++        yield Integer(self, &quot;check_interval&quot;, &quot;uint32&quot;, &quot;Maximum time between checks&quot;) #  {&quot;post&quot;: self.postMaxTime}
++        yield Enum(self, &quot;creator_os&quot;, &quot;uint32&quot;, SuperBlock.os_name, &quot;Creator OS&quot;)        
++        yield Integer(self, &quot;rev_level&quot;, &quot;uint32&quot;, &quot;Revision level&quot;)
++        yield Integer(self, &quot;def_resuid&quot;, &quot;uint16&quot;, &quot;Default uid for reserved blocks&quot;)
++        yield Integer(self, &quot;def_resgid&quot;, &quot;uint16&quot;, &quot;Default guid for reserverd blocks&quot;)
++        yield Integer(self, &quot;first_ino&quot;, &quot;uint32&quot;, &quot;First non-reserved inode&quot;)
++        yield Integer(self, &quot;inode_size&quot;, &quot;uint16&quot;, &quot;Size of inode structure&quot;)
+         if self[&quot;inode_size&quot;].value != (68 + 15*4):
+             raise ParserError(
+                 &quot;EXT2/EXT3 parser error: inode of size %s are not supported&quot; \
+                 % self[&quot;inode_size&quot;].value)
+-        yield Integer(&quot;block_group_nr&quot;, &quot;uint16&quot;, &quot;Block group # of this superblock&quot;)
+-        yield Integer(&quot;feature_compat&quot;, &quot;uint32&quot;, &quot;Compatible feature set&quot;)
+-        yield Integer(&quot;feature_incompat&quot;, &quot;uint32&quot;, &quot;Incompatible feature set&quot;)
+-        yield Integer(&quot;feature_ro_compat&quot;, &quot;uint32&quot;, &quot;Read-only compatible feature set&quot;)
+-        yield String(&quot;uuid&quot;, &quot;string[16]&quot;, &quot;128-bit uuid for volume&quot;)
+-        yield String(&quot;volume_name&quot;, &quot;string[16]&quot;, &quot;Volume name&quot;)
+-        yield String(&quot;last_mounted&quot;, &quot;string[64]&quot;, &quot;Directory where last mounted&quot;)
+-        yield Integer(&quot;compression&quot;, &quot;uint32&quot;, &quot;For compression (algorithm usage bitmap)&quot;)
+-        yield Integer(&quot;prealloc_blocks&quot;, &quot;uint8&quot;, &quot;Number of blocks to try to preallocate&quot;)
+-        yield Integer(&quot;prealloc_dir_blocks&quot;, &quot;uint8&quot;, &quot;Number to preallocate for directories&quot;)
+-        yield Integer(&quot;padding&quot;, &quot;uint16&quot;, &quot;Padding&quot;)
+-        yield String(&quot;journal_uuid&quot;, &quot;string[16]&quot;, &quot;uuid of journal superblock&quot;)
+-        yield Integer(&quot;journal_inum&quot;, &quot;uint32&quot;, &quot;inode number of journal file&quot;)
+-        yield Integer(&quot;journal_dev&quot;, &quot;uint32&quot;, &quot;device number of journal file&quot;)
+-        yield Integer(&quot;last_orphan&quot;, &quot;uint32&quot;, &quot;start of list of inodes to delete&quot;)
+-        yield String(&quot;reserved&quot;, &quot;string[197]&quot;, &quot;Padding to the end of the block&quot;)
++        yield Integer(self, &quot;block_group_nr&quot;, &quot;uint16&quot;, &quot;Block group # of this superblock&quot;)
++        yield Integer(self, &quot;feature_compat&quot;, &quot;uint32&quot;, &quot;Compatible feature set&quot;)
++        yield Integer(self, &quot;feature_incompat&quot;, &quot;uint32&quot;, &quot;Incompatible feature set&quot;)
++        yield Integer(self, &quot;feature_ro_compat&quot;, &quot;uint32&quot;, &quot;Read-only compatible feature set&quot;)
++        yield String(self, &quot;uuid&quot;, &quot;string[16]&quot;, &quot;128-bit uuid for volume&quot;)
++        yield String(self, &quot;volume_name&quot;, &quot;string[16]&quot;, &quot;Volume name&quot;)
++        yield String(self, &quot;last_mounted&quot;, &quot;string[64]&quot;, &quot;Directory where last mounted&quot;)
++        yield Integer(self, &quot;compression&quot;, &quot;uint32&quot;, &quot;For compression (algorithm usage bitmap)&quot;)
++        yield Integer(self, &quot;prealloc_blocks&quot;, &quot;uint8&quot;, &quot;Number of blocks to try to preallocate&quot;)
++        yield Integer(self, &quot;prealloc_dir_blocks&quot;, &quot;uint8&quot;, &quot;Number to preallocate for directories&quot;)
++        yield Integer(self, &quot;padding&quot;, &quot;uint16&quot;, &quot;Padding&quot;)
++        yield String(self, &quot;journal_uuid&quot;, &quot;string[16]&quot;, &quot;uuid of journal superblock&quot;)
++        yield Integer(self, &quot;journal_inum&quot;, &quot;uint32&quot;, &quot;inode number of journal file&quot;)
++        yield Integer(self, &quot;journal_dev&quot;, &quot;uint32&quot;, &quot;device number of journal file&quot;)
++        yield Integer(self, &quot;last_orphan&quot;, &quot;uint32&quot;, &quot;start of list of inodes to delete&quot;)
++        yield String(self, &quot;reserved&quot;, &quot;string[197]&quot;, &quot;Padding to the end of the block&quot;)
+ 
+-        # Calculate number of groups
+-        blocks_per_group = self[&quot;blocks_per_group&quot;].value
+-        self.group_count = (self[&quot;blocks_count&quot;].value - self[&quot;first_data_block&quot;].value + (blocks_per_group - 1)) / blocks_per_group
++    def _getGroupCount(self):
++        if self._group_count == None:
++            # Calculate number of groups
++            blocks_per_group = self[&quot;blocks_per_group&quot;].value
++            self._group_count = (self[&quot;blocks_count&quot;].value - self[&quot;first_data_block&quot;].value + (blocks_per_group - 1)) / blocks_per_group
++        return self._group_count
++    group_count = property(_getGroupCount)        
+  
+ #    def postMaxTime(self, chunk):
+ #        return humanDuration(chunk.value * 1000)
+@@ -309,77 +331,77 @@
+         FieldSet.__init__(self, parent, name, stream, description)
+         self.start = start
+         self.count = count
++        self._size = self.count * self[&quot;/superblock/inode_size&quot;].value * 8
+ 
+     def createFields(self):
+         for index in range(self.start, self.start+self.count):
+             yield Inode(self, &quot;inode[]&quot;, index, description=&quot;Inode %s&quot; % index)
+ 
+-    def __getitem__(self, index):
++    def getInode(self, index):
+         index = index - self.start - 1
+         return self.getChunk(&quot;inode[%u]&quot; % index).getFilter()
+ 
+ def testSuperblock(stream):
+     oldpos = stream.tell()
+-    stream.seek(56, 1)
++    stream.seek(56*8, 1)
+     magic = stream.getN(2)    
+     stream.seek(oldpos)
+     return (magic == &quot;\x53\xEF&quot;)
+ 
+-class Group(FieldSet):
+-    def __init__(self, stream, parent, index, description=None):
++class Group(FieldSetWithSeek):
++    def __init__(self, parent, name, stream, index, description=None):
+         if description == None:
+             description = &quot;Group %u&quot; % index
+-        FieldSet.__init__(self, parent, name, stream, description)
++        FieldSetWithSeek.__init__(self, parent, name, stream, description)
+         self.index = index
+ 
++# TODO: Re-enable that using event (event like &quot;all fields are read)
++#    def updateParent(self, chunk):
++#        desc = &quot;Group %s: %s&quot; % (self.index, humanFilesize(self.getSize()))
++#        if &quot;superblock_copy&quot; in self:
++#            desc += &quot; (with superblock copy)&quot;
++#        self.description = desc 
++
+     def createFields(self):
+-        group = self[&quot;../group_desc&quot;].getGroup(index)
++        group = self[&quot;../group_desc&quot;].getGroup(self.index)
+         superblock = self[&quot;/superblock&quot;]
+         block_size = self[&quot;/&quot;].block_size
+     
+         # Read block bitmap
+         self.superblock_copy = False
+-        if testSuperblock(stream):
++        if testSuperblock(self.stream):
+             self.superblock_copy = True
+             yield SuperBlock(self, &quot;superblock_copy&quot;, self.stream, &quot;Superblock&quot;)
+-        self.seek(group[&quot;block_bitmap&quot;] * block_size)
++        field = self.seekField(group[&quot;block_bitmap&quot;].value * block_size * 8)
++        if field != None:
++            yield field
+             
+-        count = superblock[&quot;blocks_per_group&quot;]
++        count = superblock[&quot;blocks_per_group&quot;].value
+         yield BlockBitmap(self, &quot;block_bitmap[]&quot;, self.stream, count, 0, &quot;Block bitmap&quot;)
+ 
+         # Read inode bitmap
+-        assert (group[&quot;inode_bitmap&quot;] * block_size) == stream.tell()
+-        count = superblock[&quot;inodes_per_group&quot;]
+-        self.read(&quot;inode_bitmap[]&quot;, &quot;Inode bitmap&quot;, (InodeBitmap, &quot;Inode bitmap&quot;, count, 1), {&quot;size&quot;: count / 8})
+-        addr = stream.tell() % 4096
++        assert (group[&quot;inode_bitmap&quot;].value * block_size * 8) == self._total_field_size 
++        count = superblock[&quot;inodes_per_group&quot;].value
++        yield InodeBitmap(self, &quot;inode_bitmap[]&quot;, self.stream, count, 1, &quot;Inode bitmap&quot;)
++        addr = self._total_field_size % 4096
+         if addr != 0:
+-            addr = stream.tell() + (4096 - addr % 4096)
+-            self.seek(addr)
++            addr = self._total_field_size + (4096 - addr % 4096) * 8
++            field = self.seekField(addr)
++            if field != None:
++                yield field
+              
+-        count = superblock[&quot;inodes_per_group&quot;]
+-        size = superblock[&quot;inode_size&quot;] * count
+-        inode_index = 1 + index * count
+-        self.read(&quot;inode_table[]&quot;, &quot;Inode table&quot;, (InodeTable, inode_index, count), {&quot;size&quot;: size})
++        count = superblock[&quot;inodes_per_group&quot;].value
++        inode_index = 1 + self.index * count
++        yield InodeTable(self, &quot;inode_table[]&quot;, self.stream, inode_index, count)
+ 
+-        size = (index+1) * superblock[&quot;blocks_per_group&quot;] * block_size
+-        if stream.getSize() &lt; size:
+-            size = stream.getSize()
+-        size = size - stream.tell() 
+-        self.read(&quot;data&quot;, &quot;Data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        size = (self.index+1) * superblock[&quot;blocks_per_group&quot;].value * block_size
++        if self.stream.getSize() &lt; size:
++            size = self.stream.getSize()
++        assert (self._total_field_size % 8) == 0
++        size = size - self._total_field_size / 8
++        yield String(self, &quot;data&quot;, &quot;string[%u]&quot; % size, &quot;Data&quot;)
+ 
+-    def updateParent(self, chunk):
+-        desc = &quot;Group %s: %s&quot; % (self.index, humanFilesize(self.getSize()))
+-        if self.superblock_copy:
+-            desc = desc + &quot; (with superblock copy)&quot;
+-        chunk.description = desc 
+-
+-    def seek(self, to):
+-        size = to - self.getStream().tell()
+-        assert 0 &lt;= size
+-        if 0 &lt; size:
+-            self.read(&quot;raw[]&quot;, &quot;Raw&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+-
+-class EXT2_FS(FieldSet):
++class EXT2_FS(FieldSetWithSeek):
+     &quot;&quot;&quot;
+     Parse an EXT2 or EXT3 partition.
+ 
+@@ -393,11 +415,13 @@
+     mime_types = &quot;hachoir/fs-ext2&quot;
+ 
+     def __init__(self, parent, name, stream, description=&quot;EXT2 file system&quot;):
+-        FieldSet.__init__(self, parent, name, stream, description)
++        FieldSetWithSeek.__init__(self, parent, name, stream, description)
+ 
+     def createFields(self):
+         # Skip something (what is stored here? MBR?) 
+-        self.seek(1024) 
++        field = self.seekField(1024 * 8) 
++        if field != None:
++            yield field
+         
+         # Read superblock
+         superblock = SuperBlock(self, &quot;superblock&quot;, self.stream)
+@@ -405,27 +429,26 @@
+         self.block_size = 1024 &lt;&lt; superblock[&quot;log_block_size&quot;].value # in bytes
+ 
+         # Read groups' descriptor
+-        self.seek(4096) 
++        field = self.seekField(4096 * 8) 
++        if field != None:
++            yield field
+         groups = GroupDescriptors(self, &quot;group_desc&quot;, self.stream, 0, superblock.group_count)
+         yield groups
+ 
+         # Read groups
+         address = groups.getGroup(0)[&quot;block_bitmap&quot;].value * self.block_size * 8
+-        self.seek(address)
++        field = self.seekField(address)
++        if field != None:
++            yield field
+         for i in range(0, superblock.group_count):
+-            self.read(&quot;group[]&quot;, &quot;Group&quot;, (Group, i))
++            yield Group(self, &quot;group[]&quot;, self.stream, i)
+ 
+         # Padding (?)
+-        size = stream.getSize() - stream.tell()
+-        if size != 0:
+-            self.read(&quot;end&quot;, &quot;End (raw)&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++#        size = self.stream.getSize()*8 - self._total_field_size
++#        if size != 0:
++#            assert (size % 8) == 0
++#            yield String(self, &quot;end&quot;, &quot;string[%u]&quot; % size, &quot;End (raw)&quot;)
+ 
+-    def seek(self, to):
+-        size = to - self.getStream().tell()
+-        assert 0 &lt;= size
+-        if 0 &lt; size:
+-            yield String(self, &quot;raw[]&quot;, &quot;string[%u]&quot; % size, raw)
+-
+ #    def readDirectory(self, inode):
+ #        stream = self.getStream()
+ #        block_index = 0
+
+Modified: haypo/hachoir/branches/hachoir-yield/hachoir.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:18:07 UTC (rev 422)
++++ haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:18:28 UTC (rev 423)
+@@ -35,7 +35,7 @@
+     if plugin != None:
+         # Create field set and display it
+         field_set = plugin(None, &quot;file&quot;, stream)
+-        displayFieldSet(field_set, None)
++        displayFieldSet(field_set, 1)
+ #        meta = PngMetaData(png) ; print meta
+ #        meta = PcxMetaData(pcx) ; print meta
+ #        meta = BmpMetaData(bmp) ; print meta
+
+Modified: haypo/hachoir/branches/hachoir-yield/text_ui.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-03-04 00:18:07 UTC (rev 422)
++++ haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-03-04 00:18:28 UTC (rev 423)
+@@ -1,17 +1,35 @@
+ def displayFieldSet(field_set, max_depth=2, depth=0):
+     parent_details = False
++    display_bits = False
+     indent = &quot; &quot; * (3*depth)
+     addr = field_set.absolute_address
+     text = &quot;%s--- %s ---&quot; % (indent, field_set.name) 
+     if parent_details:
+-        text += &quot;(addr=%u.%u, size=%s bits)&quot; \
+-            % (addr/8, addr%8, field_set.size)
++        if display_bits:
++            text += &quot;(addr=%u.%u, size=%s bits)&quot; \
++                % (addr/8, addr%8, field_set.size)
++        else:
++            assert (addr % 8) == 0
++            assert (field_set.size % 8) == 0
++            text += &quot;(addr=%u, size=%s bytes)&quot; \
++                % (addr/8, field_set.size/8)
+     print text
+     if max_depth == None or depth &lt; max_depth:
+         for field in field_set:
+             if not field.is_field_set:
+-                print &quot;%s%u.%u) %s = %s (%s) (size=%s bits)&quot; % \
+-                    (indent, field.address/8, field.address%8, field._name, field.display, field.description, field.size)
++                text = indent
++                if display_bits:
++                    text += &quot;%u.%u&quot; % (field.address/8, field.address%8)
++                else:
++                    assert (field.address % 8) == 0
++                    text += &quot;%u&quot; % (field.address/8)
++                text += &quot;) %s = %s (%s)&quot; % \
++                    (field._name, field.display, field.description)
++                if display_bits:
++                    text += &quot;(size=%s bits)&quot; % field.size
++                else:
++                    assert (field.size % 8) == 0
++                    text += &quot;(size=%s bytes)&quot; % (field.size / 8)
+             else:
+                 displayFieldSet(field, max_depth, depth+1)
+     else:
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000342.html">[Happyboom-svn] r422 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/fallback branches/hachoir-yield/field branches/hachoir-yield/file branches/hachoir-yield/file/image branches/hachoir-yield/file/system branches/hachoir-yield/generic
+</A></li>
+	<LI>Next message: <A HREF="000327.html">[Happyboom-svn] r424 - in haypo/hachoir: . branches/hachoir-yield/stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#326">[ date ]</a>
+              <a href="thread.html#326">[ thread ]</a>
+              <a href="subject.html#326">[ subject ]</a>
+              <a href="author.html#326">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

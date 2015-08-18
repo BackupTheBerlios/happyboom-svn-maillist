@@ -1,0 +1,236 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r413 - in haypo/hachoir: . branches branches/hachoir-yield
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-February/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r413%20-%20in%20haypo/hachoir%3A%20.%20branches%20branches/hachoir-yield&In-Reply-To=%3C200602181924.k1IJOlHf003238%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000316.html">
+   <LINK REL="Next"  HREF="000318.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r413 - in haypo/hachoir: . branches branches/hachoir-yield</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r413%20-%20in%20haypo/hachoir%3A%20.%20branches%20branches/hachoir-yield&In-Reply-To=%3C200602181924.k1IJOlHf003238%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r413 - in haypo/hachoir: . branches branches/hachoir-yield">haypo at berlios.de
+       </A><BR>
+    <I>Sat Feb 18 20:24:47 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000316.html">[Happyboom-svn] r412 - haypo/hachoir/trunk
+</A></li>
+        <LI>Next message: <A HREF="000318.html">[Happyboom-svn] r414 - in haypo/hachoir/branches/hachoir-yield: . field file file/image stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#317">[ date ]</a>
+              <a href="thread.html#317">[ thread ]</a>
+              <a href="subject.html#317">[ subject ]</a>
+              <a href="author.html#317">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-02-18 20:24:45 +0100 (Sat, 18 Feb 2006)
+New Revision: 413
+
+Added:
+   haypo/hachoir/branches/
+   haypo/hachoir/branches/hachoir-yield/
+   haypo/hachoir/branches/hachoir-yield/hachoir.py
+Log:
+Add new branch: hachoir-yield.
+
+
+Added: haypo/hachoir/branches/hachoir-yield/hachoir.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-02-11 02:35:49 UTC (rev 412)
++++ haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-02-18 19:24:45 UTC (rev 413)
+@@ -0,0 +1,157 @@
++class EventHandler(object):
++    _instance = None
++
++    # Singleton design pattern
++    def __new__(cls):
++        if cls._instance == None:
++            cls._instance = object.__new__(cls)
++        return cls._instance
++
++    def __init__(self):
++        self.handlers = {}
++
++    def connect(self, event_name, handler):
++        if event_name in self.handlers:
++            self.handlers[event_name].append(handler)
++        else:
++            self.handlers[event_name] = [handler]
++
++    def raiseEvent(self, event_name, *args):
++        if event_name not in self.handlers:
++            return
++        for handler in self.handlers[event_name]:
++            handler(*args)
++
++class Field(object):
++    def __init__(self, parent, key, value, address=None):
++        self.parent = parent
++        self.key = key
++        self._value = value
++        if address == None:
++            self.address = parent.address
++        else:
++            self.address = address
++        self.size = 4
++
++    def _litValeur(self):
++        return self._value
++    def _ecritValeur(self, nouvelle):
++        self._value = nouvelle
++        self.parent.raiseEvent(&quot;value-changed&quot;, self)
++    value = property(_litValeur, _ecritValeur)
++
++    def __str__(self):
++        return str(self.value)
++
++class UniqKeyError(KeyError):
++    pass
++
++class IndexedDict:
++    def __init__(self):
++        self._dict = {}
++        self._list = []
++
++    def add(self, key, value):
++        if key in self._dict:
++            raise UniqKeyError(&quot;Key '%s' already exists&quot; % key)
++        self._dict[key] = value
++        self._list.append(value)
++
++    def __len__(self):
++        return len(self._list)
++
++    def __contains__(self, key):
++        return key in self._dict
++
++    def __iter__(self):
++        return iter(self._list)
++
++class FieldSet(Field):
++    def __init__(self, parent=None, key=&quot;filter&quot;):
++        Field.__init__(self, parent, key, self, 0)
++        self.fields = IndexedDict()
++        self.address = 0
++        self._event_handler = None
++        self.generator = self.createFields()
++
++    def raiseEvent(self, event_name, *args):
++        if self._event_handler == None:
++            return
++        self._event_handler.raiseEvent(event_name, *args)
++
++    def connect(self, event_name, handler):
++        if self._event_handler == None:
++            self._event_handler = EventHandler()
++        self._event_handler.connect(event_name, handler)
++
++    def __len__(self):
++        return len(self.fields)
++
++    # Utilise lorsque le tableau a ete rempli
++    def _quickGetItem(self, name):
++        print &quot;Quick!&quot;
++        if name in self.fields:
++            return self.fields[name]
++        raise Exception(&quot;Le field %s n'existe pas&quot; % name)
++
++    def _feed(self):
++        field = self.generator.next()
++        self.address += field.size
++        self.fields.append(field.key, field)
++        return field
++
++    def __getitem__(self, name):
++        if name in self.fields:
++            return self.fields[name]
++        try:
++            while True:
++                field = self._feed()
++                if field.key == name:
++                    return field
++        except StopIteration:
++            self.__getitem__ = self._quickGetItem
++            self.generator = None
++        raise Exception(&quot;Le field %s n'existe pas&quot; % name)
++
++    def __contains__(self, key):
++        return key in self.fields
++
++    def __iter__(self):
++        if self.generator != None:
++            try:
++                while True:
++                    self._feed()
++            except StopIteration:
++                pass
++        return iter(self.fields)
++
++    def createFields(self):
++        raise NotImplementedError
++
++class World3D(FieldSet):
++    def __init__(self, parent=None):
++        FieldSet.__init__(self, key=&quot;world_3d&quot;)
++        self.connect(&quot;value-changed&quot;, self.valueChanged)
++
++    def valueChanged(self, field):
++        if field.key in (&quot;x&quot;, &quot;y&quot;):
++            self[&quot;sum&quot;].value = self[&quot;x&quot;].value + self[&quot;y&quot;].value
++
++    def createFields(self):
++        yield Field(self, &quot;x&quot;, 2)
++        yield Field(self, &quot;y&quot;, 7)
++        yield Field(self, &quot;sum&quot;, 7+2)
++
++def displayFieldSet(filtre):
++    for field in filtre:
++        print &quot;field[%s]=%s (address %s)&quot; % \
++            (field.key, field.value, field.address)
++
++def valueChanged(field):
++    print &quot;Value of %s changed to %s&quot; % (field.key, field.value)
++
++pouet = World3D()
++displayFieldSet(pouet)
++pouet.connect(&quot;value-changed&quot;, valueChanged)
++pouet[&quot;x&quot;].value = 10
++displayFieldSet(pouet)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000316.html">[Happyboom-svn] r412 - haypo/hachoir/trunk
+</A></li>
+	<LI>Next message: <A HREF="000318.html">[Happyboom-svn] r414 - in haypo/hachoir/branches/hachoir-yield: . field file file/image stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#317">[ date ]</a>
+              <a href="thread.html#317">[ thread ]</a>
+              <a href="subject.html#317">[ subject ]</a>
+              <a href="author.html#317">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

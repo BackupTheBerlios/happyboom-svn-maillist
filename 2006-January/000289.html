@@ -1,0 +1,210 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r387 - in haypo/hachoir/trunk: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r387%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200601022342.k02NgnOR017718%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000288.html">
+   <LINK REL="Next"  HREF="000290.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r387 - in haypo/hachoir/trunk: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r387%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200601022342.k02NgnOR017718%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r387 - in haypo/hachoir/trunk: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Tue Jan  3 00:42:49 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000288.html">[Happyboom-svn] r386 - in haypo/hachoir/trunk: . plugins stream
+</A></li>
+        <LI>Next message: <A HREF="000290.html">[Happyboom-svn] r388 - in haypo/hachoir/trunk: . plugins stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#289">[ date ]</a>
+              <a href="thread.html#289">[ thread ]</a>
+              <a href="subject.html#289">[ subject ]</a>
+              <a href="author.html#289">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-03 00:42:46 +0100 (Tue, 03 Jan 2006)
+New Revision: 387
+
+Modified:
+   haypo/hachoir/trunk/filter.py
+   haypo/hachoir/trunk/plugins/exif.py
+Log:
+- Revert hack in Exif (doesn't work on most JPEG)
+- Filter._createInstance() convert chunk into raw if create a filter fails
+
+
+Modified: haypo/hachoir/trunk/filter.py
+===================================================================
+--- haypo/hachoir/trunk/filter.py	2006-01-02 23:09:45 UTC (rev 386)
++++ haypo/hachoir/trunk/filter.py	2006-01-02 23:42:46 UTC (rev 387)
+@@ -43,6 +43,7 @@
+     def getStream(self): return self._stream
+     def updateChunkId(self, old_id, new_id): pass
+     def updateChunkDescription(self, id, desc): pass
++    def updateChunkDisplay(self, id): pass
+     def __len__(self): return len(self._chunks_dict)
+ 
+     def getPath(self):
+@@ -138,18 +139,22 @@
+             self._chunks_cache[new_id] = cache
+ 
+         # Update display
+-        info = self.displayChunkInfo(new_id)
++        self.updateChunkDisplay(new_id)
++
++    def updateChunkDisplay(self, id):
++        if ui.ui == None:
++            return
++        pos = self._chunks.index(id)
++        assert pos != -1
++        info = self.displayChunkInfo(id)
+         ui.window.update_table(self, pos, *info)
+ 
+     def updateChunkDescription(self, id, desc):
+         pos = self._chunks.index(id)
+         assert pos != -1
+         self._chunks_dict[id][1] = desc
++        self.updateChunkDisplay(id)
+ 
+-        if ui.ui != None:
+-            info = self.displayChunkInfo(id)
+-            ui.window.update_table(self, pos, *info)
+-
+     def purgeCache(self):
+         if len(self._chunks_cache) != 0 and config.verbose:
+             print &quot;Purge cache: destroy %s chunks&quot; % len(self._chunks_cache)
+@@ -209,13 +214,6 @@
+                 id = chunk.id
+                 self._chunks_cache[id] = chunk
+             chunk_info = [id, description, addr, size, instance_info, post, optionnal]
+-#            else:       
+-#                assert chunk_class == StringChunk
+-#                strip = optionnal.get(&quot;strip&quot;, None)
+-#                chunk = chunk_class (id, description, self._stream, info[1:], self, strip=strip)
+-#                chunk_info = [id, description, addr, size, \
+-#                        (info[0], id, description, self._stream, info[1:], self,), post, optionnal]
+-#                self._chunks_cache[id] = chunk
+             self._chunks_dict[id] = chunk_info
+             self._chunks.append(id)
+             self._size = self._size + size
+@@ -256,30 +254,49 @@
+     def getSize(self): return self._size
+ 
+     def _createInstance(self, id):
++        description = self._chunks_dict[id][1]
+         addr = self._chunks_dict[id][2]
++        size = self._chunks_dict[id][3]
+         desc = self._chunks_dict[id][4]
+         post = self._chunks_dict[id][5]
+         chunks_kw = self._chunks_dict[id][6]
+         oldpos = self._stream.tell()
+-        self._stream.seek(addr)
+         if config.verbose:
+             print &quot;%s: Instanciate %s (of type %s)&quot; % (self.getPath(), id, desc[0].__name__)
+         if not issubclass(desc[0], BasicFilter):
++            # Chunk
+             chunk_class = desc[0]
+             chunk_args = desc[1:]
++            self._stream.seek(addr)
+             chunk = chunk_class(*chunk_args, **chunks_kw)
+             if post != None:
+                 chunk.display = post(chunk)
+         else:
++            # Filter
+             filter_stream = desc[1]
+             if filter_stream != self._stream:
+                 filter_stream.seek(desc[2])
+-            filter = desc[0] (filter_stream, self, *desc[3])
+-            filter.setId(id)
+-            chunk = FilterChunk(id, filter, self, addr)
+-            if filter.getDescription() != desc[1]:
+-                self.updateChunkDescription(id, filter.getDescription())
+-            filter.updateParent(chunk)
++            else:
++                self._stream.seek(addr)
++            try:
++                filter = desc[0] (filter_stream, self, *desc[3])
++                filter.setId(id)
++                chunk = FilterChunk(id, filter, self, addr)
++                if filter.getDescription() != desc[1]:
++                    self.updateChunkDescription(id, filter.getDescription())
++                filter.updateParent(chunk)
++            except Exception, msg:
++                error(&quot;Error when loading filter %s: %s&quot; % (id, msg))
++                if filter_stream != self._stream:
++                    filter_stream.seek(desc[2])
++                else:
++                    self._stream.seek(addr)
++                assert isinstance(size, int)
++                self._chunks_dict[id][4] = (FormatChunk, id, description, filter_stream, &quot;string[%u]&quot; % size, self)
++                self._chunks_dict[id][5] = None
++                self._chunks_dict[id][6] = {}
++                self.updateChunkDisplay(id)
++                return self._createInstance(id)
+         self._stream.seek(oldpos)
+         return chunk
+ 
+
+Modified: haypo/hachoir/trunk/plugins/exif.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/exif.py	2006-01-02 23:09:45 UTC (rev 386)
++++ haypo/hachoir/trunk/plugins/exif.py	2006-01-02 23:42:46 UTC (rev 387)
+@@ -190,12 +190,13 @@
+             padding = next_chunk_offset - stream.tell()
+             if 0 &lt; padding:
+                 self.read(&quot;padding[]&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[%u]&quot; % padding))
+-        size = self.getSize()
+-        if (size % 4) != 0:
+-            if parent.jpeg_soi != None and parent.jpeg_soi &lt;= stream.tell():
+-                return
+-            padding = 4 - (size % 4)
+-            self.read(&quot;padding[]&quot;, &quot;Padding to be aligned to 4&quot;, (FormatChunk, &quot;string[%u]&quot; % padding))
++        # TODO: When padding is needed !?                
++#        size = self.getSize()
++#        if (size % 4) != 0:
++#            if parent.jpeg_soi != None and parent.jpeg_soi &lt;= stream.tell():
++#                return
++#            padding = 4 - (size % 4)
++#            self.read(&quot;padding[]&quot;, &quot;Padding to be aligned to 4&quot;, (FormatChunk, &quot;string[%u]&quot; % padding))
+ 
+     def updateParent(self, chunk):
+         chunk.description = &quot;Exif IFD (id %s)&quot; % self[&quot;id&quot;]
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000288.html">[Happyboom-svn] r386 - in haypo/hachoir/trunk: . plugins stream
+</A></li>
+	<LI>Next message: <A HREF="000290.html">[Happyboom-svn] r388 - in haypo/hachoir/trunk: . plugins stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#289">[ date ]</a>
+              <a href="thread.html#289">[ thread ]</a>
+              <a href="subject.html#289">[ subject ]</a>
+              <a href="author.html#289">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

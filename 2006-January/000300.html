@@ -1,0 +1,238 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r396 - in haypo/hachoir/trunk: . plugins stream
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r396%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins%20stream&In-Reply-To=%3C200601060003.k0603S2b019385%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000299.html">
+   <LINK REL="Next"  HREF="000301.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r396 - in haypo/hachoir/trunk: . plugins stream</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r396%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins%20stream&In-Reply-To=%3C200601060003.k0603S2b019385%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r396 - in haypo/hachoir/trunk: . plugins stream">haypo at berlios.de
+       </A><BR>
+    <I>Fri Jan  6 01:03:28 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000299.html">[Happyboom-svn] r395 - in haypo/hachoir/trunk: plugins ui
+</A></li>
+        <LI>Next message: <A HREF="000301.html">[Happyboom-svn] r397 - haypo/hachoir/trunk/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#300">[ date ]</a>
+              <a href="thread.html#300">[ thread ]</a>
+              <a href="subject.html#300">[ subject ]</a>
+              <a href="author.html#300">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-06 01:03:17 +0100 (Fri, 06 Jan 2006)
+New Revision: 396
+
+Modified:
+   haypo/hachoir/trunk/chunk.py
+   haypo/hachoir/trunk/plugins/worms2.py
+   haypo/hachoir/trunk/stream/stream.py
+Log:
+- Bugfix in StringChunk: save and restore stream seed
+- Bugfix in Stream: Stream.getFormat() returns array if format is an array
+- Improve Worms2 plugin: Directory resource (DIR) read file system instead
+  of using a lot of hacks
+
+
+Modified: haypo/hachoir/trunk/chunk.py
+===================================================================
+--- haypo/hachoir/trunk/chunk.py	2006-01-05 22:36:42 UTC (rev 395)
++++ haypo/hachoir/trunk/chunk.py	2006-01-06 00:03:17 UTC (rev 396)
+@@ -204,6 +204,7 @@
+         self._stream.seek(self.addr + self._size)
+         
+     def _read(self, max_size):
++        oldpos = self._stream.tell()
+         self._stream.seek(self.addr)
+         if self._str_type == &quot;Pascal32&quot;:
+             self._stream.seek(4,1)
+@@ -230,6 +231,7 @@
+                 self.charset = &quot;ascii&quot;
+                 text = StringChunk.regex_not_ascii.sub(&quot;.&quot;, text)
+                 text = unicode(text, &quot;ascii&quot;)
++        self._stream.seek(oldpos)
+         return text
+ 
+     def getValue(self, max_size=None):
+
+Modified: haypo/hachoir/trunk/plugins/worms2.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/worms2.py	2006-01-05 22:36:42 UTC (rev 395)
++++ haypo/hachoir/trunk/plugins/worms2.py	2006-01-06 00:03:17 UTC (rev 396)
+@@ -12,6 +12,7 @@
+ from generic.image import Palette
+ from text_handler import humanFilesize
+ from tools import alignValue
++import re
+ 
+ class ImageData(OnDemandFilter):
+     def __init__(self, stream, parent, use_bank):
+@@ -32,8 +33,6 @@
+             return 12 
+         oldpos = stream.tell()
+         x, y, w, h, = stream.getFormat(&quot;&lt;uint16[4]&quot;)
+-        #x, y = stream.getFormat(&quot;&lt;uint16&quot;), stream.getFormat(&quot;&lt;uint16&quot;)
+-        #w, h = stream.getFormat(&quot;&lt;uint16&quot;), stream.getFormat(&quot;&lt;uint16&quot;)
+         size = 2*4 + (w-x) * (h-y)
+         stream.seek(oldpos)
+         return size
+@@ -293,6 +292,8 @@
+         &quot;BNK&quot;: Bank
+     }
+ 
++    regex_filename_inf = re.compile(r&quot;^.*\.inf$&quot;)
++
+     def __init__(self, stream, parent, has_name=True, use_bank=False, has_separator=False):
+         OnDemandFilter.__init__(self, &quot;worms2_res&quot;, &quot;Worms2 resource&quot;, stream, parent, &quot;&lt;&quot;)
+         guess = stream.getN(3, False)
+@@ -338,44 +339,40 @@
+                     self.read(&quot;separator&quot;, &quot;Separator (0x1A = 26)&quot;, (FormatChunk, &quot;uint8&quot;))
+                 #assert self[&quot;separator&quot;] == 0x1A
+         else:
++            self.count = 0
+             self.read(&quot;filesize&quot;, &quot;File size&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: humanFilesize})
+             self.name = &quot;(directory)&quot;
+-            end = self.doRead(&quot;last_pos&quot;, &quot;Last position&quot;, (FormatChunk, &quot;uint32&quot;)).value
+-            self.count = 0
+             has_name = True
+             use_bank = False
+             has_separator = True
+-            guess = stream.getN(5, False)
+-            if &quot;\r&quot; in guess:
+-                while &quot;\r&quot; in guess:
+-                    self.read(&quot;res[]&quot;, &quot;INF&quot;, (INF,))
+-                    guess = stream.getN(5, False)
+-                self.read(&quot;res[]&quot;, &quot;String index&quot;, (StringIndex, use_bank))
+-                return
+-            elif guess.startswith(&quot;BNK&quot;):
++            self.read(&quot;size&quot;, &quot;Directory size&quot;, (FormatChunk, &quot;uint32&quot;))
++            guess = stream.getN(3, False)
++            if guess == &quot;BNK&quot;:
+                 use_bank = True
+                 has_name = False
+-            while stream.tell() &lt; end:
+-                guess = stream.getN(4, False)
+-                if guess[0:4] == &quot;\0\0\0\0&quot;:
+-                    self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[4]&quot;))
+-                elif guess[0:3] == &quot;\0\0\0&quot;:
+-                    self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[3]&quot;))
+-                elif guess[0:2] == &quot;\0\0&quot;:
+-                    self.read(&quot;padding[]&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[2]&quot;))
+-                elif guess[0:1] == &quot;\0&quot;:
+-                    self.read(&quot;padding[]&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[1]&quot;))
+-                size = end - self.getSize()
+-                if use_bank and size &lt;= 20:
+-                    # TODO: Remove self.addPadding() (shouldn't work so)
+-                    self.read(&quot;cdrom_str&quot;, &quot;cdrom.spr text&quot;, (StringChunk, &quot;C&quot;))
+-                    self.read(&quot;cdrom_a&quot;, &quot;&quot;, (FormatChunk, &quot;uint32&quot;))
+-                    self.read(&quot;cdrom_b&quot;, &quot;&quot;, (FormatChunk, &quot;uint32&quot;))
+-                    assert self.getSize() == end
+-                    break                
+-                self.read(&quot;res[]&quot;, &quot;Resource&quot;, (Resource, has_name, use_bank, has_separator))
+-                self.count += 1
++            fs = parent[&quot;fs&quot;]
++            last_is_inf = False
++            for index in range(0, fs.count):
++                file = fs[&quot;file[%u]&quot; % index]
++                self.seek(file[&quot;position&quot;])
++                name = file[&quot;name&quot;]
++                
++                if Resource.regex_filename_inf.match(name) != None:
++                    self.read(&quot;res[]&quot;, &quot;INF resource&quot;, (INF,))
++                elif name == &quot;index.txt&quot;:
++                    self.read(&quot;res[]&quot;, &quot;String index&quot;, (StringIndex, use_bank))
++                else:
++                    self.read(&quot;res[]&quot;, &quot;Resource&quot;, (Resource, has_name, use_bank, has_separator))
++                self.count += 1                        
++            self.addPadding()
+ 
++    def seek(self, pos):
++        stream = self.getStream()
++        assert stream.tell() &lt;= pos and pos &lt; stream.getSize()
++        size = pos - stream.tell()
++        if size != 0:
++            self.read(&quot;padding[]&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
+     def getStaticSize(stream, args):
+         oldpos = stream.tell()
+         tag = stream.getN(3, False)
+@@ -441,7 +438,11 @@
+ class Worms2_Dir_File(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;worms2_dir_file&quot;, &quot;Worms2 directory (.dir) file&quot;, stream, parent, &quot;&lt;&quot;)
+-        self.read(&quot;resources&quot;, &quot;Directory&quot;, (Resource, True, None, True))
++        stream.seek(8, 1)
++        size = size = stream.getFormat(&quot;&lt;uint32&quot;, False)
++        stream.seek(-8, 1)
++        sub = stream.createSub(size=size)
++        self.read(&quot;resources&quot;, &quot;Directory&quot;, (Resource, True, None, True), {&quot;stream&quot;: sub})
+         if True:
+             count = 1026
+             self.read(&quot;numbers&quot;, &quot;Numbers?&quot;, (Numbers, count), {&quot;size&quot;: count*4})
+
+Modified: haypo/hachoir/trunk/stream/stream.py
+===================================================================
+--- haypo/hachoir/trunk/stream/stream.py	2006-01-05 22:36:42 UTC (rev 395)
++++ haypo/hachoir/trunk/stream/stream.py	2006-01-06 00:03:17 UTC (rev 396)
+@@ -1,7 +1,7 @@
+ import struct
+ from error import StreamError
+ from tools import regexMaxLength
+-from format import getRealFormat, getFormatSize
++from format import getRealFormat, getFormatSize, formatIsArray
+ 
+ class Stream:
+     def __init__(self, filename):
+@@ -63,7 +63,10 @@
+         size = getFormatSize(format)
+         real = getRealFormat(format)
+         data = self.getN(size, seek)
+-        return struct.unpack(real, data)[0]
++        if formatIsArray(format):
++            return struct.unpack(real, data)
++        else:
++            return struct.unpack(real, data)[0]
+ 
+     def searchLength(self, needle, include_str, size_max=None):        
+         pos = self.search(needle, size_max)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000299.html">[Happyboom-svn] r395 - in haypo/hachoir/trunk: plugins ui
+</A></li>
+	<LI>Next message: <A HREF="000301.html">[Happyboom-svn] r397 - haypo/hachoir/trunk/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#300">[ date ]</a>
+              <a href="thread.html#300">[ thread ]</a>
+              <a href="subject.html#300">[ subject ]</a>
+              <a href="author.html#300">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

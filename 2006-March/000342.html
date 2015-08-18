@@ -1,0 +1,2504 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r422 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/fallback branches/hachoir-yield/field branches/hachoir-yield/file branches/hachoir-yield/file/image branches/hachoir-yield/file/system branches/hachoir-yield/generic
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r422%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/fallback%20branches/hachoir-yield/field%20branches/hachoir-yield/file%20branches/hachoir-yield/file/image%20branches/hachoir-yield/file/system%20branches/hachoir-yield/generic&In-Reply-To=%3C200603040018.k240IFYK030299%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000325.html">
+   <LINK REL="Next"  HREF="000326.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r422 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/fallback branches/hachoir-yield/field branches/hachoir-yield/file branches/hachoir-yield/file/image branches/hachoir-yield/file/system branches/hachoir-yield/generic</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r422%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/fallback%20branches/hachoir-yield/field%20branches/hachoir-yield/file%20branches/hachoir-yield/file/image%20branches/hachoir-yield/file/system%20branches/hachoir-yield/generic&In-Reply-To=%3C200603040018.k240IFYK030299%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r422 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/fallback branches/hachoir-yield/field branches/hachoir-yield/file branches/hachoir-yield/file/image branches/hachoir-yield/file/system branches/hachoir-yield/generic">haypo at berlios.de
+       </A><BR>
+    <I>Sat Mar  4 01:18:15 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000325.html">[Happyboom-svn] r421 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field
+</A></li>
+        <LI>Next message: <A HREF="000326.html">[Happyboom-svn] r423 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file/system
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#342">[ date ]</a>
+              <a href="thread.html#342">[ thread ]</a>
+              <a href="subject.html#342">[ subject ]</a>
+              <a href="author.html#342">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-04 01:18:07 +0100 (Sat, 04 Mar 2006)
+New Revision: 422
+
+Added:
+   haypo/hachoir/branches/hachoir-yield/config.py
+   haypo/hachoir/branches/hachoir-yield/error.py
+   haypo/hachoir/branches/hachoir-yield/fallback/
+   haypo/hachoir/branches/hachoir-yield/fallback/__init__.py
+   haypo/hachoir/branches/hachoir-yield/fallback/magic.py
+   haypo/hachoir/branches/hachoir-yield/file/image/bmp.py
+   haypo/hachoir/branches/hachoir-yield/file/system/
+   haypo/hachoir/branches/hachoir-yield/file/system/__init__.py
+   haypo/hachoir/branches/hachoir-yield/file/system/ext2.py
+   haypo/hachoir/branches/hachoir-yield/log.py
+   haypo/hachoir/branches/hachoir-yield/mime.py
+   haypo/hachoir/branches/hachoir-yield/plugin.py
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/field/field_set.py
+   haypo/hachoir/branches/hachoir-yield/field/integer.py
+   haypo/hachoir/branches/hachoir-yield/file/image/png.py
+   haypo/hachoir/branches/hachoir-yield/generic/image.py
+   haypo/hachoir/branches/hachoir-yield/hachoir.py
+   haypo/hachoir/branches/hachoir-yield/text_ui.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r16 at haypopc</A>:  haypo | 2006-03-02 01:42:33 +0100
+  * Import log.py, error.py, config.py, mime.py, fallback/magic.py from
+    old Hachoir code
+  * Write function to load all plugins from 'file' sub-directory.
+    Function 'registerPlugin' is not needed anymore, class just have to
+    have mime_types attribute ;-)
+  * Class attribute static_size replace static method in FieldSet
+  * Fix FieldSet.__len__: class _feedAll() if needed
+  * Fix FieldSet.__iter__: iterate in existing fields, and then finish to
+    feed field list
+  * Create Enum class (inherite Integer class)
+  * Add Microsoft and OS/2 bitmap parser
+  * Add missing mime types to PCX picture parser
+  * Add EXT2/EXT3 partition parser (not yet tested :-P)
+  * Fix RGB static size (was in bytes and not in bits)
+  * Set generic.Palette size in constructor
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:15
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:16
+
+Added: haypo/hachoir/branches/hachoir-yield/config.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/config.py	2006-03-04 00:17:26 UTC (rev 421)
++++ haypo/hachoir/branches/hachoir-yield/config.py	2006-03-04 00:18:07 UTC (rev 422)
+@@ -0,0 +1,13 @@
++# UI: display options
++max_string_length = 10    # Max. length of displayed string
++max_hexa_length = 4096    # Max. length of raw data displayed in hex
++max_ascii_length = 4096   # Max. length of raw data displayed in ASCII
++
++# Global options
++debug = False 
++verbose = False
++
++# Size of file cache (for each opened file)
++file_cache_block_size = 4096  # 4 KB
++file_cache_block_count = 10   # Buffer = 10 * 4 KB
++best_stream_buffer_size = 64 * 1024  # 64 KB
+
+Added: haypo/hachoir/branches/hachoir-yield/error.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/error.py	2006-03-04 00:17:26 UTC (rev 421)
++++ haypo/hachoir/branches/hachoir-yield/error.py	2006-03-04 00:18:07 UTC (rev 422)
+@@ -0,0 +1,33 @@
++import os
++import config
++from log import log
++#import ui.ui
++from tools import getBacktrace
++
++def warning(message):
++    if config.verbose or config.debug:
++        message += &quot;\n\n&quot; + getBacktrace()
++    log.warning(message)   
++#    if (config.verbose or config.debug) and ui.ui.ui != None:
++#        import gtk
++#        dlg = gtk.MessageDialog( \
++#            parent=ui.ui.ui.window.window,
++#            type=gtk.MESSAGE_WARNING,
++#            buttons=gtk.BUTTONS_OK,
++#            message_format=message)
++#        dlg.run()
++#        dlg.destroy()
++
++def error(message, backtrace=None):
++    if config.verbose or config.debug:
++        message += &quot;\n\n&quot; + getBacktrace()
++    log.error(message)
++#    if ui.ui.ui != None:
++#        import gtk
++#        dlg = gtk.MessageDialog( \
++#            parent=ui.ui.ui.window.window,
++#            type=gtk.MESSAGE_ERROR,
++#            buttons=gtk.BUTTONS_OK,
++#            message_format=message)
++#        dlg.run()
++#        dlg.destroy()
+
+Added: haypo/hachoir/branches/hachoir-yield/fallback/__init__.py
+===================================================================
+
+Added: haypo/hachoir/branches/hachoir-yield/fallback/magic.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/fallback/magic.py	2006-03-04 00:17:26 UTC (rev 421)
++++ haypo/hachoir/branches/hachoir-yield/fallback/magic.py	2006-03-04 00:18:07 UTC (rev 422)
+@@ -0,0 +1,1119 @@
++#!/usr/bin/env python 
++'''
++magic.py
++ determines a file type by its magic number
++
++ (C)opyright 2000 Jason Petrone &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">jp_py at demonseed.net</A>&gt;
++ All Rights Reserved
++
++ Command Line Usage: running as `python magic.py file` will print
++                     a description of what 'file' is.
++
++ Module Usage:
++     magic.whatis(data): when passed a string 'data' containing 
++                         binary or text data, a description of
++                         what the data is will be returned.
++
++     magic.file(filename): returns a description of what the file
++                           'filename' contains.
++'''
++
++import re, struct, string
++
++__version__ = '0.1'
++
++magic = [
++  [0L, 'leshort', '=', 1538L, 'application/x-alan-adventure-game'],
++  [0L, 'string', '=', 'TADS', 'application/x-tads-game'],
++  [0L, 'short', '=', 420L, 'application/x-executable-file'],
++  [0L, 'short', '=', 421L, 'application/x-executable-file'],
++  [0L, 'leshort', '=', 603L, 'application/x-executable-file'],
++  [0L, 'string', '=', 'Core\001', 'application/x-executable-file'],
++  [0L, 'string', '=', 'AMANDA: TAPESTART DATE', 'application/x-amanda-header'],
++  [0L, 'belong', '=', 1011L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 999L, 'application/x-library-file'],
++  [0L, 'belong', '=', 435L, 'video/mpeg'],
++  [0L, 'belong', '=', 442L, 'video/mpeg'],
++  [0L, 'beshort&amp;0xfff0', '=', 65520L, 'audio/mpeg'],
++  [4L, 'leshort', '=', 44817L, 'video/fli'],
++  [4L, 'leshort', '=', 44818L, 'video/flc'],
++  [0L, 'string', '=', 'MOVI', 'video/x-sgi-movie'],
++  [4L, 'string', '=', 'moov', 'video/quicktime'],
++  [4L, 'string', '=', 'mdat', 'video/quicktime'],
++  [0L, 'long', '=', 100554L, 'application/x-apl-workspace'],
++  [0L, 'string', '=', 'FiLeStArTfIlEsTaRt', 'text/x-apple-binscii'],
++  [0L, 'string', '=', '\012GL', 'application/data'],
++  [0L, 'string', '=', 'v\377', 'application/data'],
++  [0L, 'string', '=', 'NuFile', 'application/data'],
++  [0L, 'string', '=', 'N\365F\351l\345', 'application/data'],
++  [0L, 'belong', '=', 333312L, 'application/data'],
++  [0L, 'belong', '=', 333319L, 'application/data'],
++  [257L, 'string', '=', 'ustar\000', 'application/x-tar'],
++  [257L, 'string', '=', 'ustar  \000', 'application/x-gtar'],
++  [0L, 'short', '=', 70707L, 'application/x-cpio'],
++  [0L, 'short', '=', 143561L, 'application/x-bcpio'],
++  [0L, 'string', '=', '070707', 'application/x-cpio'],
++  [0L, 'string', '=', '070701', 'application/x-cpio'],
++  [0L, 'string', '=', '070702', 'application/x-cpio'],
++  [0L, 'string', '=', '!&lt;arch&gt;\012debian', 'application/x-dpkg'],
++  [0L, 'long', '=', 177555L, 'application/x-ar'],
++  [0L, 'short', '=', 177555L, 'application/data'],
++  [0L, 'long', '=', 177545L, 'application/data'],
++  [0L, 'short', '=', 177545L, 'application/data'],
++  [0L, 'long', '=', 100554L, 'application/x-apl-workspace'],
++  [0L, 'string', '=', '&lt;ar&gt;', 'application/x-ar'],
++  [0L, 'string', '=', '!&lt;arch&gt;\012__________E', 'application/x-ar'],
++  [0L, 'string', '=', '-h-', 'application/data'],
++  [0L, 'string', '=', '!&lt;arch&gt;', 'application/x-ar'],
++  [0L, 'string', '=', '&lt;ar&gt;', 'application/x-ar'],
++  [0L, 'string', '=', '&lt;ar&gt;', 'application/x-ar'],
++  [0L, 'belong', '=', 1711210496L, 'application/x-ar'],
++  [0L, 'belong', '=', 1013019198L, 'application/x-ar'],
++  [0L, 'long', '=', 557605234L, 'application/x-ar'],
++  [0L, 'lelong', '=', 177555L, 'application/data'],
++  [0L, 'leshort', '=', 177555L, 'application/data'],
++  [0L, 'lelong', '=', 177545L, 'application/data'],
++  [0L, 'leshort', '=', 177545L, 'application/data'],
++  [0L, 'lelong', '=', 236525L, 'application/data'],
++  [0L, 'lelong', '=', 236526L, 'application/data'],
++  [0L, 'lelong&amp;0x8080ffff', '=', 2074L, 'application/x-arc'],
++  [0L, 'lelong&amp;0x8080ffff', '=', 2330L, 'application/x-arc'],
++  [0L, 'lelong&amp;0x8080ffff', '=', 538L, 'application/x-arc'],
++  [0L, 'lelong&amp;0x8080ffff', '=', 794L, 'application/x-arc'],
++  [0L, 'lelong&amp;0x8080ffff', '=', 1050L, 'application/x-arc'],
++  [0L, 'lelong&amp;0x8080ffff', '=', 1562L, 'application/x-arc'],
++  [0L, 'string', '=', '\032archive', 'application/data'],
++  [0L, 'leshort', '=', 60000L, 'application/x-arj'],
++  [0L, 'string', '=', 'HPAK', 'application/data'],
++  [0L, 'string', '=', '\351,\001JAM application/data', ''],
++  [2L, 'string', '=', '-lh0-', 'application/x-lha'],
++  [2L, 'string', '=', '-lh1-', 'application/x-lha'],
++  [2L, 'string', '=', '-lz4-', 'application/x-lha'],
++  [2L, 'string', '=', '-lz5-', 'application/x-lha'],
++  [2L, 'string', '=', '-lzs-', 'application/x-lha'],
++  [2L, 'string', '=', '-lh -', 'application/x-lha'],
++  [2L, 'string', '=', '-lhd-', 'application/x-lha'],
++  [2L, 'string', '=', '-lh2-', 'application/x-lha'],
++  [2L, 'string', '=', '-lh3-', 'application/x-lha'],
++  [2L, 'string', '=', '-lh4-', 'application/x-lha'],
++  [2L, 'string', '=', '-lh5-', 'application/x-lha'],
++  [0L, 'string', '=', 'Rar!', 'application/x-rar'],
++  [0L, 'string', '=', 'SQSH', 'application/data'],
++  [0L, 'string', '=', 'UC2\032', 'application/data'],
++  [0L, 'string', '=', 'PK\003\004', 'application/zip'],
++  [20L, 'lelong', '=', 4257523676L, 'application/x-zoo'],
++  [10L, 'string', '=', '# This is a shell archive', 'application/x-shar'],
++  [0L, 'string', '=', '*STA', 'application/data'],
++  [0L, 'string', '=', '2278', 'application/data'],
++  [0L, 'beshort', '=', 560L, 'application/x-executable-file'],
++  [0L, 'beshort', '=', 561L, 'application/x-executable-file'],
++  [0L, 'string', '=', '\000\004\036\212\200', 'application/core'],
++  [0L, 'string', '=', '.snd', 'audio/basic'],
++  [0L, 'lelong', '=', 6583086L, 'audio/basic'],
++  [0L, 'string', '=', 'MThd', 'audio/midi'],
++  [0L, 'string', '=', 'CTMF', 'audio/x-cmf'],
++  [0L, 'string', '=', 'SBI', 'audio/x-sbi'],
++  [0L, 'string', '=', 'Creative Voice File', 'audio/x-voc'],
++  [0L, 'belong', '=', 1314148939L, 'audio/x-multitrack'],
++  [8L, 'string', '=', 'AVI ', 'video/x-msvideo'],
++  [0L, 'string', '=', 'RIFF', 'audio/x-wav'],
++  [0L, 'string', '=', 'EMOD', 'audio/x-emod'],
++  [0L, 'belong', '=', 779248125L, 'audio/x-pn-realaudio'],
++  [0L, 'string', '=', 'MTM', 'audio/x-multitrack'],
++  [0L, 'string', '=', 'if', 'audio/x-669-mod'],
++  [0L, 'string', '=', 'FAR', 'audio/mod'],
++  [0L, 'string', '=', 'MAS_U', 'audio/x-multimate-mod'],
++  [44L, 'string', '=', 'SCRM', 'audio/x-st3-mod'],
++  [0L, 'string', '=', 'GF1PATCH110\000ID#000002\000', 'audio/x-gus-patch'],
++  [0L, 'string', '=', 'GF1PATCH100\000ID#000002\000', 'audio/x-gus-patch'],
++  [0L, 'string', '=', 'JN', 'audio/x-669-mod'],
++  [0L, 'string', '=', 'UN05', 'audio/x-mikmod-uni'],
++  [0L, 'string', '=', 'Extended Module:', 'audio/x-ft2-mod'],
++  [21L, 'string', '=', '!SCREAM!', 'audio/x-st2-mod'],
++  [1080L, 'string', '=', 'M.K.', 'audio/x-protracker-mod'],
++  [1080L, 'string', '=', 'M!K!', 'audio/x-protracker-mod'],
++  [1080L, 'string', '=', 'FLT4', 'audio/x-startracker-mod'],
++  [1080L, 'string', '=', '4CHN', 'audio/x-fasttracker-mod'],
++  [1080L, 'string', '=', '6CHN', 'audio/x-fasttracker-mod'],
++  [1080L, 'string', '=', '8CHN', 'audio/x-fasttracker-mod'],
++  [1080L, 'string', '=', 'CD81', 'audio/x-oktalyzer-mod'],
++  [1080L, 'string', '=', 'OKTA', 'audio/x-oktalyzer-mod'],
++  [1080L, 'string', '=', '16CN', 'audio/x-taketracker-mod'],
++  [1080L, 'string', '=', '32CN', 'audio/x-taketracker-mod'],
++  [0L, 'string', '=', 'TOC', 'audio/x-toc'],
++  [0L, 'short', '=', 3401L, 'application/x-executable-file'],
++  [0L, 'long', '=', 406L, 'application/x-executable-file'],
++  [0L, 'short', '=', 406L, 'application/x-executable-file'],
++  [0L, 'short', '=', 3001L, 'application/x-executable-file'],
++  [0L, 'lelong', '=', 314L, 'application/x-executable-file'],
++  [0L, 'string', '=', '//', 'text/cpp'],
++  [0L, 'string', '=', '\\\\1cw\\', 'application/data'],
++  [0L, 'string', '=', '\\\\1cw', 'application/data'],
++  [0L, 'belong&amp;0xffffff00', '=', 2231440384L, 'application/data'],
++  [0L, 'belong&amp;0xffffff00', '=', 2231487232L, 'application/data'],
++  [0L, 'short', '=', 575L, 'application/x-executable-file'],
++  [0L, 'short', '=', 577L, 'application/x-executable-file'],
++  [4L, 'string', '=', 'pipe', 'application/data'],
++  [4L, 'string', '=', 'prof', 'application/data'],
++  [0L, 'string', '=', ': shell', 'application/data'],
++  [0L, 'string', '=', '#!/bin/sh', 'application/x-sh'],
++  [0L, 'string', '=', '#! /bin/sh', 'application/x-sh'],
++  [0L, 'string', '=', '#! /bin/sh', 'application/x-sh'],
++  [0L, 'string', '=', '#!/bin/csh', 'application/x-csh'],
++  [0L, 'string', '=', '#! /bin/csh', 'application/x-csh'],
++  [0L, 'string', '=', '#! /bin/csh', 'application/x-csh'],
++  [0L, 'string', '=', '#!/bin/ksh', 'application/x-ksh'],
++  [0L, 'string', '=', '#! /bin/ksh', 'application/x-ksh'],
++  [0L, 'string', '=', '#! /bin/ksh', 'application/x-ksh'],
++  [0L, 'string', '=', '#!/bin/tcsh', 'application/x-csh'],
++  [0L, 'string', '=', '#! /bin/tcsh', 'application/x-csh'],
++  [0L, 'string', '=', '#! /bin/tcsh', 'application/x-csh'],
++  [0L, 'string', '=', '#!/usr/local/tcsh', 'application/x-csh'],
++  [0L, 'string', '=', '#! /usr/local/tcsh', 'application/x-csh'],
++  [0L, 'string', '=', '#!/usr/local/bin/tcsh', 'application/x-csh'],
++  [0L, 'string', '=', '#! /usr/local/bin/tcsh', 'application/x-csh'],
++  [0L, 'string', '=', '#! /usr/local/bin/tcsh', 'application/x-csh'],
++  [0L, 'string', '=', '#!/usr/local/bin/zsh', 'application/x-zsh'],
++  [0L, 'string', '=', '#! /usr/local/bin/zsh', 'application/x-zsh'],
++  [0L, 'string', '=', '#! /usr/local/bin/zsh', 'application/x-zsh'],
++  [0L, 'string', '=', '#!/usr/local/bin/ash', 'application/x-sh'],
++  [0L, 'string', '=', '#! /usr/local/bin/ash', 'application/x-zsh'],
++  [0L, 'string', '=', '#! /usr/local/bin/ash', 'application/x-zsh'],
++  [0L, 'string', '=', '#!/usr/local/bin/ae', 'text/script'],
++  [0L, 'string', '=', '#! /usr/local/bin/ae', 'text/script'],
++  [0L, 'string', '=', '#! /usr/local/bin/ae', 'text/script'],
++  [0L, 'string', '=', '#!/bin/nawk', 'application/x-awk'],
++  [0L, 'string', '=', '#! /bin/nawk', 'application/x-awk'],
++  [0L, 'string', '=', '#! /bin/nawk', 'application/x-awk'],
++  [0L, 'string', '=', '#!/usr/bin/nawk', 'application/x-awk'],
++  [0L, 'string', '=', '#! /usr/bin/nawk', 'application/x-awk'],
++  [0L, 'string', '=', '#! /usr/bin/nawk', 'application/x-awk'],
++  [0L, 'string', '=', '#!/usr/local/bin/nawk', 'application/x-awk'],
++  [0L, 'string', '=', '#! /usr/local/bin/nawk', 'application/x-awk'],
++  [0L, 'string', '=', '#! /usr/local/bin/nawk', 'application/x-awk'],
++  [0L, 'string', '=', '#!/bin/gawk', 'application/x-awk'],
++  [0L, 'string', '=', '#! /bin/gawk', 'application/x-awk'],
++  [0L, 'string', '=', '#! /bin/gawk', 'application/x-awk'],
++  [0L, 'string', '=', '#!/usr/bin/gawk', 'application/x-awk'],
++  [0L, 'string', '=', '#! /usr/bin/gawk', 'application/x-awk'],
++  [0L, 'string', '=', '#! /usr/bin/gawk', 'application/x-awk'],
++  [0L, 'string', '=', '#!/usr/local/bin/gawk', 'application/x-awk'],
++  [0L, 'string', '=', '#! /usr/local/bin/gawk', 'application/x-awk'],
++  [0L, 'string', '=', '#! /usr/local/bin/gawk', 'application/x-awk'],
++  [0L, 'string', '=', '#!/bin/awk', 'application/x-awk'],
++  [0L, 'string', '=', '#! /bin/awk', 'application/x-awk'],
++  [0L, 'string', '=', '#! /bin/awk', 'application/x-awk'],
++  [0L, 'string', '=', '#!/usr/bin/awk', 'application/x-awk'],
++  [0L, 'string', '=', '#! /usr/bin/awk', 'application/x-awk'],
++  [0L, 'string', '=', '#! /usr/bin/awk', 'application/x-awk'],
++  [0L, 'string', '=', 'BEGIN', 'application/x-awk'],
++  [0L, 'string', '=', '#!/bin/perl', 'application/x-perl'],
++  [0L, 'string', '=', '#! /bin/perl', 'application/x-perl'],
++  [0L, 'string', '=', '#! /bin/perl', 'application/x-perl'],
++  [0L, 'string', '=', 'eval &quot;exec /bin/perl', 'application/x-perl'],
++  [0L, 'string', '=', '#!/usr/bin/perl', 'application/x-perl'],
++  [0L, 'string', '=', '#! /usr/bin/perl', 'application/x-perl'],
++  [0L, 'string', '=', '#! /usr/bin/perl', 'application/x-perl'],
++  [0L, 'string', '=', 'eval &quot;exec /usr/bin/perl', 'application/x-perl'],
++  [0L, 'string', '=', '#!/usr/local/bin/perl', 'application/x-perl'],
++  [0L, 'string', '=', '#! /usr/local/bin/perl', 'application/x-perl'],
++  [0L, 'string', '=', '#! /usr/local/bin/perl', 'application/x-perl'],
++  [0L, 'string', '=', 'eval &quot;exec /usr/local/bin/perl', 'application/x-perl'],
++  [0L, 'string', '=', '#!/bin/python', 'application/x-python'],
++  [0L, 'string', '=', '#! /bin/python', 'application/x-python'],
++  [0L, 'string', '=', '#! /bin/python', 'application/x-python'],
++  [0L, 'string', '=', 'eval &quot;exec /bin/python', 'application/x-python'],
++  [0L, 'string', '=', '#!/usr/bin/python', 'application/x-python'],
++  [0L, 'string', '=', '#! /usr/bin/python', 'application/x-python'],
++  [0L, 'string', '=', '#! /usr/bin/python', 'application/x-python'],
++  [0L, 'string', '=', 'eval &quot;exec /usr/bin/python', 'application/x-python'],
++  [0L, 'string', '=', '#!/usr/local/bin/python', 'application/x-python'],
++  [0L, 'string', '=', '#! /usr/local/bin/python', 'application/x-python'],
++  [0L, 'string', '=', '#! /usr/local/bin/python', 'application/x-python'],
++  [0L, 'string', '=', 'eval &quot;exec /usr/local/bin/python', 'application/x-python'],
++  [0L, 'string', '=', '#!/usr/bin/env python', 'application/x-python'],
++  [0L, 'string', '=', '#! /usr/bin/env python', 'application/x-python'],
++  [0L, 'string', '=', '#!/bin/rc', 'text/script'],
++  [0L, 'string', '=', '#! /bin/rc', 'text/script'],
++  [0L, 'string', '=', '#! /bin/rc', 'text/script'],
++  [0L, 'string', '=', '#!/bin/bash', 'application/x-sh'],
++  [0L, 'string', '=', '#! /bin/bash', 'application/x-sh'],
++  [0L, 'string', '=', '#! /bin/bash', 'application/x-sh'],
++  [0L, 'string', '=', '#!/usr/local/bin/bash', 'application/x-sh'],
++  [0L, 'string', '=', '#! /usr/local/bin/bash', 'application/x-sh'],
++  [0L, 'string', '=', '#! /usr/local/bin/bash', 'application/x-sh'],
++  [0L, 'string', '=', '#! /', 'text/script'],
++  [0L, 'string', '=', '#! /', 'text/script'],
++  [0L, 'string', '=', '#!/', 'text/script'],
++  [0L, 'string', '=', '#! text/script', ''],
++  [0L, 'string', '=', '\037\235', 'application/compress'],
++  [0L, 'string', '=', '\037\213', 'application/x-gzip'],
++  [0L, 'string', '=', '\037\036', 'application/data'],
++  [0L, 'short', '=', 17437L, 'application/data'],
++  [0L, 'short', '=', 8191L, 'application/data'],
++  [0L, 'string', '=', '\377\037', 'application/data'],
++  [0L, 'short', '=', 145405L, 'application/data'],
++  [0L, 'string', '=', 'BZh', 'application/x-bzip2'],
++  [0L, 'leshort', '=', 65398L, 'application/data'],
++  [0L, 'leshort', '=', 65142L, 'application/data'],
++  [0L, 'leshort', '=', 64886L, 'application/x-lzh'],
++  [0L, 'string', '=', '\037\237', 'application/data'],
++  [0L, 'string', '=', '\037\236', 'application/data'],
++  [0L, 'string', '=', '\037\240', 'application/data'],
++  [0L, 'string', '=', 'BZ', 'application/x-bzip'],
++  [0L, 'string', '=', '\211LZO\000\015\012\032\012', 'application/data'],
++  [0L, 'belong', '=', 507L, 'application/x-object-file'],
++  [0L, 'belong', '=', 513L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 515L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 517L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 70231L, 'application/core'],
++  [24L, 'belong', '=', 60011L, 'application/data'],
++  [24L, 'belong', '=', 60012L, 'application/data'],
++  [24L, 'belong', '=', 60013L, 'application/data'],
++  [24L, 'belong', '=', 60014L, 'application/data'],
++  [0L, 'belong', '=', 601L, 'application/x-object-file'],
++  [0L, 'belong', '=', 607L, 'application/data'],
++  [0L, 'belong', '=', 324508366L, 'application/x-gdbm'],
++  [0L, 'lelong', '=', 324508366L, 'application/x-gdbm'],
++  [0L, 'string', '=', 'GDBM', 'application/x-gdbm'],
++  [0L, 'belong', '=', 398689L, 'application/x-db'],
++  [0L, 'belong', '=', 340322L, 'application/x-db'],
++  [0L, 'string', '=', '&lt;list&gt;\012&lt;protocol bbn-m', 'application/data'],
++  [0L, 'string', '=', 'diff text/x-patch', ''],
++  [0L, 'string', '=', '*** text/x-patch', ''],
++  [0L, 'string', '=', 'Only in text/x-patch', ''],
++  [0L, 'string', '=', 'Common subdirectories: text/x-patch', ''],
++  [0L, 'string', '=', '!&lt;arch&gt;\012________64E', 'application/data'],
++  [0L, 'leshort', '=', 387L, 'application/x-executable-file'],
++  [0L, 'leshort', '=', 392L, 'application/x-executable-file'],
++  [0L, 'leshort', '=', 399L, 'application/x-object-file'],
++  [0L, 'string', '=', '\377\377\177', 'application/data'],
++  [0L, 'string', '=', '\377\377|', 'application/data'],
++  [0L, 'string', '=', '\377\377~', 'application/data'],
++  [0L, 'string', '=', '\033c\033', 'application/data'],
++  [0L, 'long', '=', 4553207L, 'image/x11'],
++  [0L, 'string', '=', '!&lt;PDF&gt;!\012', 'application/x-prof'],
++  [0L, 'short', '=', 1281L, 'application/x-locale'],
++  [24L, 'belong', '=', 60012L, 'application/x-dump'],
++  [24L, 'belong', '=', 60011L, 'application/x-dump'],
++  [24L, 'lelong', '=', 60012L, 'application/x-dump'],
++  [24L, 'lelong', '=', 60011L, 'application/x-dump'],
++  [0L, 'string', '=', '\177ELF', 'application/x-executable-file'],
++  [0L, 'short', '=', 340L, 'application/data'],
++  [0L, 'short', '=', 341L, 'application/x-executable-file'],
++  [1080L, 'leshort', '=', 61267L, 'application/x-linux-ext2fs'],
++  [0L, 'string', '=', '\366\366\366\366', 'application/x-pc-floppy'],
++  [774L, 'beshort', '=', 55998L, 'application/data'],
++  [510L, 'leshort', '=', 43605L, 'application/data'],
++  [1040L, 'leshort', '=', 4991L, 'application/x-filesystem'],
++  [1040L, 'leshort', '=', 5007L, 'application/x-filesystem'],
++  [1040L, 'leshort', '=', 9320L, 'application/x-filesystem'],
++  [1040L, 'leshort', '=', 9336L, 'application/x-filesystem'],
++  [0L, 'string', '=', '-rom1fs-\000', 'application/x-filesystem'],
++  [395L, 'string', '=', 'OS/2', 'application/x-bootable'],
++  [0L, 'string', '=', 'FONT', 'font/x-vfont'],
++  [0L, 'short', '=', 436L, 'font/x-vfont'],
++  [0L, 'short', '=', 17001L, 'font/x-vfont'],
++  [0L, 'string', '=', '%!PS-AdobeFont-1.0', 'font/type1'],
++  [6L, 'string', '=', '%!PS-AdobeFont-1.0', 'font/type1'],
++  [0L, 'belong', '=', 4L, 'font/x-snf'],
++  [0L, 'lelong', '=', 4L, 'font/x-snf'],
++  [0L, 'string', '=', 'STARTFONT font/x-bdf', ''],
++  [0L, 'string', '=', '\001fcp', 'font/x-pcf'],
++  [0L, 'string', '=', 'D1.0\015', 'font/x-speedo'],
++  [0L, 'string', '=', 'flf', 'font/x-figlet'],
++  [0L, 'string', '=', 'flc', 'application/x-font'],
++  [0L, 'belong', '=', 335698201L, 'font/x-libgrx'],
++  [0L, 'belong', '=', 4282797902L, 'font/x-dos'],
++  [7L, 'belong', '=', 4540225L, 'font/x-dos'],
++  [7L, 'belong', '=', 5654852L, 'font/x-dos'],
++  [4098L, 'string', '=', 'DOSFONT', 'font/x-dos'],
++  [0L, 'string', '=', '&lt;MakerFile', 'application/x-framemaker'],
++  [0L, 'string', '=', '&lt;MIFFile', 'application/x-framemaker'],
++  [0L, 'string', '=', '&lt;MakerDictionary', 'application/x-framemaker'],
++  [0L, 'string', '=', '&lt;MakerScreenFont', 'font/x-framemaker'],
++  [0L, 'string', '=', '&lt;MML', 'application/x-framemaker'],
++  [0L, 'string', '=', '&lt;BookFile', 'application/x-framemaker'],
++  [0L, 'string', '=', '&lt;Maker', 'application/x-framemaker'],
++  [0L, 'lelong&amp;0377777777', '=', 41400407L, 'application/x-executable-file'],
++  [0L, 'lelong&amp;0377777777', '=', 41400410L, 'application/x-executable-file'],
++  [0L, 'lelong&amp;0377777777', '=', 41400413L, 'application/x-executable-file'],
++  [0L, 'lelong&amp;0377777777', '=', 41400314L, 'application/x-executable-file'],
++  [7L, 'string', '=', '\357\020\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000', 'application/core'],
++  [0L, 'lelong', '=', 11421044151L, 'application/data'],
++  [0L, 'string', '=', 'GIMP Gradient', 'application/x-gimp-gradient'],
++  [0L, 'string', '=', 'gimp xcf', 'application/x-gimp-image'],
++  [20L, 'string', '=', 'GPAT', 'application/x-gimp-pattern'],
++  [20L, 'string', '=', 'GIMP', 'application/x-gimp-brush'],
++  [0L, 'string', '=', '\336\022\004\225', 'application/x-locale'],
++  [0L, 'string', '=', '\225\004\022\336', 'application/x-locale'],
++  [0L, 'beshort', '=', 627L, 'application/x-executable-file'],
++  [0L, 'beshort', '=', 624L, 'application/x-executable-file'],
++  [0L, 'string', '=', '\000\001\000\000\000', 'font/ttf'],
++  [0L, 'long', '=', 1203604016L, 'application/data'],
++  [0L, 'long', '=', 1702407010L, 'application/data'],
++  [0L, 'long', '=', 1003405017L, 'application/data'],
++  [0L, 'long', '=', 1602007412L, 'application/data'],
++  [0L, 'belong', '=', 34603270L, 'application/x-object-file'],
++  [0L, 'belong', '=', 34603271L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 34603272L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 34603275L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 34603278L, 'application/x-library-file'],
++  [0L, 'belong', '=', 34603277L, 'application/x-library-file'],
++  [0L, 'belong', '=', 34865414L, 'application/x-object-file'],
++  [0L, 'belong', '=', 34865415L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 34865416L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 34865419L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 34865422L, 'application/x-library-file'],
++  [0L, 'belong', '=', 34865421L, 'application/x-object-file'],
++  [0L, 'belong', '=', 34275590L, 'application/x-object-file'],
++  [0L, 'belong', '=', 34275591L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 34275592L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 34275595L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 34275598L, 'application/x-library-file'],
++  [0L, 'belong', '=', 34275597L, 'application/x-library-file'],
++  [0L, 'belong', '=', 557605234L, 'application/x-ar'],
++  [0L, 'long', '=', 34078982L, 'application/x-executable-file'],
++  [0L, 'long', '=', 34078983L, 'application/x-executable-file'],
++  [0L, 'long', '=', 34078984L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 34341128L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 34341127L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 34341131L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 34341126L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 34210056L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 34210055L, 'application/x-executable-file'],
++  [0L, 'belong', '=', 34341134L, 'application/x-library-file'],
++  [0L, 'belong', '=', 34341133L, 'application/x-library-file'],
++  [0L, 'long', '=', 65381L, 'application/x-library-file'],
++  [0L, 'long', '=', 34275173L, 'application/x-library-file'],
++  [0L, 'long', '=', 34406245L, 'application/x-library-file'],
++  [0L, 'long', '=', 34144101L, 'application/x-library-file'],
++  [0L, 'long', '=', 22552998L, 'application/core'],
++  [0L, 'long', '=', 1302851304L, 'font/x-hp-windows'],
++  [0L, 'string', '=', 'Bitmapfile', 'image/unknown'],
++  [0L, 'string', '=', 'IMGfile', 'CIS image/unknown'],
++  [0L, 'long', '=', 34341132L, 'application/x-lisp'],
++  [0L, 'string', '=', 'msgcat01', 'application/x-locale'],
++  [0L, 'string', '=', 'HPHP48-', 'HP48 binary'],
++  [0L, 'string', '=', '%%HP:', 'HP48 text'],
++  [0L, 'beshort', '=', 200L, 'hp200 (68010) BSD'],
++  [0L, 'beshort', '=', 300L, 'hp300 (68020+68881) BSD'],
++  [0L, 'beshort', '=', 537L, '370 XA sysV executable'],
++  [0L, 'beshort', '=', 532L, '370 XA sysV pure executable'],
++  [0L, 'beshort', '=', 54001L, '370 sysV pure executable'],
++  [0L, 'beshort', '=', 55001L, '370 XA sysV pure executable'],
++  [0L, 'beshort', '=', 56401L, '370 sysV executable'],
++  [0L, 'beshort', '=', 57401L, '370 XA sysV executable'],
++  [0L, 'beshort', '=', 531L, 'SVR2 executable (Amdahl-UTS)'],
++  [0L, 'beshort', '=', 534L, 'SVR2 pure executable (Amdahl-UTS)'],
++  [0L, 'beshort', '=', 530L, 'SVR2 pure executable (USS/370)'],
++  [0L, 'beshort', '=', 535L, 'SVR2 executable (USS/370)'],
++  [0L, 'beshort', '=', 479L, 'executable (RISC System/6000 V3.1) or obj module'],
++  [0L, 'beshort', '=', 260L, 'shared library'],
++  [0L, 'beshort', '=', 261L, 'ctab data'],
++  [0L, 'beshort', '=', 65028L, 'structured file'],
++  [0L, 'string', '=', '0xabcdef', 'AIX message catalog'],
++  [0L, 'belong', '=', 505L, 'AIX compiled message catalog'],
++  [0L, 'string', '=', '&lt;aiaff&gt;', 'archive'],
++  [0L, 'string', '=', 'FORM', 'IFF data'],
++  [0L, 'string', '=', 'P1', 'image/x-portable-bitmap'],
++  [0L, 'string', '=', 'P2', 'image/x-portable-graymap'],
++  [0L, 'string', '=', 'P3', 'image/x-portable-pixmap'],
++  [0L, 'string', '=', 'P4', 'image/x-portable-bitmap'],
++  [0L, 'string', '=', 'P5', 'image/x-portable-graymap'],
++  [0L, 'string', '=', 'P6', 'image/x-portable-pixmap'],
++  [0L, 'string', '=', 'IIN1', 'image/tiff'],
++  [0L, 'string', '=', 'MM\000*', 'image/tiff'],
++  [0L, 'string', '=', 'II*\000', 'image/tiff'],
++  [0L, 'string', '=', '\211PNG', 'image/x-png'],
++  [1L, 'string', '=', 'PNG', 'image/x-png'],
++  [0L, 'string', '=', 'GIF8', 'image/gif'],
++  [0L, 'string', '=', '\361\000@\273', 'image/x-cmu-raster'],
++  [0L, 'string', '=', 'id=ImageMagick', 'MIFF image data'],
++  [0L, 'long', '=', 1123028772L, 'Artisan image data'],
++  [0L, 'string', '=', '#FIG', 'FIG image text'],
++  [0L, 'string', '=', 'ARF_BEGARF', 'PHIGS clear text archive'],
++  [0L, 'string', '=', '@(#)SunPHIGS', 'SunPHIGS'],
++  [0L, 'string', '=', 'GKSM', 'GKS Metafile'],
++  [0L, 'string', '=', 'BEGMF', 'clear text Computer Graphics Metafile'],
++  [0L, 'beshort&amp;0xffe0', '=', 32L, 'binary Computer Graphics Metafile'],
++  [0L, 'beshort', '=', 12320L, 'character Computer Graphics Metafile'],
++  [0L, 'string', '=', 'yz', 'MGR bitmap, modern format, 8-bit aligned'],
++  [0L, 'string', '=', 'zz', 'MGR bitmap, old format, 1-bit deep, 16-bit aligned'],
++  [0L, 'string', '=', 'xz', 'MGR bitmap, old format, 1-bit deep, 32-bit aligned'],
++  [0L, 'string', '=', 'yx', 'MGR bitmap, modern format, squeezed'],
++  [0L, 'string', '=', '%bitmap\000', 'FBM image data'],
++  [1L, 'string', '=', 'PC Research, Inc', 'group 3 fax data'],
++  [0L, 'beshort', '=', 65496L, 'image/jpeg'],
++  [0L, 'string', '=', 'hsi1', 'image/x-jpeg-proprietary'],
++  [0L, 'string', '=', 'BM', 'image/x-bmp'],
++  [0L, 'string', '=', 'IC', 'image/x-ico'],
++  [0L, 'string', '=', 'PI', 'PC pointer image data'],
++  [0L, 'string', '=', 'CI', 'PC color icon data'],
++  [0L, 'string', '=', 'CP', 'PC color pointer image data'],
++  [0L, 'string', '=', '/* XPM */', 'X pixmap image text'],
++  [0L, 'leshort', '=', 52306L, 'RLE image data,'],
++  [0L, 'string', '=', 'Imagefile version-', 'iff image data'],
++  [0L, 'belong', '=', 1504078485L, 'x/x-image-sun-raster'],
++  [0L, 'beshort', '=', 474L, 'x/x-image-sgi'],
++  [0L, 'string', '=', 'IT01', 'FIT image data'],
++  [0L, 'string', '=', 'IT02', 'FIT image data'],
++  [2048L, 'string', '=', 'PCD_IPI', 'x/x-photo-cd-pack-file'],
++  [0L, 'string', '=', 'PCD_OPA', 'x/x-photo-cd-overfiew-file'],
++  [0L, 'string', '=', 'SIMPLE  =', 'FITS image data'],
++  [0L, 'string', '=', 'This is a BitMap file', 'Lisp Machine bit-array-file'],
++  [0L, 'string', '=', '!!', 'Bennet Yee\'s &quot;face&quot; format'],
++  [0L, 'beshort', '=', 4112L, 'PEX Binary Archive'],
++  [3000L, 'string', '=', 'Visio (TM) Drawing', '%s'],
++  [0L, 'leshort', '=', 502L, 'basic-16 executable'],
++  [0L, 'leshort', '=', 503L, 'basic-16 executable (TV)'],
++  [0L, 'leshort', '=', 510L, 'application/x-executable-file'],
++  [0L, 'leshort', '=', 511L, 'application/x-executable-file'],
++  [0L, 'leshort', '=', 512L, 'application/x-executable-file'],
++  [0L, 'leshort', '=', 522L, 'application/x-executable-file'],
++  [0L, 'leshort', '=', 514L, 'application/x-executable-file'],
++  [0L, 'string', '=', '\210OPS', 'Interleaf saved data'],
++  [0L, 'string', '=', '&lt;!OPS', 'Interleaf document text'],
++  [4L, 'string', '=', 'pgscriptver', 'IslandWrite document'],
++  [13L, 'string', '=', 'DrawFile', 'IslandDraw document'],
++  [0L, 'leshort&amp;0xFFFC', '=', 38400L, 'little endian ispell'],
++  [0L, 'beshort&amp;0xFFFC', '=', 38400L, 'big endian ispell'],
++  [0L, 'belong', '=', 3405691582L, 'compiled Java class data,'],
++  [0L, 'beshort', '=', 44269L, 'Java serialization data'],
++  [0L, 'string', '=', 'KarmaRHD', 'Version Karma Data Structure Version'],
++  [0L, 'string', '=', 'lect', 'DEC SRC Virtual Paper Lectern file'],
++  [53L, 'string', '=', 'yyprevious', 'C program text (from lex)'],
++  [21L, 'string', '=', 'generated by flex', 'C program text (from flex)'],
++  [0L, 'string', '=', '%{', 'lex description text'],
++  [0L, 'short', '=', 32768L, 'lif file'],
++  [0L, 'lelong', '=', 6553863L, 'Linux/i386 impure executable (OMAGIC)'],
++  [0L, 'lelong', '=', 6553864L, 'Linux/i386 pure executable (NMAGIC)'],
++  [0L, 'lelong', '=', 6553867L, 'Linux/i386 demand-paged executable (ZMAGIC)'],
++  [0L, 'lelong', '=', 6553804L, 'Linux/i386 demand-paged executable (QMAGIC)'],
++  [0L, 'string', '=', '\007\001\000', 'Linux/i386 object file'],
++  [0L, 'string', '=', '\001\003\020\004', 'Linux-8086 impure executable'],
++  [0L, 'string', '=', '\001\003 \004', 'Linux-8086 executable'],
++  [0L, 'string', '=', '\243\206\001\000', 'Linux-8086 object file'],
++  [0L, 'string', '=', '\001\003\020\020', 'Minix-386 impure executable'],
++  [0L, 'string', '=', '\001\003 \020', 'Minix-386 executable'],
++  [0L, 'string', '=', '*nazgul*', 'Linux compiled message catalog'],
++  [216L, 'lelong', '=', 421L, 'Linux/i386 core file'],
++  [2L, 'string', '=', 'LILO', 'Linux/i386 LILO boot/chain loader'],
++  [0L, 'string', '=', '0.9', ''],
++  [0L, 'leshort', '=', 1078L, 'font/linux-psf'],
++  [4086L, 'string', '=', 'SWAP-SPACE', 'Linux/i386 swap file'],
++  [0L, 'leshort', '=', 387L, 'ECOFF alpha'],
++  [514L, 'string', '=', 'HdrS', 'Linux kernel'],
++  [0L, 'belong', '=', 3099592590L, 'Linux kernel'],
++  [0L, 'string', '=', 'Begin3', 'Linux Software Map entry text'],
++  [0L, 'string', '=', ';;', 'Lisp/Scheme program text'],
++  [0L, 'string', '=', '\012(', 'byte-compiled Emacs-Lisp program data'],
++  [0L, 'string', '=', ';ELC\023\000\000\000', 'byte-compiled Emacs-Lisp program data'],
++  [0L, 'string', '=', &quot;(SYSTEM::VERSION '&quot;, 'CLISP byte-compiled Lisp program text'],
++  [0L, 'long', '=', 1886817234L, 'CLISP memory image data'],
++  [0L, 'long', '=', 3532355184L, 'CLISP memory image data, other endian'],
++  [0L, 'long', '=', 3725722773L, 'GNU-format message catalog data'],
++  [0L, 'long', '=', 2500072158L, 'GNU-format message catalog data'],
++  [0L, 'belong', '=', 3405691582L, 'mach-o fat file'],
++  [0L, 'belong', '=', 4277009102L, 'mach-o'],
++  [11L, 'string', '=', 'must be converted with BinHex', 'BinHex binary text'],
++  [0L, 'string', '=', 'SIT!', 'StuffIt Archive (data)'],
++  [65L, 'string', '=', 'SIT!', 'StuffIt Archive (rsrc + data)'],
++  [0L, 'string', '=', 'SITD', 'StuffIt Deluxe (data)'],
++  [65L, 'string', '=', 'SITD', 'StuffIt Deluxe (rsrc + data)'],
++  [0L, 'string', '=', 'Seg', 'StuffIt Deluxe Segment (data)'],
++  [65L, 'string', '=', 'Seg', 'StuffIt Deluxe Segment (rsrc + data)'],
++  [0L, 'string', '=', 'APPL', 'Macintosh Application (data)'],
++  [65L, 'string', '=', 'APPL', 'Macintosh Application (rsrc + data)'],
++  [0L, 'string', '=', 'zsys', 'Macintosh System File (data)'],
++  [65L, 'string', '=', 'zsys', 'Macintosh System File(rsrc + data)'],
++  [0L, 'string', '=', 'FNDR', 'Macintosh Finder (data)'],
++  [65L, 'string', '=', 'FNDR', 'Macintosh Finder(rsrc + data)'],
++  [0L, 'string', '=', 'libr', 'Macintosh Library (data)'],
++  [65L, 'string', '=', 'libr', 'Macintosh Library(rsrc + data)'],
++  [0L, 'string', '=', 'shlb', 'Macintosh Shared Library (data)'],
++  [65L, 'string', '=', 'shlb', 'Macintosh Shared Library(rsrc + data)'],
++  [0L, 'string', '=', 'cdev', 'Macintosh Control Panel (data)'],
++  [65L, 'string', '=', 'cdev', 'Macintosh Control Panel(rsrc + data)'],
++  [0L, 'string', '=', 'INIT', 'Macintosh Extension (data)'],
++  [65L, 'string', '=', 'INIT', 'Macintosh Extension(rsrc + data)'],
++  [0L, 'string', '=', 'FFIL', 'font/ttf'],
++  [65L, 'string', '=', 'FFIL', 'font/ttf'],
++  [0L, 'string', '=', 'LWFN', 'font/type1'],
++  [65L, 'string', '=', 'LWFN', 'font/type1'],
++  [0L, 'string', '=', 'PACT', 'Macintosh Compact Pro Archive (data)'],
++  [65L, 'string', '=', 'PACT', 'Macintosh Compact Pro Archive(rsrc + data)'],
++  [0L, 'string', '=', 'ttro', 'Macintosh TeachText File (data)'],
++  [65L, 'string', '=', 'ttro', 'Macintosh TeachText File(rsrc + data)'],
++  [0L, 'string', '=', 'TEXT', 'Macintosh TeachText File (data)'],
++  [65L, 'string', '=', 'TEXT', 'Macintosh TeachText File(rsrc + data)'],
++  [0L, 'string', '=', 'PDF', 'Macintosh PDF File (data)'],
++  [65L, 'string', '=', 'PDF', 'Macintosh PDF File(rsrc + data)'],
++  [0L, 'string', '=', '# Magic', 'magic text file for file(1) cmd'],
++  [0L, 'string', '=', 'Relay-Version:', 'old news text'],
++  [0L, 'string', '=', '#! rnews', 'batched news text'],
++  [0L, 'string', '=', 'N#! rnews', 'mailed, batched news text'],
++  [0L, 'string', '=', 'Forward to', 'mail forwarding text'],
++  [0L, 'string', '=', 'Pipe to', 'mail piping text'],
++  [0L, 'string', '=', 'Return-Path:', 'message/rfc822'],
++  [0L, 'string', '=', 'Path:', 'message/news'],
++  [0L, 'string', '=', 'Xref:', 'message/news'],
++  [0L, 'string', '=', 'From:', 'message/rfc822'],
++  [0L, 'string', '=', 'Article', 'message/news'],
++  [0L, 'string', '=', 'BABYL', 'message/x-gnu-rmail'],
++  [0L, 'string', '=', 'Received:', 'message/rfc822'],
++  [0L, 'string', '=', 'MIME-Version:', 'MIME entity text'],
++  [0L, 'string', '=', 'Content-Type: ', ''],
++  [0L, 'string', '=', 'Content-Type:', ''],
++  [0L, 'long', '=', 31415L, 'Mirage Assembler m.out executable'],
++  [0L, 'string', '=', '\311\304', 'ID tags data'],
++  [0L, 'string', '=', '\001\001\001\001', 'MMDF mailbox'],
++  [4L, 'string', '=', 'Research,', 'Digifax-G3-File'],
++  [0L, 'short', '=', 256L, 'raw G3 data, byte-padded'],
++  [0L, 'short', '=', 5120L, 'raw G3 data'],
++  [0L, 'string', '=', 'RMD1', 'raw modem data'],
++  [0L, 'string', '=', 'PVF1\012', 'portable voice format'],
++  [0L, 'string', '=', 'PVF2\012', 'portable voice format'],
++  [0L, 'beshort', '=', 520L, 'mc68k COFF'],
++  [0L, 'beshort', '=', 521L, 'mc68k executable (shared)'],
++  [0L, 'beshort', '=', 522L, 'mc68k executable (shared demand paged)'],
++  [0L, 'beshort', '=', 554L, '68K BCS executable'],
++  [0L, 'beshort', '=', 555L, '88K BCS executable'],
++  [0L, 'string', '=', 'S0', 'Motorola S-Record; binary data in text format'],
++  [0L, 'string', '=', '@echo off', 'MS-DOS batch file text'],
++  [128L, 'string', '=', 'PE\000\000', 'MS Windows PE'],
++  [0L, 'leshort', '=', 332L, 'MS Windows COFF Intel 80386 object file'],
++  [0L, 'leshort', '=', 358L, 'MS Windows COFF MIPS R4000 object file'],
++  [0L, 'leshort', '=', 388L, 'MS Windows COFF Alpha object file'],
++  [0L, 'leshort', '=', 616L, 'MS Windows COFF Motorola 68000 object file'],
++  [0L, 'leshort', '=', 496L, 'MS Windows COFF PowerPC object file'],
++  [0L, 'leshort', '=', 656L, 'MS Windows COFF PA-RISC object file'],
++  [0L, 'string', '=', 'MZ', 'application/x-ms-dos-executable'],
++  [0L, 'string', '=', 'LZ', 'MS-DOS executable (built-in)'],
++  [0L, 'string', '=', 'regf', 'Windows NT Registry file'],
++  [2080L, 'string', '=', 'Microsoft Word 6.0 Document', 'text/vnd.ms-word'],
++  [2080L, 'string', '=', 'Documento Microsoft Word 6', 'text/vnd.ms-word'],
++  [2112L, 'string', '=', 'MSWordDoc', 'text/vnd.ms-word'],
++  [0L, 'belong', '=', 834535424L, 'text/vnd.ms-word'],
++  [0L, 'string', '=', 'PO^Q`', 'text/vnd.ms-word'],
++  [2080L, 'string', '=', 'Microsoft Excel 5.0 Worksheet', 'application/vnd.ms-excel'],
++  [2114L, 'string', '=', 'Biff5', 'application/vnd.ms-excel'],
++  [0L, 'belong', '=', 6656L, 'Lotus 1-2-3'],
++  [0L, 'belong', '=', 512L, 'Lotus 1-2-3'],
++  [1L, 'string', '=', 'WPC', 'text/vnd.wordperfect'],
++  [0L, 'beshort', '=', 610L, 'Tower/XP rel 2 object'],
++  [0L, 'beshort', '=', 615L, 'Tower/XP rel 2 object'],
++  [0L, 'beshort', '=', 620L, 'Tower/XP rel 3 object'],
++  [0L, 'beshort', '=', 625L, 'Tower/XP rel 3 object'],
++  [0L, 'beshort', '=', 630L, 'Tower32/600/400 68020 object'],
++  [0L, 'beshort', '=', 640L, 'Tower32/800 68020'],
++  [0L, 'beshort', '=', 645L, 'Tower32/800 68010'],
++  [0L, 'lelong', '=', 407L, 'NetBSD little-endian object file'],
++  [0L, 'belong', '=', 407L, 'NetBSD big-endian object file'],
++  [0L, 'belong&amp;0377777777', '=', 41400413L, 'NetBSD/i386 demand paged'],
++  [0L, 'belong&amp;0377777777', '=', 41400410L, 'NetBSD/i386 pure'],
++  [0L, 'belong&amp;0377777777', '=', 41400407L, 'NetBSD/i386'],
++  [0L, 'belong&amp;0377777777', '=', 41400507L, 'NetBSD/i386 core'],
++  [0L, 'belong&amp;0377777777', '=', 41600413L, 'NetBSD/m68k demand paged'],
++  [0L, 'belong&amp;0377777777', '=', 41600410L, 'NetBSD/m68k pure'],
++  [0L, 'belong&amp;0377777777', '=', 41600407L, 'NetBSD/m68k'],
++  [0L, 'belong&amp;0377777777', '=', 41600507L, 'NetBSD/m68k core'],
++  [0L, 'belong&amp;0377777777', '=', 42000413L, 'NetBSD/m68k4k demand paged'],
++  [0L, 'belong&amp;0377777777', '=', 42000410L, 'NetBSD/m68k4k pure'],
++  [0L, 'belong&amp;0377777777', '=', 42000407L, 'NetBSD/m68k4k'],
++  [0L, 'belong&amp;0377777777', '=', 42000507L, 'NetBSD/m68k4k core'],
++  [0L, 'belong&amp;0377777777', '=', 42200413L, 'NetBSD/ns32532 demand paged'],
++  [0L, 'belong&amp;0377777777', '=', 42200410L, 'NetBSD/ns32532 pure'],
++  [0L, 'belong&amp;0377777777', '=', 42200407L, 'NetBSD/ns32532'],
++  [0L, 'belong&amp;0377777777', '=', 42200507L, 'NetBSD/ns32532 core'],
++  [0L, 'belong&amp;0377777777', '=', 42400413L, 'NetBSD/sparc demand paged'],
++  [0L, 'belong&amp;0377777777', '=', 42400410L, 'NetBSD/sparc pure'],
++  [0L, 'belong&amp;0377777777', '=', 42400407L, 'NetBSD/sparc'],
++  [0L, 'belong&amp;0377777777', '=', 42400507L, 'NetBSD/sparc core'],
++  [0L, 'belong&amp;0377777777', '=', 42600413L, 'NetBSD/pmax demand paged'],
++  [0L, 'belong&amp;0377777777', '=', 42600410L, 'NetBSD/pmax pure'],
++  [0L, 'belong&amp;0377777777', '=', 42600407L, 'NetBSD/pmax'],
++  [0L, 'belong&amp;0377777777', '=', 42600507L, 'NetBSD/pmax core'],
++  [0L, 'belong&amp;0377777777', '=', 43000413L, 'NetBSD/vax demand paged'],
++  [0L, 'belong&amp;0377777777', '=', 43000410L, 'NetBSD/vax pure'],
++  [0L, 'belong&amp;0377777777', '=', 43000407L, 'NetBSD/vax'],
++  [0L, 'belong&amp;0377777777', '=', 43000507L, 'NetBSD/vax core'],
++  [0L, 'lelong', '=', 459141L, 'ECOFF NetBSD/alpha binary'],
++  [0L, 'belong&amp;0377777777', '=', 43200507L, 'NetBSD/alpha core'],
++  [0L, 'belong&amp;0377777777', '=', 43400413L, 'NetBSD/mips demand paged'],
++  [0L, 'belong&amp;0377777777', '=', 43400410L, 'NetBSD/mips pure'],
++  [0L, 'belong&amp;0377777777', '=', 43400407L, 'NetBSD/mips'],
++  [0L, 'belong&amp;0377777777', '=', 43400507L, 'NetBSD/mips core'],
++  [0L, 'belong&amp;0377777777', '=', 43600413L, 'NetBSD/arm32 demand paged'],
++  [0L, 'belong&amp;0377777777', '=', 43600410L, 'NetBSD/arm32 pure'],
++  [0L, 'belong&amp;0377777777', '=', 43600407L, 'NetBSD/arm32'],
++  [0L, 'belong&amp;0377777777', '=', 43600507L, 'NetBSD/arm32 core'],
++  [0L, 'string', '=', 'StartFontMetrics', 'font/x-sunos-news'],
++  [0L, 'string', '=', 'StartFont', 'font/x-sunos-news'],
++  [0L, 'belong', '=', 326773060L, 'font/x-sunos-news'],
++  [0L, 'belong', '=', 326773063L, 'font/x-sunos-news'],
++  [0L, 'belong', '=', 326773072L, 'font/x-sunos-news'],
++  [0L, 'belong', '=', 326773073L, 'font/x-sunos-news'],
++  [8L, 'belong', '=', 326773573L, 'font/x-sunos-news'],
++  [8L, 'belong', '=', 326773576L, 'font/x-sunos-news'],
++  [0L, 'string', '=', 'Octave-1-L', 'Octave binary data (little endian)'],
++  [0L, 'string', '=', 'Octave-1-B', 'Octave binary data (big endian)'],
++  [0L, 'string', '=', '\177OLF', 'OLF'],
++  [0L, 'beshort', '=', 34765L, 'OS9/6809 module:'],
++  [0L, 'beshort', '=', 19196L, 'OS9/68K module:'],
++  [0L, 'long', '=', 61374L, 'OSF/Rose object'],
++  [0L, 'short', '=', 565L, 'i386 COFF object'],
++  [0L, 'short', '=', 10775L, '&quot;compact bitmap&quot; format (Poskanzer)'],
++  [0L, 'string', '=', '%PDF-', 'PDF document'],
++  [0L, 'lelong', '=', 101555L, 'PDP-11 single precision APL workspace'],
++  [0L, 'lelong', '=', 101554L, 'PDP-11 double precision APL workspace'],
++  [0L, 'leshort', '=', 407L, 'PDP-11 executable'],
++  [0L, 'leshort', '=', 401L, 'PDP-11 UNIX/RT ldp'],
++  [0L, 'leshort', '=', 405L, 'PDP-11 old overlay'],
++  [0L, 'leshort', '=', 410L, 'PDP-11 pure executable'],
++  [0L, 'leshort', '=', 411L, 'PDP-11 separate I&amp;D executable'],
++  [0L, 'leshort', '=', 437L, 'PDP-11 kernel overlay'],
++  [0L, 'beshort', '=', 39168L, 'PGP key public ring'],
++  [0L, 'beshort', '=', 38145L, 'PGP key security ring'],
++  [0L, 'beshort', '=', 38144L, 'PGP key security ring'],
++  [0L, 'beshort', '=', 42496L, 'PGP encrypted data'],
++  [0L, 'string', '=', '-----BEGIN PGP', 'PGP armored data'],
++  [0L, 'string', '=', '# PaCkAgE DaTaStReAm', 'pkg Datastream (SVR4)'],
++  [0L, 'short', '=', 601L, 'mumps avl global'],
++  [0L, 'short', '=', 602L, 'mumps blt global'],
++  [0L, 'string', '=', '%!', 'application/postscript'],
++  [0L, 'string', '=', '\004%!', 'application/postscript'],
++  [0L, 'belong', '=', 3318797254L, 'DOS EPS Binary File'],
++  [0L, 'string', '=', '*PPD-Adobe:', 'PPD file'],
++  [0L, 'string', '=', '\033%<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">-12345X at PJL</A>', 'HP Printer Job Language data'],
++  [0L, 'string', '=', '\033%<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">-12345X at PJL</A>', 'HP Printer Job Language data'],
++  [0L, 'string', '=', '\033E\033', 'image/x-pcl-hp'],
++  [0L, 'string', '=', '@document(', 'Imagen printer'],
++  [0L, 'string', '=', 'Rast', 'RST-format raster font data'],
++  [0L, 'belong&amp;0xff00ffff', '=', 1442840576L, 'ps database'],
++  [0L, 'long', '=', 1351614727L, 'Pyramid 90x family executable'],
++  [0L, 'long', '=', 1351614728L, 'Pyramid 90x family pure executable'],
++  [0L, 'long', '=', 1351614731L, 'Pyramid 90x family demand paged pure executable'],
++  [0L, 'beshort', '=', 60843L, ''],
++  [0L, 'string', '=', '{\\\\rtf', 'Rich Text Format data,'],
++  [38L, 'string', '=', 'Spreadsheet', 'sc spreadsheet file'],
++  [8L, 'string', '=', '\001s SCCS', 'archive data'],
++  [0L, 'byte', '=', 46L, 'Sendmail frozen configuration'],
++  [0L, 'short', '=', 10012L, 'Sendmail frozen configuration'],
++  [0L, 'lelong', '=', 234L, 'BALANCE NS32000 .o'],
++  [0L, 'lelong', '=', 4330L, 'BALANCE NS32000 executable (0 @ 0)'],
++  [0L, 'lelong', '=', 8426L, 'BALANCE NS32000 executable (invalid @ 0)'],
++  [0L, 'lelong', '=', 12522L, 'BALANCE NS32000 standalone executable'],
++  [0L, 'leshort', '=', 4843L, 'SYMMETRY i386 .o'],
++  [0L, 'leshort', '=', 8939L, 'SYMMETRY i386 executable (0 @ 0)'],
++  [0L, 'leshort', '=', 13035L, 'SYMMETRY i386 executable (invalid @ 0)'],
++  [0L, 'leshort', '=', 17131L, 'SYMMETRY i386 standalone executable'],
++  [0L, 'string', '=', 'kbd!map', 'kbd map file'],
++  [0L, 'belong', '=', 407L, 'old SGI 68020 executable'],
++  [0L, 'belong', '=', 410L, 'old SGI 68020 pure executable'],
++  [0L, 'beshort', '=', 34661L, 'disk quotas file'],
++  [0L, 'beshort', '=', 1286L, 'IRIS Showcase file'],
++  [0L, 'beshort', '=', 550L, 'IRIS Showcase template'],
++  [0L, 'belong', '=', 1396917837L, 'IRIS Showcase file'],
++  [0L, 'belong', '=', 1413695053L, 'IRIS Showcase template'],
++  [0L, 'belong', '=', 3735927486L, 'IRIX Parallel Arena'],
++  [0L, 'beshort', '=', 352L, 'MIPSEB COFF executable'],
++  [0L, 'beshort', '=', 354L, 'MIPSEL COFF executable'],
++  [0L, 'beshort', '=', 24577L, 'MIPSEB-LE COFF executable'],
++  [0L, 'beshort', '=', 25089L, 'MIPSEL-LE COFF executable'],
++  [0L, 'beshort', '=', 355L, 'MIPSEB MIPS-II COFF executable'],
++  [0L, 'beshort', '=', 358L, 'MIPSEL MIPS-II COFF executable'],
++  [0L, 'beshort', '=', 25345L, 'MIPSEB-LE MIPS-II COFF executable'],
++  [0L, 'beshort', '=', 26113L, 'MIPSEL-LE MIPS-II COFF executable'],
++  [0L, 'beshort', '=', 320L, 'MIPSEB MIPS-III COFF executable'],
++  [0L, 'beshort', '=', 322L, 'MIPSEL MIPS-III COFF executable'],
++  [0L, 'beshort', '=', 16385L, 'MIPSEB-LE MIPS-III COFF executable'],
++  [0L, 'beshort', '=', 16897L, 'MIPSEL-LE MIPS-III COFF executable'],
++  [0L, 'beshort', '=', 384L, 'MIPSEB Ucode'],
++  [0L, 'beshort', '=', 386L, 'MIPSEL Ucode'],
++  [0L, 'belong', '=', 3735924144L, 'IRIX core dump'],
++  [0L, 'belong', '=', 3735924032L, 'IRIX 64-bit core dump'],
++  [0L, 'belong', '=', 3133063355L, 'IRIX N32 core dump'],
++  [0L, 'string', '=', 'CrshDump', 'IRIX vmcore dump of'],
++  [0L, 'string', '=', 'SGIAUDIT', 'SGI Audit file'],
++  [0L, 'string', '=', 'WNGZWZSC', 'Wingz compiled script'],
++  [0L, 'string', '=', 'WNGZWZSS', 'Wingz spreadsheet'],
++  [0L, 'string', '=', 'WNGZWZHP', 'Wingz help file'],
++  [0L, 'string', '=', '\\#Inventor', 'V IRIS Inventor 1.0 file'],
++  [0L, 'string', '=', '\\#Inventor', 'V2 Open Inventor 2.0 file'],
++  [0L, 'string', '=', 'glfHeadMagic();', 'GLF_TEXT'],
++  [4L, 'belong', '=', 1090584576L, 'GLF_BINARY_LSB_FIRST'],
++  [4L, 'belong', '=', 321L, 'GLF_BINARY_MSB_FIRST'],
++  [0L, 'string', '=', '&lt;!DOCTYPE HTML', 'text/html'],
++  [0L, 'string', '=', '&lt;!doctype html', 'text/html'],
++  [0L, 'string', '=', '&lt;HEAD', 'text/html'],
++  [0L, 'string', '=', '&lt;head', 'text/html'],
++  [0L, 'string', '=', '&lt;TITLE', 'text/html'],
++  [0L, 'string', '=', '&lt;title', 'text/html'],
++  [0L, 'string', '=', '&lt;html', 'text/html'],
++  [0L, 'string', '=', '&lt;HTML', 'text/html'],
++  [0L, 'string', '=', '&lt;!DOCTYPE', 'exported SGML document text'],
++  [0L, 'string', '=', '&lt;!doctype', 'exported SGML document text'],
++  [0L, 'string', '=', '&lt;!SUBDOC', 'exported SGML subdocument text'],
++  [0L, 'string', '=', '&lt;!subdoc', 'exported SGML subdocument text'],
++  [0L, 'string', '=', '&lt;!--', 'exported SGML document text'],
++  [0L, 'string', '=', 'RTSS', 'NetMon capture file'],
++  [0L, 'string', '=', 'TRSNIFF data    \032', 'Sniffer capture file'],
++  [0L, 'string', '=', 'XCP\000', 'NetXRay capture file'],
++  [0L, 'ubelong', '=', 2712847316L, 'tcpdump capture file (big-endian)'],
++  [0L, 'ulelong', '=', 2712847316L, 'tcpdump capture file (little-endian)'],
++  [0L, 'string', '=', '&lt;!SQ DTD&gt;', 'Compiled SGML rules file'],
++  [0L, 'string', '=', '&lt;!SQ A/E&gt;', 'A/E SGML Document binary'],
++  [0L, 'string', '=', '&lt;!SQ STS&gt;', 'A/E SGML binary styles file'],
++  [0L, 'short', '=', 49374L, 'Compiled PSI (v1) data'],
++  [0L, 'short', '=', 49370L, 'Compiled PSI (v2) data'],
++  [0L, 'short', '=', 125252L, 'SoftQuad DESC or font file binary'],
++  [0L, 'string', '=', 'SQ BITMAP1', 'SoftQuad Raster Format text'],
++  [0L, 'string', '=', 'X SoftQuad', 'troff Context intermediate'],
++  [0L, 'belong&amp;077777777', '=', 600413L, 'sparc demand paged'],
++  [0L, 'belong&amp;077777777', '=', 600410L, 'sparc pure'],
++  [0L, 'belong&amp;077777777', '=', 600407L, 'sparc'],
++  [0L, 'belong&amp;077777777', '=', 400413L, 'mc68020 demand paged'],
++  [0L, 'belong&amp;077777777', '=', 400410L, 'mc68020 pure'],
++  [0L, 'belong&amp;077777777', '=', 400407L, 'mc68020'],
++  [0L, 'belong&amp;077777777', '=', 200413L, 'mc68010 demand paged'],
++  [0L, 'belong&amp;077777777', '=', 200410L, 'mc68010 pure'],
++  [0L, 'belong&amp;077777777', '=', 200407L, 'mc68010'],
++  [0L, 'belong', '=', 407L, 'old sun-2 executable'],
++  [0L, 'belong', '=', 410L, 'old sun-2 pure executable'],
++  [0L, 'belong', '=', 413L, 'old sun-2 demand paged executable'],
++  [0L, 'belong', '=', 525398L, 'SunOS core file'],
++  [0L, 'long', '=', 4197695630L, 'SunPC 4.0 Hard Disk'],
++  [0L, 'string', '=', '#SUNPC_CONFIG', 'SunPC 4.0 Properties Values'],
++  [0L, 'string', '=', 'snoop', 'Snoop capture file'],
++  [36L, 'string', '=', 'acsp', 'Kodak Color Management System, ICC Profile'],
++  [0L, 'string', '=', '#!teapot\012xdr', 'teapot work sheet (XDR format)'],
++  [0L, 'string', '=', '\032\001', 'Compiled terminfo entry'],
++  [0L, 'short', '=', 433L, 'Curses screen image'],
++  [0L, 'short', '=', 434L, 'Curses screen image'],
++  [0L, 'string', '=', '\367\002', 'TeX DVI file'],
++  [0L, 'string', '=', '\367\203', 'font/x-tex'],
++  [0L, 'string', '=', '\367Y', 'font/x-tex'],
++  [0L, 'string', '=', '\367\312', 'font/x-tex'],
++  [0L, 'string', '=', 'This is TeX,', 'TeX transcript text'],
++  [0L, 'string', '=', 'This is METAFONT,', 'METAFONT transcript text'],
++  [2L, 'string', '=', '\000\021', 'font/x-tex-tfm'],
++  [2L, 'string', '=', '\000\022', 'font/x-tex-tfm'],
++  [0L, 'string', '=', '\\\\input\\', 'texinfo Texinfo source text'],
++  [0L, 'string', '=', 'This is Info file', 'GNU Info text'],
++  [0L, 'string', '=', '\\\\input', 'TeX document text'],
++  [0L, 'string', '=', '\\\\section', 'LaTeX document text'],
++  [0L, 'string', '=', '\\\\setlength', 'LaTeX document text'],
++  [0L, 'string', '=', '\\\\documentstyle', 'LaTeX document text'],
++  [0L, 'string', '=', '\\\\chapter', 'LaTeX document text'],
++  [0L, 'string', '=', '\\\\documentclass', 'LaTeX 2e document text'],
++  [0L, 'string', '=', '\\\\relax', 'LaTeX auxiliary file'],
++  [0L, 'string', '=', '\\\\contentsline', 'LaTeX table of contents'],
++  [0L, 'string', '=', '\\\\indexentry', 'LaTeX raw index file'],
++  [0L, 'string', '=', '\\\\begin{theindex}', 'LaTeX sorted index'],
++  [0L, 'string', '=', '\\\\glossaryentry', 'LaTeX raw glossary'],
++  [0L, 'string', '=', '\\\\begin{theglossary}', 'LaTeX sorted glossary'],
++  [0L, 'string', '=', 'This is makeindex', 'Makeindex log file'],
++  [0L, 'string', '=', '**TI82**', 'TI-82 Graphing Calculator'],
++  [0L, 'string', '=', '**TI83**', 'TI-83 Graphing Calculator'],
++  [0L, 'string', '=', '**TI85**', 'TI-85 Graphing Calculator'],
++  [0L, 'string', '=', '**TI92**', 'TI-92 Graphing Calculator'],
++  [0L, 'string', '=', '**TI80**', 'TI-80 Graphing Calculator File.'],
++  [0L, 'string', '=', '**TI81**', 'TI-81 Graphing Calculator File.'],
++  [0L, 'string', '=', 'TZif', 'timezone data'],
++  [0L, 'string', '=', '\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\001\000', 'old timezone data'],
++  [0L, 'string', '=', '\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\002\000', 'old timezone data'],
++  [0L, 'string', '=', '\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\003\000', 'old timezone data'],
++  [0L, 'string', '=', '\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\004\000', 'old timezone data'],
++  [0L, 'string', '=', '\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\005\000', 'old timezone data'],
++  [0L, 'string', '=', '\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\006\000', 'old timezone data'],
++  [0L, 'string', '=', '.\\\\&quot;', 'troff or preprocessor input text'],
++  [0L, 'string', '=', '\'\\\\&quot;', 'troff or preprocessor input text'],
++  [0L, 'string', '=', '\'.\\\\&quot;', 'troff or preprocessor input text'],
++  [0L, 'string', '=', '\\\\&quot;', 'troff or preprocessor input text'],
++  [0L, 'string', '=', 'x T', 'ditroff text'],
++  [0L, 'string', '=', '@\357', 'very old (C/A/T) troff output data'],
++  [0L, 'string', '=', 'Interpress/Xerox', 'Xerox InterPress data'],
++  [0L, 'short', '=', 263L, 'unknown machine executable'],
++  [0L, 'short', '=', 264L, 'unknown pure executable'],
++  [0L, 'short', '=', 265L, 'PDP-11 separate I&amp;D'],
++  [0L, 'short', '=', 267L, 'unknown pure executable'],
++  [0L, 'long', '=', 268L, 'unknown demand paged pure executable'],
++  [0L, 'long', '=', 269L, 'unknown demand paged pure executable'],
++  [0L, 'long', '=', 270L, 'unknown readable demand paged pure executable'],
++  [0L, 'string', '=', 'begin uuencoded', 'or xxencoded text'],
++  [0L, 'string', '=', 'xbtoa Begin', &quot;btoa'd text&quot;],
++  [0L, 'string', '=', '$\012ship', &quot;ship'd binary text&quot;],
++  [0L, 'string', '=', 'Decode the following with bdeco', 'bencoded News text'],
++  [11L, 'string', '=', 'must be converted with BinHex', 'BinHex binary text'],
++  [0L, 'short', '=', 610L, 'Perkin-Elmer executable'],
++  [0L, 'beshort', '=', 572L, 'amd 29k coff noprebar executable'],
++  [0L, 'beshort', '=', 1572L, 'amd 29k coff prebar executable'],
++  [0L, 'beshort', '=', 160007L, 'amd 29k coff archive'],
++  [6L, 'beshort', '=', 407L, 'unicos (cray) executable'],
++  [596L, 'string', '=', 'X\337\377\377', 'Ultrix core file'],
++  [0L, 'string', '=', 'Joy!peffpwpc', 'header for PowerPC PEF executable'],
++  [0L, 'lelong', '=', 101557L, 'VAX single precision APL workspace'],
++  [0L, 'lelong', '=', 101556L, 'VAX double precision APL workspace'],
++  [0L, 'lelong', '=', 407L, 'VAX executable'],
++  [0L, 'lelong', '=', 410L, 'VAX pure executable'],
++  [0L, 'lelong', '=', 413L, 'VAX demand paged pure executable'],
++  [0L, 'leshort', '=', 570L, 'VAX COFF executable'],
++  [0L, 'leshort', '=', 575L, 'VAX COFF pure executable'],
++  [0L, 'string', '=', 'LBLSIZE=', 'VICAR image data'],
++  [43L, 'string', '=', 'SFDU_LABEL', 'VICAR label file'],
++  [0L, 'short', '=', 21845L, 'VISX image file'],
++  [0L, 'string', '=', '\260\0000\000', 'VMS VAX executable'],
++  [0L, 'belong', '=', 50331648L, 'VMS Alpha executable'],
++  [1L, 'string', '=', 'WPC', '(Corel/WP)'],
++  [0L, 'string', '=', 'core', 'core file (Xenix)'],
++  [0L, 'byte', '=', 128L, '8086 relocatable (Microsoft)'],
++  [0L, 'leshort', '=', 65381L, 'x.out'],
++  [0L, 'leshort', '=', 518L, 'Microsoft a.out'],
++  [0L, 'leshort', '=', 320L, 'old Microsoft 8086 x.out'],
++  [0L, 'lelong', '=', 518L, 'b.out'],
++  [0L, 'leshort', '=', 1408L, 'XENIX 8086 relocatable or 80286 small model'],
++  [0L, 'long', '=', 59399L, 'object file (z8000 a.out)'],
++  [0L, 'long', '=', 59400L, 'pure object file (z8000 a.out)'],
++  [0L, 'long', '=', 59401L, 'separate object file (z8000 a.out)'],
++  [0L, 'long', '=', 59397L, 'overlay object file (z8000 a.out)'],
++  [0L, 'string', '=', 'ZyXEL\002', 'ZyXEL voice data'],
++]
++
++magicNumbers = []
++
++def strToNum(n):
++  val = 0
++  col = long(1)
++  if n[:1] == 'x': n = '0' + n
++  if n[:2] == '0x':
++    # hex
++    n = string.lower(n[2:])
++    while len(n) &gt; 0:
++      l = n[len(n) - 1]
++      val = val + string.hexdigits.index(l) * col
++      col = col * 16
++      n = n[:len(n)-1]
++  elif n[0] == '\\':
++    # octal
++    n = n[1:]
++    while len(n) &gt; 0:
++      l = n[len(n) - 1]
++      if ord(l) &lt; 48 or ord(l) &gt; 57: break
++      val = val + int(l) * col
++      col = col * 8
++      n = n[:len(n)-1]
++  else:
++    val = string.atol(n)
++  return val
++       
++def unescape(s):
++  # replace string escape sequences
++  while 1:
++    m = re.search(r'\\', s)
++    if not m: break
++    x = m.start()+1
++    if m.end() == len(s): 
++      # escaped space at end
++      s = s[:len(s)-1] + ' '
++    elif s[x:x+2] == '0x':
++      # hex ascii value
++      c = chr(strToNum(s[x:x+4]))
++      s = s[:x-1] + c + s[x+4:]
++    elif s[m.start()+1] == 'x':
++      # hex ascii value
++      c = chr(strToNum(s[x:x+3]))
++      s = s[:x-1] + c + s[x+3:]
++    elif ord(s[x]) &gt; 47 and ord(s[x]) &lt; 58:
++      # octal ascii value
++      end = x
++      while (ord(s[end]) &gt; 47 and ord(s[end]) &lt; 58):
++        end = end + 1
++        if end &gt; len(s) - 1: break
++      c = chr(strToNum(s[x-1:end]))
++      s = s[:x-1] + c + s[end:]
++    elif s[x] == 'n':
++      # newline
++      s = s[:x-1] + '\n' + s[x+1:]
++    else:
++      break
++  return s
++
++class magicTest:
++  def __init__(self, offset, t, op, value, msg, mask = None):
++    if t.count('&amp;') &gt; 0:
++      mask = strToNum(t[t.index('&amp;')+1:])  
++      t = t[:t.index('&amp;')]
++    if type(offset) == type('a'):
++      self.offset = strToNum(offset)
++    else:
++      self.offset = offset
++    self.type = t
++    self.msg = msg
++    self.subTests = []
++    self.op = op
++    self.mask = mask
++    self.value = value
++      
++
++  def test(self, data):
++    if self.mask:
++      data = data &amp; self.mask
++    if self.op == '=': 
++      if self.value == data: return self.msg
++    elif self.op ==  '&lt;':
++      pass
++    elif self.op ==  '&gt;':
++      pass
++    elif self.op ==  '&amp;':
++      pass
++    elif self.op ==  '^':
++      pass
++    return None
++
++  def compare(self, data):
++    #print str([self.type, self.value, self.msg])
++    try: 
++      if self.type == 'string':
++        c = ''; s = ''
++        for i in range(0, len(self.value)+1):
++          if i + self.offset &gt; len(data) - 1: break
++          s = s + c
++          [c] = struct.unpack('c', data[self.offset + i])
++        data = s
++      elif self.type == 'short':
++        [data] = struct.unpack('h', data[self.offset : self.offset + 2])
++      elif self.type == 'leshort':
++        [data] = struct.unpack('&lt;h', data[self.offset : self.offset + 2])
++      elif self.type == 'beshort':
++        [data] = struct.unpack('&gt;H', data[self.offset : self.offset + 2])
++      elif self.type == 'long':
++        [data] = struct.unpack('l', data[self.offset : self.offset + 4])
++      elif self.type == 'lelong':
++        [data] = struct.unpack('&lt;l', data[self.offset : self.offset + 4])
++      elif self.type == 'belong':
++        [data] = struct.unpack('&gt;l', data[self.offset : self.offset + 4])
++      else:
++        #print 'UNKNOWN TYPE: ' + self.type
++        pass
++    except:
++      return None
++  
++#    print str([self.msg, self.value, data])
++    return self.test(data)
++    
++
++def load(file):
++  global magicNumbers
++  lines = open(file).readlines()
++  last = { 0: None }
++  for line in lines:
++    if re.match(r'\s*#', line):
++      # comment
++      continue
++    else:
++      # split up by space delimiters, and remove trailing space
++      line = string.rstrip(line)
++      line = re.split(r'\s*', line)
++      if len(line) &lt; 3:
++        # bad line
++        continue
++      offset = line[0]
++      type = line[1]
++      value = line[2]
++      level = 0
++      while offset[0] == '&gt;':
++        # count the level of the type
++        level = level + 1
++        offset = offset[1:]
++      l = magicNumbers
++      if level &gt; 0:
++        l = last[level - 1].subTests
++      if offset[0] == '(':
++        # don't handle indirect offsets just yet
++        print 'SKIPPING ' + string.join(list(line[3:]))
++        pass
++      elif offset[0] == '&amp;':
++        # don't handle relative offsets just yet
++        print 'SKIPPING ' + string.join(list(line[3:]))
++        pass
++      else:
++        operands = ['=', '&lt;', '&gt;', '&amp;']
++        if operands.count(value[0]) &gt; 0:
++          # a comparison operator is specified
++          op = value[0] 
++          value = value[1:]
++        else:
++          print str([value, operands])
++          if len(value) &gt;1 and value[0] == '\\' and operands.count(value[1]) &gt;0:
++            # literal value that collides with operands is escaped
++            value = value[1:]
++          op = '='
++
++        mask = None
++        if type == 'string':
++          while 1:
++            value = unescape(value)
++            if value[len(value)-1] == ' ' and len(line) &gt; 3:
++              # last value was an escaped space, join
++              value = value + line[3]
++              del line[3]
++            else:
++              break
++        else:
++          if value.count('&amp;') != 0:
++            mask = value[(value.index('&amp;') + 1):]
++            print 'MASK: ' + mask
++            value = value[:(value.index('&amp;')+1)]
++          try: value = strToNum(value)
++          except: continue
++          msg = string.join(list(line[3:]))
++        new = magicTest(offset, type, op, value, msg, mask)
++        last[level] = new
++        l.append(new)
++
++def whatis(data):
++  for test in magicNumbers:
++     m = test.compare(data)
++     if m: return m
++  # no matching, magic number. is it binary or text?
++  for c in data:
++    if ord(c) &gt; 128:
++      return 'data'
++  # its ASCII, now do text tests
++  if string.find('The', data, 0, 8192) &gt; -1:
++    return 'English text'
++  if string.find('def', data, 0, 8192) &gt; -1:
++    return 'Python Source'
++  return 'ASCII text'
++      
++    
++def file(file):
++  try:
++    return whatis(open(file, 'r').read(8192))
++  except Exception, e:
++    if str(e) == '[Errno 21] Is a directory':
++      return 'directory'
++    else:
++      raise e
++  
++
++#### BUILD DATA ####
++#load('mime-magic')
++#f = open('out', 'w')
++#for m in magicNumbers:
++#  f.write(str([m.offset, m.type, m.op, m.value, m.msg]) + ',\n')
++#f.close
++
++import sys
++for m in magic:
++  magicNumbers.append(magicTest(m[0], m[1], m[2], m[3], m[4]))
++
++if __name__ == '__main__':
++  import sys
++  for arg in sys.argv[1:]:
++    msg = file(arg)
++    if msg:
++      print arg + ': ' + msg
++    else:
++      print arg + ': unknown'
+
+
+Property changes on: haypo/hachoir/branches/hachoir-yield/fallback/magic.py
+___________________________________________________________________
+Name: svn:mime-type
+   + text/script
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-03-04 00:17:26 UTC (rev 421)
++++ haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-03-04 00:18:07 UTC (rev 422)
+@@ -1,6 +1,7 @@
+ from event_handler import EventHandler
+ from field import Field
+ from indexed_dict import IndexedDict
++import config
+ 
+ class FieldDoesExist(KeyError):
+     pass
+@@ -13,18 +14,57 @@
+     Ordered list of fields. Use operator [] to access fields using their
+     name (field names are unique in a field set, but not in the whole
+     document).
++
++    Class attributes:
++       * endian: Default endian of integer fields (&quot;!&quot; by default,
++         network order). Values can be &quot;!&quot; (network order, little endian),
++         &quot;&gt;&quot; (same than &quot;!&quot;), or &quot;&gt;&quot; (big endian)
++       * static_size: Size of FieldSet in bits (optionnal attribute).
++         This attribute is optionnal and should be used in parser when
++         the size is constant
++
++    Instance attributes/methods:
++       * fields: Ordered dictionnary of all fields, may be incomplete
++         because feeded when a field is requested
++       * stream: Input stream used to feed fields' value
++       * root: The root of all field sets
++       * __len__(): Number of fields, may need to create field set 
++       * __getitem(): Get an field by it's name or it's path
++
++    And attributes inherited from Field class:
++       * parent: Parent field (may be None if it's the root)
++       * name: Field name (unique in parent field set)
++       * value: The field set
++       * address: Field address (in bits) relative to parent
++       * description: A string describing the content (can be None)
++       * size: Size of field set in bits, may need to create field set
++
++    Event handling:
++       * connect: Connect an handler to an event
++       * raiseEvent: Raise an event 
++   
++    To implement a new field set, you need to:
++       * create a class which inherite from FieldSet
++       * write createFields() method using lines like:
++         &quot;yield &lt;field class&gt;(self, &lt;field name&gt;, ...)&quot;
++       * and maybe set endian/static_size class attributes
+     &quot;&quot;&quot;
++
+     is_field_set = True
+     endian = &quot;!&quot;
+ 
+-    def __init__(self, parent, name, stream, description=None):
+-        Field.__init__(self, parent, name, self, description=description)
++    def __init__(self, parent, name, stream, description=None, size=None):
++        if hasattr(self, &quot;static_size&quot;):
++            self._size = self.static_size
++        else:
++            self._size = size 
++        assert self.endian in (&quot;!&quot;, &quot;&lt;&quot;, &quot;&gt;&quot;)
++        Field.__init__(self, parent, name, self, size=self._size, description=description)
+         self.stream = stream
+         self.fields = IndexedDict()
+         self._event_handler = None
+         self._field_generator = self.createFields()
+         self._field_array_count = {}
+-        self._size = None
+         self._total_field_size = 0
+         if parent != None:
+             self.root = parent.root
+@@ -49,6 +89,8 @@
+         self._event_handler.connect(event_name, handler)
+ 
+     def __len__(self):
++        if self._field_generator != None:
++            self._feedAll()
+         return len(self.fields)
+ 
+     def _getSize(self):
+@@ -65,7 +107,7 @@
+         stream_address = self.absolute_address + self._total_field_size
+         field = self._field_generator.next()
+ 
+-        if False:
++        if config.debug:
+             addr = field.absolute_address
+             print &quot;* Instanciate %s (addr=%s.%s, size=%s bits)&quot; \
+                 % (field.path, addr/8, addr%8, field.size)
+@@ -168,15 +210,17 @@
+             self._stopFeeding()
+ 
+     def __iter__(self):
++        # Iterate in existing fields
++        for field in self.fields:
++            yield field
++        
++        # If field set in not yet complete, continue to feed it
+         if self._field_generator != None:
+             try:
+                 while True:
+                     yield self._feed()
+             except StopIteration:
+                 self._stopFeeding()
+-        else:
+-            for field in self.fields:
+-                yield field
+ 
+     def createFields(self):
+         raise NotImplementedError
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/integer.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/integer.py	2006-03-04 00:17:26 UTC (rev 421)
++++ haypo/hachoir/branches/hachoir-yield/field/integer.py	2006-03-04 00:18:07 UTC (rev 422)
+@@ -54,3 +54,13 @@
+         return hexadecimal(self)
+     display = property(_getDisplay)
+ 
++class Enum(Integer):   
++    def __init__(self, parent, name, format, enum, description=None):
++        self.enum = enum
++        Integer.__init__(self, parent, name, format, description)
++    
++    def _getDisplay(self):
++        value = self.value
++        return self.enum.get(value, value)
++    display = property(_getDisplay)
++
+
+Added: haypo/hachoir/branches/hachoir-yield/file/image/bmp.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/file/image/bmp.py	2006-03-04 00:17:26 UTC (rev 421)
++++ haypo/hachoir/branches/hachoir-yield/file/image/bmp.py	2006-03-04 00:18:07 UTC (rev 422)
+@@ -0,0 +1,56 @@
++&quot;&quot;&quot;
++Microsoft Bitmap picture parser.
++- file extension: &quot;.bmp&quot;
++
++Author: Victor Stinner
++Creation: 16 december 2005
++&quot;&quot;&quot;
++
++from field import FieldSet, Integer, String, ParserError
++from metadata import ImageMetaData
++
++class BmpMetaData(ImageMetaData):
++    def __init__(self, bmp):
++        width, height = bmp[&quot;width&quot;].value, bmp[&quot;height&quot;].value
++        bpp = bmp[&quot;bpp&quot;].value
++        if &quot;used_colors&quot; in bmp:
++            nb_colors = bmp[&quot;used_colors&quot;].value 
++        else:
++            nb_colors = None
++        if bmp[&quot;compression&quot;].value != 0:
++            compression = &quot;(compressed)&quot;
++        else:
++            compression = &quot;No&quot;
++        ImageMetaData.__init__(self, width, height, bpp, nb_colors=nb_colors)
++
++class BmpFile(FieldSet):
++    mime_types = [&quot;image/x-ms-bmp&quot;, &quot;image/x-bmp&quot;]
++    endian = &quot;&lt;&quot;
++    
++    def createFields(self):
++        yield String(self, &quot;header&quot;, &quot;string[2]&quot;, &quot;Header (\&quot;BM\&quot;)&quot;)
++        if self[&quot;header&quot;].value != &quot;BM&quot;: 
++            raise ParserError(
++                &quot;BMP picture parser error: indentifier is uncorrect&quot;)
++        yield Integer(self, &quot;file_size&quot;, &quot;uint32&quot;, &quot;File size (bytes)&quot;)
++        yield Integer(self, &quot;notused&quot;, &quot;uint32&quot;, &quot;Reseved&quot;)
++        yield Integer(self, &quot;data_start&quot;, &quot;uint32&quot;, &quot;Data start position&quot;)
++        yield Integer(self, &quot;header_size&quot;, &quot;uint32&quot;, &quot;Header size&quot;)
++        if self[&quot;header_size&quot;].value not in (12, 40):
++            raise ParserError(
++                &quot;BMP picture parser error: header size is uncorrect &quot; \
++                &quot;(%s instead of 12 or 40)&quot; % \
++                self[&quot;header_size&quot;].value)
++        yield Integer(self, &quot;width&quot;, &quot;uint32&quot;, &quot;Width (pixels)&quot;)
++        yield Integer(self, &quot;height&quot;, &quot;uint32&quot;, &quot;Height (pixels)&quot;)
++        yield Integer(self, &quot;nb_plan&quot;, &quot;uint16&quot;, &quot;Number of plan (=1)&quot;)
++        yield Integer(self, &quot;bpp&quot;, &quot;uint16&quot;, &quot;Bits per pixel&quot;)
++        if self[&quot;header_size&quot;].value == 40:
++            yield Integer(self, &quot;compression&quot;, &quot;uint32&quot;, &quot;Compression method&quot;)
++            yield Integer(self, &quot;image_size&quot;, &quot;uint32&quot;, &quot;Image size (bytes)&quot;)
++            yield Integer(self, &quot;horizontal_dpi&quot;, &quot;uint32&quot;, &quot;Horizontal DPI&quot;)
++            yield Integer(self, &quot;vertical_dpi&quot;, &quot;uint32&quot;, &quot;Vertical DPI&quot;)
++            yield Integer(self, &quot;used_colors&quot;, &quot;uint32&quot;, &quot;Number of color used&quot;)
++            yield Integer(self, &quot;important_color&quot;, &quot;uint32&quot;, &quot;Number of import colors&quot;)
++#        self.addPadding(&quot;data&quot;, &quot;Image raw data&quot;)
++
+
+Modified: haypo/hachoir/branches/hachoir-yield/file/image/png.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/file/image/png.py	2006-03-04 00:17:26 UTC (rev 421)
++++ haypo/hachoir/branches/hachoir-yield/file/image/png.py	2006-03-04 00:18:07 UTC (rev 422)
+@@ -105,6 +105,8 @@
+         yield IntegerHex(self, &quot;crc32&quot;, &quot;uint32&quot;, &quot;CRC32&quot;)
+ 
+ class PngFile(FieldSet):
++    mime_types = [&quot;image/png&quot;, &quot;image/x-png&quot;]
++
+     def createFields(self):
+         yield String(self, &quot;id&quot;, &quot;string[8]&quot;, &quot;PNG identifier&quot;) 
+         if self[&quot;id&quot;].value != &quot;\x89PNG\r\n\x1A\n&quot;:
+
+Added: haypo/hachoir/branches/hachoir-yield/file/system/__init__.py
+===================================================================
+
+Added: haypo/hachoir/branches/hachoir-yield/file/system/ext2.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/file/system/ext2.py	2006-03-04 00:17:26 UTC (rev 421)
++++ haypo/hachoir/branches/hachoir-yield/file/system/ext2.py	2006-03-04 00:18:07 UTC (rev 422)
+@@ -0,0 +1,447 @@
++&quot;&quot;&quot;
++EXT2 (Linux) file system parser.
++
++Sources:
++- EXT2FS source code
++  <A HREF="http://ext2fsd.sourceforge.net/">http://ext2fsd.sourceforge.net/</A>
++- Analysis of the Ext2fs structure
++  <A HREF="http://www.nondot.org/sabre/os/files/FileSystems/ext2fs/">http://www.nondot.org/sabre/os/files/FileSystems/ext2fs/</A>
++&quot;&quot;&quot;
++
++from text_handler import unixTimestamp
++from field import FieldSet, Integer, String
++from tools import humanDuration, getUnixRWX, humanFilesize
++
++class DirectoryEntry(FieldSet):
++    file_type = {
++        1: &quot;Regular&quot;,
++        2: &quot;Directory&quot;,
++        3: &quot;Char. dev.&quot;,
++        4: &quot;Block dev.&quot;,
++        5: &quot;Fifo&quot;,
++        6: &quot;Socket&quot;,
++        7: &quot;Symlink&quot;,
++        8: &quot;Max&quot;
++    }
++    endian = &quot;&lt;&quot;
++    
++    def createFields(self):
++        yield Integer(&quot;inode&quot;, &quot;uint32&quot;, &quot;Inode&quot;)
++        yield Integer(&quot;rec_len&quot;, &quot;uint16&quot;, &quot;Record length&quot;)
++        name_length = self.doRead(&quot;name_len&quot;, &quot;B&quot;, &quot;Name length&quot;, (FormatChunk, &quot;uint8&quot;)).value
++        yield Integer(&quot;file_type&quot;, &quot;uint8&quot;, DirectoryEntry.file_type, &quot;File type&quot;)
++        self.read(&quot;name&quot;, &quot;File name&quot;, (FormatChunk, &quot;string[%u]&quot; % name_length))
++        size = self[&quot;rec_len&quot;]-8-name_length 
++        if size != 0:
++            self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++    def updateParent(self, chunk):        
++        name = self[&quot;name&quot;].strip(&quot;\0&quot;)
++        if name != &quot;&quot;:
++            desc = &quot;Directory entry: %s&quot; % name
++        else:
++            desc = &quot;Directory entry (empty)&quot;
++        chunk.description = desc
++        self.setDescription(desc)
++
++class Inode(FieldSet):
++    name = {
++        1: &quot;list of bad blocks&quot;,
++        2: &quot;Root directory&quot;,
++        3: &quot;ACL inode&quot;,
++        4: &quot;ACL inode&quot;,
++        5: &quot;Boot loader&quot;,
++        6: &quot;Undelete directory&quot;,
++        8: &quot;EXT3 journal&quot;
++    }
++
++    endian = &quot;&lt;&quot;
++    static_size = (68 + 15*4)*8
++
++    def __init__(self, parent, name, stream, index, description=None):
++        self.index = index
++        FieldSet.__init__(self, parent, name, stream, description)
++        
++        if self.description == None:
++            desc = &quot;Inode %s: &quot; % self.index
++
++            if 11 &lt;= self.index:
++                size = humanFilesize(self[&quot;size&quot;].value)
++                desc += &quot;file, size=%s, mode=%s&quot; % (size, self[&quot;mode&quot;].display)
++            else:
++                if self.index in Inode.name:
++                    desc += Inode.name[self.index]
++                    if self.index == 2:
++                        desc += &quot; (%s)&quot; % getUnixRWX(self[&quot;mode&quot;].value)
++                else:
++                    desc += &quot;special&quot;
++                if self[&quot;size&quot;].value == 0:
++                    desc += &quot; (unused)&quot;
++            self.description = desc
++
++    def createFields(self):
++        self.read(&quot;mode&quot;, &quot;Mode&quot;, (FormatChunk, &quot;uint16&quot;), {&quot;post&quot;: self.postMode})
++        yield Integer(&quot;uid&quot;, &quot;uint16&quot;, &quot;User ID&quot;)
++        yield Integer(&quot;size&quot;, &quot;uint32&quot;, &quot;File size (in bytes)&quot;)
++        yield Integer(&quot;atime&quot;, &quot;uint32&quot;, &quot;Last access time&quot;) # {&quot;post&quot;: unixTimestamp}
++        yield Integer(&quot;ctime&quot;, &quot;uint32&quot;, &quot;Creation time&quot;) # {&quot;post&quot;: unixTimestamp}
++        yield Integer(&quot;mtime&quot;, &quot;uint32&quot;, &quot;Last modification time&quot;) # {&quot;post&quot;: unixTimestamp}
++        yield Integer(&quot;dtime&quot;, &quot;uint32&quot;, &quot;Delete time&quot;) #  {&quot;post&quot;: unixTimestamp}
++        yield Integer(&quot;gid&quot;, &quot;uint16&quot;, &quot;Group ID&quot;)
++        yield Integer(&quot;links_count&quot;, &quot;uint16&quot;, &quot;Links count&quot;)
++        yield Integer(&quot;blocks&quot;, &quot;uint32&quot;, &quot;Number of blocks&quot;)
++        yield Integer(&quot;flags&quot;, &quot;uint32&quot;, &quot;Flags&quot;)
++        yield Integer(&quot;reserved1&quot;, &quot;uint32&quot;, &quot;Reserved&quot;)
++        for i in range(0,15):
++            yield Integer(&quot;block[]&quot;, &quot;uint32&quot;, &quot;Block %i&quot; % i)
++        yield Integer(&quot;version&quot;, &quot;uint32&quot;, &quot;Version&quot;)
++        yield Integer(&quot;file_acl&quot;, &quot;uint32&quot;, &quot;File ACL&quot;)
++        yield Integer(&quot;dir_acl&quot;, &quot;uint32&quot;, &quot;Directory ACL&quot;)
++        yield Integer(&quot;faddr&quot;, &quot;uint32&quot;, &quot;Block where the fragment of the file resides&quot;)
++        
++        os = self[&quot;/superblock/creator_os&quot;].value
++        if os == SuperBlock.OS_LINUX:
++            yield Integer(&quot;frag&quot;, &quot;uint8&quot;, &quot;Number of fragments in the block&quot;)
++            yield Integer(&quot;fsize&quot;, &quot;uint8&quot;, &quot;Fragment size&quot;)
++            yield Integer(&quot;padding&quot;, &quot;uint16&quot;, &quot;Padding&quot;)
++            yield Integer(&quot;uid_high&quot;, &quot;uint16&quot;, &quot;High 16 bits of user ID&quot;)
++            yield Integer(&quot;gid_high&quot;, &quot;uint16&quot;, &quot;High 16 bits of group ID&quot;)
++            yield Integer(&quot;reserved&quot;, &quot;uint32&quot;, &quot;Reserved&quot;)
++        elif os == SuperBlock.OS_HURD:
++            yield Integer(&quot;frag&quot;, &quot;uint8&quot;, &quot;Number of fragments in the block&quot;)
++            yield Integer(&quot;fsize&quot;, &quot;uint8&quot;, &quot;Fragment size&quot;)
++            yield Integer(&quot;mode_high&quot;, &quot;uint16&quot;, &quot;High 16 bits of mode&quot;)
++            yield Integer(&quot;uid_high&quot;, &quot;uint16&quot;, &quot;High 16 bits of user ID&quot;)
++            yield Integer(&quot;gid_high&quot;, &quot;uint16&quot;, &quot;High 16 bits of group ID&quot;)
++            yield Integer(&quot;author&quot;, &quot;uint32&quot;, &quot;Author ID (?)&quot;)
++        else:
++            yield String(&quot;raw&quot;, &quot;string[12]&quot;, &quot;Reserved&quot;)
++
++    def postMode(self, chunk):
++        mode = chunk.value
++        text = &quot;&quot;
++        if mode &amp; 0100000 != 0:
++            text = &quot;regular (%s)&quot; % getUnixRWX(mode)
++        elif mode &amp; 0040000:
++            text = &quot;directory (%s)&quot; % getUnixRWX(mode)
++        elif mode &amp; 0020000:
++            text = &quot;char. dev.&quot;
++        elif mode &amp; 0060000:
++            text = &quot;block dev.&quot;
++        elif mode &amp; 0010000:
++            text = &quot;fifo&quot;
++        elif mode &amp; 0120000:
++            text = &quot;sym. link&quot;
++        elif mode &amp; 0140000:
++            text = &quot;socket&quot;
++        elif mode == 0:
++            text = &quot;(empty)&quot;
++        else:
++            text = &quot;???&quot;
++        return text
++
++class Bitmap(FieldSet):
++    def __init__(self, parent, name, stream, count, start, description=None):
++        if description != None:
++            description = &quot;%s: %s items&quot; % (description, count)
++        FieldSet.__init__(self, parent, name, stream, description)
++        assert (count % 8) == 0
++        self._size = count / 8
++        self.start = start
++        self.count = count
++
++    def createFields(self):
++        yield String(&quot;block_bitmap&quot;, &quot;string[%u]&quot; % self._size, &quot;Bitmap&quot;)
++
++#    def showFree(self, type=&quot;Block&quot;):
++#        data = self[&quot;block_bitmap&quot;]
++#        cpt = self.start
++#        for octet in data:
++#            octet = ord(octet)
++#            mask = 1
++#            for i in range(0,8):
++#                if octet &amp; mask == 0:
++#                    print &quot;%s %s free.&quot; % (type, cpt)
++#                cpt = cpt + 1
++#                mask = mask &lt;&lt; 1
++
++BlockBitmap = Bitmap
++InodeBitmap = Bitmap
++
++class GroupDescriptor(FieldSet):
++    endian = &quot;&lt;&quot;
++    static_size = 32*8
++
++    def __init__(self, parent, name, stream, index, description=&quot;Group descriptor&quot;):
++        FieldSet.__init__(self, parent, name, stream, description)
++        self.index = index
++
++        # Set description
++        superblock = self[&quot;/superblock&quot;]
++        blocks_per_group = superblock[&quot;blocks_per_group&quot;].value
++        start = self.index * blocks_per_group
++        end = start + blocks_per_group 
++        self.description = &quot;Group descriptor: blocks %s-%s&quot; % (start, end)
++
++    def createFields(self):
++        yield Integer(&quot;block_bitmap&quot;, &quot;uint32&quot;, &quot;Points to the blocks bitmap block&quot;)
++        yield Integer(&quot;inode_bitmap&quot;, &quot;uint32&quot;, &quot;Points to the inodes bitmap block&quot;)
++        yield Integer(&quot;inode_table&quot;, &quot;uint32&quot;, &quot;Points to the inodes table first block&quot;)
++        yield Integer(&quot;free_blocks_count&quot;, &quot;uint16&quot;, &quot;Number of free blocks&quot;)
++        yield Integer(&quot;free_inodes_count&quot;, &quot;uint16&quot;, &quot;Number of free inodes&quot;)
++        yield Integer(&quot;used_dirs_count&quot;, &quot;uint16&quot;, &quot;Number of inodes allocated to directories&quot;)
++        yield Integer(&quot;padding&quot;, &quot;uint16&quot;, &quot;Padding&quot;)
++        yield String(&quot;reserved&quot;, &quot;string[12]&quot;, &quot;Reserved&quot;)
++   
++class SuperBlock(FieldSet):
++    error_handling = {
++        1: &quot;Continue&quot;
++    }
++    OS_LINUX = 0
++    OS_HURD = 1
++    os_name = {
++        0: &quot;Linux&quot;,
++        1: &quot;Hurd&quot;,
++        2: &quot;Masix&quot;,
++        3: &quot;FreeBSD&quot;,
++        4: &quot;Lites&quot;,
++        5: &quot;WinNT&quot;
++    }
++    state = {
++        1: &quot;Valid&quot;,
++        2: &quot;Error&quot;
++    }
++ 
++    static_size = 433*8
++ 
++    def __init__(self, parent, name, stream, description=&quot;Super block&quot;):
++        FieldSet.__init__(self, parent, name, stream, description)
++        if self[&quot;feature_compat&quot;].value &amp; 4 == 4:
++            type = &quot;ext3&quot;
++        else:
++            type = &quot;ext2&quot;
++        self.description = &quot;Superblock: %s file system&quot; % type
++
++    def createFields(self):
++        yield Integer(&quot;inodes_count&quot;, &quot;uint32&quot;, &quot;Inodes count&quot;)
++        yield Integer(&quot;blocks_count&quot;, &quot;uint32&quot;, &quot;Blocks count&quot;)
++        yield Integer(&quot;r_blocks_count&quot;, &quot;uint32&quot;, &quot;Reserved blocks count&quot;)
++        yield Integer(&quot;free_blocks_count&quot;, &quot;uint32&quot;, &quot;Free blocks count&quot;)
++        yield Integer(&quot;free_inodes_count&quot;, &quot;uint32&quot;, &quot;Free inodes count&quot;)
++        yield Integer(&quot;first_data_block&quot;, &quot;uint32&quot;, &quot;First data block&quot;)
++        if self[&quot;first_data_block&quot;].value != 0:
++            raise ParserError(
++                &quot;Stream doesn't looks like EXT2/EXT3 partition &quot;
++                &quot;(first data block is %s instead of 0)&quot; %
++                self[&quot;first_data_block&quot;].value)                
++        yield Integer(&quot;log_block_size&quot;, &quot;uint32&quot;, &quot;Block size&quot;)
++        yield Integer(&quot;log_frag_size&quot;, &quot;uint32&quot;, &quot;Fragment size&quot;)
++        yield Integer(&quot;blocks_per_group&quot;, &quot;uint32&quot;, &quot;Blocks per group&quot;)
++        yield Integer(&quot;frags_per_group&quot;, &quot;uint32&quot;, &quot;Fragments per group&quot;)
++        yield Integer(&quot;inodes_per_group&quot;, &quot;uint32&quot;, &quot;Inodes per group&quot;)
++        yield Integer(&quot;mtime&quot;, &quot;uint32&quot;, &quot;Mount time&quot;) #  {&quot;post&quot;: unixTimestamp}
++        yield Integer(&quot;wtime&quot;, &quot;uint32&quot;, &quot;Write time&quot;) #  {&quot;post&quot;: unixTimestamp}
++        yield Integer(&quot;mnt_count&quot;, &quot;uint16&quot;, &quot;Mount count&quot;)
++        yield Integer(&quot;max_mnt_count&quot;, &quot;int16&quot;, &quot;Max mount count&quot;)
++        yield String(&quot;magic&quot;, &quot;string[2]&quot;, &quot;Magic number (0x53EF)&quot;)
++        if self[&quot;magic&quot;].value != &quot;\x53\xEF&quot;:
++            raise ParserError(
++                &quot;Stream doesn't looks like EXT2/EXT3 partition &quot;
++                &quot;(invalid magic value)&quot;)
++        yield Integer(&quot;state&quot;, &quot;uint16&quot;, SuperBlock.state, &quot;File system state&quot;)
++        yield Enum(&quot;errors&quot;, &quot;uint16&quot;, SuperBlock.error_handling, &quot;Behaviour when detecting errors&quot;)
++        yield Integer(&quot;minor_rev_level&quot;, &quot;uint16&quot;, &quot;Minor revision level&quot;)
++        yield Integer(&quot;last_check&quot;, &quot;uint32&quot;, &quot;Time of last check&quot;) #  {&quot;post&quot;: unixTimestamp}
++        yield Integer(&quot;check_interval&quot;, &quot;uint32&quot;, &quot;Maximum time between checks&quot;) #  {&quot;post&quot;: self.postMaxTime}
++        yield Enum(&quot;creator_os&quot;, &quot;uint32&quot;, SuperBlock.os_name, &quot;Creator OS&quot;)        
++        yield Integer(&quot;rev_level&quot;, &quot;uint32&quot;, &quot;Revision level&quot;)
++        yield Integer(&quot;def_resuid&quot;, &quot;uint16&quot;, &quot;Default uid for reserved blocks&quot;)
++        yield Integer(&quot;def_resgid&quot;, &quot;uint16&quot;, &quot;Default guid for reserverd blocks&quot;)
++        yield Integer(&quot;first_ino&quot;, &quot;uint32&quot;, &quot;First non-reserved inode&quot;)
++        yield Integer(&quot;inode_size&quot;, &quot;uint16&quot;, &quot;Size of inode structure&quot;)
++        if self[&quot;inode_size&quot;].value != (68 + 15*4):
++            raise ParserError(
++                &quot;EXT2/EXT3 parser error: inode of size %s are not supported&quot; \
++                % self[&quot;inode_size&quot;].value)
++        yield Integer(&quot;block_group_nr&quot;, &quot;uint16&quot;, &quot;Block group # of this superblock&quot;)
++        yield Integer(&quot;feature_compat&quot;, &quot;uint32&quot;, &quot;Compatible feature set&quot;)
++        yield Integer(&quot;feature_incompat&quot;, &quot;uint32&quot;, &quot;Incompatible feature set&quot;)
++        yield Integer(&quot;feature_ro_compat&quot;, &quot;uint32&quot;, &quot;Read-only compatible feature set&quot;)
++        yield String(&quot;uuid&quot;, &quot;string[16]&quot;, &quot;128-bit uuid for volume&quot;)
++        yield String(&quot;volume_name&quot;, &quot;string[16]&quot;, &quot;Volume name&quot;)
++        yield String(&quot;last_mounted&quot;, &quot;string[64]&quot;, &quot;Directory where last mounted&quot;)
++        yield Integer(&quot;compression&quot;, &quot;uint32&quot;, &quot;For compression (algorithm usage bitmap)&quot;)
++        yield Integer(&quot;prealloc_blocks&quot;, &quot;uint8&quot;, &quot;Number of blocks to try to preallocate&quot;)
++        yield Integer(&quot;prealloc_dir_blocks&quot;, &quot;uint8&quot;, &quot;Number to preallocate for directories&quot;)
++        yield Integer(&quot;padding&quot;, &quot;uint16&quot;, &quot;Padding&quot;)
++        yield String(&quot;journal_uuid&quot;, &quot;string[16]&quot;, &quot;uuid of journal superblock&quot;)
++        yield Integer(&quot;journal_inum&quot;, &quot;uint32&quot;, &quot;inode number of journal file&quot;)
++        yield Integer(&quot;journal_dev&quot;, &quot;uint32&quot;, &quot;device number of journal file&quot;)
++        yield Integer(&quot;last_orphan&quot;, &quot;uint32&quot;, &quot;start of list of inodes to delete&quot;)
++        yield String(&quot;reserved&quot;, &quot;string[197]&quot;, &quot;Padding to the end of the block&quot;)
++
++        # Calculate number of groups
++        blocks_per_group = self[&quot;blocks_per_group&quot;].value
++        self.group_count = (self[&quot;blocks_count&quot;].value - self[&quot;first_data_block&quot;].value + (blocks_per_group - 1)) / blocks_per_group
++ 
++#    def postMaxTime(self, chunk):
++#        return humanDuration(chunk.value * 1000)
++
++class GroupDescriptors(FieldSet):
++    def __init__(self, parent, name, stream, start, count, description=None):
++        if description == None:
++            description = &quot;Group descriptors: %s items&quot; % count
++        FieldSet.__init__(self, parent, name, stream, description)
++        self.start = start
++        self.count = count
++
++    def createFields(self):
++        for index in range(0, self.count):
++            yield GroupDescriptor(self, &quot;group[]&quot;, self.stream, index)
++
++    def getGroup(self, index):
++        return self[&quot;group[%s]&quot; % (self.start + index)]
++
++class InodeTable(FieldSet):
++    def __init__(self, parent, name, stream, start, count, description=None):
++        if description == None:
++            description = &quot;Inode table: %s inodes&quot; % count
++        FieldSet.__init__(self, parent, name, stream, description)
++        self.start = start
++        self.count = count
++
++    def createFields(self):
++        for index in range(self.start, self.start+self.count):
++            yield Inode(self, &quot;inode[]&quot;, index, description=&quot;Inode %s&quot; % index)
++
++    def __getitem__(self, index):
++        index = index - self.start - 1
++        return self.getChunk(&quot;inode[%u]&quot; % index).getFilter()
++
++def testSuperblock(stream):
++    oldpos = stream.tell()
++    stream.seek(56, 1)
++    magic = stream.getN(2)    
++    stream.seek(oldpos)
++    return (magic == &quot;\x53\xEF&quot;)
++
++class Group(FieldSet):
++    def __init__(self, stream, parent, index, description=None):
++        if description == None:
++            description = &quot;Group %u&quot; % index
++        FieldSet.__init__(self, parent, name, stream, description)
++        self.index = index
++
++    def createFields(self):
++        group = self[&quot;../group_desc&quot;].getGroup(index)
++        superblock = self[&quot;/superblock&quot;]
++        block_size = self[&quot;/&quot;].block_size
++    
++        # Read block bitmap
++        self.superblock_copy = False
++        if testSuperblock(stream):
++            self.superblock_copy = True
++            yield SuperBlock(self, &quot;superblock_copy&quot;, self.stream, &quot;Superblock&quot;)
++        self.seek(group[&quot;block_bitmap&quot;] * block_size)
++            
++        count = superblock[&quot;blocks_per_group&quot;]
++        yield BlockBitmap(self, &quot;block_bitmap[]&quot;, self.stream, count, 0, &quot;Block bitmap&quot;)
++
++        # Read inode bitmap
++        assert (group[&quot;inode_bitmap&quot;] * block_size) == stream.tell()
++        count = superblock[&quot;inodes_per_group&quot;]
++        self.read(&quot;inode_bitmap[]&quot;, &quot;Inode bitmap&quot;, (InodeBitmap, &quot;Inode bitmap&quot;, count, 1), {&quot;size&quot;: count / 8})
++        addr = stream.tell() % 4096
++        if addr != 0:
++            addr = stream.tell() + (4096 - addr % 4096)
++            self.seek(addr)
++             
++        count = superblock[&quot;inodes_per_group&quot;]
++        size = superblock[&quot;inode_size&quot;] * count
++        inode_index = 1 + index * count
++        self.read(&quot;inode_table[]&quot;, &quot;Inode table&quot;, (InodeTable, inode_index, count), {&quot;size&quot;: size})
++
++        size = (index+1) * superblock[&quot;blocks_per_group&quot;] * block_size
++        if stream.getSize() &lt; size:
++            size = stream.getSize()
++        size = size - stream.tell() 
++        self.read(&quot;data&quot;, &quot;Data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++    def updateParent(self, chunk):
++        desc = &quot;Group %s: %s&quot; % (self.index, humanFilesize(self.getSize()))
++        if self.superblock_copy:
++            desc = desc + &quot; (with superblock copy)&quot;
++        chunk.description = desc 
++
++    def seek(self, to):
++        size = to - self.getStream().tell()
++        assert 0 &lt;= size
++        if 0 &lt; size:
++            self.read(&quot;raw[]&quot;, &quot;Raw&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++class EXT2_FS(FieldSet):
++    &quot;&quot;&quot;
++    Parse an EXT2 or EXT3 partition.
++
++    Attributes:
++       * block_size: Size of a block (in bytes)
++
++    Fields:
++       * superblock: Most important block, store most important informations
++       * ...
++    &quot;&quot;&quot;
++    mime_types = &quot;hachoir/fs-ext2&quot;
++
++    def __init__(self, parent, name, stream, description=&quot;EXT2 file system&quot;):
++        FieldSet.__init__(self, parent, name, stream, description)
++
++    def createFields(self):
++        # Skip something (what is stored here? MBR?) 
++        self.seek(1024) 
++        
++        # Read superblock
++        superblock = SuperBlock(self, &quot;superblock&quot;, self.stream)
++        yield superblock
++        self.block_size = 1024 &lt;&lt; superblock[&quot;log_block_size&quot;].value # in bytes
++
++        # Read groups' descriptor
++        self.seek(4096) 
++        groups = GroupDescriptors(self, &quot;group_desc&quot;, self.stream, 0, superblock.group_count)
++        yield groups
++
++        # Read groups
++        address = groups.getGroup(0)[&quot;block_bitmap&quot;].value * self.block_size * 8
++        self.seek(address)
++        for i in range(0, superblock.group_count):
++            self.read(&quot;group[]&quot;, &quot;Group&quot;, (Group, i))
++
++        # Padding (?)
++        size = stream.getSize() - stream.tell()
++        if size != 0:
++            self.read(&quot;end&quot;, &quot;End (raw)&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++    def seek(self, to):
++        size = to - self.getStream().tell()
++        assert 0 &lt;= size
++        if 0 &lt; size:
++            yield String(self, &quot;raw[]&quot;, &quot;string[%u]&quot; % size, raw)
++
++#    def readDirectory(self, inode):
++#        stream = self.getStream()
++#        block_index = 0
++#        while True:
++#            assert block_index &lt; 12
++#            block = inode[&quot;block[%u]&quot; % block_index]
++#            if block == 0:
++#                return
++#            self.seek(block * self.block_size)
++#
++#            total = 0
++#            while total &lt; self.block_size:
++#                entry = self.doRead(&quot;directory[]&quot;, &quot;Directory entry&quot;, (DirectoryEntry,))
++#                if entry[&quot;inode&quot;] == 0:
++#                    return
++#                total = total + entry.getSize()
++#            assert total == self.block_size
++#            block_index = block_index + 1
++
+
+Modified: haypo/hachoir/branches/hachoir-yield/generic/image.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/generic/image.py	2006-03-04 00:17:26 UTC (rev 421)
++++ haypo/hachoir/branches/hachoir-yield/generic/image.py	2006-03-04 00:18:07 UTC (rev 422)
+@@ -5,12 +5,12 @@
+         0x000000: &quot;Black&quot;,
+         0xFFFFFF: &quot;White&quot;
+     }
++    static_size = 3*8
+     
+-    def __init__(self, parent, name, description=None):
+-        FieldSet.__init__(self, parent, name, parent.stream, description)
++    def __init__(self, parent, name, stream, description=None):
++        FieldSet.__init__(self, parent, name, stream, description)
+         if self.description == None:
+             self.description = self.getColorName()
+-        self._size = 3
+ 
+     def createFields(self):
+         yield Integer(self, &quot;red&quot;, &quot;uint8&quot;, &quot;Red&quot;)
+@@ -28,11 +28,12 @@
+ class Palette(FieldSet):
+     def __init__(self, parent, name, nb_colors, description=None):
+         self.nb_colors = nb_colors
++        size = self.nb_colors * RGB.static_size
+         if description == None:
+             description = &quot;Palette of %u RGB colors&quot; % self.nb_colors
+-        FieldSet.__init__(self, parent, name, parent.stream, description=description)
++        FieldSet.__init__(self, parent, name, parent.stream, size=size, description=description)
+ 
+     def createFields(self):
+         for i in range(0, self.nb_colors):
+-            yield RGB(self, &quot;color[]&quot;)
++            yield RGB(self, &quot;color[]&quot;, self.stream)
+ 
+
+Modified: haypo/hachoir/branches/hachoir-yield/hachoir.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:17:26 UTC (rev 421)
++++ haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:18:07 UTC (rev 422)
+@@ -1,31 +1,49 @@
+ #!/usr/bin/env python
+ 
+-from file.image.png import PngFile, PngMetaData
+-from file.image.bmp import BmpFile, BmpMetaData
+-from file.image.pcx import PcxFile, PcxMetaData
++VERSION = &quot;0.2veryalpha&quot;
++
+ from stream.file import FileStream
+ from text_ui import displayFieldSet
+-import sys
++from plugin import loadPlugins, guessPlugin
++from log import log
++from error import error
++from mime import getStreamMime
++import sys, os
+ 
++def usage():
++    print &quot;Hachoir version %s&quot; % VERSION
++    print
++    print &quot;Usage: %s filename&quot; % sys.argv[0]
++
+ def main():
+-    if 2 &lt;= len(sys.argv):
+-        filename = sys.argv[1]
+-    else:
+-        filename = &quot;/home/haypo/exemple/png.png&quot;
++    root_dir = os.path.dirname(__file__)
++
++    # Create input stream (read filename from command line first argument)
++    if len(sys.argv) &lt; 2:
++        usage()
++        sys.exit(1)
++    filename = sys.argv[1]
+     stream = FileStream(open(filename, 'r'), filename)
+-    if filename.endswith(&quot;.png&quot;):
+-        png = PngFile(None, &quot;png_file&quot;, stream)
+-        print &quot;[Picture %s]&quot; % filename
+-        displayFieldSet(png, 3)
+-        meta = PngMetaData(png) ; print meta
+-    elif filename.endswith(&quot;.pcx&quot;):
+-        pcx = PcxFile(None, &quot;pcx_file&quot;, stream)
+-        displayFieldSet(pcx, 2)
+-        meta = PcxMetaData(pcx) ; print meta
++
++    # Load plugings
++    modules = loadPlugins(os.path.join(root_dir, &quot;file&quot;))
++    modules.sort()
++    log.info(&quot;Loaded: %u plugings (%s)&quot; % (len(modules), &quot;, &quot;.join(modules)))
++
++    # Look for right plugin
++    plugin = guessPlugin(stream, filename, None)
++    if plugin != None:
++        # Create field set and display it
++        field_set = plugin(None, &quot;file&quot;, stream)
++        displayFieldSet(field_set, None)
++#        meta = PngMetaData(png) ; print meta
++#        meta = PcxMetaData(pcx) ; print meta
++#        meta = BmpMetaData(bmp) ; print meta
+     else:
+-        bmp = BmpFile(None, &quot;bmp_file&quot;, stream)
+-        displayFieldSet(bmp)
+-        meta = BmpMetaData(bmp) ; print meta
++        msg  = &quot;Sorry, can't find plugin for file \&quot;%s\&quot;!&quot; % filename
++        mimes = [ mime[0] for mime in getStreamMime(stream, filename) ]
++        msg += &quot;\n\nFile mimes: %s&quot; % &quot;, &quot;.join(mimes)
++        error(msg)
+ 
+ if __name__ == &quot;__main__&quot;:
+     main()
+
+Added: haypo/hachoir/branches/hachoir-yield/log.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/log.py	2006-03-04 00:17:26 UTC (rev 421)
++++ haypo/hachoir/branches/hachoir-yield/log.py	2006-03-04 00:18:07 UTC (rev 422)
+@@ -0,0 +1,93 @@
++#!/usr/bin/env python
++# -*- coding: UTF-8 -*-
++
++import time
++
++class Log:
++    LOG_INFO   = 0
++    LOG_WARN   = 1
++    LOG_ERROR  = 2
++
++    def __init__(self):
++        self.__buffer = {}
++        self.__file = None
++        self.use_print = True
++        self.on_new_message = None # (level, prefix, text)
++
++    def setFilename(self, filename):
++        &quot;&quot;&quot;
++        Use a file to store all messages. The
++        UTF-8 encoding will be used. Write an informative
++        message if the file can't be created.
++
++        @param filename: C{L{string}}
++        &quot;&quot;&quot;
++
++        try:
++            import codecs
++            self.__file = codecs.open(filename, &quot;w&quot;, &quot;utf-8&quot;)
++        except IOError, errno:
++            if errno[0] == 2:
++                self.__file = None
++                self.info(&quot;Log.setFilename(%s) fails : no such file.&quot; % filename)
++                return
++            raise
++
++    def getLevelPrefix(self, level):
++        &quot;&quot;&quot;
++        String prefix which depends on message level.
++        Eg. information returns &quot;[info]&quot;.
++        @return: C{str}
++        &quot;&quot;&quot;
++        if level==Log.LOG_WARN: return &quot;[warn]&quot;
++        if level==Log.LOG_ERROR: return &quot;[err!]&quot;
++        return &quot;[info]&quot;
++
++    def newMessage(self, level, str):
++        &quot;&quot;&quot;
++        Write a new message : append it in the buffer,
++        display it to the screen (if needed), and write
++        it in the log file (if needed).
++
++        @param level: Message level.
++        @type level: C{int}
++        @param str: Message content.
++        @type str: C{str}
++        &quot;&quot;&quot;
++
++        if not self.__buffer.has_key(level):
++            self.__buffer[level] = [str]
++        else:
++            self.__buffer[level].append(str)
++        prefix = self.getLevelPrefix(level)            
++        if self.use_print:
++            print &quot;%s %s&quot; % (prefix, str)
++        if self.__file:
++            self.__file.write(u&quot;%s - %s %s\n&quot; \
++                % (time.strftime(&quot;%Y-%M-%d %H:%M:%S&quot;),
++                   prefix, str))
++        if self.on_new_message:
++            self.on_new_message (level, prefix, str)
++
++    def info(self, str):
++        &quot;&quot;&quot;
++        New informative message.
++        @type str: C{str}
++        &quot;&quot;&quot;
++        self.newMessage(Log.LOG_INFO, str)
++
++    def warning(self, str):
++        &quot;&quot;&quot;
++        New warning message.
++        @type str: C{str}
++        &quot;&quot;&quot;
++        self.newMessage(Log.LOG_WARN, str)
++
++    def error(self, str):
++        &quot;&quot;&quot;
++        New error message.
++        @type str: C{str}
++        &quot;&quot;&quot;
++        self.newMessage(Log.LOG_ERROR, str)
++
++log = Log()        
+
+
+Property changes on: haypo/hachoir/branches/hachoir-yield/log.py
+___________________________________________________________________
+Name: svn:mime-type
+   + text/script
+
+Added: haypo/hachoir/branches/hachoir-yield/mime.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/mime.py	2006-03-04 00:17:26 UTC (rev 421)
++++ haypo/hachoir/branches/hachoir-yield/mime.py	2006-03-04 00:18:07 UTC (rev 422)
+@@ -0,0 +1,206 @@
++&quot;&quot;&quot;
++MIME type detection using libmagic library.
++
++See also:
++- <A HREF="ftp://ftp.astron.com/pub/file/">ftp://ftp.astron.com/pub/file/</A> (libmagic)
++- <A HREF="http://www.demonseed.net/~jp/code/magic.py">http://www.demonseed.net/~jp/code/magic.py</A> (100% Python)
++- <A HREF="http://svn.gna.org/viewcvs/castor/trunk/lib/mime.php?view=markup">http://svn.gna.org/viewcvs/castor/trunk/lib/mime.php?view=markup</A> (PHP)
++- files in /usr/share/misc/file/* (on Unix/BSD systems)
++&quot;&quot;&quot;
++
++import os, sys, stat, re
++from error import warning
++
++_mime_by_ext = {
++    '.gz':  'application/x-gzip',
++    '.ico': 'image/x-ico'
++}
++
++# Regular expression used to split a list of MIME types
++_mime_splitter_regex = re.compile(&quot;[^/]+/[^; ]+(?:;[^;]+)*&quot;)
++
++def getGuessFunc():
++    &quot;&quot;&quot;
++    Find a function to guess MIME type of a buffer. Try to load libmagic
++    (python module &quot;magic&quot;), or use internal fallback.
++    @return: Function used to guess MIME type
++    @rtype: C{func}
++    &quot;&quot;&quot;
++    try:
++        path = os.path.dirname(__file__)
++        sys.path.append(path)
++        import magic
++        func = magic.open(magic.MAGIC_MIME)
++        func.load()
++        return func.buffer
++    except ImportError:
++        warning(&quot;Warning: The library libmagic for Python is unavailable. &quot;
++        &quot;Using internal fallback engine.&quot;)
++        from fallback.magic import whatis
++        return whatis
++
++guessMime = getGuessFunc()
++
++def getFileMime(realname, filename=None):
++    &quot;&quot;&quot; Guess MIME type of a file.
++
++    @parameter realname: Physical filename (used to open the file)
++    @type host: C{str}
++    @parameter filename: Filename used to detect MIME type using its extension
++    @type host: C{str}
++    @return: MIME type, or None if fails
++    @rtype: C{str}
++    &quot;&quot;&quot;
++    if filename == None:
++        filename = realname
++    mode = os.stat(filename)[stat.ST_MODE]
++    assert not stat.S_ISDIR(mode) and not stat.S_ISLNK(mode)
++    
++    content = file(filename, &quot;rb&quot;).read(4096)
++    return getBufferMime(content, filename)
++
++def getMimeByExt(ext):    
++    &quot;&quot;&quot; Guess MIME type of a file using its extension
++
++    @parameter ext: Filename extension (eg. &quot;.zip&quot;)
++    @type: C{str}
++    @return: MIME type, or None if fails
++    @rtype: C{str}
++    &quot;&quot;&quot;
++    return _mime_by_ext.get(ext, None)
++
++def getStreamMime(stream, filename):
++    &quot;&quot;&quot; Guess MIME type of a stream using first 4 KB
++
++    @parameter stream: Stream containing data
++    @type: C{Stream}
++    @parameter filename: Filename of the stream source, can be None
++    @type: C{str}
++    @return: MIME type, or None if fails
++    @rtype: C{str}
++    &quot;&quot;&quot;
++
++    oldpos = stream.tell()
++    stream.seek(0)
++    size = stream.getSize()
++    if 4096 &lt; size:
++        size = 4096
++    data = stream.getN(size)
++    stream.seek(oldpos)
++    return getBufferMime(data, filename)
++
++def getAnotherBufferMime(content):    
++    &quot;&quot;&quot; Another method (L{guessMime}) to guess MIME type. This
++    function is used for uncommon MIME types like Gimp picture
++    (image/x-xcf).
++
++    @parameter content: First 4 KB of file/stream content.
++    @type: C{str}
++    @return: MIME type, or None if fails
++    @rtype: C{str}
++    &quot;&quot;&quot;
++
++    if content[:2] == &quot;\x4d\x4d&quot; and content[6:12] == &quot;\x02\0\x0A\0\0\0&quot;:
++        return &quot;image/x-3ds&quot;
++
++    if 2 &lt;= len(content) and ord(content[0]) == 31 and ord(content[1]) == 139:
++        return &quot;application/x-gzip&quot;
++
++    # Text
++    if content[0:4] == &quot;%PDF&quot;:
++        return &quot;application/pdf&quot;
++
++    # Pictures
++    if content[0:14] == &quot;gimp xcf file\0&quot;:
++        return &quot;image/x-xcf&quot;
++
++    if content[0:2] == &quot;\0\0&quot; \
++    and content[2:4] in (&quot;\x01\0&quot;, &quot;\x02\0&quot;) \
++    and content[9] == &quot;\0&quot;:
++        return &quot;image/x-ico&quot;
++
++    if content[0] == &quot;\x0A&quot; \
++    and content[1] in &quot;\x00\x02\x03\x04\x05&quot; \
++    and content[64] == &quot;\0&quot;:
++        return &quot;image/x-pcx&quot;
++
++    # File system        
++    if 4096 &lt;= len(content) \
++    and content[1080:1082] == &quot;\x53\xEF&quot; \
++    and content[1116:1120] == &quot;\x04\x00\x00\x00&quot;:
++        return &quot;hachoir/fs-ext2&quot;
++        
++    if 512 &lt;= len(content) \
++    and content[0] in &quot;\xEB\xFA&quot; \
++    and content[510:512] == &quot;\x55\xAA&quot; \
++    and content[446] in &quot;\x00\x80&quot; \
++    and content[446+16*1] in &quot;\x00\x80&quot; \
++    and content[446+16*2] in &quot;\x00\x80&quot; \
++    and content[446+16*3] in &quot;\x00\x80&quot;:
++        return &quot;hachoir/master-boot-record&quot;
++    
++    # Worms2 files
++    if content[0:4] == &quot;IMG\x1A&quot;:
++        return &quot;hachoir/worms2-image&quot;
++    if content[0:4] == &quot;SPR\x1A&quot;:
++        return &quot;hachoir/worms2-sprite&quot;
++    if content[0:4] == &quot;FNT\x1A&quot;:
++        return &quot;hachoir/worms2-font&quot;
++    if content[0:4] == &quot;DIR\x1A&quot;:
++        return &quot;hachoir/worms2-directory&quot;
++    return None        
++
++def splitMimes(mimes):
++    &quot;&quot;&quot; Split flat MIME type string into a list in which each entry has
++    the following format: [&quot;type&quot;, {&quot;key1&quot;: value1, &quot;key2&quot;: value2, ...}]
++
++    Examples:
++    - &quot;text/plain; encoding=latin-1&quot; =&gt; [[&quot;text/plain&quot;, {&quot;encoding&quot;: latin-1&quot;}]
++    - &quot;text/plain, text/xml&quot; =&gt; [[&quot;text/plain&quot;, {}],[&quot;text/xml&quot;, {}]]
++    - &quot;text/plain; charset=ISO-8859-1; format=flowed&quot;
++      =&gt; [['text/plain', {'charset': 'ISO-8859-1', 'format': 'flowed'}]]
++
++    @parameter mimes: Flat MIME type string
++    @type: C{str}
++    @return: MIME type in a list
++    @rtype: C{list}
++    &quot;&quot;&quot;
++
++    mimes = _mime_splitter_regex.findall(mimes)    
++    
++    mime_list = []
++    for mime in mimes:
++        parts = mime.strip(&quot; ,&quot;).split(&quot;;&quot;)
++        mime = parts[0]
++        parts = [ item.strip() for item in parts[1:] ]
++        values = {}
++        for part in parts:
++            if part != &quot;&quot;:
++                split_part = part.split(&quot;=&quot;, 1)             
++                values[ split_part[0] ] = split_part[1]
++        mime_list.append([mime, values])
++    return mime_list
++
++def getBufferMime(content, filename):
++    &quot;&quot;&quot; Main function used to guess the MIME types. It calls L{guessMime},
++    and then L{getAnotherBufferMime} if needed.
++
++    @parameter content: First 4 KB of file/stream content.
++    @type: C{str}
++    @parameter filename: Filename of the file/stream, can be None.
++    @type: C{str}
++    @return: MIME type list (same format than L{splitMimes} result)
++    @rtype: C{str}
++    &quot;&quot;&quot;
++
++    mimes = guessMime(content)
++    mimes = splitMimes(mimes)
++    if len(mimes) == 0 \
++    or mimes[0][0] in ('application/octet-stream', 'image/tiff'):
++        new_mime = getAnotherBufferMime(content)
++        if new_mime == None and filename != None:
++            ext = os.path.splitext(filename)[1]
++            new_mime = getMimeByExt(ext)
++        if new_mime != None:
++            mimes = ((new_mime, {}),)
++    return mimes
+
+Added: haypo/hachoir/branches/hachoir-yield/plugin.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/plugin.py	2006-03-04 00:17:26 UTC (rev 421)
++++ haypo/hachoir/branches/hachoir-yield/plugin.py	2006-03-04 00:18:07 UTC (rev 422)
+@@ -0,0 +1,82 @@
++import re, os
++from stat import S_ISDIR, ST_MODE
++from mime import getFileMime, getStreamMime
++from error import warning
++
++regex_plugin_filename = re.compile(r&quot;^([a-z0-9_]+)\.py$&quot;)
++
++def loadPluginFromFile(module_path, loaded):
++    try:
++        module = __import__(module_path)
++        for get in module_path.split(&quot;.&quot;)[1:]:
++            module = getattr(module, get)
++    except Exception, msg:
++        warning(&quot;Error while loading the plugin \&quot;%s\&quot;: %s&quot; \
++            % (module_path, msg))
++        return
++    for attr in module.__dict__:
++        item = getattr(module, attr)
++        if hasattr(item, &quot;mime_types&quot;):
++            registerPlugin(item, item.mime_types)
++            loaded.append(module_path)
++
++def loadPlugins(dir, module_path=None, loaded=[]):
++    &quot;&quot;&quot;
++    Load all plugings from directory dir.
++
++    Do not set module_path or loaded, they are used internally.
++    &quot;&quot;&quot;
++    if module_path == None:
++        module_path = os.path.basename(dir)
++    for file in os.listdir(dir):
++        fullpath = os.path.join(dir, file)
++        if S_ISDIR(os.stat(fullpath)[ST_MODE]):
++            loadPlugins(fullpath, module_path+&quot;.&quot;+file, loaded)
++        else:
++            m = regex_plugin_filename.match(file)
++            if m != None and m.group(1) != &quot;__init__&quot;:
++                path = module_path + &quot;.&quot; + m.group(1)
++                loadPluginFromFile(path, loaded)
++    return loaded                    
++
++def guessPlugin(stream, filename, default=None):
++    return getPluginByStream(stream, filename, default)
++
++def getPluginByMime(mimes, default=None):
++    global hachoir_plugins
++    plugins = []
++    for mime in mimes:
++        mime = mime[0]
++        if mime in hachoir_plugins:
++            for plugin in hachoir_plugins[mime]:
++                if plugin not in plugins:
++                    plugins.append(plugin)
++    if len(plugins)==0:
++        return default
++    if 1&lt;len(plugins):
++        plist = []
++        for plugin in plugins:
++            plist.append(plugin.__name__)
++        plist = &quot;, &quot;.join(plist)
++        warning(&quot;More than one plugin have same MIME:\n%s&quot; % plist)
++    return plugins[0]
++    
++def getPluginByStream(stream, filename, default=None):
++    mime = getStreamMime(stream, filename)
++    return getPluginByMime(mime, default)
++
++def getPluginByFile(filename, realname=None, default=None):
++    mime = getFileMime(filename, realname)
++    return getPluginByMime(mime, default)
++    
++def registerPlugin(filter_class, mimes):
++    global hachoir_plugins
++    if isinstance(mimes, str):
++        mimes = [mimes]
++    for mime in mimes:
++        if mime in hachoir_plugins:
++            hachoir_plugins[mime].append(filter_class)
++        else:
++            hachoir_plugins[mime] = [filter_class]
++
++hachoir_plugins = {} 
+
+Modified: haypo/hachoir/branches/hachoir-yield/text_ui.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-03-04 00:17:26 UTC (rev 421)
++++ haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-03-04 00:18:07 UTC (rev 422)
+@@ -1,8 +1,12 @@
+ def displayFieldSet(field_set, max_depth=2, depth=0):
++    parent_details = False
+     indent = &quot; &quot; * (3*depth)
+     addr = field_set.absolute_address
+-    print &quot;%s--- %s --- (addr=%u.%u, size=%s bits)&quot; \
+-        % (indent, field_set.name, addr/8, addr%8, field_set.size)
++    text = &quot;%s--- %s ---&quot; % (indent, field_set.name) 
++    if parent_details:
++        text += &quot;(addr=%u.%u, size=%s bits)&quot; \
++            % (addr/8, addr%8, field_set.size)
++    print text
+     if max_depth == None or depth &lt; max_depth:
+         for field in field_set:
+             if not field.is_field_set:
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000325.html">[Happyboom-svn] r421 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field
+</A></li>
+	<LI>Next message: <A HREF="000326.html">[Happyboom-svn] r423 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file/system
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#342">[ date ]</a>
+              <a href="thread.html#342">[ thread ]</a>
+              <a href="subject.html#342">[ subject ]</a>
+              <a href="author.html#342">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

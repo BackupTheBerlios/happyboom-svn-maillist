@@ -1,0 +1,335 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r248 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r248%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511030426.jA34Qvpk002606%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000154.html">
+   <LINK REL="Next"  HREF="000156.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r248 - in haypo/hachoir: . plugins</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r248%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511030426.jA34Qvpk002606%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r248 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Thu Nov  3 05:26:57 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000154.html">[Happyboom-svn] r247 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000156.html">[Happyboom-svn] r249 - haypo/hachoir
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#155">[ date ]</a>
+              <a href="thread.html#155">[ thread ]</a>
+              <a href="subject.html#155">[ subject ]</a>
+              <a href="author.html#155">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-03 05:26:54 +0100 (Thu, 03 Nov 2005)
+New Revision: 248
+
+Added:
+   haypo/hachoir/plugins/pdf.py
+Modified:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/filter.py
+   haypo/hachoir/hachoir_class.py
+   haypo/hachoir/plugins/jpeg.py
+   haypo/hachoir/tools.py
+   haypo/hachoir/ui_popup.py
+Log:
+StringChunk can be a file line (ended by \n, \r\n, \r or ... auto). Add PDF filter.
+
+
+Modified: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-11-02 05:48:48 UTC (rev 247)
++++ haypo/hachoir/chunk.py	2005-11-03 04:26:54 UTC (rev 248)
+@@ -2,7 +2,7 @@
+ import re
+ import types
+ from format import checkFormat, splitFormat
+-from error import error
++from error import warning, error
+ from tools import convertDataToPrintableString
+ 
+ class Chunk(object):
+@@ -99,19 +99,48 @@
+ 
+ class StringChunk(Chunk):
+     def __init__(self, id, description, stream, str_type, parent):
++        assert str_type in (&quot;C&quot;, &quot;UnixLine&quot;, &quot;WindowsLine&quot;, &quot;MacLine&quot;, &quot;AutoLine&quot;)
+         Chunk.__init__(self, id, description, stream, stream.tell(), 0, parent)
+         self._str_type = str_type
+         self._read()
+ 
+     def getFormat(self):
+-        return &quot;c-string&quot;
++        names = {
++            &quot;C&quot;: &quot;c-string&quot;,
++            &quot;MacLine&quot;: &quot;mac line&quot;,
++            &quot;UnixLine&quot;: &quot;unix line&quot;,
++            &quot;AutoLine&quot;: &quot;line&quot;,
++            &quot;WindowsLine&quot;: &quot;windows line&quot;
++        }
++        assert self._str_type in names
++        return names[self._str_type]
+ 
+     def _read(self):
+-#        if self._str_type == &quot;C&quot;: ...
+         self._stream.seek(self.addr)
+-        self._size = self._stream.searchLength(&quot;\0&quot;, True)
++        if self._str_type == &quot;UnixLine&quot;:
++            end = &quot;\n&quot;
++        elif self._str_type == &quot;WindowsLine&quot;:
++            end = &quot;\r\n&quot;
++        elif self._str_type == &quot;MacLine&quot;:
++            end = &quot;\r&quot;
++        elif self._str_type == &quot;AutoLine&quot;:
++            end = &quot;\r&quot;
++        else: 
++            # Type: C string
++            end = &quot;\0&quot;
++        self._size = self._stream.searchLength(end, True)
+         assert self._size != -1
+-        self.str = self._stream.getN(self._size-1)
++        if self._str_type == &quot;AutoLine&quot;:
++            self._stream.seek(self.addr+self._size)
++            try:
++                next = self._stream.getN(1)
++                if next == '\n':
++                    self._size = self._size + 1
++                    end = end+&quot;\n&quot;
++            except Exception, err:
++                warning(&quot;Warning while getting end of line of \&quot;auto line\&quot;: %s&quot; % err)
++        self._stream.seek(self.addr)
++        self.str = self._stream.getN(self._size - len(end))
+ 
+     def update(self):
+         Chunk.update(self)
+@@ -122,7 +151,10 @@
+     value = property(getValue)
+ 
+     def getDisplayData(self):
+-        return convertDataToPrintableString(self.str)
++        if self.display != None:
++            return self.display
++        else:
++            return convertDataToPrintableString(self.str)
+         
+ class FormatChunkCache:
+     def __init__(self, chunk):
+@@ -199,8 +231,6 @@
+         else:
+             size = getattr(self._parent, id)
+         return str(size)
+-
+-    def getFormat(self): return self.__format
+     
+     def convertToStringSize(self, size):
+         self.__format = &quot;!%ss&quot; % size
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-11-02 05:48:48 UTC (rev 247)
++++ haypo/hachoir/filter.py	2005-11-03 04:26:54 UTC (rev 248)
+@@ -213,7 +213,8 @@
+             addr = self.getAddr()
+         stream = self.getStream()
+         stream.seek(addr)
+-        str_chunk = StringChunk(&quot;str&quot;, &quot;String&quot;, stream, str_type, self)
++        id = self.getUniqChunkId(&quot;str&quot;)
++        str_chunk = StringChunk(id, &quot;String&quot;, stream, str_type, self)
+         self._appendChunk(str_chunk, can_truncate=True, position=pos)
+         str_chunk.postProcess()
+         before_chunk.addr = before_chunk.addr + str_chunk.size
+@@ -325,16 +326,21 @@
+         return chunk
+ 
+     def readArray(self, id, entry_class, description, end_func): 
++        &quot;&quot;&quot;
++        end_func: def isEnd(stream, array, last_filter)
++
++        &quot;&quot;&quot;
+         filter = ArrayFilter(id, description, self._stream, self, entry_class, end_func)
+         chunk = self.addFilter(id, filter)
+         chunk.postProcess()
+         return chunk
+     
+-    def readString(self, id, format, description):
++    def readString(self, id, format, description, post=None):
+         &quot;&quot;&quot; Returns chunk &quot;&quot;&quot;
+         chunk = StringChunk(id, description, self._stream, format, self)
+         self._appendChunk(chunk)
+         self._stream.seek(chunk.addr + chunk.size)
++        chunk.post_process = post
+         chunk.postProcess()
+         return chunk
+     
+
+Modified: haypo/hachoir/hachoir_class.py
+===================================================================
+--- haypo/hachoir/hachoir_class.py	2005-11-02 05:48:48 UTC (rev 247)
++++ haypo/hachoir/hachoir_class.py	2005-11-03 04:26:54 UTC (rev 248)
+@@ -4,6 +4,7 @@
+ from default import DefaultFilter, displayDefault
+ from user_filter import UserFilterDescriptor, loadUserFilter
+ from error import error
++from tools import getBacktrace
+ 
+ class Hachoir:
+     instance = None
+@@ -111,7 +112,8 @@
+             compiled = compile(script, self.script, 'exec')
+             exec compiled
+         except Exception, msg:
+-            error(&quot;Exception while loading script \&quot;%s\&quot;:\n%s&quot; % (filename, msg))
++            error(&quot;Exception while loading script \&quot;%s\&quot;:\n%s\n%s&quot; \
++                % (filename, msg, getBacktrace()))
+ 
+     def run(self, filename):
+         if self.script:
+
+Modified: haypo/hachoir/plugins/jpeg.py
+===================================================================
+--- haypo/hachoir/plugins/jpeg.py	2005-11-02 05:48:48 UTC (rev 247)
++++ haypo/hachoir/plugins/jpeg.py	2005-11-03 04:26:54 UTC (rev 248)
+@@ -15,8 +15,12 @@
+         self.read(&quot;ver_maj&quot;, &quot;!B&quot;, &quot;Major version&quot;)
+         self.read(&quot;ver_min&quot;, &quot;!B&quot;, &quot;Minor version&quot;)
+         self.read(&quot;units&quot;, &quot;!1B&quot;, &quot;Units (=0)&quot;)
+-        self.read(&quot;x_density&quot;, &quot;!H&quot;, &quot;X density&quot;)
+-        self.read(&quot;y_density&quot;, &quot;!H&quot;, &quot;Y density&quot;)
++        if self.units == 0:
++            self.read(&quot;aspect_x&quot;, &quot;!H&quot;, &quot;Aspect ratio (X)&quot;)
++            self.read(&quot;aspect_y&quot;, &quot;!H&quot;, &quot;Aspect ratio (Y)&quot;)
++        else:
++            self.read(&quot;x_density&quot;, &quot;!H&quot;, &quot;X density&quot;)
++            self.read(&quot;y_density&quot;, &quot;!H&quot;, &quot;Y density&quot;)
+         self.read(&quot;thumb_w&quot;, &quot;!B&quot;, &quot;Thumbnail width&quot;)
+         self.read(&quot;thumb_h&quot;, &quot;!1B&quot;, &quot;Thumbnail height&quot;)
+         thumb = self.thumb_w * self.thumb_h
+
+Added: haypo/hachoir/plugins/pdf.py
+===================================================================
+--- haypo/hachoir/plugins/pdf.py	2005-11-02 05:48:48 UTC (rev 247)
++++ haypo/hachoir/plugins/pdf.py	2005-11-03 04:26:54 UTC (rev 248)
+@@ -0,0 +1,51 @@
++from filter import Filter
++from plugin import registerPlugin
++import re
++from tools import convertDataToPrintableString
++
++def isEnd(stream, array, last):
++    return stream.eof()
++
++def stripLine(chunk):
++    return convertDataToPrintableString(chunk.value.strip())
++
++class PdfObject(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;value&quot;, &quot;&quot;, stream, parent)
++        n = 0
++        while not stream.eof():
++            chunk = self.readString(&quot;line[]&quot;, &quot;AutoLine&quot;, &quot;&quot;, post=stripLine)
++            if chunk.value.strip() == &quot;&gt;&gt;&quot;:
++                break
++            n = n + 1
++
++class PdfXref(Filter):
++    def __init__(self, stream, parent, nb_items):
++        Filter.__init__(self, &quot;id&quot;, &quot;&quot;, stream, parent)
++        n = 0
++        while n&lt;nb_items and not stream.eof():
++            chunk = self.readString(&quot;line[]&quot;, &quot;AutoLine&quot;, &quot;&quot;, post=stripLine)
++            n = n + 1
++
++class PdfFile(Filter):
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;id&quot;, &quot;&quot;, stream, parent)
++        self.readString(&quot;version&quot;, &quot;AutoLine&quot;, &quot;PDF version&quot;)
++        while not stream.eof():
++            try:
++                chunk = self.readString(&quot;line[]&quot;, &quot;AutoLine&quot;, &quot;&quot;, post=stripLine)
++                value = chunk.value.strip()
++                if re.match(&quot;^\&lt;\&lt;&quot;, value) != None:
++                    self.readChild(&quot;data[]&quot;, PdfObject)
++                elif value == &quot;stream&quot;:
++                    break
++                else:
++                    m = re.match(&quot;^[0-9]+ ([0-9]+)$&quot;, value)
++                    if m != None:
++                        nb_ref = int(m.group(1))
++                        self.readChild(&quot;xref&quot;, PdfXref, nb_ref)
++            except Exception, err:
++                print &quot;Exception: %s&quot; % err
++                break
++
++registerPlugin(&quot;^.*\.(PDF|pdf)$&quot;, &quot;PDF document file&quot;, PdfFile, None)
+
+Modified: haypo/hachoir/tools.py
+===================================================================
+--- haypo/hachoir/tools.py	2005-11-02 05:48:48 UTC (rev 247)
++++ haypo/hachoir/tools.py	2005-11-03 04:26:54 UTC (rev 248)
+@@ -15,7 +15,8 @@
+             if c in know:
+                 display = display + know[c]
+             else:
+-                display = display + &quot;\\x%02X&quot; % ord(c)
++#                display = display + &quot;\\x%02X&quot; % ord(c)
++                display = display + &quot;.&quot;
+         elif c in string.printable:
+             display = display + c
+         else:
+
+Modified: haypo/hachoir/ui_popup.py
+===================================================================
+--- haypo/hachoir/ui_popup.py	2005-11-02 05:48:48 UTC (rev 247)
++++ haypo/hachoir/ui_popup.py	2005-11-03 04:26:54 UTC (rev 248)
+@@ -81,7 +81,9 @@
+         self.chunk.getParent().addNewFilter(self.chunk, id, size, desc)
+ 
+     def onAddString(self, event):
+-        str_type = &quot;C&quot;
++        # TODO: Ask string type, id and description
++        str_type = &quot;MacLine&quot;
++#        str_type = &quot;C&quot;
+         assert issubclass(self.chunk.__class__, FormatChunk)
+         self.chunk.getParent().addString(str_type, self.chunk)
+         
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000154.html">[Happyboom-svn] r247 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000156.html">[Happyboom-svn] r249 - haypo/hachoir
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#155">[ date ]</a>
+              <a href="thread.html#155">[ thread ]</a>
+              <a href="subject.html#155">[ subject ]</a>
+              <a href="author.html#155">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

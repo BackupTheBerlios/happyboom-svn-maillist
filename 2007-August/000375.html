@@ -1,0 +1,432 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r471 - haypo
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2007-August/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r471%20-%20haypo&In-Reply-To=%3C200708212058.l7LKwujA005395%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000374.html">
+   <LINK REL="Next"  HREF="000376.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r471 - haypo</H1>
+    <B>haypo at mail.berlios.de</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r471%20-%20haypo&In-Reply-To=%3C200708212058.l7LKwujA005395%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r471 - haypo">haypo at mail.berlios.de
+       </A><BR>
+    <I>Tue Aug 21 22:58:56 CEST 2007</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000374.html">[Happyboom-svn] r470 - haypo
+</A></li>
+        <LI>Next message: <A HREF="000376.html">[Happyboom-svn] r472 - /
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#375">[ date ]</a>
+              <a href="thread.html#375">[ thread ]</a>
+              <a href="subject.html#375">[ subject ]</a>
+              <a href="author.html#375">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2007-08-21 22:58:53 +0200 (Tue, 21 Aug 2007)
+New Revision: 471
+
+Removed:
+   haypo/apache_log.py
+   haypo/evolution_set_smtp.py
+   haypo/mediawiki/
+   haypo/poilu/
+   haypo/trouphp/
+   haypo/turing/
+Log:
+Remove old projects
+
+
+Deleted: haypo/apache_log.py
+===================================================================
+--- haypo/apache_log.py	2007-08-21 17:12:19 UTC (rev 470)
++++ haypo/apache_log.py	2007-08-21 20:58:53 UTC (rev 471)
+@@ -1,242 +0,0 @@
+-#!/usr/bin/python
+-# -*- coding: iso-8859-1 -*-
+-#
+-# Python script to parse Apache log file
+-# Creation: 21 septembre 2005
+-# Author: Victor Stinner
+-
+-import re, time, sys, traceback
+-
+-class ApacheLogParser:
+-    def __init__(self):
+-        # String like &quot;abc&quot; or &quot;a\&quot;bc&quot; or just &quot;&quot;
+-        match_string = r&quot;\&quot;((?:[^\&quot;]|\\\&quot;)*)\&quot;&quot;
+-
+-        # Regex matching one line
+-        regex  = r&quot;^([^ ]+) &quot; # Origin
+-        regex += r&quot;([^ ]+) &quot; # Host
+-        regex += r&quot;([a-z]+|-) &quot; # User
+-        regex += r&quot;\[([^]]+)\] &quot; # Date
+-        regex += r&quot;\&quot;(POST|GET|HEAD) ([^ ]+) HTTP/1\.[01]\&quot; &quot; # Method, Url 
+-        regex += r&quot;([0-9]{3}) ([0-9]+|-) &quot; # Code, Size
+-        regex += match_string+&quot; &quot; # Referrer
+-        
+-        match_string = r&quot;\&quot;([^\&quot;]*)\&quot;&quot;
+-        regex += match_string+&quot;$&quot; # Browser string
+-        
+-        self._regex = re.compile(regex)
+-        self.handler = self.processLine
+-
+-    def processLine(self, filename, line_number, line, info):
+-        print &quot;Line %u: %s %s&quot; % (line_number, info[&quot;method&quot;], info[&quot;url&quot;])
+-
+-    def parseLine(self, filename, line_number, line):
+-        try:
+-            m = self._regex.search(line)
+-            if m == None:
+-                print &quot;Can't parse %s:%u:\n%s&quot; % (filename, line_number, line)
+-                return
+-            origin, host, user, date, method, url, code, size, referrer, browser = m.groups()
+-            kw = { \
+-                &quot;origin&quot;: origin,
+-                &quot;host&quot;: host,
+-                &quot;user&quot;: user,
+-                &quot;date&quot;: date,
+-                &quot;method&quot;: method,
+-                &quot;url&quot;: url,
+-                &quot;code&quot;: int(code),
+-                &quot;size&quot;: size,
+-                &quot;referrer&quot;: referrer,
+-                &quot;browser&quot;: browser}
+-            self.handler(filename, line_number, line, kw)
+-        except KeyboardInterrupt:
+-            print &quot;Interrupt line: %s&quot; % line
+-            raise
+-
+-    def parseFile(self, filename):
+-        f = open(filename, &quot;r&quot;)
+-
+-        data = f.read()
+-        data = data.split(&quot;\n&quot;)
+-        if data[-1]==&quot;&quot;: del data[-1]
+-        
+-        line_number = 1
+-        print &quot;Load file %s ...&quot; % filename
+-        try:
+-            nb_lines = len(data)
+-#            t = time.time()
+-            for line in data:
+-#                if 1.0 &lt; time.time() - t:
+-#                    t = time.time()
+-#                    progress = int( (line_number-1)*100/nb_lines )
+-#                    print &quot;Progress: %s%%&quot; % (progress)
+-                self.parseLine(filename, line_number, line)
+-                line_number += 1
+-            print &quot;File loaded.&quot;
+-        except KeyboardInterrupt:
+-            print &quot;Load interrupted (CTRL+C).&quot;
+-            traceback.print_exc()
+-            sys.exit(1)
+-
+-    def result(self):
+-        return self.origin
+-
+-class ApacheLogParser_Stat(ApacheLogParser):
+-    def __init__(self, host):
+-        ApacheLogParser.__init__(self)
+-        self.host = host
+-        self.regex_host = re.compile(&quot;^&quot;+host+&quot;(.*)$&quot;)
+-        self.stat_page = {}
+-        self.stat_referrer = {}
+-        self.ignore_handler = None
+-        
+-    def hit(self, attr, key):
+-        if key in attr:
+-            attr[key] = attr[key] + 1
+-        else:
+-            attr[key] = 1
+-
+-    def processLine(self, filename, line_number, line, info):
+-        url = info[&quot;url&quot;]
+-        code = info[&quot;code&quot;]
+-        referrer = info[&quot;referrer&quot;]
+-
+-        # Clean url (remove hostname)
+-        m = self.regex_host.match(url)
+-        if m != None:
+-            url = &quot;/&quot;+m.group(1)
+-
+-        # Ignore this hit?
+-        if self.ignore_handler:
+-            if self.ignore_handler(info)==True: return
+-
+-        # Page hit stat
+-        if code not in [302, 404]:
+-            self.hit(self.stat_page, url)
+-            if referrer != &quot;-&quot;:
+-                self.hit(self.stat_referrer, referrer)
+-
+-    def _sort_value(self, val1, val2):
+-        if val1 &gt; val2:
+-            return -1
+-        elif val1 == val2:
+-            return 0
+-        else:
+-            return 1
+-
+-    def _sort_stat_referrer(self, key1, key2):
+-        return self._sort_value(self.stat_referrer[key1],  self.stat_referrer[key2])
+-
+-    def _sort_stat_page(self, key1, key2):
+-        return self._sort_value(self.stat_page[key1],  self.stat_page[key2])
+-
+-    def getTopReferrer(self, max=30, ignores=[]):
+-        return self.getTop(self.stat_referrer, self._sort_stat_referrer, max, ignores)
+-        
+-    def getTopPage(self, max=30, ignores=[]):
+-        return self.getTop(self.stat_page, self._sort_stat_page, max, ignores)
+-        
+-    def getTop(self, attr, sort_func, max=30, ignores=[]):
+-        keys = attr.keys()
+-        keys.sort(sort_func)
+-        top = []
+-        cpt = 1
+-        for key in keys:
+-            ok = True
+-            for ignore in ignores:
+-                m = ignore.search(key)
+-                if m != None:
+-                    ok = False
+-                    break
+-            if ok:
+-                top.append( (attr[key], key,) )
+-                cpt += 1
+-                if max &lt; cpt: break
+-        return top
+-
+-def printTopPage(r, max):
+-    # Top pages
+-    print &quot;=== Top page ===&quot;
+-    pages = r.getTopPage(max)
+-    for page in pages:
+-        print &quot;%u hit(s): %s&quot; % (page[0], page[1])
+-
+-# Regex google hosts
+-def googleHosts():        
+-    return [&quot;216\.239\.59\.104&quot;, \
+-        &quot;66\.249\.93\.104&quot;, &quot;66.102.9.104&quot;, \
+-        &quot;216.109.124.98&quot;, &quot;(images|www)\.google\.[a-z]{2,3}&quot;]
+-
+-def msnHosts():
+-    return [&quot;search.msn.[a-z]{2,3}&quot;]
+-
+-def yahooHosts():
+-    return [&quot;[a-z]+.search.yahoo.com&quot;]
+-
+-def altavistaHosts():
+-    return [&quot;www.altavista.com&quot;]
+-
+-def faiSearchHosts():
+-    return [&quot;search[0-9]-[0-9].free.fr&quot;, &quot;search.ke.voila.fr&quot;]
+-
+-def searchEngineHosts():        
+-    return googleHosts() + yahooHosts() + msnHosts() + altavistaHosts() + faiSearchHosts()
+-
+-def printTopReferrer(r, max):
+-    print &quot;=== Top referrer ===&quot;
+-    pages = r.getTopReferrer(max)
+-    for page in pages:
+-        print &quot;%u hit(s): %s&quot; % (page[0], page[1])
+-
+-class HaypoCALC:
+-    def __init__(self):
+-        # Ignore referrer regex
+-        hosts = [&quot;(www\.)?haypocalc\.com&quot;] # Ignore Haypocalc
+-        hosts.append (&quot;exoscin\.free\.fr&quot;) # Ignore exoscin.free.fr
+-        hosts += searchEngineHosts()       # Ignore search engines
+-        self.ignore_referrer = [ re.compile(r&quot;^<A HREF="http://(">http://(</A>&quot;+&quot;|&quot;.join(hosts)+&quot;)&quot;)  ]
+-
+-        # Ignore url regex
+-        self.ignore_url = []
+-        ignore_ext = [&quot;css&quot;, &quot;jpg&quot;, &quot;JPG&quot;, &quot;png&quot;, &quot;js&quot;, &quot;gif&quot;, &quot;swf&quot;]
+-        ignore_ext = &quot;|&quot;.join(ignore_ext)
+-        self.ignore_url.append( re.compile(r&quot;\.(&quot;+ignore_ext+r&quot;)(\?.*)?$&quot;) )
+-        self.ignore_url.append( re.compile(r&quot;^/wiki/index.php\?.*&amp;action=raw&quot;) )
+-        self.ignore_url.append( re.compile(r&quot;^/robots\.txt$&quot;) )
+-
+-    def ignoreHandler(self, info):
+-        url = info[&quot;url&quot;]
+-        for regex in self.ignore_url:
+-            if regex.search(url) != None: return True
+-            
+-        referrer = info[&quot;referrer&quot;]
+-        for regex in self.ignore_referrer:
+-            if regex.search(referrer) != None: return True
+-            
+-        return False
+-
+-def usage():
+-    print &quot;Usage: %s filename&quot; % (sys.argv[0])
+-
+-def main():
+-    try:
+-        if len(sys.argv)&lt;2:
+-            usage()
+-            sys.exit(1)
+-        h=HaypoCALC()
+-        filename = sys.argv[1]
+-        r=ApacheLogParser_Stat(&quot;haypocalc.com&quot;)
+-        r.ignore_handler = h.ignoreHandler
+-
+-        r.parseFile(filename)
+-#        for month in range(1,31):
+-#            filename = &quot;/mnt/media/log-haypocalc/logs-08-2005/haypocalc.com-%02u-08-2005.log&quot; % month
+-#            r.parseFile(filename)
+-        
+-        printTopPage(r, 20)
+-        printTopReferrer(r, 20)
+-    except KeyboardInterrupt:
+-        print &quot;Program interrupted (CTRL+C).&quot;
+-        
+-
+-if __name__==&quot;__main__&quot;: main()    
+
+Deleted: haypo/evolution_set_smtp.py
+===================================================================
+--- haypo/evolution_set_smtp.py	2007-08-21 17:12:19 UTC (rev 470)
++++ haypo/evolution_set_smtp.py	2007-08-21 20:58:53 UTC (rev 471)
+@@ -1,102 +0,0 @@
+-#
+-# Set SMTP server in Evolution configuration using gconftool-2 tool
+-# and parser XML files (from gconf).
+-# Author: Victor Stinner
+-# 15 august 2005
+-#
+-
+-import os, sys, re
+-
+-def getAccounts():
+-	out = os.popen(&quot;gconftool-2 --get /apps/evolution/mail/accounts&quot;)
+-	raw = out.read()
+-	
+-	data = raw[1:-3]
+-	data = data.split(&quot;\n&quot;)
+-
+-	accounts = []
+-	for i in range(0,len(data)-1,2):
+-		if 0 &lt; i:
+-			accounts.append( data[i][1:] + data[i+1] )
+-		else:
+-			accounts.append( data[i] + data[i+1] )
+-	
+-	return (raw, accounts,)
+-	
+-def changeSmtp(content, new_smtp_url):
+-	import xml.dom.minidom
+-	doc = xml.dom.minidom.parseString(content)
+-	transports = doc.getElementsByTagName(&quot;transport&quot;)
+-	urls = transports[0].getElementsByTagName(&quot;url&quot;)
+-	urls[0].childNodes[0].data = new_smtp_url
+-	return doc.toxml(&quot;UTF-8&quot;)
+-
+-def extractXmlHeader(content):
+-	r = re.compile(r'^(&lt;\?xml version=&quot;1\.0&quot; encoding=&quot;UTF-8&quot;\?&gt;)\n(.*)$')
+-	m = r.match(content)
+-	if m == None:
+-		print &quot;Erreur XML pour %s&quot; % (content)
+-		sys.exit(1)
+-	return (m.group(1), m.group(2), )
+-
+-def escape(text):
+-	import re
+-	text = re.sub(r&quot;([\&quot;'\\])&quot;, r&quot;\\\1&quot;, text)
+-#	text = text.replace(&quot;\n&quot;, &quot;\\\\n&quot;)
+-#	text = text.replace(&quot;\r&quot;, &quot;\\\\r&quot;)
+-	return text 
+-	
+-def saveAccounts(accounts):
+-	key = &quot;/apps/evolution/mail/accounts&quot;
+-	cmd  = &quot;/usr/bin/gconftool-2 &quot;
+-	cmd += &quot;--type=list &quot;
+-	cmd += &quot;--list-type=string &quot;
+-	cmd += &quot;--set /apps/evolution/mail/accounts &quot;
+-	cmd += '&quot;'+escape(accounts)+'&quot;'
+-	stdin, stdout, stderr = os.popen3(cmd)
+-	err = stderr.read()
+-	if err != &quot;&quot;:
+-		print &quot;Erreur :\n%s&quot; % (err)
+-		sys.exit(1)
+-
+-def convertAccounts(accounts):
+-	old_accounts = accounts
+-	accounts = []
+-	for account in old_accounts:
+-		accounts.append( extractXmlHeader(account) )
+-		
+-	out = &quot;[&quot;+accounts[0][0]+&quot;\n&quot;+accounts[0][1]
+-	del accounts[0]
+-	for account in accounts:
+-		out = out + &quot;\n,&quot;+account[0]+&quot;\n&quot;+account[1]
+-	out = out + &quot;\n]&quot;
+-	return out
+-
+-def backupAccounts(raw):
+-	f = open(&quot;/home/haypo/1backup/evolution_old_accounts.yyy&quot;, &quot;w&quot;)
+-	f.write(raw)
+-	f.close()
+-
+-def main():
+-	if len(sys.argv)&lt;2:
+-		print &quot;Usage: %s SERVER&quot; % sys.argv[0]
+-		sys.exit(1)
+-	smtp = sys.argv[1]
+-    email = &quot;victor.stinner%40utbm.fr&quot;
+-
+-	try:
+-		print &quot;Set Evolution STMP to %s.&quot; % (smtp)
+-		
+-		url = &quot;<A HREF="smtp://">smtp://</A>&quot;+email+&quot;@&quot;+smtp+&quot;/;use_ssl=never&quot;	
+-		raw, accounts = getAccounts()
+-#		backupAccounts(raw)
+-		for i in range(len(accounts)):
+-			accounts[i] = changeSmtp(accounts[i], url)
+-		raw2 = convertAccounts(accounts)
+-		saveAccounts(raw2)
+-		print &quot;Done.&quot;
+-		
+-	except Exception, err:
+-		print &quot;Exception&quot;, err
+-
+-if __name__==&quot;__main__&quot;: main()
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000374.html">[Happyboom-svn] r470 - haypo
+</A></li>
+	<LI>Next message: <A HREF="000376.html">[Happyboom-svn] r472 - /
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#375">[ date ]</a>
+              <a href="thread.html#375">[ thread ]</a>
+              <a href="subject.html#375">[ subject ]</a>
+              <a href="author.html#375">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

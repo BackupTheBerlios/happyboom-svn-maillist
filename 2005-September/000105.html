@@ -1,0 +1,411 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r198 - boomboom/curses_client
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r198%20-%20boomboom/curses_client&In-Reply-To=%3C200509180732.j8I7WXXC032274%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000104.html">
+   <LINK REL="Next"  HREF="000106.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r198 - boomboom/curses_client</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r198%20-%20boomboom/curses_client&In-Reply-To=%3C200509180732.j8I7WXXC032274%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r198 - boomboom/curses_client">dboucard at berlios.de
+       </A><BR>
+    <I>Sun Sep 18 09:32:33 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000104.html">[Happyboom-svn] r197 - in boomboom: client client/items curses_client curses_client/items
+</A></li>
+        <LI>Next message: <A HREF="000106.html">[Happyboom-svn] r199 - in boomboom/curses_client: . items
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#105">[ date ]</a>
+              <a href="thread.html#105">[ thread ]</a>
+              <a href="subject.html#105">[ subject ]</a>
+              <a href="author.html#105">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-18 09:32:30 +0200 (Sun, 18 Sep 2005)
+New Revision: 198
+
+Added:
+   boomboom/curses_client/client.py
+   boomboom/curses_client/generic_input.py
+   boomboom/curses_client/item.py
+Log:
+copying pygame files to curses dir (for adaptation)
+
+
+Added: boomboom/curses_client/client.py
+===================================================================
+--- boomboom/curses_client/client.py	2005-09-18 07:30:19 UTC (rev 197)
++++ boomboom/curses_client/client.py	2005-09-18 07:32:30 UTC (rev 198)
+@@ -0,0 +1,95 @@
++&quot;&quot;&quot;
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">+ at author</A>: Victor Stinner and Damien Boucard
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">+ at license</A>: Gnu/GPL v2 or later, see LICENSE file.
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">+ at contact</A>: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">+ at version</A>: 0.2
++&quot;&quot;&quot;
++from happyboom.common.event import EventListener
++from happyboom.common.log import log
++from happyboom.common.thread import getBacktrace
++from happyboom.common import protocol
++from happyboom.client.base_client import Client as Happyboom
++from display import Display
++from input import Input
++import thread, time
++import curses_tools
++
++class Client(Happyboom, EventListener):
++    &quot;&quot;&quot; The main class of the client of BoomBoom.
++    @ivar display: Display manager of the game.
++    @type display: C{L{BoomBoomDisplay}}
++    @ivar input: Input manager of the game.
++    @type input: C{L{BoomBoomInput}}
++    @ivar __verbose: Verbose mode flag.
++    @type __verbose: C{bool}
++    @ivar __stopped: Stopped game flag.
++    @type __stopped: C{bool}
++    @ivar __stoplock: Mutex for synchronizing __stopped.
++    @type __stoplock: C{thread.lock}
++    &quot;&quot;&quot;
++    
++    def __init__(self, args):
++        &quot;&quot;&quot; BoomBoomClient constructor.
++        @param host: Server hostname.
++        @type host: C{str}
++        @param display_port: Server port for &quot;display&quot;/&quot;view&quot; connection.
++        @type display_port: C{int}
++        @param input_port: Server port for &quot;input&quot; connection.
++        @type input_port: C{int}
++        @param verbose: Verbose mode flag.
++        @type verbose: C{bool}
++        @param debug: Debug mode flag.
++        @type debug: C{bool}
++        @param max_fps: Maximal number of frames per second, for optimization.
++        @type max_fps: C{int}
++        &quot;&quot;&quot;
++        args[&quot;protocol&quot;] = protocol.loadProtocol(&quot;protocol.xml&quot;)
++        args[&quot;features&quot;] = [&quot;game&quot;] # Constant features
++        
++        Happyboom.__init__(self, args)
++        EventListener.__init__(self, prefix=&quot;evt_&quot;)
++        
++        self.display = Display(args)
++        self.input = Input(args)
++        self.__verbose = args.get(&quot;verbose&quot;, False)
++        self.registerEvent(&quot;happyboom&quot;)
++        
++    def start(self):
++        &quot;&quot;&quot; Starts the game client.&quot;&quot;&quot;
++        if self.__verbose:
++            log.info(&quot;[BOOMBOOM] Starting client...&quot;)
++        Happyboom.start(self)
++        # Create thread for display
++        thread.start_new_thread(self.displayThread, ())
++        
++        quit = False
++        while not quit:
++            self.input.process()
++            time.sleep(0.100)
++            quit = self.stopped
++        
++    def stop(self):
++        &quot;&quot;&quot;  Stops the game client.&quot;&quot;&quot;
++        if self.__verbose:
++            log.info(&quot;[BOOMBOOM] Stopping client...&quot;)
++        Happyboom.stop(self)
++        self.launchEvent(&quot;happyboom&quot;, &quot;disconnection&quot;, self._io, u&quot;Quit.&quot;)
++        self.display.stop()
++    
++    def evt_happyboom_stop(self):
++        &quot;&quot;&quot; Stop event handler.
++        &quot;&quot;&quot;
++        self.stop()
++    
++    def displayThread(self):
++        &quot;&quot;&quot; Thread handler for the &quot;display&quot; part.&quot;&quot;&quot;
++        try:
++            self.display.start()
++        except Exception, msg:
++            bt = getBacktrace()
++            log.error(&quot;EXCEPTION IN DISPLAY THREAD:\n%s\n%s&quot; % (msg, bt))
++        try:
++            self.stop()
++        except Exception, msg:
++            bt = getBacktrace()
++            log.error(&quot;EXCEPTION (2) IN DISPLAY THREAD:\n%s\n%s&quot; % (msg, bt))
+
+Added: boomboom/curses_client/generic_input.py
+===================================================================
+--- boomboom/curses_client/generic_input.py	2005-09-18 07:30:19 UTC (rev 197)
++++ boomboom/curses_client/generic_input.py	2005-09-18 07:32:30 UTC (rev 198)
+@@ -0,0 +1,69 @@
++&quot;&quot;&quot;
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">+ at author</A>: Victor Stinner and Damien Boucard
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">+ at license</A>: Gnu/GPL v2 or later, see LICENSE file.
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">+ at contact</A>: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">+ at version</A>: 0.2
++&quot;&quot;&quot;
++from happyboom.common.event import EventLauncher, EventListener
++import thread, time
++
++class Input(EventLauncher, EventListener):
++    &quot;&quot;&quot; Class which manages &quot;input&quot; part of the network connections.
++    @ivar host: Server hostname.
++    @type host: C{str}
++    @ivar port: Server port for &quot;input&quot; connection.
++    @type port: C{int}
++    @ivar name: Name of the client (as known by the server).
++    @type name: C{str}
++    @ivar __protocol_version: Current version of the protocol used by the client.
++    @type __protocol_version: C{str}
++    @ivar __io: Network input/output object using UDP protocole.
++    @type __io: C{net.io_udp.IO_UDP}
++    @ivar __recv_buffer: Network data reception buffer.
++    @type __recv_buffer: C{net.net_buffer.NetBuffer}
++    @ivar __verbose: Verbose mode flag.
++    @type __verbose: C{bool}
++    @ivar __debug: Debug mode flag.
++    @type __debug: C{bool}
++    @ivar __stopped: Stopped input client flag.
++    @type __stopped: C{bool}
++    @ivar __stoplock: Mutex for synchronizing __stopped.
++    @type __stoplock: C{thread.lock}
++    &quot;&quot;&quot;
++    
++    def __init__(self, arg):
++        &quot;&quot;&quot; BoomBoomInput constructor.
++        @param host: Server hostname.
++        @type host: C{str}
++        @param port: Server port for &quot;input&quot; connection.
++        @type port: C{int}
++        @param name: Name of the client (as known by the server).
++        @type name: C{string}
++        @param verbose: Verbose mode flag.
++        @type verbose: C{bool}
++        @param debug: Debug mode flag.
++        @type debug: C{bool}
++        &quot;&quot;&quot;
++
++        EventLauncher.__init__(self)
++        EventListener.__init__(self)
++        self.weapon_angle = None
++        self.weapon_strength = None
++        self.registerEvent(&quot;weapon&quot;)
++
++    def evt_weapon_setStrength(self, strength):
++        self.weapon_strength = strength
++        
++    def evt_weapon_setAngle(self, angle):
++        self.weapon_angle = angle
++
++    def weapon_setStrengthDelta(self, delta):
++        self.launchEvent(&quot;happyboom&quot;, &quot;network&quot;, \
++            &quot;weapon&quot;, &quot;askSetStrength&quot;, self.weapon_strength + delta)
++
++    def weapon_setAngleDelta(self, delta):
++        self.launchEvent(&quot;happyboom&quot;, &quot;network&quot;, \
++            &quot;weapon&quot;, &quot;askSetAngle&quot;, self.weapon_angle + delta)
++
++    def process(self):
++        pass
+
+Added: boomboom/curses_client/item.py
+===================================================================
+--- boomboom/curses_client/item.py	2005-09-18 07:30:19 UTC (rev 197)
++++ boomboom/curses_client/item.py	2005-09-18 07:32:30 UTC (rev 198)
+@@ -0,0 +1,155 @@
++&quot;&quot;&quot;
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">+ at author</A>: Victor Stinner and Damien Boucard
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">+ at license</A>: Gnu/GPL v2 or later, see LICENSE file.
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">+ at contact</A>: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">+ at version</A>: 0.2
++&quot;&quot;&quot;
++from happyboom.common.event import EventListener, EventLauncher
++
++class Item(EventListener, EventLauncher):
++    &quot;&quot;&quot; Generic class for representing graphical items.
++    @ivar visual: Graphical object containing data and transformations
++    @type visual: C{L{VisualObject}}
++    &quot;&quot;&quot;
++    
++    feature = None
++    
++    def __init__(self, id=None):
++        &quot;&quot;&quot; BoomBoomItem constructor. &quot;&quot;&quot;
++        EventListener.__init__(self, &quot;evt_&quot;)
++        EventLauncher.__init__(self)
++        self.visual = None
++        self.launchEvent(&quot;graphical&quot;, &quot;item&quot;, self)
++        self.id = id
++        
++    def draw(self, screen):
++        &quot;&quot;&quot; Drawing method called by C{BoomBoomDrawer}
++        @param screen: Offscreen to draw in.
++        @type screen: C{L{Window&lt;bb_drawer.Window&gt;}}
++        &quot;&quot;&quot;
++        if self.visual == None: return
++        self.visual.draw(screen)
++    
++    def sendNetMsg(self, feature, event, *args):
++        print &quot;SEND NET %s&quot; % (feature)
++        self.launchEvent(&quot;happyboom&quot;, &quot;network&quot;, \
++            feature, event, *args)
++
++class VisualObject(object):
++    &quot;&quot;&quot; Manage representation and transformation of an external image to be drawn into game screen.
++    @ivar visible: Visibility item flag (Default: C{True}).
++    @type visible: C{bool}
++    @ivar surface: Pygame item surface object.
++    @type surface: C{pygame.Surface}
++    @type rect: C{pygame.Rect}
++    @type x: C{int}
++    @type y: C{int}
++    @type width: C{int}
++    @type height: C{int}
++    @ivar __x: Item top-left abcsisse.
++    @type __x: C{int}
++    @ivar __y: Item top-left ordonnee.
++    @type __y: C{int}
++    @ivar __width: Item width.
++    @type __width: C{int}
++    @ivar __height: Item height.
++    @type __height. C{int}
++    @ivar __rect: Including box of the item for collide detection.
++    @type __rect: C{pygame.Rect}
++    &quot;&quot;&quot;
++    def __init__(self, file):
++        &quot;&quot;&quot; VisualObject constructor.
++        @param file: Path of the external image.
++        @type file: C{str}
++        &quot;&quot;&quot;
++        self.__x, self.__y = (0,0)
++        self.loadImage(file)
++        self.visible = True
++
++    def loadImage(self, file):
++        &quot;&quot;&quot; Loads external image with pygame.
++        @param file: Path of the external image.
++        @type file: C{str}
++        &quot;&quot;&quot;
++        self.surface = pygame.image.load(file).convert_alpha()
++        self.__width = self.surface.get_width()
++        self.__height = self.surface.get_height()
++        self.__rect = pygame.Rect( [self.__x, self.__y, self.__width, self.__height] )
++
++    def move(self, x, y):
++        &quot;&quot;&quot; Moves the items in absolute coordinates.
++        @param x: New abcsisse.
++        @type x: C{int}
++        @param y: New ordonnee.
++        @type y: C{int}
++        &quot;&quot;&quot;
++        self.__x = x
++        self.__y = y
++        self.__rect = pygame.Rect( [self.__x, self.__y, self.__width, self.__height] )
++
++    def __getRect(self):
++        &quot;&quot;&quot; C{L{rect}} property getter.
++        @return: The including box of the item.
++        @rtype: C{pygame.Rect}
++        &quot;&quot;&quot;
++        return self.__rect
++    rect = property(__getRect, doc=&quot;Including box of the item for collide detection (read only).&quot;)
++    
++    def __getHeight(self):
++        &quot;&quot;&quot; C{L{height}} property getter.
++        @return: The height of the item.
++        @rtype: C{int}
++        &quot;&quot;&quot;
++        return self.__height
++    height = property(__getHeight, doc=&quot;Item height (read only).&quot;)
++    
++    def __getWidth(self):
++        &quot;&quot;&quot; C{L{width}} property getter.
++        @return: The width of the item.
++        @rtype: C{int}
++        &quot;&quot;&quot;
++        return self.__width
++    width = property(__getWidth, doc=&quot;Item width (read only).&quot;)
++    
++    def __getX(self):
++        &quot;&quot;&quot; C{L{x}} property getter.
++        @return: The left abcsisse ot the item.
++        @rtype: C{int}
++        &quot;&quot;&quot;
++        return self.__x
++    def __setX(self, x):
++        &quot;&quot;&quot; C{L{x}} property setter.
++        @param x: New item abcsisse.
++        @type x: C{int}
++        &quot;&quot;&quot;
++        self.move(x, self.__y)
++    x = property(__getX, __setX, doc=&quot;Item top-left abcsisse.&quot;)
++    
++    def __getY(self):
++        &quot;&quot;&quot; C{L{y}} property getter.
++        @return: The top ordonnee ot the item.
++        @rtype: C{int}
++        &quot;&quot;&quot;
++        return self.__y
++    def __setY(self, y):
++        &quot;&quot;&quot; C{L{y}} property setter.
++        @param y: New item ordonnee.
++        @type y: C{int}
++        &quot;&quot;&quot;
++        self.move(self.__x, y)
++    y = property(__getY, __setY, doc=&quot;Item top-left ordonnee.&quot;)
++
++    def setVisibility(self, visible):
++        &quot;&quot;&quot; Sets the visibility of the item.
++        @param visible: New visible flag value.
++        @type visible: C{bool}
++        &quot;&quot;&quot;
++        self.visible = visible
++        
++    def draw(self, screen):
++        &quot;&quot;&quot; Draws the image (if visible) into the game offscreen.
++        @param screen: Current game offscreen to draw in.
++        @type screen: C{L{Window&lt;bb_drawer.Window&gt;}}
++        &quot;&quot;&quot;
++        if not self.visible: return
++        screen.blit(self.surface, (self.x, self.y))
+\ No newline at end of file
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000104.html">[Happyboom-svn] r197 - in boomboom: client client/items curses_client curses_client/items
+</A></li>
+	<LI>Next message: <A HREF="000106.html">[Happyboom-svn] r199 - in boomboom/curses_client: . items
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#105">[ date ]</a>
+              <a href="thread.html#105">[ thread ]</a>
+              <a href="subject.html#105">[ subject ]</a>
+              <a href="author.html#105">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

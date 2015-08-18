@@ -1,0 +1,86 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r369 - haypo/hachoir/trunk/plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r369%20-%20haypo/hachoir/trunk/plugins&In-Reply-To=%3C200512280158.jBS1wUZf028460%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000270.html">
+   <LINK REL="Next"  HREF="000272.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r369 - haypo/hachoir/trunk/plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r369%20-%20haypo/hachoir/trunk/plugins&In-Reply-To=%3C200512280158.jBS1wUZf028460%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r369 - haypo/hachoir/trunk/plugins">haypo at berlios.de
+       </A><BR>
+    <I>Wed Dec 28 02:58:30 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000270.html">[Happyboom-svn] r368 - in haypo/hachoir/trunk: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000272.html">[Happyboom-svn] r370 - in haypo/hachoir/trunk: . broken_plugins plugins stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#271">[ date ]</a>
+              <a href="thread.html#271">[ thread ]</a>
+              <a href="subject.html#271">[ subject ]</a>
+              <a href="author.html#271">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-28 02:57:51 +0100 (Wed, 28 Dec 2005)
+New Revision: 369
+
+Modified:
+   haypo/hachoir/trunk/plugins/worms2.py
+Log:
+Damned! Fix last commit.
+
+
+Modified: haypo/hachoir/trunk/plugins/worms2.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/worms2.py	2005-12-28 01:51:31 UTC (rev 368)
++++ haypo/hachoir/trunk/plugins/worms2.py	2005-12-28 01:57:51 UTC (rev 369)
+@@ -13,7 +13,8 @@
+ from generic.image import Palette
+ 
+ # Only for debug purpose
+-from text_handler import binary, str2hex, str2bin
++from text_handler import binary
++from tools import str2hex, str2bin
+ 
+ class ImageData(OnDemandFilter):
+     def __init__(self, stream, parent):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000270.html">[Happyboom-svn] r368 - in haypo/hachoir/trunk: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000272.html">[Happyboom-svn] r370 - in haypo/hachoir/trunk: . broken_plugins plugins stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#271">[ date ]</a>
+              <a href="thread.html#271">[ thread ]</a>
+              <a href="subject.html#271">[ subject ]</a>
+              <a href="author.html#271">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,115 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r249 - haypo/hachoir
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r249%20-%20haypo/hachoir&In-Reply-To=%3C200511050123.jA51NP2a019314%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000155.html">
+   <LINK REL="Next"  HREF="000157.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r249 - haypo/hachoir</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r249%20-%20haypo/hachoir&In-Reply-To=%3C200511050123.jA51NP2a019314%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r249 - haypo/hachoir">haypo at berlios.de
+       </A><BR>
+    <I>Sat Nov  5 02:23:25 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000155.html">[Happyboom-svn] r248 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000157.html">[Happyboom-svn] r250 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#156">[ date ]</a>
+              <a href="thread.html#156">[ thread ]</a>
+              <a href="subject.html#156">[ subject ]</a>
+              <a href="author.html#156">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-05 02:23:06 +0100 (Sat, 05 Nov 2005)
+New Revision: 249
+
+Modified:
+   haypo/hachoir/hachoir_class.py
+   haypo/hachoir/ui_popup.py
+Log:
+Reprise sur erreur: utilise le filter par defaut si un filtre
+echoue ...
+
+
+Modified: haypo/hachoir/hachoir_class.py
+===================================================================
+--- haypo/hachoir/hachoir_class.py	2005-11-03 04:26:54 UTC (rev 248)
++++ haypo/hachoir/hachoir_class.py	2005-11-05 01:23:06 UTC (rev 249)
+@@ -93,8 +93,9 @@
+         except Exception, msg:
+             error(&quot;Exception while processing file %s with filter %s:\n%s&quot; \
+                 % (filename, plugin_name, msg))
+-            raise
+-            return
++            display_func = None
++            stream.seek(0)
++            filter = DefaultFilter(stream)
+         self.main_filter = self.filter = filter
+         self._addPadding()
+         self.filter.display()
+
+Modified: haypo/hachoir/ui_popup.py
+===================================================================
+--- haypo/hachoir/ui_popup.py	2005-11-03 04:26:54 UTC (rev 248)
++++ haypo/hachoir/ui_popup.py	2005-11-05 01:23:06 UTC (rev 249)
+@@ -2,7 +2,7 @@
+ pygtk.require ('2.0')
+ import gtk
+ import gtk.glade
+-from chunk import FormatChunk, FilterChunk
++from chunk import FormatChunk, FilterChunk, StringChunk
+ from ui_new_chunk import NewChunkDialog
+ from format import splitFormat # TODO: remove this line
+ from error import error
+@@ -32,8 +32,9 @@
+             return
+ 
+         is_format_chunk = issubclass(self.chunk.__class__, FormatChunk)
++        is_string_chunk = issubclass(self.chunk.__class__, StringChunk)
+         is_filter_chunk = issubclass(self.chunk.__class__, FilterChunk)
+-        self.new_chunk.set_sensitive(is_format_chunk)
++        self.new_chunk.set_sensitive(is_format_chunk or is_string_chunk)
+         self.new_filter.set_sensitive(is_format_chunk)
+         self.add_string.set_sensitive(is_format_chunk)
+         self.convert.set_sensitive(is_format_chunk or is_filter_chunk)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000155.html">[Happyboom-svn] r248 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000157.html">[Happyboom-svn] r250 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#156">[ date ]</a>
+              <a href="thread.html#156">[ thread ]</a>
+              <a href="subject.html#156">[ subject ]</a>
+              <a href="author.html#156">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

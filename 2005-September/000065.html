@@ -1,0 +1,368 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r158 - boomboom happyboom/trunk happyboom/trunk/client
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r158%20-%20boomboom%20happyboom/trunk%20happyboom/trunk/client&In-Reply-To=%3C200509140628.j8E6SttK008642%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000064.html">
+   <LINK REL="Next"  HREF="000066.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r158 - boomboom happyboom/trunk happyboom/trunk/client</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r158%20-%20boomboom%20happyboom/trunk%20happyboom/trunk/client&In-Reply-To=%3C200509140628.j8E6SttK008642%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r158 - boomboom happyboom/trunk happyboom/trunk/client">haypo at berlios.de
+       </A><BR>
+    <I>Wed Sep 14 08:28:55 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000064.html">[Happyboom-svn] r157 - in happyboom/trunk: . client
+</A></li>
+        <LI>Next message: <A HREF="000066.html">[Happyboom-svn] r159 - poilu/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#65">[ date ]</a>
+              <a href="thread.html#65">[ thread ]</a>
+              <a href="subject.html#65">[ subject ]</a>
+              <a href="author.html#65">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-14 08:28:51 +0200 (Wed, 14 Sep 2005)
+New Revision: 158
+
+Added:
+   boomboom/AUTHORS
+   boomboom/ChangeLog
+   boomboom/README
+   boomboom/TODO
+   happyboom/trunk/makedoc.sh
+Removed:
+   happyboom/trunk/agent/
+   happyboom/trunk/input/
+   happyboom/trunk/makedoc
+Modified:
+   happyboom/trunk/README
+   happyboom/trunk/TODO
+   happyboom/trunk/client/base_client.py
+Log:
+Update documentation.
+
+
+Added: boomboom/AUTHORS
+===================================================================
+--- boomboom/AUTHORS	2005-09-14 05:49:28 UTC (rev 157)
++++ boomboom/AUTHORS	2005-09-14 06:28:51 UTC (rev 158)
+@@ -0,0 +1,2 @@
++Victor STINNER &lt;victor.stinner AT haypocalc.com&gt;
++Damien BOUCARD &lt;damien.boucard AT tchoy.net&gt;
+\ No newline at end of file
+
+Added: boomboom/ChangeLog
+===================================================================
+--- boomboom/ChangeLog	2005-09-14 05:49:28 UTC (rev 157)
++++ boomboom/ChangeLog	2005-09-14 06:28:51 UTC (rev 158)
+@@ -0,0 +1,6 @@
++2005-04-29
++	- Version 0.1.4, quite playable with two human player over a network (or
++	in local). HappyBoom is using UDP transport for low latency.
++
++2005-04-25
++	- First line of BoomBoom source code
+
+Added: boomboom/README
+===================================================================
+--- boomboom/README	2005-09-14 05:49:28 UTC (rev 157)
++++ boomboom/README	2005-09-14 06:28:51 UTC (rev 158)
+@@ -0,0 +1,36 @@
++BoomBoom
++========
++
++BoomBoom is a rewrite of old game &quot;Gorilla&quot; (a Quick Basic game written
++by Microsoft). It's just a test for the HappyBoom kernel.
++
++See our website: <A HREF="http://www.happyboom.org/BoomBoom">http://www.happyboom.org/BoomBoom</A>
++
++  Requirements
++  ------------
++- Python : version 2.2 or earlier (tested with 2.3 and 2.4)
++--&gt; <A HREF="http://python.org/download/">http://python.org/download/</A>
++
++- pygame : version 1.6 or earlier (just tested 1.6)
++--&gt; <A HREF="http://www.pygame.org/download.shtml">http://www.pygame.org/download.shtml</A>
++
++- pysma : version 0.3 (tested until 0.3)
++--&gt; <A HREF="https://developer.berlios.de/project/showfiles.php?group_id=3535">https://developer.berlios.de/project/showfiles.php?group_id=3535</A>
++
++  How to play
++  -----------
++To play, launch a term, go to the boomboom subdirectory and run
++a server:
++  python boomboom_server.py
++  
++Next, launch another term, go to the boomboom subdirectory again and run a client :
++  python boomboom_client.py &lt;yourname&gt;
++
++You can play it over Internet by giving a host name to client :
++  python boomboom_client.py --host &lt;host ip or address&gt; &lt;yourname&gt;
++
++   Controls
++   --------
++- Left/Right : Changes strength
++- Up/Down    : Changes angle
++- Space      : Shoots
+
+Added: boomboom/TODO
+===================================================================
+--- boomboom/TODO	2005-09-14 05:49:28 UTC (rev 157)
++++ boomboom/TODO	2005-09-14 06:28:51 UTC (rev 158)
+@@ -0,0 +1,2 @@
++See our webpage to get the last todo list:
++   <A HREF="http://www.happyboom.org/BoomBoom#Todo">http://www.happyboom.org/BoomBoom#Todo</A>
+
+Modified: happyboom/trunk/README
+===================================================================
+--- happyboom/trunk/README	2005-09-14 05:49:28 UTC (rev 157)
++++ happyboom/trunk/README	2005-09-14 06:28:51 UTC (rev 158)
+@@ -1,60 +1,16 @@
+-BoomBoom
+-========
+-
+-BoomBoom is a rewrite of old game &quot;Gorilla&quot; (a Quick Basic game written
+-by Microsoft). It's just a test for the HappyBoom kernel.
+-
+-  Requirements
+-  ------------
+-- Python : version 2.3 or earlier (tested until 2.4.1)
+---&gt; <A HREF="http://python.org/download/">http://python.org/download/</A>
+-
+-- pygame : version 1.6 or earlier (just tested 1.6)
+---&gt; <A HREF="http://www.pygame.org/download.shtml">http://www.pygame.org/download.shtml</A>
+-
+-- pysma : version 0.3 (tested until 0.3)
+---&gt; <A HREF="https://developer.berlios.de/project/showfiles.php?group_id=3535">https://developer.berlios.de/project/showfiles.php?group_id=3535</A>
+-
+-  How to play
+-  -----------
+-To play, launch a term, go to the boomboom subdirectory and run
+-a server :
+-  python boomboom_server.py
+-  
+-Next, launch another term, go to the boomboom subdirectory again and run a client :
+-  python boomboom_client.py &lt;yourname&gt;
+-
+-You can play it over Internet by giving a host name to client :
+-  python boomboom_client.py --host &lt;host ip or address&gt; &lt;yourname&gt;
+-
+-   Controls
+-   --------
+-- Left/Right : Changes strength
+-- Up/Down    : Changes angle
+-- Space      : Shoots
+-
+-
+ HappyBoom
+ =========
+ 
+-HappyBoom is a rewrite of Wormux game but with better conception :
+-- inputs, server &amp; &quot;view&quot; are well separated
+-- it uses multi-agents system
++HappyBoom is a game engine based on client-server architecture. The server is
++based ony multi-agents system.
+ 
++Website: <A HREF="http://www.happyboom.org/">http://www.happyboom.org/</A>
+ 
+-Console
+-=======
+-
+-It's a basic package of console tools. First it was a test for the kernel. But
+-it should be compatible with new games. It can be used to display server stats
+-for example :
+-  python console_view.py --stats
+-  
+-  
+ Documentation
+ =============
+ 
+-You can generate the API documentation of some package (presently 'boomboom'
+-and 'net'). To do that, you must install Epydoc (version 2.1 or earlier, just
+-tested 2.1) and run the 'makedoc' shell script in the concerned directory,
+-or read the Epydoc manpage.
++You can generate the API documentation of HappyBoom which this command:
++    ./makedoc.sh
++
++Documentation will be generated in HTML in the subdirectory &quot;doc&quot;. You
++need Epydoc (version 2.1 or earlier, just tested 2.1).
+
+Modified: happyboom/trunk/TODO
+===================================================================
+--- happyboom/trunk/TODO	2005-09-14 05:49:28 UTC (rev 157)
++++ happyboom/trunk/TODO	2005-09-14 06:28:51 UTC (rev 158)
+@@ -1,20 +1,2 @@
+-# -*- coding: UTF-8 -*-
+-TODO LIST
+-=========
+-o Improve network security
+-o Improve input threading
+-o For network : not all blocking read functions catch socket error 11
+-o Catch UDP Binding error
+-o Limit number of UDP clients
+-o IO_Client : should self.io be self.__io ? 
+-o Add timeout when a client try to connect
+-
+-En fran&#231;ais pour la suite et pour BoomBoom :
+-o Ecrire un vrai protocole r&#233;seau
+-o Ecrire un client texte en python
+-o Ecrire un client 3D en C++
+-o Un autre client 3D en Python pour Damien ?
+-o Test de collision avec rectangle et/ou cercle
+-o R&#233;seau : Utiliser des canaux pour pouvoir partager une connexion Internet
+-  entre view et input
+-o Client 2D avec des th&#232;mes graphiques
++See our webpage to get the last todo list:
++   <A HREF="http://www.happyboom.org/HappyBoom#Todo">http://www.happyboom.org/HappyBoom#Todo</A>
+
+Modified: happyboom/trunk/client/base_client.py
+===================================================================
+--- happyboom/trunk/client/base_client.py	2005-09-14 05:49:28 UTC (rev 157)
++++ happyboom/trunk/client/base_client.py	2005-09-14 06:28:51 UTC (rev 158)
+@@ -92,82 +92,4 @@
+         self.__io.send(p)
+         
+ 
+-class Gateway(EventLauncher, EventListener):
+-    
+-    CONNECTION    = 0x1
+-    DISCONNECTION = 0x2
+-    FEATURES      = 0x3
+-    CREATE        = 0x4
+-    DESTROY       = 0x5
+-    EVENT         = 0x6
+-    
+-    def __init__(self, connection, protocol):
+-        self.protocol = protocol
+-        self.connection = connection
+-        self.items = {}
+-        
+-    def processPacket(self, newPacket):
+-        &quot;&quot;&quot; Processes incomming network packets (converts and launches local event).
+-        @param new_packet: incomming network packet.
+-        @type new_packet: C{net.io.packet.Packet}
+-        &quot;&quot;&quot;
+-        type, data = self.splitPacket(new_packtet.data)
+-        if type == self.CONNECTION:
+-            self.recvConnection(data)
+-            self.sendFeatures()
+-        elif type == self.DISCONNECTION:
+-            print &quot;[happyboom] Disconnected from server : %s&quot; %(self.getReason(data))
+-            self.launchEvent(&quot;happyboom&quot;, &quot;stop&quot;)
+-        elif type == self.CREATE:
+-            self.createItem(data)
+-        elif type == self.DESTROY:
+-            self.destroyItem(data)
+-        elif type == self.EVENT:
+-            self.processEvent(data)
+-        else:
+-            print &quot;ProtocoleWarning : received unexpected packet type %s&quot; %(type)
+-            
+-    def splitPacket(self, data):
+-        fmt = &quot;!B&quot;
+-        struct.calcsize(fmt)
+-        return (struct.unpack(fmt, data[:i]), date[i:])
+-        
+-    def recvConnection(self, data):
+-        fmt = &quot;!H&quot;
+-        i = struct.calcsize(fmt)
+-        version_len, data = (struct.unpack(fmt, data[:i]), data[i:])
+-        fmt = &quot;!%us&quot; %(version_len)
+-        i = struct.calcsize(fmt)
+-        version, data = (struct.unpack(fmt, data[:i]), data[i:])
+-        
+-        fmt = &quot;!H&quot;
+-        i = struct.calcsize(fmt)
+-        sign_len, data = (struct.unpack(fmt, data[:i]), data[i:])
+-        fmt = &quot;!%us&quot; %(version_len)
+-        i = struct.calcsize(fmt)
+-        signature, data = (struct.unpack(fmt, data[:i]), data[i:])
+-        
+-        if len(data) != 0:
+-            raise TesUneGrosseMerdeError &quot;Received a message with an unexpected length.&quot;
+-        
+-        if version != protocole.version:
+-            pass # TODO
+-            
+-        self.launchEvent(&quot;happyboom&quot;, &quot;signature&quot;, (signature,))
+-            
+-    def sendFeatures(self):
+-        pass
+-    
+-    def getReason(self, data):
+-        pass
+-    
+-    def createItem(self, data):
+-        pass
+-        
+-    def destroyItem(self, data):
+-        pass
+-    
+-    def processEvent(self, data):
+-        packer.unpack(data, self.protocol)
+-        if self.__debug: print &quot;Received message: feature=%s event=%s arguments=%s&quot; %(feat, evt, args)
+-        self.launchEvent(feat, evt, args)
+\ No newline at end of file
++
+
+Deleted: happyboom/trunk/makedoc
+===================================================================
+--- happyboom/trunk/makedoc	2005-09-14 05:49:28 UTC (rev 157)
++++ happyboom/trunk/makedoc	2005-09-14 06:28:51 UTC (rev 158)
+@@ -1,3 +0,0 @@
+-#!/bin/sh
+-test -e doc || mkdir doc
+-epydoc -o doc/api -n &quot;BoomBoom Client 0.2&quot; --private-css blue net
+
+Copied: happyboom/trunk/makedoc.sh (from rev 157, happyboom/trunk/makedoc)
+===================================================================
+--- happyboom/trunk/makedoc	2005-09-14 05:49:28 UTC (rev 157)
++++ happyboom/trunk/makedoc.sh	2005-09-14 06:28:51 UTC (rev 158)
+@@ -0,0 +1,7 @@
++#!/bin/sh
++test -e doc || mkdir doc
++epydoc \
++    -o doc/api
++    -n &quot;HappyBoom game engine 0.2&quot; \
++    --private-css blue \
++    common net server
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000064.html">[Happyboom-svn] r157 - in happyboom/trunk: . client
+</A></li>
+	<LI>Next message: <A HREF="000066.html">[Happyboom-svn] r159 - poilu/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#65">[ date ]</a>
+              <a href="thread.html#65">[ thread ]</a>
+              <a href="subject.html#65">[ subject ]</a>
+              <a href="author.html#65">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

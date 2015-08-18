@@ -1,0 +1,984 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r357 - in haypo/hachoir/trunk: . broken_plugins plugins stream
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r357%20-%20in%20haypo/hachoir/trunk%3A%20.%20broken_plugins%20plugins%20stream&In-Reply-To=%3C200512270102.jBR127qJ013269%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000259.html">
+   <LINK REL="Next"  HREF="000261.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r357 - in haypo/hachoir/trunk: . broken_plugins plugins stream</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r357%20-%20in%20haypo/hachoir/trunk%3A%20.%20broken_plugins%20plugins%20stream&In-Reply-To=%3C200512270102.jBR127qJ013269%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r357 - in haypo/hachoir/trunk: . broken_plugins plugins stream">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec 27 02:02:07 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000259.html">[Happyboom-svn] r356 - haypo/hachoir/trunk
+</A></li>
+        <LI>Next message: <A HREF="000261.html">[Happyboom-svn] r358 - in haypo/hachoir/trunk: . broken_plugins plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#260">[ date ]</a>
+              <a href="thread.html#260">[ thread ]</a>
+              <a href="subject.html#260">[ subject ]</a>
+              <a href="author.html#260">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-27 02:01:54 +0100 (Tue, 27 Dec 2005)
+New Revision: 357
+
+Added:
+   haypo/hachoir/trunk/plugins/exif.py
+   haypo/hachoir/trunk/plugins/pdf.py
+Removed:
+   haypo/hachoir/trunk/broken_plugins/exif.py
+   haypo/hachoir/trunk/broken_plugins/pdf.py
+Modified:
+   haypo/hachoir/trunk/chunk.py
+   haypo/hachoir/trunk/plugins/jpeg.py
+   haypo/hachoir/trunk/stream/deflate.py
+   haypo/hachoir/trunk/tools.py
+Log:
+- convertDataToPrintableString now returns Unicode (and accept str or unicode
+  for input)
+- StringChunk accept charset optionnal argument (default: &quot;ascii&quot;)
+- Upgrade PDF and EXIF plugins to new syntax
+
+
+Deleted: haypo/hachoir/trunk/broken_plugins/exif.py
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/exif.py	2005-12-26 23:51:28 UTC (rev 356)
++++ haypo/hachoir/trunk/broken_plugins/exif.py	2005-12-27 01:01:54 UTC (rev 357)
+@@ -1,238 +0,0 @@
+-&quot;&quot;&quot;
+-Exif filter.
+-
+-Informations about Exif at:
+-- <A HREF="http://www.exif.org/">http://www.exif.org/</A>
+-- <A HREF="http://libexif.sourceforge.net/">http://libexif.sourceforge.net/</A>
+-
+-Author: Victor Stinner
+-&quot;&quot;&quot;
+-
+-from filter import Filter
+-from format import getFormatSize
+-import struct
+-
+-class ExifEntry(Filter):
+-    format = {
+-        1: (1, &quot;B&quot;),
+-        2: (1, &quot;s&quot;),
+-        3: (1, &quot;H&quot;),
+-        4: (1, &quot;L&quot;),
+-        5: (2, &quot;L&quot;),
+-        7: (1, &quot;s&quot;),
+-#        9: (1, &quot;l&quot;),
+-#        10: (2, &quot;l&quot;)
+-        9: (1, &quot;L&quot;),
+-        10: (2, &quot;L&quot;)
+-    }
+-
+-    type_name = {    
+-        1: &quot;BYTE (8 bits)&quot;,
+-        2: &quot;ASCII (8 bits)&quot;,
+-        3: &quot;SHORT (16 bits)&quot;,
+-        4: &quot;LONG (32 bits)&quot;,
+-        5: &quot;RATIONAL (two LONGs)&quot;,
+-        7: &quot;UNDEFINED (8 bits)&quot;,
+-        9: &quot;SLONG (32 bits)&quot;,
+-        10: &quot;SRATIONTAL (two SLONGs)&quot;
+-    }
+-
+-    tag_name = {    
+-        0x0100: &quot;Image width&quot;,
+-        0x0101: &quot;Image height&quot;,
+-        0x0102: &quot;Number of bits per component&quot;,
+-        0x0103: &quot;Compression scheme&quot;,
+-        0x0106: &quot;Pixel composition&quot;,
+-        0x0112: &quot;Orientation of image&quot;,
+-        0x0115: &quot;Number of components&quot;,
+-        0x011C: &quot;Image data arrangement&quot;,
+-        0x0212: &quot;Subsampling ratio Y to C&quot;,
+-        0x0213: &quot;Y and C positioning&quot;,
+-        0x011A: &quot;Image resolution width direction&quot;,
+-        0x011B: &quot;Image resolution in height direction&quot;,
+-        0x0128: &quot;Unit of X and Y resolution&quot;,
+-        
+-        0x0111: &quot;Image data location&quot;,
+-        0x0116: &quot;Number of rows per strip&quot;,
+-        0x0117: &quot;Bytes per compressed strip&quot;,
+-        0x0201: &quot;Offset to JPEG SOI&quot;,
+-        0x0202: &quot;Bytes of JPEG data&quot;,
+-        
+-        0x012D: &quot;Transfer function&quot;,
+-        0x013E: &quot;White point chromaticity&quot;,
+-        0x013F: &quot;Chromaticities of primaries&quot;,
+-        0x0211: &quot;Color space transformation matrix coefficients&quot;,
+-        0x0214: &quot;Pair of blank and white reference values&quot;,
+-        
+-        0x0132: &quot;File change date and time&quot;,
+-        0x010e: &quot;Image title&quot;,
+-        0x010f: &quot;Camera (Image input equipment) manufacturer&quot;,
+-        0x0110: &quot;Camera (Input input equipment) model&quot;,
+-        0x0131: &quot;Software&quot;,
+-        0x013B: &quot;File change date and time&quot;,
+-        0x8298: &quot;Copyright holder&quot;,
+-        0x8769: &quot;Exif IFD Pointer&quot;,
+-
+-        0x829A: &quot;Exposure time&quot;,
+-        0x829D: &quot;F number&quot;,
+-        0x8822: &quot;Exposure program&quot;,
+-        0x8824: &quot;Spectral sensitivity&quot;,
+-        0x8827: &quot;ISO speed rating&quot;,
+-        0x8828: &quot;Optoelectric conversion factor OECF&quot;,
+-        0x9201: &quot;Shutter speed&quot;,
+-        0x9202: &quot;Aperture&quot;,
+-        0x9203: &quot;Brightness&quot;,
+-        0x9204: &quot;Exposure bias&quot;,
+-        0x9205: &quot;Maximum lens aperture&quot;,
+-        0x9206: &quot;Subject distance&quot;,
+-        0x9207: &quot;Metering mode&quot;,
+-        0x9208: &quot;Light source&quot;,
+-        0x9209: &quot;Flash&quot;,
+-        0x920A: &quot;Lens focal length&quot;,
+-        0x9214: &quot;Subject area&quot;,
+-        0xA20B: &quot;Flash energy&quot;,
+-        0xA20C: &quot;Spatial frequency response&quot;,
+-        0xA20E: &quot;Focal plane X resolution&quot;,
+-        0xA20F: &quot;Focal plane Y resolution&quot;,
+-        0xA210: &quot;Focal plane resolution unit&quot;,
+-        0xA214: &quot;Subject location&quot;,
+-        0xA215: &quot;Exposure index&quot;,
+-        0xA217: &quot;Sensing method&quot;,
+-        0xA300: &quot;File source&quot;,
+-        0xA301: &quot;Scene type&quot;,
+-        0xA302: &quot;CFA pattern&quot;,
+-        0xA401: &quot;Custom image processing&quot;,
+-        0xA402: &quot;Exposure mode&quot;,
+-        0xA403: &quot;White balance&quot;,
+-        0xA404: &quot;Digital zoom ratio&quot;,
+-        0xA405: &quot;Focal length in 35 mm film&quot;,
+-        0xA406: &quot;Scene capture type&quot;,
+-        0xA407: &quot;Gain control&quot;,
+-        0xA408: &quot;Contrast&quot;,
+-
+-        0x9000: &quot;Exif version&quot;,
+-        0xA000: &quot;Supported Flashpix version&quot;,
+-        0xA001: &quot;Color space information&quot;,
+-        0x9101: &quot;Meaning of each component&quot;,
+-        0x9102: &quot;Image compression mode&quot;,
+-        0xA002: &quot;Valid image width&quot;,
+-        0xA003: &quot;Valid image height&quot;,
+-        0x927C: &quot;Manufacturer notes&quot;,
+-        0x9286: &quot;User comments&quot;,
+-        0xA004: &quot;Related audio file&quot;,
+-        0x9003: &quot;Date and time of original data generation&quot;,
+-        0x9004: &quot;Date and time of digital data generation&quot;,
+-        0x9290: &quot;DateTime subseconds&quot;,
+-        0x9291: &quot;DateTimeOriginal subseconds&quot;,
+-        0x9292: &quot;DateTimeDigitized subseconds&quot;,
+-        0xA420: &quot;Unique image ID&quot;,
+-        0xA005: &quot;Interoperability IFD Pointer&quot;
+-    }
+-
+-    def __init__(self, stream, parent, endian):
+-        Filter.__init__(self, &quot;exif_entry&quot;, &quot;Exif entry&quot;, stream, parent)
+-        self.endian = endian
+-        self.read(&quot;tag&quot;, endian+&quot;H&quot;, &quot;Tag&quot;, post=self.processTag)
+-        self.read(&quot;type&quot;, endian+&quot;H&quot;, &quot;Type&quot;, post=self.processType)
+-        self.read(&quot;count&quot;, endian+&quot;L&quot;, &quot;Count&quot;)
+-
+-        # Create format
+-        format = ExifEntry.format.get(self[&quot;type&quot;], (1, &quot;B&quot;))
+-        self.format = &quot;%s%u%s&quot; % (self.endian, format[0]*self[&quot;count&quot;], format[1])
+-
+-        # Get size
+-        self.size = getFormatSize(self.format)
+-
+-        # Get offset/value
+-        if 4 &lt; self.size:
+-            self.read(&quot;offset&quot;, endian+&quot;L&quot;, &quot;Value offset&quot;)
+-        else:
+-            self.read(&quot;value&quot;, self.format, &quot;Value&quot;)
+-            if self.size &lt; 4:
+-                self.read(&quot;padding&quot;, &quot;%us&quot; % (4-self.size), &quot;Padding&quot;)
+-
+-    def updateParent(self, parent):
+-        parent.description = &quot;Exif entry (%s)&quot; % self.getTag() 
+-
+-    def getTag(self):
+-        return ExifEntry.tag_name.get(self[&quot;tag&quot;], &quot;Unknown tag (0x%04X)&quot; % self[&quot;tag&quot;])
+-
+-    def processType(self, chunk):
+-        return ExifEntry.type_name.get(chunk.value, &quot;%u&quot; % chunk.value) 
+-
+-    def processTag(self, chunk):
+-        chunk.description = self.getTag()
+-        return &quot;0x%04X&quot; % chunk.value 
+-
+-def sortExifEntry(a,b):
+-    return int( a[&quot;offset&quot;] - b[&quot;offset&quot;] )
+-
+-class ExifIFD(Filter):
+-    def __init__(self, stream, parent, endian, offset_diff):
+-        Filter.__init__(self, &quot;exif&quot;, &quot;Exif IFD&quot;, stream, parent)
+-        self.endian = endian
+-        self.read(&quot;id&quot;, endian+&quot;H&quot;, &quot;IFD identifier&quot;)
+-        entries = []
+-        next_chunk_offset = None
+-        while True:
+-            next = stream.getFormat(&quot;!L&quot;, False)[0]
+-            if next in (0, 0xF0000000):
+-                break
+-            chunk = self.readChild(&quot;entry[]&quot;, ExifEntry, endian)
+-            entry = chunk.getFilter()
+-            if entry[&quot;tag&quot;] in (0x8769, 0x0201):
+-                next_chunk_offset = entry[&quot;value&quot;]+offset_diff
+-                break
+-            if 4 &lt; entry.size:
+-                entries.append(entry)
+-        self.read(&quot;next&quot;, endian+&quot;L&quot;, &quot;Next IFD offset&quot;)
+-        entries.sort( sortExifEntry )
+-        for entry in entries:
+-            offset = entry[&quot;offset&quot;]+offset_diff
+-            padding = offset - stream.tell()
+-            if 0 &lt; padding:
+-                self.read(&quot;padding[]&quot;, &quot;%us&quot; % padding, &quot;Padding (?)&quot;)
+-            assert offset == stream.tell()
+-            self.read(&quot;entry_value[]&quot;, entry.format, &quot;Value of %s&quot; % entry.getId())
+-        if next_chunk_offset != None:
+-            padding = next_chunk_offset - stream.tell()
+-            if 0 &lt; padding:
+-                self.read(&quot;padding[]&quot;, &quot;%us&quot; % padding, &quot;Padding (?)&quot;)
+-
+-    def updateParent(self, chunk):
+-        desc = &quot;Exif IFD (id %s)&quot; % self[&quot;id&quot;]
+-        chunk.description = desc
+-        self.setDescription(desc)
+-
+-class ExifFilter(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;exif&quot;, &quot;Exif&quot;, stream, parent)
+-
+-        # Headers
+-        self.read(&quot;header&quot;, &quot;6s&quot;, &quot;Header (Exif\\0\\0)&quot;)
+-        assert self[&quot;header&quot;] == &quot;Exif\0\0&quot;
+-        self.read(&quot;byte_order&quot;, &quot;2s&quot;, &quot;Byte order&quot;)
+-        assert self[&quot;byte_order&quot;] in (&quot;II&quot;, &quot;MM&quot;)
+-        if self[&quot;byte_order&quot;] == &quot;II&quot;:
+-           endian = &quot;&lt;&quot;
+-        else:
+-           endian = &quot;&gt;&quot;
+-        self.read(&quot;header2&quot;, endian+&quot;H&quot;, &quot;Header2 (42)&quot;)
+-
+-        self.read(&quot;nb_entry&quot;, endian+&quot;H&quot;, &quot;Number of entries&quot;)
+-        self.read(&quot;whatsthis?&quot;, endian+&quot;H&quot;, &quot;What's this ??&quot;)
+-        while True:
+-            tag = stream.getN(2, False)
+-            if tag == &quot;\xFF\xD8&quot;:
+-                size = stream.getSize() - stream.tell()
+-                sub = stream.createLimited(size=size)
+-                from jpeg import JpegFile
+-                self.readStreamChild(&quot;thumbnail&quot;, sub, JpegFile)
+-                break
+-            if tag == &quot;\xFF\xFF&quot;:
+-                break
+-            self.readChild(&quot;ifd[]&quot;, ExifIFD, endian, 6)
+-        size = stream.getSize() - stream.tell()
+-        if 0 &lt; size:
+-            self.read(&quot;end&quot;, &quot;%us&quot; % size, &quot;End&quot;)
+-        assert self.getSize() == stream.getSize()
+
+Deleted: haypo/hachoir/trunk/broken_plugins/pdf.py
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/pdf.py	2005-12-26 23:51:28 UTC (rev 356)
++++ haypo/hachoir/trunk/broken_plugins/pdf.py	2005-12-27 01:01:54 UTC (rev 357)
+@@ -1,140 +0,0 @@
+-from filter import Filter, DeflateFilter
+-from plugin import registerPlugin
+-import re
+-from stream.error import StreamError
+-from stream.deflate import DeflateStream
+-from tools import convertDataToPrintableString, getBacktrace
+-from error import warning
+-from default import DefaultFilter
+-
+-def isEnd(stream, array, last):
+-    return stream.eof()
+-
+-class PdfObject(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;pdf_obj&quot;, &quot;PDF object&quot;, stream, parent)
+-        self.metadata = {}
+-        chunk = self.readString(&quot;header&quot;, &quot;AutoLine&quot;, &quot;Object header&quot;, strip=True)
+-        header = chunk.value 
+-        assert header != &quot;&quot;
+-        if header == &quot;xref&quot;:
+-            self.type = &quot;xref&quot;
+-            self.readXref()
+-        else: 
+-            self.type = &quot;obj&quot;
+-            m = re.match(r&quot;([0-9]+) [0-9]+ obj&quot;, header)
+-            if m != None:
+-                id = int(m.group(1))
+-                self.metadata[&quot;id&quot;] = id
+-                self.setDescription(&quot;Object (id %s)&quot; % id)
+-            else:
+-                self.metadata[&quot;id&quot;] = header
+-                self.setDescription(&quot;Object (%s)&quot; % header)
+-            self.readObj()                
+-        self.updateDescription()
+-
+-    def updateDescription(self):
+-        if self.type == &quot;obj&quot;:
+-            info = &quot;id %s&quot; % self.metadata[&quot;id&quot;]
+-            if &quot;type&quot; in self.metadata:
+-                info = info + &quot;, %s&quot; % self.metadata[&quot;type&quot;]
+-                if &quot;fontname&quot; in self.metadata:
+-                    info = info + &quot;, name: %s&quot; % self.metadata[&quot;fontname&quot;]
+-        else:
+-            info = &quot;XREF&quot;
+-        self.setDescription(&quot;Object (%s)&quot; % info)
+-
+-    def readContent(self):
+-        text = &quot;&quot; 
+-        deflate = False
+-        while text not in (&quot;endobj&quot;, &quot;stream&quot;):
+-            self.processLine(text)
+-            chunk = self.readString(&quot;line[]&quot;, &quot;AutoLine&quot;, &quot;&quot;, strip=True)
+-            text = chunk.value
+-            if re.match(r&quot;.*/Filter /FlateDecode.*&quot;, chunk.value) != None:
+-                deflate = True
+-            if self.getStream().eof():
+-                return &quot;eof&quot;
+-        if chunk.value == &quot;endobj&quot;:
+-            chunk.id = &quot;endobj&quot;
+-            chunk.description = &quot;Object end&quot;
+-            return &quot;end&quot;
+-        elif deflate:
+-            return &quot;deflate&quot;
+-        else:
+-            return &quot;stream&quot;
+-    
+-    def readObj(self):
+-        what = self.readContent()
+-        if what == &quot;eof&quot;:
+-            return
+-        if what in (&quot;stream&quot;,&quot;deflate&quot;):
+-            start = self.getStream().tell()
+-            size = self._stream.searchLength(&quot;endstream&quot;, False)
+-            if size == -1:
+-                raise Exception(&quot;Delimiter \&quot;%s\&quot; not found for %s (%s)!&quot; % (delimiter, id, description))
+-
+-            if what==&quot;deflate&quot;:
+-                try:
+-                    old = self.getStream().tell()
+-                    new_stream = DeflateStream( self.getStream().getN(size,False) )
+-                    self.readChild(&quot;deflate&quot;, DeflateFilter, new_stream, size, DefaultFilter)
+-                except:
+-                    warning(&quot;Error while decompressing data of an objet.&quot;)
+-                    self.getStream().seek(start)
+-                    self.read(&quot;data&quot;, &quot;!%us&quot; % size, &quot;Data (compressed with deflate)&quot;)
+-            else:
+-                self.read(&quot;data&quot;, &quot;!%us&quot; % size, &quot;Data&quot;)
+-            assert self.getStream().tell() == (start+size)
+-            
+-            self.readString(&quot;data_end[]&quot;, &quot;AutoLine&quot;, &quot;Data end&quot;)
+-            self.readString(&quot;endobj&quot;, &quot;AutoLine&quot;, &quot;Object end&quot;, strip=True)
+-        ver = self.getParent().version
+-        eol = self.getStream().read(1, seek=False)
+-        if eol in (&quot;\n&quot;, &quot;\r&quot;):
+-            self.readString(&quot;emptyline&quot;, &quot;AutoLine&quot;, &quot;&quot;)
+-
+-    def readXref(self):
+-        chunk = self.readString(&quot;xref_header&quot;, &quot;AutoLine&quot;, &quot;XRef header&quot;, strip=True)
+-        m = re.match(r&quot;^[0-9]+ ([0-9]+)$&quot;, chunk.value)
+-        assert m != None
+-        nb_ref = int(m.group(1)) - 1
+-        n = 0
+-        while n&lt;nb_ref:
+-            chunk = self.readString(&quot;ref[]&quot;, &quot;AutoLine&quot;, &quot;Reference&quot;, strip=True)
+-            n = n + 1
+-        self.readString(&quot;endobj&quot;, &quot;AutoLine&quot;, &quot;Object end&quot;, strip=True)
+-
+-    def processLine(self, line):
+-        tests = {
+-            &quot;type&quot;:  r&quot;^.*Type /([A-Za-z]+)$&quot;,
+-            &quot;fontname&quot;:  r&quot;^.*(?:BaseFont|FontName) /(?:[A-Z]A+\+)?([A-Za-z-]+)$&quot;
+-        }
+-        for field in tests:
+-            m = re.match(tests[field], line)
+-            if m != None:
+-                self.metadata[field] = m.group(1)
+-                break 
+-
+-class PdfFile(Filter):
+-    def __init__(self, stream, parent=None):
+-        Filter.__init__(self, &quot;id&quot;, &quot;&quot;, stream, parent)
+-        self.readString(&quot;pdf_version&quot;, &quot;AutoLine&quot;, &quot;PDF version&quot;)
+-        m = re.match(&quot;^%PDF-([0-9]+)\.([0-9]+)$&quot;, self[&quot;pdf_version&quot;])
+-        assert m != None
+-        self.version = ( int(m.group(1)), int(m.group(2)) )
+-        if self.version[0] == 1 and self.version[1] &gt; 0:
+-            # PDF &gt; 1.0
+-            self.readString(&quot;header&quot;, &quot;AutoLine&quot;, &quot;PDF header&quot;)
+-        self.nb_ref = None
+-        while not stream.eof():
+-            try:
+-                self.readChild(&quot;obj[]&quot;, PdfObject)
+-            except StreamError, err:
+-                return
+-            except Exception, err:
+-                print &quot;Exception in PDF: %s&quot; % err
+-                print getBacktrace()
+-                return
+-
+-registerPlugin(PdfFile, &quot;application/pdf&quot;)
+
+Modified: haypo/hachoir/trunk/chunk.py
+===================================================================
+--- haypo/hachoir/trunk/chunk.py	2005-12-26 23:51:28 UTC (rev 356)
++++ haypo/hachoir/trunk/chunk.py	2005-12-27 01:01:54 UTC (rev 357)
+@@ -137,6 +137,7 @@
+ 
+ class StringChunk(Chunk):
+     regex_eol_nr = re.compile(&quot;[\n\r]&quot;)
++    regex_not_ascii = re.compile(&quot;[^\x00-\x7F]&quot;)
+     names = {
+         &quot;C&quot;: &quot;c-string&quot;,
+         &quot;MacLine&quot;: &quot;mac line&quot;,
+@@ -147,7 +148,7 @@
+         &quot;WindowsLine&quot;: &quot;windows line&quot;
+     }
+ 
+-    def __init__(self, id, description, stream, str_type, parent, strip=None):
++    def __init__(self, id, description, stream, str_type, parent, strip=None, charset=&quot;ascii&quot;):
+         &quot;&quot;&quot;
+         Strip: if strip=None, call read text.strip()
+                if strip is a string, call read text.strip(self.strip)
+@@ -158,13 +159,14 @@
+         self.eol = None
+         self._findSize()
+         self.strip = strip
++        self.charset = charset
+ 
+     def getFormat(self):
+-        return StringChunk.names[self._str_type]
++        return &quot;%s (%s)&quot; % (\
++            StringChunk.names[self._str_type],
++            self.charset)
++    getSmallFormat = getFormat
+ 
+-    def getSmallFormat(self):
+-        return StringChunk.names[self._str_type]
+-
+     def _findSize(self):
+         self._stream.seek(self.addr)
+         if self._str_type == &quot;Pascal16&quot;:
+@@ -222,6 +224,12 @@
+                 text = text.strip()
+             else:
+                 text = text.strip(self.strip)
++        try:                
++            text = unicode(text, self.charset)
++        except:
++            self.charset = &quot;ascii&quot;
++            text = StringChunk.regex_not_ascii.sub(&quot;.&quot;, text)
++            text = unicode(text, &quot;ascii&quot;)
+         return text
+ 
+     def getValue(self, max_size=None):
+
+Copied: haypo/hachoir/trunk/plugins/exif.py (from rev 351, haypo/hachoir/trunk/broken_plugins/exif.py)
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/exif.py	2005-12-26 03:53:11 UTC (rev 351)
++++ haypo/hachoir/trunk/plugins/exif.py	2005-12-27 01:01:54 UTC (rev 357)
+@@ -0,0 +1,225 @@
++&quot;&quot;&quot;
++Exif filter.
++
++Informations about Exif at:
++- <A HREF="http://www.exif.org/">http://www.exif.org/</A>
++- <A HREF="http://libexif.sourceforge.net/">http://libexif.sourceforge.net/</A>
++
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from filter import OnDemandFilter
++from format import getFormatSize
++from chunk import FormatChunk, EnumChunk
++import struct
++
++class ExifEntry(OnDemandFilter):
++    format = {
++        1: (1, &quot;uint8&quot;),
++        2: (1, &quot;string&quot;),
++        3: (1, &quot;uint16&quot;),
++        4: (1, &quot;uint32&quot;),
++        5: (2, &quot;uint32&quot;),
++        7: (1, &quot;string&quot;),
++        9: (1, &quot;int32&quot;),
++        10: (2, &quot;int32&quot;)
++    }
++
++    type_name = {    
++        1: &quot;BYTE (8 bits)&quot;,
++        2: &quot;ASCII (8 bits)&quot;,
++        3: &quot;SHORT (16 bits)&quot;,
++        4: &quot;LONG (32 bits)&quot;,
++        5: &quot;RATIONAL (two LONGs)&quot;,
++        7: &quot;UNDEFINED (8 bits)&quot;,
++        9: &quot;SLONG (32 bits)&quot;,
++        10: &quot;SRATIONTAL (two SLONGs)&quot;
++    }
++
++    tag_name = {    
++        0x0100: &quot;Image width&quot;,
++        0x0101: &quot;Image height&quot;,
++        0x0102: &quot;Number of bits per component&quot;,
++        0x0103: &quot;Compression scheme&quot;,
++        0x0106: &quot;Pixel composition&quot;,
++        0x0112: &quot;Orientation of image&quot;,
++        0x0115: &quot;Number of components&quot;,
++        0x011C: &quot;Image data arrangement&quot;,
++        0x0212: &quot;Subsampling ratio Y to C&quot;,
++        0x0213: &quot;Y and C positioning&quot;,
++        0x011A: &quot;Image resolution width direction&quot;,
++        0x011B: &quot;Image resolution in height direction&quot;,
++        0x0128: &quot;Unit of X and Y resolution&quot;,
++        
++        0x0111: &quot;Image data location&quot;,
++        0x0116: &quot;Number of rows per strip&quot;,
++        0x0117: &quot;Bytes per compressed strip&quot;,
++        0x0201: &quot;Offset to JPEG SOI&quot;,
++        0x0202: &quot;Bytes of JPEG data&quot;,
++        
++        0x012D: &quot;Transfer function&quot;,
++        0x013E: &quot;White point chromaticity&quot;,
++        0x013F: &quot;Chromaticities of primaries&quot;,
++        0x0211: &quot;Color space transformation matrix coefficients&quot;,
++        0x0214: &quot;Pair of blank and white reference values&quot;,
++        
++        0x0132: &quot;File change date and time&quot;,
++        0x010e: &quot;Image title&quot;,
++        0x010f: &quot;Camera (Image input equipment) manufacturer&quot;,
++        0x0110: &quot;Camera (Input input equipment) model&quot;,
++        0x0131: &quot;Software&quot;,
++        0x013B: &quot;File change date and time&quot;,
++        0x8298: &quot;Copyright holder&quot;,
++        0x8769: &quot;Exif IFD Pointer&quot;,
++
++        0x829A: &quot;Exposure time&quot;,
++        0x829D: &quot;F number&quot;,
++        0x8822: &quot;Exposure program&quot;,
++        0x8824: &quot;Spectral sensitivity&quot;,
++        0x8827: &quot;ISO speed rating&quot;,
++        0x8828: &quot;Optoelectric conversion factor OECF&quot;,
++        0x9201: &quot;Shutter speed&quot;,
++        0x9202: &quot;Aperture&quot;,
++        0x9203: &quot;Brightness&quot;,
++        0x9204: &quot;Exposure bias&quot;,
++        0x9205: &quot;Maximum lens aperture&quot;,
++        0x9206: &quot;Subject distance&quot;,
++        0x9207: &quot;Metering mode&quot;,
++        0x9208: &quot;Light source&quot;,
++        0x9209: &quot;Flash&quot;,
++        0x920A: &quot;Lens focal length&quot;,
++        0x9214: &quot;Subject area&quot;,
++        0xA20B: &quot;Flash energy&quot;,
++        0xA20C: &quot;Spatial frequency response&quot;,
++        0xA20E: &quot;Focal plane X resolution&quot;,
++        0xA20F: &quot;Focal plane Y resolution&quot;,
++        0xA210: &quot;Focal plane resolution unit&quot;,
++        0xA214: &quot;Subject location&quot;,
++        0xA215: &quot;Exposure index&quot;,
++        0xA217: &quot;Sensing method&quot;,
++        0xA300: &quot;File source&quot;,
++        0xA301: &quot;Scene type&quot;,
++        0xA302: &quot;CFA pattern&quot;,
++        0xA401: &quot;Custom image processing&quot;,
++        0xA402: &quot;Exposure mode&quot;,
++        0xA403: &quot;White balance&quot;,
++        0xA404: &quot;Digital zoom ratio&quot;,
++        0xA405: &quot;Focal length in 35 mm film&quot;,
++        0xA406: &quot;Scene capture type&quot;,
++        0xA407: &quot;Gain control&quot;,
++        0xA408: &quot;Contrast&quot;,
++
++        0x9000: &quot;Exif version&quot;,
++        0xA000: &quot;Supported Flashpix version&quot;,
++        0xA001: &quot;Color space information&quot;,
++        0x9101: &quot;Meaning of each component&quot;,
++        0x9102: &quot;Image compression mode&quot;,
++        0xA002: &quot;Valid image width&quot;,
++        0xA003: &quot;Valid image height&quot;,
++        0x927C: &quot;Manufacturer notes&quot;,
++        0x9286: &quot;User comments&quot;,
++        0xA004: &quot;Related audio file&quot;,
++        0x9003: &quot;Date and time of original data generation&quot;,
++        0x9004: &quot;Date and time of digital data generation&quot;,
++        0x9290: &quot;DateTime subseconds&quot;,
++        0x9291: &quot;DateTimeOriginal subseconds&quot;,
++        0x9292: &quot;DateTimeDigitized subseconds&quot;,
++        0xA420: &quot;Unique image ID&quot;,
++        0xA005: &quot;Interoperability IFD Pointer&quot;
++    }
++
++    def __init__(self, stream, parent, endian):
++        OnDemandFilter.__init__(self, &quot;exif_entry&quot;, &quot;Exif entry&quot;, stream, parent, endian)
++        self.read(&quot;tag&quot;, &quot;Tag&quot;, (EnumChunk, &quot;uint16&quot;, ExifEntry.tag_name))
++        self.read(&quot;type&quot;, &quot;Type&quot;, (FormatChunk, &quot;uint16&quot;), {&quot;post&quot;: self.processType})
++        self.read(&quot;count&quot;, &quot;Count&quot;, (FormatChunk, &quot;uint32&quot;))
++
++        # Create format
++        format = ExifEntry.format.get(self[&quot;type&quot;], (1, &quot;uint8&quot;))
++        self.format = &quot;%s[%u]&quot; % (format[1], format[0]*self[&quot;count&quot;])
++
++        # Get size
++        self.size = getFormatSize(self.format)
++
++        # Get offset/value
++        if 4 &lt; self.size:
++            self.read(&quot;offset&quot;, &quot;Value offset&quot;, (FormatChunk, &quot;uint32&quot;))
++        else:
++            self.read(&quot;value&quot;, &quot;Value&quot;, (FormatChunk, self.format))
++            if self.size &lt; 4:
++                self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[%u]&quot; % (4-self.size)))
++
++    def updateParent(self, parent):
++        parent.description = &quot;Exif entry: %s&quot; % self.getChunk(&quot;tag&quot;).getDisplayData()
++
++    def processType(self, chunk):
++        return ExifEntry.type_name.get(chunk.value, &quot;%u&quot; % chunk.value) 
++
++def sortExifEntry(a,b):
++    return int( a[&quot;offset&quot;] - b[&quot;offset&quot;] )
++
++class ExifIFD(OnDemandFilter):
++    def __init__(self, stream, parent, endian, offset_diff):
++        OnDemandFilter.__init__(self, &quot;exif&quot;, &quot;Exif IFD&quot;, stream, parent, endian)
++        self.read(&quot;id&quot;, &quot;IFD identifier&quot;, (FormatChunk, &quot;uint16&quot;))
++        entries = []
++        next_chunk_offset = None
++        while True:
++            # TODO: &quot;!uint32&quot; or self._endian+&quot;uint32&quot; ?
++            next = stream.getFormat(&quot;!uint32&quot;, False)
++            if next in (0, 0xF0000000):
++                break
++            entry = self.doRead(&quot;entry[]&quot;, &quot;Entry&quot;, (ExifEntry, self._endian))
++            if entry[&quot;tag&quot;] in (0x8769, 0x0201):
++                next_chunk_offset = entry[&quot;value&quot;]+offset_diff
++                break
++            if 4 &lt; entry.size:
++                entries.append(entry)
++        self.read(&quot;next&quot;, &quot;Next IFD offset&quot;, (FormatChunk, &quot;uint32&quot;))
++        entries.sort( sortExifEntry )
++        for entry in entries:
++            offset = entry[&quot;offset&quot;]+offset_diff
++            padding = offset - stream.tell()
++            if 0 &lt; padding:
++                self.read(&quot;padding[]&quot;, &quot;Padding (?)&quot;, (FormatChunk, &quot;string[%u]&quot; % padding))
++            assert offset == stream.tell()
++            self.read(&quot;entry_value[]&quot;, &quot;Value of %s&quot; % entry.getId(), (FormatChunk, entry.format))
++        if next_chunk_offset != None:
++            padding = next_chunk_offset - stream.tell()
++            if 0 &lt; padding:
++                self.read(&quot;padding[]&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[%u]&quot; % padding))
++
++    def updateParent(self, chunk):
++        chunk.description = &quot;Exif IFD (id %s)&quot; % self[&quot;id&quot;]
++
++class ExifFilter(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;exif&quot;, &quot;Exif&quot;, stream, parent, None)
++
++        # Headers
++        self.read(&quot;header&quot;, &quot;Header (Exif\\0\\0)&quot;, (FormatChunk, &quot;string[6]&quot;))
++        assert self[&quot;header&quot;] == &quot;Exif\0\0&quot;
++        self.read(&quot;byte_order&quot;, &quot;Byte order&quot;, (FormatChunk, &quot;string[2]&quot;))
++        assert self[&quot;byte_order&quot;] in (&quot;II&quot;, &quot;MM&quot;)
++        if self[&quot;byte_order&quot;] == &quot;II&quot;:
++           self._endian = &quot;&lt;&quot;
++        else:
++           self._endian = &quot;&gt;&quot;
++        self.read(&quot;header2&quot;, &quot;Header2 (42)&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;nb_entry&quot;, &quot;Number of entries&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;whatsthis?&quot;, &quot;What's this ??&quot;, (FormatChunk, &quot;uint16&quot;))
++        while not stream.eof():
++            tag = stream.getFormat(&quot;!uint16&quot;, False)
++            if tag == 0xFFD8:
++                size = stream.getSize() - stream.tell()
++                sub = stream.createSub(size=size)
++                from jpeg import JpegFile
++                self.read(&quot;thumbnail&quot;, &quot;JPEG thumbnail&quot;, (JpegFile,), {&quot;stream&quot;: sub})
++                break
++            elif tag == 0xFFFF:
++                break
++            id = self.read(&quot;ifd[]&quot;, &quot;IFD&quot;, (ExifIFD, self._endian, 6))
++        size = stream.getSize() - stream.tell()
++        if 0 &lt; size:
++            self.read(&quot;end&quot;, &quot;End&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        assert self.getSize() == stream.getSize()
+
+Modified: haypo/hachoir/trunk/plugins/jpeg.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/jpeg.py	2005-12-26 23:51:28 UTC (rev 356)
++++ haypo/hachoir/trunk/plugins/jpeg.py	2005-12-27 01:01:54 UTC (rev 357)
+@@ -7,7 +7,7 @@
+ from filter import OnDemandFilter
+ from plugin import registerPlugin
+ from chunk import FormatChunk
+-#from exif import ExifFilter
++from exif import ExifFilter
+ 
+ class JpegChunkApp0(OnDemandFilter):
+     def __init__(self, stream, parent):
+@@ -44,7 +44,7 @@
+     }
+     handler = {
+         0xE0: JpegChunkApp0,
+-#        0xE1: ExifFilter
++        0xE1: ExifFilter
+     }
+ 
+     def __init__(self, stream, parent):
+
+Copied: haypo/hachoir/trunk/plugins/pdf.py (from rev 351, haypo/hachoir/trunk/broken_plugins/pdf.py)
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/pdf.py	2005-12-26 03:53:11 UTC (rev 351)
++++ haypo/hachoir/trunk/plugins/pdf.py	2005-12-27 01:01:54 UTC (rev 357)
+@@ -0,0 +1,144 @@
++from filter import OnDemandFilter, DeflateFilter
++from plugin import registerPlugin
++from chunk import StringChunk, FormatChunk
++import re
++from stream.error import StreamError
++from stream.deflate import DeflateStream
++from tools import convertDataToPrintableString, getBacktrace
++from error import warning
++from default import DefaultFilter
++
++def isEnd(stream, array, last):
++    return stream.eof()
++
++class PdfObject(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;obj&quot;, &quot;object&quot;, stream, parent)
++        self.metadata = {}
++        header = self.doRead(&quot;header&quot;, &quot;Object header&quot;, (StringChunk, &quot;AutoLine&quot;), {&quot;strip&quot;: True}).value
++        assert header != &quot;&quot;
++        self.content = False
++        if header == &quot;xref&quot;:
++            self.type = &quot;xref&quot;
++            self.readXref()
++        else: 
++            self.type = &quot;obj&quot;
++            m = re.match(r&quot;([0-9]+) [0-9]+ obj&quot;, header)
++            if m != None:
++                id = int(m.group(1))
++                self.metadata[&quot;id&quot;] = id
++                self.setDescription(&quot;Object: id %s&quot; % id)
++            else:
++                self.metadata[&quot;id&quot;] = header
++                self.setDescription(&quot;Object: %s&quot; % header)
++            self.readObj()                
++        self.updateDescription()
++
++    def updateDescription(self):
++        if self.type == &quot;obj&quot;:
++            info = &quot;id %s&quot; % self.metadata[&quot;id&quot;]
++            if &quot;type&quot; in self.metadata:
++                info = info + &quot;, %s&quot; % self.metadata[&quot;type&quot;]
++                if &quot;fontname&quot; in self.metadata:
++                    info = info + &quot;, name: %s&quot; % self.metadata[&quot;fontname&quot;]
++        else:
++            info = &quot;XREF&quot;
++        if self.content:
++            info += &quot; (content: %s)&quot; % self.content
++        self.setDescription(&quot;Object: %s&quot; % info)
++
++    def readContent(self):
++        text = &quot;&quot; 
++        deflate = False
++        while text not in (&quot;endobj&quot;, &quot;stream&quot;):
++            self.processLine(text)
++            chunk = self.doRead(&quot;line[]&quot;, &quot;Line&quot;, (StringChunk, &quot;AutoLine&quot;), {&quot;strip&quot;: True})
++            text = chunk.value
++            if re.match(r&quot;.*/Filter /FlateDecode.*&quot;, text) != None:
++                deflate = True
++            if self.getStream().eof():
++                return &quot;eof&quot;
++        if text == &quot;endobj&quot;:
++            chunk.id = &quot;endobj&quot;
++            chunk.description = &quot;Object end&quot;
++            return &quot;end&quot;
++        elif deflate:
++            return &quot;deflate&quot;
++        else:
++            return &quot;stream&quot;
++    
++    def readObj(self):
++        what = self.readContent()
++        if what == &quot;eof&quot;:
++            return
++        if what in (&quot;stream&quot;,&quot;deflate&quot;):
++            self.content = what
++            start = self.getStream().tell()
++            size = self._stream.searchLength(&quot;endstream&quot;, False)
++            if size == -1:
++                raise Exception(&quot;Delimiter \&quot;%s\&quot; not found for %s (%s)!&quot; % (delimiter, id, description))
++
++            if what==&quot;deflate&quot;:
++                try:
++                    old = self.getStream().tell()
++                    new_stream = DeflateStream( self.getStream().getN(size,False) )
++                    self.read(&quot;content&quot;, &quot;Deflate content&quot;, (DeflateFilter, new_stream, size, DefaultFilter))
++                except:
++                    warning(&quot;Error while decompressing data of an objet.&quot;)
++                    self.getStream().seek(start)
++                    self.read(&quot;data&quot;, &quot;Data (compressed with deflate)&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++            else:
++                self.read(&quot;data&quot;, &quot;Data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++            assert self.getStream().tell() == (start+size)
++            
++            self.read(&quot;data_end[]&quot;, &quot;Data end&quot;, (StringChunk, &quot;AutoLine&quot;))
++            self.read(&quot;endobj&quot;, &quot;Object end&quot;, (StringChunk, &quot;AutoLine&quot;), {&quot;strip&quot;: True})
++        ver = self.getParent().version
++        eol = self.getStream().read(1, seek=False)
++        if eol in (&quot;\n&quot;, &quot;\r&quot;):
++            self.read(&quot;emptyline&quot;, &quot;Empty line&quot;, (StringChunk, &quot;AutoLine&quot;))
++
++    def readXref(self):
++        text = self.doRead(&quot;xref_header&quot;, &quot;XRef header&quot;, (StringChunk, &quot;AutoLine&quot;), {&quot;strip&quot;: True}).value
++        m = re.match(r&quot;^[0-9]+ ([0-9]+)$&quot;, text)
++        assert m != None
++        nb_ref = int(m.group(1)) - 1
++        n = 0
++        while n&lt;nb_ref:
++            self.read(&quot;ref[]&quot;, &quot;Reference&quot;, (StringChunk, &quot;AutoLine&quot;), {&quot;strip&quot;: True})
++            n = n + 1
++        self.read(&quot;endobj&quot;, &quot;Object end&quot;, (StringChunk, &quot;AutoLine&quot;), {&quot;strip&quot;: True})
++
++    def processLine(self, line):
++        tests = {
++            &quot;type&quot;:  r&quot;^.*Type /([A-Za-z]+)$&quot;,
++            &quot;fontname&quot;:  r&quot;^.*(?:BaseFont|FontName) /(?:[A-Z]A+\+)?([A-Za-z-]+)$&quot;
++        }
++        for field in tests:
++            m = re.match(tests[field], line)
++            if m != None:
++                self.metadata[field] = m.group(1)
++                break 
++
++class PdfFile(OnDemandFilter):
++    def __init__(self, stream, parent=None):
++        OnDemandFilter.__init__(self, &quot;id&quot;, &quot;&quot;, stream, parent)
++        self.read(&quot;pdf_version&quot;, &quot;PDF version&quot;, (StringChunk, &quot;AutoLine&quot;))
++        m = re.match(&quot;^%PDF-([0-9]+)\.([0-9]+)$&quot;, self[&quot;pdf_version&quot;])
++        assert m != None
++        self.version = ( int(m.group(1)), int(m.group(2)) )
++        if self.version[0] == 1 and self.version[1] &gt; 0:
++            # PDF &gt; 1.0 (?)
++            self.read(&quot;header&quot;, &quot;PDF header&quot;, (StringChunk, &quot;AutoLine&quot;), {&quot;charset&quot;: &quot;utf-8&quot;})
++        self.nb_ref = None
++        while not stream.eof():
++            try:
++                self.read(&quot;obj[]&quot;, &quot;Object&quot;, (PdfObject,))
++            except StreamError, err:
++                return
++            except Exception, err:
++                print &quot;Exception in PDF: %s&quot; % err
++                print getBacktrace()
++                return
++
++registerPlugin(PdfFile, &quot;application/pdf&quot;)
+
+Modified: haypo/hachoir/trunk/stream/deflate.py
+===================================================================
+--- haypo/hachoir/trunk/stream/deflate.py	2005-12-26 23:51:28 UTC (rev 356)
++++ haypo/hachoir/trunk/stream/deflate.py	2005-12-27 01:01:54 UTC (rev 357)
+@@ -1,6 +1,5 @@
+ import zlib
+ from cStringIO import StringIO
+-from filter import Filter
+ from file import FileStream
+ 
+ def DeflateStream(data):
+
+Modified: haypo/hachoir/trunk/tools.py
+===================================================================
+--- haypo/hachoir/trunk/tools.py	2005-12-26 23:51:28 UTC (rev 356)
++++ haypo/hachoir/trunk/tools.py	2005-12-27 01:01:54 UTC (rev 357)
+@@ -141,6 +141,9 @@
+ def convertDataToPrintableString(data, keep_n=False):
+     if len(data) == 0:
+         return &quot;(empty)&quot;
++    if not isinstance(data, unicode):
++        data = re.sub(&quot;[^\x00-\x7F]&quot;, &quot;.&quot;, data)
++        data = unicode(data, &quot;ascii&quot;)
+     display = &quot;&quot;
+     for c in data:
+         if ord(c)&lt;32:
+@@ -155,13 +158,20 @@
+                 else:
+                     display = display + c
+             else:
+-#                display = display + &quot;\\x%02X&quot; % ord(c)
+                 display = display + &quot;.&quot;
+-        elif c in string.printable:
++        else:
+             display = display + c
+-        else:
+-            display = display + &quot;.&quot;
+-    return &quot;\&quot;%s\&quot;&quot; % display
++#            if is_8bit:
++#                if ord(c) != 0xFF:
++#                    display = display + c
++#                else:
++#                    display = display + &quot;.&quot;
++#            else:                    
++#                if c in string.printable:
++#                    display = display + c
++#                else:
++#                    display = display + &quot;.&quot;
++    return u&quot;\&quot;%s\&quot;&quot; % display
+ 
+ def getBacktrace():
+     try:
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000259.html">[Happyboom-svn] r356 - haypo/hachoir/trunk
+</A></li>
+	<LI>Next message: <A HREF="000261.html">[Happyboom-svn] r358 - in haypo/hachoir/trunk: . broken_plugins plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#260">[ date ]</a>
+              <a href="thread.html#260">[ thread ]</a>
+              <a href="subject.html#260">[ subject ]</a>
+              <a href="author.html#260">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

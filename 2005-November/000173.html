@@ -1,0 +1,608 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r268 - in haypo/hachoir: . plugins stream
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r268%20-%20in%20haypo/hachoir%3A%20.%20plugins%20stream&In-Reply-To=%3C200511250550.jAP5ooQL032636%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000172.html">
+   <LINK REL="Next"  HREF="000174.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r268 - in haypo/hachoir: . plugins stream</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r268%20-%20in%20haypo/hachoir%3A%20.%20plugins%20stream&In-Reply-To=%3C200511250550.jAP5ooQL032636%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r268 - in haypo/hachoir: . plugins stream">haypo at berlios.de
+       </A><BR>
+    <I>Fri Nov 25 06:50:50 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000172.html">[Happyboom-svn] r267 - in haypo/hachoir: . plugins stream
+</A></li>
+        <LI>Next message: <A HREF="000174.html">[Happyboom-svn] r269 - in haypo/hachoir: . plugins stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#173">[ date ]</a>
+              <a href="thread.html#173">[ thread ]</a>
+              <a href="subject.html#173">[ subject ]</a>
+              <a href="author.html#173">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-25 06:49:28 +0100 (Fri, 25 Nov 2005)
+New Revision: 268
+
+Added:
+   haypo/hachoir/plugins/deb.py
+Modified:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/filter.py
+   haypo/hachoir/hachoir_class.py
+   haypo/hachoir/mime.py
+   haypo/hachoir/plugin.py
+   haypo/hachoir/plugins/bzip2.py
+   haypo/hachoir/plugins/gzip.py
+   haypo/hachoir/plugins/tar.py
+   haypo/hachoir/stream/file.py
+   haypo/hachoir/stream/gunzip.py
+   haypo/hachoir/stream/stream.py
+   haypo/hachoir/tools.py
+Log:
+Add support to DEB archive. Create new stream: SubStream (will replace
+LimitedString?). Lot of bugfix...
+
+
+Modified: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-11-25 03:04:27 UTC (rev 267)
++++ haypo/hachoir/chunk.py	2005-11-25 05:49:28 UTC (rev 268)
+@@ -234,7 +234,7 @@
+     def __replaceFieldFormat(self, match):
+         id = match.group(1)
+         if id == &quot;@end@&quot;:
+-            size = self._stream.getLastPos() - self.addr + 1
++            size = self._stream.getLastPos() - self.addr
+         else:
+             size = getattr(self._parent, id)
+         return str(size)
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-11-25 03:04:27 UTC (rev 267)
++++ haypo/hachoir/filter.py	2005-11-25 05:49:28 UTC (rev 268)
+@@ -243,13 +243,21 @@
+     def redisplay(self):  
+         self.display()
+     
+-    def updateStatusBar(self):
++    def getPath(self):
++        &quot;&quot;&quot;
++        Get path to the filter.
++        Example: &quot;grandparent &gt; parent &gt; item&quot;
++        &quot;&quot;&quot;
+         text = &quot;&quot;
+         current = self
+         while current != None:
+             if text != &quot;&quot;: text = &quot; &gt; &quot; + text
+             text = current.getId() + text
+             current = current.getParent()
++        return text
++
++    def updateStatusBar(self):
++        text = self.getPath()
+         ui.window.updateStatusBar(&quot;%s: %s (size=%s)&quot; % (text, self.getDescription(), self.getSize()))
+ 
+     def display(self):  
+@@ -328,16 +336,18 @@
+         filter = filter_class(stream, self, *args)
+         chunk = self.addFilter(id, filter)
+         chunk.postProcess()
++        self._stream.seek(chunk.addr + chunk.size)
+         return chunk
+         
+     def readChild(self, id, filter_class, *args): 
+-        return self.readStreamChild(id, self._stream, filter_class, *args)
++        chunk = self.readStreamChild(id, self._stream, filter_class, *args)
++        return chunk
+     
+     def addFilter(self, id, filter): 
+         chunk = FilterChunk(id, filter, self)
+         self._appendChunk(chunk)
+         filter.updateParent(chunk)
+-        self._stream.seek(chunk.addr + chunk.size)
++#        self._stream.seek(chunk.addr + chunk.size)
+         return chunk
+ 
+     def readArray(self, id, entry_class, description, end_func): 
+@@ -487,3 +497,13 @@
+             self.getStream(), self.getParent(), self._entry_class, self._end_func)
+         new.filter_chunk = self.filter_chunk
+         return new
++
++class DeflateFilter(Filter):
++    def __init__(self, stream, parent, bz_stream, size, filter):
++        Filter.__init__(self, &quot;deflate&quot;, &quot;Deflate&quot;, bz_stream, parent)
++        self._addr = stream.tell()
++        self.readChild(&quot;data&quot;, filter)
++        self._compressed_size = size
++
++    def getSize(self):
++        return self._compressed_size
+
+Modified: haypo/hachoir/hachoir_class.py
+===================================================================
+--- haypo/hachoir/hachoir_class.py	2005-11-25 03:04:27 UTC (rev 267)
++++ haypo/hachoir/hachoir_class.py	2005-11-25 05:49:28 UTC (rev 268)
+@@ -74,8 +74,9 @@
+         my.exportPython(filename)
+         
+     def _addPadding(self):
+-        size = self._filter.getSize()
+-        diff_size = (size - self._filter.getStream().getSize())
++        filter_size = self._filter.getSize()
++        stream_size = self._filter.getStream().getSize()
++        diff_size = filter_size - stream_size
+         if diff_size &lt; 0:
+             chunks = self._filter.getChunks()
+             if len(chunks) != 0:
+
+Modified: haypo/hachoir/mime.py
+===================================================================
+--- haypo/hachoir/mime.py	2005-11-25 03:04:27 UTC (rev 267)
++++ haypo/hachoir/mime.py	2005-11-25 05:49:28 UTC (rev 268)
+@@ -27,13 +27,22 @@
+         return 'application/x-gzip'
+     return None        
+ 
++def _getBufferMime(buffer):    
++    if ord(buffer[0])==31 and ord(buffer[1])==139:
++        return &quot;application/x-gzip&quot;
++    return None        
++
+ def getBufferMime(buffer, filename):
+     magic = getInstance()
+-    mime = magic.buffer(buffer)
+-    mime = mime.split(&quot;,&quot;)
+-    if mime[0] == 'application/octet-stream' and filename != None:
++    mimes = magic.buffer(buffer)
++    mimes = mimes.split(&quot; &quot;)
++    import string
++    mimes = map(string.split, mimes, ',')
++    if mimes[0][0] == 'application/octet-stream' and filename != None:
+         ext = os.path.splitext(filename)[1]
+-        new_mime = getMimeByExt(ext)
++        new_mime = _getBufferMime(buffer)
++        if new_mime == None:
++            new_mime = getMimeByExt(ext)
+         if new_mime != None:
+-            mime = (new_mime,)
+-    return mime            
++            mimes = ((new_mime,),)
++    return mimes
+
+Modified: haypo/hachoir/plugin.py
+===================================================================
+--- haypo/hachoir/plugin.py	2005-11-25 03:04:27 UTC (rev 267)
++++ haypo/hachoir/plugin.py	2005-11-25 05:49:28 UTC (rev 268)
+@@ -12,26 +12,31 @@
+     stream.seek(oldpos)
+     return plugin
+ 
+-def getPluginByMime(mime):
++def getPluginByMime(mimes):
+     global hachoir_plugins
+-    mime = mime[0]
+-    if mime not in hachoir_plugins:
+-        return DefaultFilter
+-    plugins = hachoir_plugins[mime]
++    plugins = []
++    for mime in mimes:
++        mime = mime[0]
++        if mime in hachoir_plugins:
++            plugins = plugins + hachoir_plugins[mime]
++    if len(plugins)==0:
++        plugins = (DefaultFilter,)
+     if 1&lt;len(plugins):
+         warning(&quot;More than one plugin have same MIME...&quot;)
+-    return plugins[0]       
++    return plugins[0]
+     
+ def getPluginByBuffer(buffer, filename):
+     mime = getBufferMime(buffer, filename)
+     return getPluginByMime(mime)
+ 
+ def getPluginByStream(stream, filename):
++    oldpos = stream.tell()
+     stream.seek(0)
+     size = stream.getSize()
+     if 4096&lt;size:
+         size = 4096
+     data = stream.getN(size)
++    stream.seek(oldpos)
+     mime = getBufferMime(data, filename)
+     return getPluginByMime(mime)
+ 
+
+Modified: haypo/hachoir/plugins/bzip2.py
+===================================================================
+--- haypo/hachoir/plugins/bzip2.py	2005-11-25 03:04:27 UTC (rev 267)
++++ haypo/hachoir/plugins/bzip2.py	2005-11-25 05:49:28 UTC (rev 268)
+@@ -3,20 +3,10 @@
+ &quot;&quot;&quot;
+ 
+ from plugin import guessPlugin
+-from filter import Filter
++from filter import Filter, DeflateFilter
+ from plugin import registerPlugin
+ from stream.bunzip import BunzipStream
+ 
+-class BzipDataFilter(Filter):
+-    def __init__(self, stream, parent, bz_stream, filter):
+-        Filter.__init__(self, &quot;deflate&quot;, &quot;Deflate&quot;, bz_stream, parent)
+-        self._addr = stream.tell()
+-        self.readChild(&quot;data&quot;, filter)
+-        self._compressed_size = stream.getSize() - stream.tell()
+-
+-    def getSize(self):
+-        return self._compressed_size
+-
+ class Bzip2_File(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;bz2_file&quot;, &quot;Bzip2 archive file&quot;, stream, parent)
+@@ -37,7 +27,8 @@
+         plugin = guessPlugin(dataio, None)
+         print &quot;Plugin = &quot;, plugin
+         #self.readStreamChild(&quot;data&quot;, dataio, plugin)
+-        self.readChild(&quot;data&quot;, BzipDataFilter, dataio, plugin)
++        size = stream.getSize()-stream.tell()
++        self.readChild(&quot;data&quot;, DeflateFilter, dataio, size, plugin)
+ 
+     def readB(self):
+         self.read(&quot;id2&quot;, &quot;5s&quot;, &quot;Identifier 2 (AY&amp;SY)&quot;)
+
+Added: haypo/hachoir/plugins/deb.py
+===================================================================
+--- haypo/hachoir/plugins/deb.py	2005-11-25 03:04:27 UTC (rev 267)
++++ haypo/hachoir/plugins/deb.py	2005-11-25 05:49:28 UTC (rev 268)
+@@ -0,0 +1,34 @@
++&quot;&quot;&quot;
++Debian (.deb) archive file
++&quot;&quot;&quot;
++
++from filter import Filter, DeflateFilter
++from plugin import registerPlugin, guessPlugin
++   
++class DebianFileEntry(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;file_entry&quot;, &quot;File entry&quot;, stream, parent)
++        self.readString(&quot;header&quot;, &quot;UnixLine&quot;, &quot;Header&quot;)
++#        info = re.split(&quot; +&quot;, self.header)
++        info = self.header.split()
++        filename = info[0]
++        size = int(info[5])
++        dataio = stream.createSub(stream.tell(), size)
++        plugin = guessPlugin(dataio, filename)
++#        self.readStreamChild(&quot;data&quot;, dataio, plugin)
++#        self.read(&quot;data&quot;, &quot;%us&quot; % size, &quot;Data&quot;)
++        self.readChild(&quot;data&quot;, DeflateFilter, dataio, size, plugin)
++        
++class DebianFile(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;deb_file&quot;, &quot;Debian archive file&quot;, stream, parent)
++        self.readString(&quot;id&quot;, &quot;UnixLine&quot;, &quot;Debian archive identifier&quot;)
++        self.readString(&quot;header&quot;, &quot;UnixLine&quot;, &quot;Header&quot;)
++        self.readString(&quot;version&quot;, &quot;UnixLine&quot;, &quot;Version&quot;)
++        self.readArray(&quot;file&quot;, DebianFileEntry, &quot;Files&quot;, self.checkEnd)
++
++    def checkEnd(self, stream, array, last):
++#        if len(array)==1: return True
++        return stream.eof()
++        
++registerPlugin(DebianFile, &quot;application/x-debian-package&quot;)
+
+Modified: haypo/hachoir/plugins/gzip.py
+===================================================================
+--- haypo/hachoir/plugins/gzip.py	2005-11-25 03:04:27 UTC (rev 267)
++++ haypo/hachoir/plugins/gzip.py	2005-11-25 05:49:28 UTC (rev 268)
+@@ -6,22 +6,21 @@
+ &quot;&quot;&quot;
+ 
+ import datetime
+-from filter import Filter
++from filter import Filter, DeflateFilter
+ from plugin import registerPlugin
+ from stream.gunzip import GunzipStream
+ from plugin import getPluginByStream
+ from error import error
+ from default import DefaultFilter
++from tools import getBacktrace
+    
+ class GunzipFilter(Filter):
+     def __init__(self, stream, parent, start, size, filter_class):
+         # Read data
+         self._parent_stream = stream
+-        self._parent_stream.seek(0)
+-        data = stream.getN(self._parent_stream.getSize())
+         
+         # Create a new stream
+-        stream = GunzipStream(data)
++        stream = GunzipStream(self._parent_stream)
+         self._compressed_size = size 
+         self._decompressed_size = stream.getSize()
+ 
+@@ -59,17 +58,15 @@
+         oldpos = stream.tell()
+         size = stream.getSize() - oldpos - 8
+         try:
+-            # TODO: Fix this fucking GunzipStream (use something better)
+-            stream.seek(0)
+-            data = stream.getN(stream.getSize())
+-            stream = GunzipStream(data)
+-            stream.seek(oldpos)
+-            plugin = getPluginByStream(stream, self.filename)
+-            # END OF TODO
++            gz_stream = GunzipStream(stream)
++            if hasattr(self, &quot;filename&quot;):
++                plugin = getPluginByStream(gz_stream, self.filename)
++            else:
++                plugin = getPluginByStream(gz_stream, None)
+ 
+-            self.readChild(&quot;data&quot;, GunzipFilter, oldpos, size, plugin) 
++            self.readChild(&quot;data&quot;, DeflateFilter, gz_stream, size, plugin) 
+         except Exception, msg:
+-            error(&quot;Error while processing file in gzip: %s&quot; % msg)
++            error(&quot;Error while processing file in gzip: %s\ns%s&quot; % (msg, getBacktrace()))
+             stream.seek(oldpos)
+             self.read(&quot;data&quot;, &quot;!%us&quot; % size, &quot;Compressed data&quot;, truncate=True)
+         
+
+Modified: haypo/hachoir/plugins/tar.py
+===================================================================
+--- haypo/hachoir/plugins/tar.py	2005-11-25 03:04:27 UTC (rev 267)
++++ haypo/hachoir/plugins/tar.py	2005-11-25 05:49:28 UTC (rev 268)
+@@ -7,12 +7,13 @@
+ 
+ import re
+ from datetime import datetime
+-from filter import Filter
++from filter import Filter, DeflateFilter
+ from plugin import registerPlugin
+ from tools import convertDataToPrintableString
+ from default import EmptyFilter
+ from plugin import guessPlugin 
+ from error import error
++from tools import getBacktrace, humanFilesize
+ 
+ def displayModeItem(mode):
+     if mode &amp; 4 == 4: r=&quot;r&quot;
+@@ -96,14 +97,15 @@
+         self.read(&quot;devminor&quot;, &quot;!8s&quot;, &quot;Dev minor&quot;)
+         self.read(&quot;header_padding&quot;, &quot;!167s&quot;, &quot;Padding (zero)&quot;)
+         if self.type in (&quot;\0&quot;, &quot;0&quot;):
+-            substream = stream.createLimited(stream.tell(), self.size)
++            substream = stream.createSub(stream.tell(), self.size)
+             plugin = guessPlugin(substream, self.name)
+ 
+             oldpos = stream.tell()
+             try:
+-                chunk = self.readLimitedChild(&quot;filedata&quot;, self.size, plugin)
++                chunk = self.readChild(&quot;filedata&quot;, DeflateFilter, substream, self.size, plugin)
++#                chunk = self.readLimitedChild(&quot;filedata&quot;, stream, self.size, plugin)
+             except Exception, msg:
+-                error(&quot;Error while processing tar file \&quot;%s\&quot;: %s&quot; % (self.name, msg))
++                error(&quot;Error while processing tar file \&quot;%s\&quot;: %s\n%s&quot; % (self.name, msg, getBacktrace()))
+                 stream.seek(oldpos)
+                 chunk = self.readChild(&quot;filedata&quot;, EmptyFilter)
+                 filter = chunk.getFilter()
+@@ -142,7 +144,8 @@
+ 
+     def updateParent(self, chunk):
+         if not self.isEmpty():
+-            text = &quot;Tar File (%s: %s)&quot; % (self.name, self.getType())
++            text = &quot;Tar File (%s: %s, %s)&quot; \
++                % (self.name, self.getType(), humanFilesize(self.size))
+         else:
+             text = &quot;Tar File (terminator, empty header)&quot;
+         chunk.description = self.description = text
+
+Modified: haypo/hachoir/stream/file.py
+===================================================================
+--- haypo/hachoir/stream/file.py	2005-11-25 03:04:27 UTC (rev 267)
++++ haypo/hachoir/stream/file.py	2005-11-25 05:49:28 UTC (rev 268)
+@@ -9,11 +9,9 @@
+ 
+         Stream.__init__(self, filename)
+         self.__file = file 
+-        print &quot;Get size ...&quot;
+         self.__file.seek(0,2) # Seek to end
+         self.__size = self.__file.tell()
+         self.__file.seek(0,0) # Seel to beginning
+-        print &quot;Done : %s&quot; % self.__size
+ 
+     def clone(self):
+         return FileStream(self.__file, self.filename)
+
+Modified: haypo/hachoir/stream/gunzip.py
+===================================================================
+--- haypo/hachoir/stream/gunzip.py	2005-11-25 03:04:27 UTC (rev 267)
++++ haypo/hachoir/stream/gunzip.py	2005-11-25 05:49:28 UTC (rev 268)
+@@ -2,9 +2,13 @@
+ from cStringIO import StringIO
+ from file import FileStream
+ 
+-def GunzipStream(data):
++def GunzipStream(stream):
++    oldpos = stream.tell()
++    stream.seek(0)
++    data = stream.getN(stream.getSize())
++    stream.seek(oldpos)
++    
+     io = StringIO(data)
+-    print io
+     io = gzip.GzipFile(None, &quot;r&quot;, None, io)
+     data = io.read()
+     io = StringIO(data)
+
+Modified: haypo/hachoir/stream/stream.py
+===================================================================
+--- haypo/hachoir/stream/stream.py	2005-11-25 03:04:27 UTC (rev 267)
++++ haypo/hachoir/stream/stream.py	2005-11-25 05:49:28 UTC (rev 268)
+@@ -20,6 +20,9 @@
+     def tell(self):
+         return 0
+ 
++    def createSub(self, start, size):
++        return SubStream(self, start, size, self.filename)
++
+     def createLimited(self, start, size):
+         return LimitedStream(self, start, size, self.filename)
+     
+@@ -44,39 +47,70 @@
+ class LimitedStream(Stream):
+     def __init__(self, stream, start=0, size=0, filename=None):
+         Stream.__init__(self, filename)
+-        self.__stream = stream.clone()
++        self._stream = stream.clone()
+         if start&lt;0:
+             start = 0
+-        if self.__stream.getLastPos() &lt; start+size:
+-            size = self.__stream.getLastPos()-start
+-        self.__start = start
+-        self.__size = size
+-        self.__end = self.__start + self.__size
+-        self.__stream.seek(self.__start)
++        if self._stream.getLastPos() &lt; start+size:
++            size = self._stream.getLastPos()-start
++        self._start = start
++        self._size = size
++        self._end = self._start + self._size
++        self._stream.seek(self._start)
+ 
+     def search(self, str, size_max=None):
+-        if self.__end == 0: return -1
+-        if size_max == None or self.__end-self.tell() &lt; size_max:
+-            size_max = self.__end-self.tell()
+-        assert 0&lt;=size_max  and size_max&lt;=self.__size
+-        return self.__stream.search(str, size_max)
++        if self._end == 0: return -1
++        if size_max == None or self._end-self.tell() &lt; size_max:
++            size_max = self._end-self.tell()
++        assert 0&lt;=size_max  and size_max&lt;=self._size
++        return self._stream.search(str, size_max)
+ 
+     def getN(self, size, seek=True):
+-        if self.__start+self.__size&lt;self.__stream.tell()+size:
+-            raise StreamError(&quot;Can't read outsize the stream.&quot;)
+-        return self.__stream.getN(size, seek)
++        if self._start+self._size&lt;self._stream.tell()+size:
++            raise StreamError( \
++                &quot;Can't read outsize the stream\n&quot;
++                +&quot;(try to read %u byte(s) from position %s, where stream in limited in [%u;%u])&quot; \
++                % (size, self._stream.tell(), self._start, self._end))
++        return self._stream.getN(size, seek)
+ 
+     def tell(self):
+-        return self.__stream.tell()
++        return self._stream.tell()
+ 
+     def seek(self, pos, where=0):
+-        self.__stream.seek(pos, where)
++        self._stream.seek(pos, where)
+         
+     def getSize(self):
+-        return self.__size
++        return self._size
+     
+     def getLastPos(self):
+-        return self.__end
++        return self._end
+ 
+     def clone(self):
+-        return LimitedStream(self.__stream, self.__start, self.__size, self.filename)
++        return LimitedStream(self._stream, self._start, self._size, self.filename)
++
++class SubStream(LimitedStream):
++    def search(self, str, size_max=None):
++        if self._end == 0: return -1
++        max = self._end-self.tell()-self._start-1
++        if size_max == None or max &lt; size_max:
++            size_max = max
++        assert 0&lt;=size_max  and size_max&lt;=self._size
++        pos = self._stream.search(str, size_max)
++        if pos != -1:
++            pos = pos - self._start
++        return pos
++
++    def seek(self, pos, where=0):
++        if where==2:
++            pos = pos - self._start
++        else:
++            pos = pos + self._start
++        self._stream.seek(pos, where)
++
++    def tell(self):
++        return self._stream.tell() - self._start
++    
++    def getLastPos(self):
++        return self._end - self._start
++
++    def clone(self):
++        return SubStream(self._stream, self._start, self._size, self.filename)
+
+Modified: haypo/hachoir/tools.py
+===================================================================
+--- haypo/hachoir/tools.py	2005-11-25 03:04:27 UTC (rev 267)
++++ haypo/hachoir/tools.py	2005-11-25 05:49:28 UTC (rev 268)
+@@ -1,6 +1,20 @@
+ import traceback, sys
+ import string
+ 
++def humanFilesize(size):
++    if size &lt; 1000:
++        return &quot;%u bytes&quot; % size
++    units = [&quot;KB&quot;, &quot;MB&quot;, &quot;GB&quot;]
++    size = float(size)
++    for unit in units:
++        size = size / 1024
++        if size &lt; 100:
++            return &quot;%.1f %s&quot; % (size, unit)
++        if size &lt; 1000:
++            return &quot;%u %s&quot; % (size, unit)
++        last_unit = unit
++    return &quot;%u %s&quot; % (size, unit)
++
+ def convertDataToPrintableString(data):
+     if len(data) == 0:
+         return &quot;(empty)&quot;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000172.html">[Happyboom-svn] r267 - in haypo/hachoir: . plugins stream
+</A></li>
+	<LI>Next message: <A HREF="000174.html">[Happyboom-svn] r269 - in haypo/hachoir: . plugins stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#173">[ date ]</a>
+              <a href="thread.html#173">[ thread ]</a>
+              <a href="subject.html#173">[ subject ]</a>
+              <a href="author.html#173">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

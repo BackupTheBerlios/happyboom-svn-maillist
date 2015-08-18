@@ -1,0 +1,270 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r156 - in happyboom/trunk: common server
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r156%20-%20in%20happyboom/trunk%3A%20common%20server&In-Reply-To=%3C200509140547.j8E5lrqB000610%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000062.html">
+   <LINK REL="Next"  HREF="000064.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r156 - in happyboom/trunk: common server</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r156%20-%20in%20happyboom/trunk%3A%20common%20server&In-Reply-To=%3C200509140547.j8E5lrqB000610%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r156 - in happyboom/trunk: common server">dboucard at berlios.de
+       </A><BR>
+    <I>Wed Sep 14 07:47:53 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000062.html">[Happyboom-svn] r155 - boomboom boomboom/server happyboom/trunk/common happyboom/trunk/server
+</A></li>
+        <LI>Next message: <A HREF="000064.html">[Happyboom-svn] r157 - in happyboom/trunk: . client
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#63">[ date ]</a>
+              <a href="thread.html#63">[ thread ]</a>
+              <a href="subject.html#63">[ subject ]</a>
+              <a href="author.html#63">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-14 07:47:50 +0200 (Wed, 14 Sep 2005)
+New Revision: 156
+
+Modified:
+   happyboom/trunk/common/packer.py
+   happyboom/trunk/common/protocol.py
+   happyboom/trunk/server/gateway.py
+Log:
+seek by ID in the protocol module
+
+
+Modified: happyboom/trunk/common/packer.py
+===================================================================
+--- happyboom/trunk/common/packer.py	2005-09-14 05:34:27 UTC (rev 155)
++++ happyboom/trunk/common/packer.py	2005-09-14 05:47:50 UTC (rev 156)
+@@ -38,7 +38,7 @@
+     &quot;&quot;&quot;
+ 
+     assert len(types) == len(values), &quot;Lengths of types and args have to be the same.&quot;
+-    out = struct.pack(&quot;!ii&quot;, func, event)
++    out = struct.pack(&quot;!HH&quot;, func, event)
+ 
+     #TODO: Fix this :-)
+     for i in range(len(values)):
+@@ -70,16 +70,18 @@
+     i = struct.calcsize(fmt)
+     return (struct.unpack(fmt, data[:i]), data[i:])
+ 
+-def unpack(data):
++def unpack(data, protocol):
+     &quot;&quot;&quot;
+     Unpack binary string to arguments.
+     &quot;&quot;&quot;
+-    fmt = &quot;!BB&quot;
++    fmt = &quot;!HH&quot;
+     i = struct.calcsize(fmt)
+-    feat, evt = struct.unpack(fmt, data[:i])
++    feat_id, evt_id = struct.unpack(fmt, data[:i])
+     data = data[i:]
+     args = []
+-    for type in getArgTypes(feat, evt):
++    feat = protocol.getFeature(feat_id)
++    evt = feat.getEvent(evt_id)
++    for type in evt.getParamTypes():
+         if type==&quot;int&quot;:
+             arg, tail = unpackInt(data)
+         elif type==&quot;bin&quot;:
+@@ -88,4 +90,4 @@
+             raise PackerException(&quot;Wrong argument type: %s&quot; % type)
+         args.append(arg)
+         data = tail
+-    return (feat, evt, args)
+\ No newline at end of file
++    return (fea.namet, evt.name, args)
+\ No newline at end of file
+
+Modified: happyboom/trunk/common/protocol.py
+===================================================================
+--- happyboom/trunk/common/protocol.py	2005-09-14 05:34:27 UTC (rev 155)
++++ happyboom/trunk/common/protocol.py	2005-09-14 05:47:50 UTC (rev 156)
+@@ -27,7 +27,7 @@
+         self.__params_array.append(param)
+         return param
+ 
+-    def getParamsType(self):
++    def getParamTypes(self):
+         types = []
+         for param in self.__params_array:
+             types.append(param.type)
+@@ -50,32 +50,49 @@
+         self.protocol = protocol
+         self.name = name
+         self.id = id
+-        self.__events = {}
++        self.__evtnames = {}
++        self.__evtids = {}
+ 
+     def addEvent(self, name, id):
+         # Check if no other event have the same identifier
+-        for event in self.__events.values():
+-            if event.id==id:
+-                raise ProtocolException( \
+-                    &quot;Events %s.%s and %s.%s have the same identifier (%s).&quot; \
+-                    % (self.name, event.name, self.name, name, id))
++        event = self.__evtids.get(id, None)
++        if event != None:
++            raise ProtocolException( \
++                &quot;Events %s.%s and %s.%s have the same identifier (%s).&quot; \
++                % (self.name, event.name, self.name, name, id))
++        # Check if no other event have the same name
++        event = self.__evtnames.get(name, None)
++        if event != None:
++            raise ProtocolException( \
++                &quot;Events %s[%s] and %s[%s] have the same name (%s).&quot; \
++                % (self.name, event.id, self.name, id, name))
+ 
+         # Add the new event 
+         event = ProtocolEvent(self, name, id)
+-        self.__events[name] = event
++        self.__evtnames[name] = event
++        self.__evtids[id] = event
+         return event
+ 
+-    def getEvent(self, event):
+-        if not self.__events.has_key(event):
++    def getEvent(self, name):
++        event = self.__evtnames.get(name, None)
++        if event == None:
+             raise ProtocolException( \
+                 &quot;The protocol %s has no event %s.%s(...).&quot; 
+-                % (self.protocol.name, self.name, event))
+-        return self.__events[event]
++                % (self.protocol.name, self.name, name))
++        return self.__evtnames[name]
+ 
++    def __getitem__(self, id):
++        event = self.__evtids.get(id, None)
++        if event == None:
++            raise ProtocolException( \
++                &quot;The protocol %s has no event %s[%s](...).&quot; 
++                % (self.protocol.name, self.name, id))
++        return self.__evtids[id]
++
+     def __str__(self):
+         first = True
+         out = &quot;&quot;
+-        for event in self.__events.values():
++        for event in self.__evtnames.values():
+             if first:
+                 first = False
+             else:
+@@ -87,32 +104,49 @@
+     def __init__(self, name, version):
+         self.name = name
+         self.version = version
+-        self.__features = {}
++        self.__featnames = {}
++        self.__featids = {}
+ 
+     def addFeature(self, name, id):
+         # Check if no other feature have the same identifier
+-        for feature in self.__features.values():
+-            if feature.id==id:
+-                raise ProtocolException( \
+-                    &quot;Features %s and %s have the same identifier (%s).&quot; \
+-                    % (feature.name, name, id))
++        feature = self.__featnames.get(name, None)
++        if feature != None:
++            raise ProtocolException( \
++                &quot;Features %s and %s have the same identifier (%s).&quot; \
++                % (feature.name, name, id))
++        # Check if no other feature have the same name
++        feature = self.__featids.get(id, None)
++        if feature != None:
++            raise ProtocolException( \
++                &quot;Features %s and %s have the same name (%s).&quot; \
++                % (feature.id, id, name))
+ 
+         # Add the new feature
+         feature = ProtocolFeature(self, name, id)
+-        self.__features[name] = feature
++        self.__featnames[name] = feature
++        self.__featids[id] = feature
+         return feature
+ 
+-    def getFeature(self, feature):
+-        if not self.__features.has_key(feature):
++    def getFeature(self, name):
++        feature = self.__featnames.get(name, None)
++        if feature == None:
+             raise ProtocolException( \
+                 &quot;The protocol %s has no feature %s.&quot; \
+-                % (self.name, feature))
+-        return self.__features[feature]
++                % (self.name, name))
++        return feature
+ 
++    def __getitem__(self, id):
++        feature = self.__featids.get(id, None)
++        if  feature == None:
++            raise ProtocolException( \
++                &quot;The protocol %s has no feature %s.&quot; \
++                % (self.name, id))
++        return feature
++        
+     def __str__(self):
+         out = &quot;&quot;
+         first = True
+-        for feature in self.__features.values():
++        for feature in self.__featnames.values():
+             if first:
+                 first = False
+             else:
+
+Modified: happyboom/trunk/server/gateway.py
+===================================================================
+--- happyboom/trunk/server/gateway.py	2005-09-14 05:34:27 UTC (rev 155)
++++ happyboom/trunk/server/gateway.py	2005-09-14 05:47:50 UTC (rev 156)
+@@ -36,7 +36,7 @@
+             if not packer.checkType(types[i], args[i]):
+                 raise ProtocolException( \
+                     &quot;Parameter %u of event %s should be of type %s (and not %s).&quot; \
+-                    % (i, event, types[i], type(args[i])))
++                    % (i, e, types[i], type(args[i])))
+         data = packer.pack(f.id, e.id, types, args)
+         return Packet(data)
+             
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000062.html">[Happyboom-svn] r155 - boomboom boomboom/server happyboom/trunk/common happyboom/trunk/server
+</A></li>
+	<LI>Next message: <A HREF="000064.html">[Happyboom-svn] r157 - in happyboom/trunk: . client
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#63">[ date ]</a>
+              <a href="thread.html#63">[ thread ]</a>
+              <a href="subject.html#63">[ subject ]</a>
+              <a href="author.html#63">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

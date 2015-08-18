@@ -1,0 +1,810 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r336 - in haypo/hachoir: . plugins ui
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r336%20-%20in%20haypo/hachoir%3A%20.%20plugins%20ui&In-Reply-To=%3C200512160516.jBG5Gp2e000497%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000241.html">
+   <LINK REL="Next"  HREF="000243.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r336 - in haypo/hachoir: . plugins ui</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r336%20-%20in%20haypo/hachoir%3A%20.%20plugins%20ui&In-Reply-To=%3C200512160516.jBG5Gp2e000497%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r336 - in haypo/hachoir: . plugins ui">haypo at berlios.de
+       </A><BR>
+    <I>Fri Dec 16 06:16:51 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000241.html">[Happyboom-svn] r335 - in haypo/hachoir: . plugins stream
+</A></li>
+        <LI>Next message: <A HREF="000243.html">[Happyboom-svn] r337 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#242">[ date ]</a>
+              <a href="thread.html#242">[ thread ]</a>
+              <a href="subject.html#242">[ subject ]</a>
+              <a href="author.html#242">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-16 06:16:50 +0100 (Fri, 16 Dec 2005)
+New Revision: 336
+
+Modified:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/filter.py
+   haypo/hachoir/format.py
+   haypo/hachoir/plugins/ext2.py
+   haypo/hachoir/ui/ui_new_chunk.py
+   haypo/hachoir/ui/ui_property.py
+Log:
+- Create OnlyFormatFilter which doesn't create chunk, or just on demand
+- Also use cache for splitFormat function.
+- Merge FormatChunkCache and FormatChunk to limit function call
+
+
+Modified: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-12-16 03:47:20 UTC (rev 335)
++++ haypo/hachoir/chunk.py	2005-12-16 05:16:50 UTC (rev 336)
+@@ -31,7 +31,7 @@
+ 
+     def __str__(self):
+         return &quot;Chunk(%s) &lt;addr=%s, size=%s, id=%s, description=%s&gt;&quot; % \
+-            (self.__class__, self._addr, self.size, self.id, self.description)
++            (self.__class__, self._addr, self._size, self.id, self.description)
+         
+     def getStream(self):
+         return self._stream
+@@ -46,7 +46,7 @@
+     def getRaw(self, max_size=None):
+         oldpos = self._stream.tell()
+         self._stream.seek(self.addr)
+-        size = self.size
++        size = self._size
+         if max_size != None and max_size&lt;size:
+             size = max_size
+         data = self._stream.getN(size)
+@@ -250,95 +250,45 @@
+             text = self._read(config.max_string_length)
+             return convertDataToPrintableString(text)
+         
+-class FormatChunkCache:
+-    def __init__(self, chunk):
+-        self._chunk = chunk
+-        self._value = {}
+-        self._addr = None
+-        self._format = None
+-        self._size = None
+-        self.update()
+-        
+-    def _isArray(self, format):
+-        if self._chunk.isString(): return False
+-        endian, size, type = splitFormat(format)
+-        return (size != &quot;1&quot; and size != &quot;&quot;)
+-
+-    def _getRawData(self, max_size=None, add_comment=True):
+-        stream = self._chunk.getStream()
+-        oldpos = stream.tell()
+-        stream.seek(self._addr)
+-        if (max_size == None or self._size&lt;=max_size) or not self._chunk.isString():
+-            data = stream.getN(self._size, False)
+-            stream.seek(oldpos)
+-            return data, False
+-        else:
+-            data = stream.getN(max_size, False)
+-            stream.seek(oldpos)
+-            if add_comment:
+-                return data+&quot;(...)&quot;, True
+-            else:
+-                return data, True
+-
+-    def setFormat(self, format):
+-        self._value = {}
+-        self._format = format
+-        self._size = getFormatSize(self._format)
+-
+-    def update(self):
+-        format_changed = (self._format != self._chunk.getFormat())
+-        if self._addr != self._chunk.addr or format_changed:
+-            # Invalidate the cache
+-            self._value = {}
+-            self._format = self._chunk.getFormat()
+-            self._addr = self._chunk.addr
+-        if format_changed:
+-            self._size = getFormatSize(self._format)
+-
+-    def getSize(self):
+-#        self.update()
+-        return self._size
+-
+-    def getRaw(self, max_size=None):
+-        self.update()
+-        return self._getRawData(max_size, False)[0]
+-
+-    def getValue(self, max_size=None):
+-        self.update()
+-        if max_size not in self._value:
+-            data, truncated = self._getRawData(max_size)
+-            if not truncated:
+-                data = struct.unpack(self._format, data)
+-                if not self._isArray(self._format):
+-                    data = data[0]
+-            self._value[max_size] = data               
+-        return self._value[max_size]
+-
+ class FormatChunk(Chunk):
+     regex_sub_format = re.compile(r'\{([^}]+)\}')
+ 
+     def __init__(self, id, description, stream, addr, format, parent):
+-        Chunk.__init__(self, id, description, stream, addr, 0, parent)
+-        self.__format = format
+-        self._cache = FormatChunkCache(self)
+-        
++        Chunk.__init__(self, id, description, stream, addr, None, parent)
++        self._format = None
++        self._doSetFormat(format)
++
++    def _doSetFormat(self, format):
++        if format == self._format:
++            return
++        self._format = format
++        self._is_string = self.isString()
++        if not self._is_string:
++            count = splitFormat(self._format)[1]
++            self._is_array = (count != 1)
++        else:
++            self._is_array = False
++        self._size = getFormatSize(self._format)
++        self._value = {}
++       
+     def clone(self, addr=None):
+         if addr == None:
+             addr = self._addr
+-        return FormatChunk(self.id, self.description, self._stream, addr, self.__format, self._parent)
++        return FormatChunk(self.id, self.description, self._stream, addr, self._format, self._parent)
+ 
++    def _setAddr(self, addr):
++        self._addr = addr
++        self._value = {}
++    addr = property(Chunk._getAddr, _setAddr)
++
+     def getFormat(self):
+-        return self.__format
++        return self._format
+ 
+-    def _getSize(self):
+-        return self._cache.getSize()
+-    size = property(_getSize)        
+-
+     def isString(self):
+-        return self.__format[-1] == &quot;s&quot;
++        return self._format[-1] == &quot;s&quot;
+ 
+     def convertToStringSize(self, size):
+-        self.__format = &quot;!%ss&quot; % size
++        self._doSetFormat(&quot;%us&quot; % size)
+ 
+     def setFormat(self, format, method, new_id=None, new_description=None):
+         &quot;&quot;&quot; Method:
+@@ -356,9 +306,9 @@
+         self._cache.setFormat(format)
+ 
+         # Update format
+-        old_size = self.size
+-        self.__format = format
+-        new_size = self.size
++        old_size = self._size
++        self._doSetFormat(format)
++        new_size = self._size
+         diff_size = new_size - old_size
+ 
+         # Update id and description
+@@ -377,13 +327,34 @@
+             else:
+                 self._parent.rescan(self, diff_size, new_id=old_id, new_description=old_description, truncate=True)
+         self._parent.updateFormatChunk(self)
+-   
++
++    def _getRawData(self, max_size=None):
++        oldpos = self._stream.tell()
++        self._stream.seek(self._addr)
++        if (max_size == None or self._size&lt;=max_size) or not self._is_string:
++            data = self._stream.getN(self._size, False)
++            self._stream.seek(oldpos)
++            return data, False
++        else:
++            data = self._stream.getN(max_size, False)
++            self._stream.seek(oldpos)
++            return data, True
++
+     def getRaw(self, max_size=None):
+-        return self._cache.getRaw(max_size)
++        return self._getRawData(max_size)[0]
+     raw = property(getRaw)
+    
+     def getValue(self, max_size=None):
+-        return self._cache.getValue(max_size)
++        if max_size not in self._value:
++            data, truncated = self._getRawData(max_size)
++            if not truncated:
++                data = struct.unpack(self._format, data)
++                if not self._is_array:
++                    data = data[0]
++            else:
++                data = data + &quot;(...)&quot;
++            self._value[max_size] = data
++        return self._value[max_size]
+     value = property(getValue)
+ 
+     def getDisplayData(self):
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-12-16 03:47:20 UTC (rev 335)
++++ haypo/hachoir/filter.py	2005-12-16 05:16:50 UTC (rev 336)
+@@ -6,29 +6,108 @@
+ import config
+ import ui.ui as ui
+ from chunk import Chunk, FormatChunk, FilterChunk, StringChunk
+-from format import splitFormat    
+ from error import error
+ from tools import getBacktrace
++from format import getFormatSize
+ 
+-class Filter:
+-    regex_chunk_uniq_id = re.compile(&quot;^(.*?)([0-9]+)$&quot;)
+-    regex_array_chunk = re.compile(r&quot;^([^[]+)\[\]$&quot;)
+-
+-    def __init__(self, id, description, stream, parent):
++class BasicFilter:
++    def __init__(self, id, description, stream, parent, addr):
+         self._id = id
+         self._description = description
+         self._stream = stream
+         self._parent = parent
+-        if self._parent:
+-            self.depth = self._parent.depth + 1
+-        else:
+-            self.depth = 1
++        self._addr = addr 
++
++
++    def getId(self): return self._id
++    def setId(self, id): self._id = id
++    def getDescription(self): return self._description
++    def setDescription(self, description): self._description = description
++    def getAddr(self): return self._addr
++    def setAddr(self, addr): self._addr = addr
++    def getParent(self): return self._parent
++    def getStream(self): return self._stream
++
++    def getPath(self):
++        &quot;&quot;&quot;
++        Get path to the filter.
++        Example: &quot;grandparent &gt; parent &gt; item&quot;
++        &quot;&quot;&quot;
++        text = &quot;&quot;
++        current = self
++        while current != None:
++            if text != &quot;&quot;: text = &quot;/&quot; + text
++            text = current.getId() + text
++            current = current.getParent()
++        return &quot;/&quot;+text
++
++    # --- Pure virtual methods -----------
++    def getSize(self): assert False
++    def __getitem__(self, chunk_id): assert False
++    def getChunk(self, chunk_id): assert False
++    def display(self): assert False
++
++class OnlyFormatFilter(BasicFilter):
++    def __init__(self, id, description, stream, parent):
++        BasicFilter.__init__(self, id, description, stream, parent, stream.tell())
++        self._chunks = []
++        self._chunks_counter = {}
++        self._size = 0
++
++    def read(self, id, format, description, post=None):
++        if id[-2:] == &quot;[]&quot;:
++            root = id[:-2]
++            if root in self._chunks_counter:
++                self._chunks_counter[root] += 1
++            else:
++                self._chunks_counter[root] = 0
++            id = root+&quot;[&quot;+str(self._chunks_counter[root])+&quot;]&quot;
++        size = getFormatSize(format)
++        self._chunks.append( (id, description, self._stream.tell(), format, size, post) )
++        self._stream.seek(size, 1)
++        self._size = self._size + size
++
++    def display(self):
++        ui.window.enableParentButton(self.getParent() != None)
++        ui.window.clear_table()
++        for chunk in self._chunks:
++            data = FormatChunk(chunk[0], chunk[1], self._stream, chunk[2], chunk[3], self)
++            post = chunk[5]
++            if post != None:
++                display = post(data)
++            else:
++                display = data.value 
++            ui.window.add_table(None, chunk[2], chunk[4], chunk[3], chunk[0], chunk[1], display)
++ 
++    def getSize(self): return self._size
++
++    def getChunk(self, chunk_id):
++        print &quot;getChunk: %s&quot; % chunk_id
++        for chunk in self._chunks:
++            if chunk[0] == chunk_id:
++                return FormatChunk(chunk[0], chunk[1], self._stream, chunk[2], chunk[3], self)
++        return None                
++        assert False
++
++    def __getitem__(self, chunk_id):
++        for chunk in self._chunks:
++            if chunk[0] == chunk_id:
++                self._stream.seek(chunk[2])
++                return self._stream.getFormat(chunk[3])[0]
++                return FormatChunk(chunk[0], chunk[1], self._stream, chunk[2], chunk[3], self)
++        assert False
++
++class Filter(BasicFilter):
++    regex_chunk_uniq_id = re.compile(&quot;^(.*?)([0-9]+)$&quot;)
++
++    def __init__(self, id, description, stream, parent):
++        BasicFilter.__init__(self, id, description, stream, parent, stream.tell())
+         self.filter_chunk = None 
+         self._chunks = []
+         self._chunks_dict = {}
+-        self._addr = self._stream.tell()
+         self._cache_valid = False
+         self._cache_size = None
++        self._chunk_counter = {}
+ 
+     def __getitem__(self, chunk_id):
+         return self.getChunk(chunk_id).getValue()
+@@ -47,11 +126,6 @@
+         new.filter_chunk = self.filter_chunk
+         return new
+ 
+-    def getId(self): return self._id
+-    def setId(self, id): self._id = id
+-    def getDescription(self): return self._description
+-    def setDescription(self, description): self._description = description
+-
+     def _deleteChunk(self, pos):
+         self._cache_valid = False
+         chunk = self._chunks[pos]
+@@ -76,29 +150,34 @@
+     def getChunks(self):
+         return self._chunks
+ 
+-    def _getUniqChunkId(self, pattern, root, index):
+-        if not hasattr(self, &quot;_chunk_counter&quot;):
+-            self._chunk_counter = {}
+-        
++    def _getUniqChunkId(self, root, index):
+         if root in self._chunk_counter:
+-            self._chunk_counter[root] = self._chunk_counter[root]+1
++            self._chunk_counter[root] = self._chunk_counter[root] + 1
+         else:
+             self._chunk_counter[root] = index
+-        return pattern % (root, self._chunk_counter[root])
++        return self._chunk_counter[root]
+ 
+     def getUniqChunkId(self, id):
++        # Pattern like &quot;block[]&quot;
+         if id[-2:] == &quot;[]&quot;:
+-            return self._getUniqChunkId(&quot;%s[%u]&quot;, id[:-2], 0)
++            root = id[:-2]
++            index = self._getUniqChunkId(root, 0)
++            return root+&quot;[&quot;+str(index)+&quot;]&quot; 
+ 
+-        if id in self._chunks_dict:
+-            m = Filter.regex_chunk_uniq_id.match(id)
+-            if m != None:
+-                return self._getUniqChunkId(&quot;%s%u&quot;, m.group(1), int(m.group(2))+1)
+-            else:
+-                return self._getUniqChunkId(&quot;%s%u&quot;, id, 2)
+-        else:
++        # No collision
++        if id not in self._chunks_dict:
+             return id
+ 
++        # Manage id collision
++        m = Filter.regex_chunk_uniq_id.match(id)
++        if m != None:
++            root = m.group(1)
++            index = self._getUniqChunkId(root, int(m.group(2))+1)
++        else:
++            root = id
++            index = self._getUniqChunkId(root, 2)
++        return root+str(index)
++
+     def updateChunkId(self, chunk, new_id):
+         if chunk.id == new_id: return
+         if new_id in self._chunks_dict or hasattr(self, new_id):
+@@ -140,7 +219,6 @@
+         
+         if prev_chunk != None and issubclass(prev_chunk.__class__, FormatChunk):
+             # If last chunk is a FormatChunk, update it's size
+-            format = splitFormat(prev_chunk.getFormat())
+             size = prev_chunk.size - diff_size
+             prev_chunk.convertToStringSize(size)
+             self._cache_valid = False
+@@ -207,12 +285,6 @@
+         if self.getParent() != None:
+             self.getParent().rescan(self.filter_chunk, diff_size)
+ 
+-    def getAddr(self):
+-        return self._addr
+-
+-    def setAddr(self, addr):
+-        self._addr = addr
+-
+     def getLastPos(self):
+         if len(self._array) == 0: return self.getAddr()
+         last_chunk = self._array[-1]
+@@ -266,19 +338,6 @@
+     def redisplay(self):  
+         self.display()
+     
+-    def getPath(self):
+-        &quot;&quot;&quot;
+-        Get path to the filter.
+-        Example: &quot;grandparent &gt; parent &gt; item&quot;
+-        &quot;&quot;&quot;
+-        text = &quot;&quot;
+-        current = self
+-        while current != None:
+-            if text != &quot;&quot;: text = &quot;/&quot; + text
+-            text = current.getId() + text
+-            current = current.getParent()
+-        return &quot;/&quot;+text
+-
+     def display(self):  
+         ui.window.enableParentButton(self.getParent() != None)
+             
+@@ -315,10 +374,10 @@
+ 
+     def appendChunk(self, chunk, position=None):
+         self._cache_valid = False
+-        if position != None:
++        if position == None:
++            self._chunks.append(chunk)
++        else:
+             self._chunks.insert(position, chunk)
+-        else:
+-            self._chunks.append(chunk)
+         self._chunks_dict[chunk.id] = chunk
+ 
+     def readLimitedChild(self, id, size, filter_class, *args):
+@@ -382,7 +441,7 @@
+             (self.__class__, self.getId(), self.getDescription())
+ 
+     def addNewFilter(self, chunk, id, size, desc):
+-        chunk.setFormat(&quot;!%ss&quot; % size, &quot;split&quot;, id, desc)
++        chunk.setFormat(&quot;%us&quot; % size, &quot;split&quot;, id, desc)
+         self.convertChunkToFilter(chunk)
+ 
+     def convertFilterToChunk(self, chunk):
+@@ -421,12 +480,6 @@
+         self.redisplay()
+         return filter
+ 
+-    def getParent(self):
+-        return self._parent
+-
+-    def getStream(self):
+-        return self._stream
+-
+ class ArrayFilter(Filter):
+     def __init__(self, id, description, stream, parent, entry_class, end_func):
+         Filter.__init__(self, id, description, stream, parent)
+
+Modified: haypo/hachoir/format.py
+===================================================================
+--- haypo/hachoir/format.py	2005-12-16 03:47:20 UTC (rev 335)
++++ haypo/hachoir/format.py	2005-12-16 05:16:50 UTC (rev 336)
+@@ -4,27 +4,37 @@
+ _regex_format2 = re.compile(&quot;^([!&lt;&gt;]?)((?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?)([BHLbhscfd])$&quot;)
+ _format_size_cache = {}
+ 
+-def getFormatSize(format):
++def _getFormatCache(format):
+     global _format_size_cache
+     if format not in _format_size_cache:
+         assert checkFormat(format)
+-        endian, count, type = splitFormat(format)
+-        if count != &quot;&quot;:
+-            count = int(count)
+-        else:
+-            count = 1
+-        _format_size_cache[format] = count * struct.calcsize(type)
++        endian, count, type = _doSplitFormat(format)
++        size = count * struct.calcsize(type)
++        _format_size_cache[format] = (endian, count, type, size)
+     return _format_size_cache[format]   
+ 
++def getFormatSize(format):
++    cache = _getFormatCache(format)
++    return cache[3]   
++
+ def checkFormat(format):
+     m = _regex_format1.match(format)
+     return m != None
+ 
+ def splitFormat(format):
++    cache = _getFormatCache(format)
++    return cache[:3]   
++
++def _doSplitFormat(format):
+     m = _regex_format2.match(format)
+-    if m == None: return None
++    assert m != None
+     endian = m.group(1)
+-    if endian==&quot;&quot;: endian=&quot;!&quot;
+-    size = m.group(2)
++    count = m.group(2)
+     type = m.group(3)
+-    return (endian, size, type,)
++    if endian == &quot;&quot;:
++        endian = &quot;!&quot;
++    if count != &quot;&quot;:
++        count = long(count)
++    else:
++        count = 1
++    return (endian, count, type,)
+
+Modified: haypo/hachoir/plugins/ext2.py
+===================================================================
+--- haypo/hachoir/plugins/ext2.py	2005-12-16 03:47:20 UTC (rev 335)
++++ haypo/hachoir/plugins/ext2.py	2005-12-16 05:16:50 UTC (rev 336)
+@@ -9,7 +9,7 @@
+ &quot;&quot;&quot;
+ 
+ from datetime import datetime
+-from filter import Filter
++from filter import Filter, OnlyFormatFilter
+ from plugin import registerPlugin
+ from tools import humanDuration, getUnixRWX 
+ 
+@@ -48,7 +48,7 @@
+         type = chunk.value
+         return DirectoryEntry.file_type.get(type, &quot;Unknow (%02X)&quot; % type)
+ 
+-class Inode(Filter):
++class Inode(OnlyFormatFilter):
+     name = {
+         1: &quot;list of bad blocks&quot;,
+         2: &quot;Root directory&quot;,
+@@ -60,7 +60,7 @@
+     }
+     
+     def __init__(self, stream, parent, index):
+-        Filter.__init__(self, &quot;inode&quot;, &quot;EXT2 inode&quot;, stream, parent)
++        OnlyFormatFilter.__init__(self, &quot;inode&quot;, &quot;EXT2 inode&quot;, stream, parent)
+         self.index = index
+         self.read(&quot;mode&quot;, &quot;&lt;H&quot;, &quot;Mode&quot;, post=self.postMode)
+         self.read(&quot;uid&quot;, &quot;&lt;H&quot;, &quot;User ID&quot;)
+@@ -204,84 +204,79 @@
+         self.read(&quot;free_blocks_count&quot;, &quot;&lt;L&quot;, &quot;Free blocks count&quot;)
+         self.read(&quot;free_inodes_count&quot;, &quot;&lt;L&quot;, &quot;Free inodes count&quot;)
+         first = self.read(&quot;first_data_block&quot;, &quot;&lt;L&quot;, &quot;First data block&quot;).value
+-        self.is_superblock = (first == 0)
+-        if self.is_superblock:
+-            self.read(&quot;log_block_size&quot;, &quot;&lt;L&quot;, &quot;Block size&quot;)
+-            self.read(&quot;log_frag_size&quot;, &quot;&lt;L&quot;, &quot;Fragment size&quot;)
+-            self.read(&quot;blocks_per_group&quot;, &quot;&lt;L&quot;, &quot;Blocks per group&quot;)
+-            self.read(&quot;frags_per_group&quot;, &quot;&lt;L&quot;, &quot;Fragments per group&quot;)
+-            self.read(&quot;inodes_per_group&quot;, &quot;&lt;L&quot;, &quot;Inodes per group&quot;)
+-            self.read(&quot;mtime&quot;, &quot;&lt;L&quot;, &quot;Mount time&quot;, post=self.getTime)
+-            self.read(&quot;wtime&quot;, &quot;&lt;L&quot;, &quot;Write time&quot;, post=self.getTime)
+-            self.read(&quot;mnt_count&quot;, &quot;&lt;H&quot;, &quot;Mount count&quot;)
+-            self.read(&quot;max_mnt_count&quot;, &quot;&lt;h&quot;, &quot;Max mount count&quot;)
+-            id = self.read(&quot;magic&quot;, &quot;&gt;H&quot;, &quot;Magic number (0x53EF)&quot;).value
+-            assert id == 0x53EF
++        assert (first == 0)
++        self.read(&quot;log_block_size&quot;, &quot;&lt;L&quot;, &quot;Block size&quot;)
++        self.read(&quot;log_frag_size&quot;, &quot;&lt;L&quot;, &quot;Fragment size&quot;)
++        self.read(&quot;blocks_per_group&quot;, &quot;&lt;L&quot;, &quot;Blocks per group&quot;)
++        self.read(&quot;frags_per_group&quot;, &quot;&lt;L&quot;, &quot;Fragments per group&quot;)
++        self.read(&quot;inodes_per_group&quot;, &quot;&lt;L&quot;, &quot;Inodes per group&quot;)
++        self.read(&quot;mtime&quot;, &quot;&lt;L&quot;, &quot;Mount time&quot;, post=self.getTime)
++        self.read(&quot;wtime&quot;, &quot;&lt;L&quot;, &quot;Write time&quot;, post=self.getTime)
++        self.read(&quot;mnt_count&quot;, &quot;&lt;H&quot;, &quot;Mount count&quot;)
++        self.read(&quot;max_mnt_count&quot;, &quot;&lt;h&quot;, &quot;Max mount count&quot;)
++        id = self.read(&quot;magic&quot;, &quot;&gt;H&quot;, &quot;Magic number (0x53EF)&quot;).value
++        assert id == 0x53EF
+ 
+-            # Read state
+-            chunk = self.read(&quot;state&quot;, &quot;&lt;H&quot;, &quot;File system state&quot;)
+-            chunk.description = &quot;Behaviour when detecting errors: %s&quot; % \
+-                SuperBlock.state.get(chunk.value, &quot;Unknow (%s)&quot; % chunk.value)
++        # Read state
++        chunk = self.read(&quot;state&quot;, &quot;&lt;H&quot;, &quot;File system state&quot;)
++        chunk.description = &quot;Behaviour when detecting errors: %s&quot; % \
++            SuperBlock.state.get(chunk.value, &quot;Unknow (%s)&quot; % chunk.value)
+ 
+-            # Read error handling
+-            chunk = self.read(&quot;errors&quot;, &quot;&lt;H&quot;, &quot;&quot;)
+-            desc = &quot;Behaviour when detecting errors&quot;
+-            if chunk.value in SuperBlock.error_handling:
+-                desc = &quot;%s: %s&quot; % (desc, SuperBlock.error_handling[chunk.value])
+-            chunk.description = desc
+-            
+-            self.read(&quot;minor_rev_level&quot;, &quot;&lt;H&quot;, &quot;Minor revision level&quot;)
+-            self.read(&quot;last_check&quot;, &quot;&lt;L&quot;, &quot;Time of last check&quot;, post=self.getTime)
+-            self.read(&quot;check_interval&quot;, &quot;&lt;L&quot;, &quot;Maximum time between checks&quot;, post=self.postMaxTime)
+-            
+-            chunk = self.read(&quot;creator_os&quot;, &quot;&lt;L&quot;, &quot;&quot;)
+-            desc = &quot;Creator OS&quot;
+-            if chunk.value in SuperBlock.os_name:
+-                desc = &quot;%s: %s&quot; % (desc, SuperBlock.os_name[chunk.value])
+-            chunk.description = desc
+-            
+-            self.read(&quot;rev_level&quot;, &quot;&lt;L&quot;, &quot;Revision level&quot;)
+-            self.read(&quot;def_resuid&quot;, &quot;&lt;H&quot;, &quot;Default uid for reserved blocks&quot;)
+-            self.read(&quot;def_resgid&quot;, &quot;&lt;H&quot;, &quot;Default guid for reserverd blocks&quot;)
++        # Read error handling
++        chunk = self.read(&quot;errors&quot;, &quot;&lt;H&quot;, &quot;&quot;)
++        desc = &quot;Behaviour when detecting errors&quot;
++        if chunk.value in SuperBlock.error_handling:
++            desc = &quot;%s: %s&quot; % (desc, SuperBlock.error_handling[chunk.value])
++        chunk.description = desc
++        
++        self.read(&quot;minor_rev_level&quot;, &quot;&lt;H&quot;, &quot;Minor revision level&quot;)
++        self.read(&quot;last_check&quot;, &quot;&lt;L&quot;, &quot;Time of last check&quot;, post=self.getTime)
++        self.read(&quot;check_interval&quot;, &quot;&lt;L&quot;, &quot;Maximum time between checks&quot;, post=self.postMaxTime)
++        
++        chunk = self.read(&quot;creator_os&quot;, &quot;&lt;L&quot;, &quot;&quot;)
++        desc = &quot;Creator OS&quot;
++        if chunk.value in SuperBlock.os_name:
++            desc = &quot;%s: %s&quot; % (desc, SuperBlock.os_name[chunk.value])
++        chunk.description = desc
++        
++        self.read(&quot;rev_level&quot;, &quot;&lt;L&quot;, &quot;Revision level&quot;)
++        self.read(&quot;def_resuid&quot;, &quot;&lt;H&quot;, &quot;Default uid for reserved blocks&quot;)
++        self.read(&quot;def_resgid&quot;, &quot;&lt;H&quot;, &quot;Default guid for reserverd blocks&quot;)
+ 
+-            # ---------
++        # ---------
+ 
+-            self.read(&quot;first_ino&quot;, &quot;&lt;L&quot;, &quot;First non-reserved inode&quot;)
+-            inode_size = self.read(&quot;inode_size&quot;, &quot;&lt;H&quot;, &quot;Size of inode structure&quot;).value
+-            assert inode_size == (68 + 15*4)
+-            self.read(&quot;block_group_nr&quot;, &quot;&lt;H&quot;, &quot;Block group # of this superblock&quot;)
+-            self.read(&quot;feature_compat&quot;, &quot;&lt;L&quot;, &quot;Compatible feature set&quot;)
+-            self.read(&quot;feature_incompat&quot;, &quot;&lt;L&quot;, &quot;Incompatible feature set&quot;)
+-            self.read(&quot;feature_ro_compat&quot;, &quot;&lt;L&quot;, &quot;Read-only compatible feature set&quot;)
+-            self.read(&quot;uuid&quot;, &quot;16s&quot;, &quot;128-bit uuid for volume&quot;)
+-            self.read(&quot;volume_name&quot;, &quot;16s&quot;, &quot;Volume name&quot;)
+-            self.read(&quot;last_mounted&quot;, &quot;64s&quot;, &quot;Directory where last mounted&quot;)
+-            self.read(&quot;compression&quot;, &quot;&lt;L&quot;, &quot;For compression (algorithm usage bitmap)&quot;)
+-            
+-            self.read(&quot;prealloc_blocks&quot;, &quot;B&quot;, &quot;Number of blocks to try to preallocate&quot;)
+-            self.read(&quot;prealloc_dir_blocks&quot;, &quot;B&quot;, &quot;Number to preallocate for directories&quot;)
+-            self.read(&quot;padding&quot;, &quot;H&quot;, &quot;Padding&quot;)
+-            
+-            self.read(&quot;journal_uuid&quot;, &quot;16s&quot;, &quot;uuid of journal superblock&quot;)
+-            self.read(&quot;journal_inum&quot;, &quot;&lt;L&quot;, &quot;inode number of journal file&quot;)
+-            self.read(&quot;journal_dev&quot;, &quot;&lt;L&quot;, &quot;device number of journal file&quot;)
+-            self.read(&quot;last_orphan&quot;, &quot;&lt;L&quot;, &quot;start of list of inodes to delete&quot;)
+-            
+-            self.read(&quot;reserved&quot;, &quot;197s&quot;, &quot;Padding to the end of the block&quot;)
+-        else:        
+-            self.read(&quot;padding&quot;, &quot;197s&quot;, &quot;Padding to the end of the block&quot;)
++        self.read(&quot;first_ino&quot;, &quot;&lt;L&quot;, &quot;First non-reserved inode&quot;)
++        inode_size = self.read(&quot;inode_size&quot;, &quot;&lt;H&quot;, &quot;Size of inode structure&quot;).value
++        assert inode_size == (68 + 15*4)
++        self.read(&quot;block_group_nr&quot;, &quot;&lt;H&quot;, &quot;Block group # of this superblock&quot;)
++        self.read(&quot;feature_compat&quot;, &quot;&lt;L&quot;, &quot;Compatible feature set&quot;)
++        self.read(&quot;feature_incompat&quot;, &quot;&lt;L&quot;, &quot;Incompatible feature set&quot;)
++        self.read(&quot;feature_ro_compat&quot;, &quot;&lt;L&quot;, &quot;Read-only compatible feature set&quot;)
++        self.read(&quot;uuid&quot;, &quot;16s&quot;, &quot;128-bit uuid for volume&quot;)
++        self.read(&quot;volume_name&quot;, &quot;16s&quot;, &quot;Volume name&quot;)
++        self.read(&quot;last_mounted&quot;, &quot;64s&quot;, &quot;Directory where last mounted&quot;)
++        self.read(&quot;compression&quot;, &quot;&lt;L&quot;, &quot;For compression (algorithm usage bitmap)&quot;)
++        
++        self.read(&quot;prealloc_blocks&quot;, &quot;B&quot;, &quot;Number of blocks to try to preallocate&quot;)
++        self.read(&quot;prealloc_dir_blocks&quot;, &quot;B&quot;, &quot;Number to preallocate for directories&quot;)
++        self.read(&quot;padding&quot;, &quot;H&quot;, &quot;Padding&quot;)
++        
++        self.read(&quot;journal_uuid&quot;, &quot;16s&quot;, &quot;uuid of journal superblock&quot;)
++        self.read(&quot;journal_inum&quot;, &quot;&lt;L&quot;, &quot;inode number of journal file&quot;)
++        self.read(&quot;journal_dev&quot;, &quot;&lt;L&quot;, &quot;device number of journal file&quot;)
++        self.read(&quot;last_orphan&quot;, &quot;&lt;L&quot;, &quot;start of list of inodes to delete&quot;)
++        
++        self.read(&quot;reserved&quot;, &quot;197s&quot;, &quot;Padding to the end of the block&quot;)
+ 
++        blocks_per_group = self[&quot;blocks_per_group&quot;]
++        self.group_count = (self[&quot;blocks_count&quot;] - self[&quot;first_data_block&quot;] + blocks_per_group - 1) / blocks_per_group
++
+     def updateParent(self, chunk):
+-        if self.is_superblock:
+-            blocks_per_group = self[&quot;blocks_per_group&quot;]
+-            self.group_count = (self[&quot;blocks_count&quot;] - self[&quot;first_data_block&quot;] + blocks_per_group - 1) / blocks_per_group
+-            if self[&quot;feature_compat&quot;] &amp; 4 == 4:
+-                type = &quot;ext3&quot;
+-            else:
+-                type = &quot;ext2&quot;
+-            desc = &quot;EXT2 Superblock: %s file system&quot; % type
++        if self[&quot;feature_compat&quot;] &amp; 4 == 4:
++            type = &quot;ext3&quot;
+         else:
+-            desc = &quot;EXT2 block #%s&quot; % self[&quot;first_data_block&quot;]
++            type = &quot;ext2&quot;
++        desc = &quot;EXT2 Superblock: %s file system&quot; % type
+         self.setDescription(desc)
+         chunk.description = desc
+ 
+@@ -342,7 +337,7 @@
+         count = 32768
+         self.readChild(&quot;inode_bitmap[]&quot;, InodeBitmap, count / 8, 1)
+ 
+-        inode_table0 = self.readChild(&quot;inode_table[]&quot;, InodeTable, 1, 200).getFilter()
++        inode_table0 = self.readChild(&quot;inode_table[]&quot;, InodeTable, 1, 1000).getFilter()
+ 
+         root = inode_table0[2]
+ 
+
+Modified: haypo/hachoir/ui/ui_new_chunk.py
+===================================================================
+--- haypo/hachoir/ui/ui_new_chunk.py	2005-12-16 03:47:20 UTC (rev 335)
++++ haypo/hachoir/ui/ui_new_chunk.py	2005-12-16 05:16:50 UTC (rev 336)
+@@ -48,7 +48,7 @@
+         format = chunk.getFormat()
+         split = splitFormat(format)
+         if split != None:
+-            self.size_widget.set_text(split[1])
++            self.size_widget.set_text(&quot;%u&quot; % split[1])
+             self.endian_widget.child.set_text(split[0])
+             self.format_widget.child.set_text(split[2])
+         self.id_widget.set_text(chunk.id)
+
+Modified: haypo/hachoir/ui/ui_property.py
+===================================================================
+--- haypo/hachoir/ui/ui_property.py	2005-12-16 03:47:20 UTC (rev 335)
++++ haypo/hachoir/ui/ui_property.py	2005-12-16 05:16:50 UTC (rev 336)
+@@ -1,7 +1,6 @@
+ import pygtk
+ import gtk
+ import gtk.glade
+-from format import splitFormat
+ 
+ class PropertyDialog:
+     def __init__(self, ui):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000241.html">[Happyboom-svn] r335 - in haypo/hachoir: . plugins stream
+</A></li>
+	<LI>Next message: <A HREF="000243.html">[Happyboom-svn] r337 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#242">[ date ]</a>
+              <a href="thread.html#242">[ thread ]</a>
+              <a href="subject.html#242">[ subject ]</a>
+              <a href="author.html#242">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

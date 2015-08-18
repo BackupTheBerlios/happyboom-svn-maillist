@@ -1,0 +1,173 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r294 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r294%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200512010656.jB16uc4i032676%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000199.html">
+   <LINK REL="Next"  HREF="000201.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r294 - in haypo/hachoir: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r294%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200512010656.jB16uc4i032676%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r294 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Thu Dec  1 07:56:38 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000199.html">[Happyboom-svn] r292 - haypo/hachoir/plugins
+</A></li>
+        <LI>Next message: <A HREF="000201.html">[Happyboom-svn] r295 - in haypo/hachoir: . ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#200">[ date ]</a>
+              <a href="thread.html#200">[ thread ]</a>
+              <a href="subject.html#200">[ subject ]</a>
+              <a href="author.html#200">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-01 07:56:21 +0100 (Thu, 01 Dec 2005)
+New Revision: 294
+
+Added:
+   haypo/hachoir/plugins/rpm.py
+Modified:
+   haypo/hachoir/export.template
+Log:
+Beginning of RPM filter.
+
+
+Modified: haypo/hachoir/export.template
+===================================================================
+--- haypo/hachoir/export.template	2005-12-01 05:34:01 UTC (rev 293)
++++ haypo/hachoir/export.template	2005-12-01 06:56:21 UTC (rev 294)
+@@ -6,11 +6,11 @@
+ &quot;&quot;&quot;
+ 
+ from filter import Filter
+-from plugins import registerPlugin
++from plugin import registerPlugin
+ 
+ class MyFilter(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;{id}&quot;, &quot;{description}&quot;, stream, parent)
+ {chunks}
+ 
+-#registerPlugin(MyFilter, &quot;&lt;MIME type&gt;&quot;)
++#registerPlugin(MyFilter, &quot;&quot;)
+
+Added: haypo/hachoir/plugins/rpm.py
+===================================================================
+--- haypo/hachoir/plugins/rpm.py	2005-12-01 05:34:01 UTC (rev 293)
++++ haypo/hachoir/plugins/rpm.py	2005-12-01 06:56:21 UTC (rev 294)
+@@ -0,0 +1,75 @@
++&quot;&quot;&quot;
++RPM archive parser.
++
++Author: Victor Stinner, 1st December 2005.
++&quot;&quot;&quot;
++
++from filter import Filter
++from plugin import registerPlugin
++
++class RpmItem(Filter):
++    type_name = {
++        0: &quot;NULL&quot;,
++        1: &quot;CHAR&quot;,
++        2: &quot;INT8&quot;,
++        3: &quot;INT16&quot;,
++        4: &quot;INT32&quot;,
++        5: &quot;INT64&quot;,
++        6: &quot;STRING&quot;,
++        7: &quot;BIN&quot;,
++        8: &quot;STRING_ARRAY&quot;
++    }
++    
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;rpm_item&quot;, &quot;RPM item&quot;, stream, parent)
++        self.read(&quot;tag&quot;, &quot;!L&quot;, &quot;Tag&quot;)
++        self.read(&quot;type&quot;, &quot;!L&quot;, &quot;Type&quot;, post=self.postType)
++        self.read(&quot;offset&quot;, &quot;!L&quot;, &quot;Offset&quot;)
++        self.read(&quot;count&quot;, &quot;!L&quot;, &quot;Count&quot;)
++
++    def postType(self, chunk):
++        return self.getType(chunk.value)
++
++    def updateParent(self, chunk):
++        type = self.getType(self[&quot;type&quot;])
++        chunk.description = &quot;RPM item (%s)&quot; % type
++
++    def getType(self, type):
++        return RpmItem.type_name.get(type, &quot;Unknow type (%s)&quot; % type)
++
++class RpmSignature(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;rpm_sig&quot;, &quot;RPM signature&quot;, stream, parent)
++        self.read(&quot;id&quot;, &quot;!3B&quot;, &quot;Identifier&quot;)
++        assert self[&quot;id&quot;] == (142, 173, 232)
++        self.read(&quot;version&quot;, &quot;!B&quot;, &quot;Signature version&quot;)
++        self.read(&quot;reserved&quot;, &quot;4s&quot;, &quot;Reserved&quot;)
++        self.read(&quot;count&quot;, &quot;!L&quot;, &quot;Count&quot;)
++        self.read(&quot;size&quot;, &quot;!L&quot;, &quot;Size&quot;)
++        for i in range(0, self[&quot;count&quot;]):
++            self.readChild(&quot;item[]&quot;, RpmItem)
++
++class RpmFile(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;rpm_file&quot;, &quot;RPM File&quot;, stream, parent)
++        self.read(&quot;id&quot;, &quot;!4B&quot;, &quot;Identifier&quot;)
++        assert self[&quot;id&quot;] == (237, 171, 238, 219)
++        self.read(&quot;major_ver&quot;, &quot;!B&quot;, &quot;Major version&quot;)
++        self.read(&quot;minor_ver&quot;, &quot;!B&quot;, &quot;Minor version&quot;)
++        self.read(&quot;type&quot;, &quot;!H&quot;, &quot;RPM type&quot;, post=self.postType)
++        self.read(&quot;architecture&quot;, &quot;!H&quot;, &quot;Architecture&quot;)
++        self.read(&quot;name&quot;, &quot;!66s&quot;, &quot;Archive name&quot;)
++        self.read(&quot;osnum&quot;, &quot;!H&quot;, &quot;OS&quot;)
++        self.read(&quot;signature_type&quot;, &quot;!H&quot;, &quot;Type of signature&quot;)
++        self.read(&quot;reserved&quot;, &quot;16s&quot;, &quot;Reserved&quot;)
++        self.readChild(&quot;sig&quot;, RpmSignature)
++
++    def postType(self, chunk):
++        if chunk.value == 0:
++            return &quot;Binary&quot;
++        elif chunk.value == 1:
++            return &quot;Source&quot;
++        else:
++            return &quot;Unknown (%s)&quot; % chunk.value
++
++registerPlugin(RpmFile, &quot;application/x-rpm&quot;)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000199.html">[Happyboom-svn] r292 - haypo/hachoir/plugins
+</A></li>
+	<LI>Next message: <A HREF="000201.html">[Happyboom-svn] r295 - in haypo/hachoir: . ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#200">[ date ]</a>
+              <a href="thread.html#200">[ thread ]</a>
+              <a href="subject.html#200">[ subject ]</a>
+              <a href="author.html#200">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

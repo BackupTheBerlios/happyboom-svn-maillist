@@ -1,0 +1,146 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r408 - haypo/poilu/trunk
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r408%20-%20haypo/poilu/trunk&In-Reply-To=%3C200601222053.k0MKr0Ln019086%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000311.html">
+   <LINK REL="Next"  HREF="000313.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r408 - haypo/poilu/trunk</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r408%20-%20haypo/poilu/trunk&In-Reply-To=%3C200601222053.k0MKr0Ln019086%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r408 - haypo/poilu/trunk">haypo at berlios.de
+       </A><BR>
+    <I>Sun Jan 22 21:53:00 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000311.html">[Happyboom-svn] r407 - haypo/hachoir/trunk
+</A></li>
+        <LI>Next message: <A HREF="000313.html">[Happyboom-svn] r409 - haypo/hachoir/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#312">[ date ]</a>
+              <a href="thread.html#312">[ thread ]</a>
+              <a href="subject.html#312">[ subject ]</a>
+              <a href="author.html#312">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-22 21:53:00 +0100 (Sun, 22 Jan 2006)
+New Revision: 408
+
+Modified:
+   haypo/poilu/trunk/insulte.txt
+   haypo/poilu/trunk/motcle_regex.txt
+   haypo/poilu/trunk/pypoil.py
+Log:
+Ajoute l'insulte &quot;Ta chatte&quot;, et repond a son dieu si ce n'est pas une commande.
+
+
+Modified: haypo/poilu/trunk/insulte.txt
+===================================================================
+--- haypo/poilu/trunk/insulte.txt	2006-01-20 03:43:57 UTC (rev 407)
++++ haypo/poilu/trunk/insulte.txt	2006-01-22 20:53:00 UTC (rev 408)
+@@ -6,3 +6,4 @@
+ clanlib:ClanLib c'est affreux, n'utilisez pas cette biblioth&#195;&#168;que !
+ troll:Troll detected !!! :)
+ windows:Windows &#195;&#167;apucpalibre, utilisez Linux ou *BSD !
++tachatte:TA CHATTE TA CHATTE TA CHATTE
+
+Modified: haypo/poilu/trunk/motcle_regex.txt
+===================================================================
+--- haypo/poilu/trunk/motcle_regex.txt	2006-01-20 03:43:57 UTC (rev 407)
++++ haypo/poilu/trunk/motcle_regex.txt	2006-01-22 20:53:00 UTC (rev 408)
+@@ -6,3 +6,4 @@
+ clanlib:(ClanLib|clanlib)
+ troll:([Mm]andrake|[Gg]entoo|utf-8)
+ windows:([Ww]indows)
++tachatte:([Tt]a chatte|TA CHATTE)
+
+Modified: haypo/poilu/trunk/pypoil.py
+===================================================================
+--- haypo/poilu/trunk/pypoil.py	2006-01-20 03:43:57 UTC (rev 407)
++++ haypo/poilu/trunk/pypoil.py	2006-01-22 20:53:00 UTC (rev 408)
+@@ -83,9 +83,10 @@
+         # Commande pour le bot
+         regs = re.compile(&quot;^&quot;+self.connection.get_nickname()+&quot;[:,&gt;]? *(.*)$&quot;, re.IGNORECASE).search(cmd)
+         if regs != None:
+-            if nick==self.god and self.do_priv_command(regs.group(1)): return
+-            self.do_pub_command(nick, regs.group(1))
+-            return
++            if nick==self.god and self.do_priv_command(regs.group(1)):
++                return
++            if self.do_pub_command(nick, regs.group(1)):
++                return
+ 
+         # Bot d&#233;sactiv&#233; ? Exit !
+         if self.enmarche == 0:
+@@ -93,8 +94,8 @@
+             
+         # Sinon, cherche une rime
+         reponse = None
++        if reponse==None and self.reponse_motcle: reponse = self.motcle.reponse(cmd)
+         if reponse==None and self.reponse_dico: reponse = self.dico.reponse(cmd)
+-        if reponse==None and self.reponse_motcle: reponse = self.motcle.reponse(cmd)
+         if reponse==None: return
+         
+         if self.taux_reponse &lt;= random.uniform(0,101): return
+@@ -133,9 +134,12 @@
+         if (re.compile(&quot;^ta gueule&quot;, re.IGNORECASE).search(cmd) != None):
+             if self.enmarche!=0: self.send_privmsg(self.channel, &quot;Ok, je me tais&quot;)
+             self.enmarche = 0
+-        else:
+-            if self.enmarche==0: self.send_privmsg(self.channel, &quot;re&quot;)
++            return True
++        elif self.enmarche==0:
++            self.send_privmsg(self.channel, &quot;re&quot;)
+             self.enmarche = 1
++            return True
++        return False
+ 
+     def do_priv_command(self, cmd):
+         c = self.connection
+@@ -286,7 +290,7 @@
+             self.channel = regs.group(1) 
+             self.connection.join(self.channel)
+             return True
+-        return None
++        return False
+ 
+ def main():
+     import sys
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000311.html">[Happyboom-svn] r407 - haypo/hachoir/trunk
+</A></li>
+	<LI>Next message: <A HREF="000313.html">[Happyboom-svn] r409 - haypo/hachoir/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#312">[ date ]</a>
+              <a href="thread.html#312">[ thread ]</a>
+              <a href="subject.html#312">[ subject ]</a>
+              <a href="author.html#312">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

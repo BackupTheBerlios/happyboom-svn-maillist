@@ -1,0 +1,612 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r383 - in haypo/hachoir/trunk: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r383%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200601020318.k023IRwf029372%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000284.html">
+   <LINK REL="Next"  HREF="000286.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r383 - in haypo/hachoir/trunk: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r383%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200601020318.k023IRwf029372%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r383 - in haypo/hachoir/trunk: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Mon Jan  2 04:18:27 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000284.html">[Happyboom-svn] r382 - in haypo/hachoir/trunk: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000286.html">[Happyboom-svn] r384 - haypo/hachoir/trunk/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#285">[ date ]</a>
+              <a href="thread.html#285">[ thread ]</a>
+              <a href="subject.html#285">[ subject ]</a>
+              <a href="author.html#285">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-02 04:18:22 +0100 (Mon, 02 Jan 2006)
+New Revision: 383
+
+Modified:
+   haypo/hachoir/trunk/default.py
+   haypo/hachoir/trunk/filter.py
+   haypo/hachoir/trunk/format.py
+   haypo/hachoir/trunk/hachoir_class.py
+   haypo/hachoir/trunk/plugins/worms2.py
+   haypo/hachoir/trunk/reverse.py
+Log:
+- Worms2 plugin: Extract palette from filters
+- Reverse: create guessPattern() method which can recognize pattern like:
+  (header, size1, data1, size2, data2, ...)
+- Reverse: fix Field.getValues()
+- Filter: fix addPadding() (only add padding if needed ...)
+
+
+Modified: haypo/hachoir/trunk/default.py
+===================================================================
+--- haypo/hachoir/trunk/default.py	2006-01-02 00:48:42 UTC (rev 382)
++++ haypo/hachoir/trunk/default.py	2006-01-02 03:18:22 UTC (rev 383)
+@@ -1,9 +1,9 @@
+ from filter import OnDemandFilter
+ from chunk import FormatChunk
+ 
+-#class EmptyFilter(OnDemandFilter):
+-#    def __init__(self, stream, parent=None):
+-#        OnDemandFilter.__init__(self, &quot;empty&quot;, &quot;Empty filter&quot;, stream, parent)
++class EmptyFilter(OnDemandFilter):
++    def __init__(self, stream, parent=None):
++        OnDemandFilter.__init__(self, &quot;empty&quot;, &quot;Empty filter&quot;, stream, parent)
+ 
+ class DefaultFilter(OnDemandFilter):
+     def __init__(self, stream, parent=None):
+
+Modified: haypo/hachoir/trunk/filter.py
+===================================================================
+--- haypo/hachoir/trunk/filter.py	2006-01-02 00:48:42 UTC (rev 382)
++++ haypo/hachoir/trunk/filter.py	2006-01-02 03:18:22 UTC (rev 383)
+@@ -99,7 +99,7 @@
+ 
+     def addPadding(self):
+         size = self._stream.getLastPos() - self._stream.tell()
+-        if size != 0:
++        if 0 &lt; size:
+             self.read(&quot;end&quot;, &quot;Raw end&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+ 
+     # --- Pure virtual methods -----------
+
+Modified: haypo/hachoir/trunk/format.py
+===================================================================
+--- haypo/hachoir/trunk/format.py	2006-01-02 00:48:42 UTC (rev 382)
++++ haypo/hachoir/trunk/format.py	2006-01-02 03:18:22 UTC (rev 383)
+@@ -79,6 +79,10 @@
+     cache = FormatCache.getInstance()[format]
+     return cache[3] in &quot;bBhHlL&quot;
+ 
++def getFormatEndian(format):
++    cache = FormatCache.getInstance()[format]
++    return cache[1]   
++
+ def getFormatSize(format):
+     cache = FormatCache.getInstance()[format]
+     return cache[4]   
+
+Modified: haypo/hachoir/trunk/hachoir_class.py
+===================================================================
+--- haypo/hachoir/trunk/hachoir_class.py	2006-01-02 00:48:42 UTC (rev 382)
++++ haypo/hachoir/trunk/hachoir_class.py	2006-01-02 03:18:22 UTC (rev 383)
+@@ -131,7 +131,7 @@
+             compiled = compile(script, self.script, 'exec')
+             exec compiled
+         except Exception, msg:
+-            error(&quot;Exception while loading script \&quot;%s\&quot;:\n%s\n%s&quot; \
++            error(&quot;Exception while loading script \&quot;%s\&quot;:\n%s&quot; \
+                 % (filename, msg))
+ 
+     def run(self, filename):
+
+Modified: haypo/hachoir/trunk/plugins/worms2.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/worms2.py	2006-01-02 00:48:42 UTC (rev 382)
++++ haypo/hachoir/trunk/plugins/worms2.py	2006-01-02 03:18:22 UTC (rev 383)
+@@ -41,7 +41,6 @@
+ class Image(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;image&quot;, &quot;Image&quot;, stream, parent, &quot;&lt;&quot;)
+-        self.read(&quot;palette&quot;, &quot;Palette&quot;, (Palette, 81))
+         self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk, &quot;uint8&quot;))
+         self.read(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
+@@ -86,7 +85,6 @@
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;sprite&quot;, &quot;Sprite&quot;, stream, parent, &quot;&lt;&quot;)
+         name = parent.name
+-        self.read(&quot;palette&quot;, &quot;Palette&quot;, (Palette, 81))
+         self.read(&quot;header116&quot;, &quot;Header 116&quot;, (FormatChunk, &quot;uint8&quot;))
+         assert self[&quot;header116&quot;] == 116 
+ 
+@@ -100,7 +98,7 @@
+                 self.read(&quot;mysterious[]&quot;, &quot;Mysterious header&quot;, (MysteriousHeader,))
+         else:
+             self.read(&quot;n&quot;, &quot;Type?&quot;, (FormatChunk, &quot;uint16&quot;))
+-            self.read(&quot;m&quot;, &quot;Type?&quot;, (FormatChunk, &quot;uint16&quot;))
++            self.read(&quot;zero&quot;, &quot;Zero?&quot;, (FormatChunk, &quot;uint16&quot;))
+             for i in range(0, self[&quot;n&quot;]):
+                 self.read(&quot;mysterious[]&quot;, &quot;Mysterious header&quot;, (MysteriousHeader,))
+             
+@@ -126,33 +124,16 @@
+ class Font(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;font&quot;, &quot;Font&quot;, stream, parent, &quot;&lt;&quot;)
+-        self.read(&quot;palette&quot;, &quot;Palette&quot;, (Palette, 81))
+ 
+         self.read(&quot;header116&quot;, &quot;Header 116&quot;, (FormatChunk, &quot;uint8&quot;))
+ 
+         #--- Ugly header ---
+-        size = 32+2-1
++        size = 33
+         self.read(&quot;zero[]&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+-        size = 32 
+-        self.read(&quot;charset&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+-        size = 25+2-1 
+-        self.read(&quot;iter&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+-        size = 6 
+-        self.read(&quot;charset2&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+-        size = 6
+-        self.read(&quot;iter2&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+-        size = 24
+-        self.read(&quot;charset3&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+-        size = 32
+-        self.read(&quot;zero&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+-        self.read(&quot;a&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
+-        self.read(&quot;b&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
+-        self.read(&quot;c&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
+-        size = 27
+-        self.read(&quot;zero&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+-        size = 64 
+-        self.read(&quot;charset4&quot;, &quot;???&quot;, (StringChunk, &quot;Fixed&quot;), {&quot;size&quot;: size, &quot;charset&quot;: &quot;iso-8859-1&quot;})
+-        self.read(&quot;d&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        size = 256 - stream.tell()
++        self.read(&quot;xxx&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        self.read(&quot;nb_char8bit&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;align&quot;, &quot;Next factor of four to height?&quot;, (FormatChunk, &quot;uint16&quot;))
+ 
+         # Read images
+         self.read(&quot;nb_char&quot;, &quot;Number of characters&quot;, (FormatChunk, &quot;uint16&quot;))
+@@ -194,6 +175,8 @@
+             
+             size = pos + size + 1 - stream.tell()
+             if self.tag in Resource.handler:
++                self.read(&quot;palette&quot;, &quot;Palette&quot;, (Palette, 81))
++                size = size-81*3
+                 #sub = stream.createLimited(size=size)
+                 sub = stream.createSub(size=size)
+                 self.read(&quot;data&quot;, &quot;Data&quot;, (Resource.handler[self.tag],), {&quot;stream&quot;: sub})
+
+Modified: haypo/hachoir/trunk/reverse.py
+===================================================================
+--- haypo/hachoir/trunk/reverse.py	2006-01-02 00:48:42 UTC (rev 382)
++++ haypo/hachoir/trunk/reverse.py	2006-01-02 03:18:22 UTC (rev 383)
+@@ -1,10 +1,58 @@
+ from stream.file import FileStream
+ from plugins.worms2 import Worms2_Dir_File
+ from plugins.gzip import GzipFile
+-from format import getFormatSize
++from format import getFormatSize, getFormatEndian
+ from bits import countBits, long2bin, str2hex
++from error import error, warning
++from chunk import FormatChunk
++from default import EmptyFilter
++import config
+ import sys
+ 
++class Pattern:
++    def check(self, stream):
++        return False
++    
++class FirstPattern(Pattern):
++    def __init__(self, header_size, chunk_size_format, chunk_size_delta):
++        self.header_size = header_size
++        self.chunk_size_format = chunk_size_format
++        self.chunk_size_delta = chunk_size_delta
++
++    def check(self, stream, min_ok=2):
++        count, done = self._createFilter(stream, True)
++        return done or min_ok &lt;= count
++
++    def testFilter(self, stream):
++        return self._createFilter(stream, False)
++        
++    def _createFilter(self, stream, check):
++        count = 0
++        done = False
++        try:
++            stream.seek(0)
++            filter = EmptyFilter(stream, None)
++            if 0 &lt; self.header_size:
++                filter.read(&quot;header&quot;, &quot;Header&quot;, (FormatChunk, &quot;string[%u]&quot; % self.header_size))
++            last_ok = stream.tell()                
++            while not stream.eof():
++                last_ok = stream.tell()                
++                size = filter.doRead(&quot;chunk_size[]&quot;, &quot;Chunk size&quot;, (FormatChunk, self.chunk_size_format)).value
++                size += self.chunk_size_delta
++                filter.read(&quot;chunk_data[]&quot;, &quot;Chunk data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++                count = count + 1
++            last_ok = stream.tell()                
++            done = True
++        except Exception, msg:
++            if config.debug:
++                warning(&quot;Error when testing a pattern: %s&quot; % msg)
++        if check:
++            return (count, done) 
++        else:
++            stream.seek(last_ok)
++            filter.addPadding()
++            return filter
++        
+ class IntValues:
+     def __init__(self, data=None):
+         self.items = None
+@@ -110,15 +158,25 @@
+                 item = self.items[index]
+                 if item == new:
+                     return
+-                if new &lt; item:
++                if isinstance(item, int) and new &lt; item:
+                     self.items.insert(index-1, new)
+                     return
+- #               if isinstance(item, tuple):
+-#                    ...
++                if isinstance(item, tuple) and (new-item[1])==1:
++                    self.items[index] = (item[0], new)
++                    return
++
++            # Can create an interval?
++            item = self.items[-1]
++            if isinstance(item, int) and (new-item) == 1:
++                self.items[-1] = (item, new)
++                return
++
+             if isinstance(new, list):
++                # Extend current vector
+                 for item in new:
+                     self.add(item)
+             else:
++                # Just append value to vector
+                 self.items.append(new)
+         elif self.items != None:        
+             if isinstance(self.items, int) and isinstance(new, int):
+@@ -137,15 +195,19 @@
+         first = set( self.values() ) 
+         second = set( second.values() )
+         result = first.intersection(second)
+-        result = list(result)
++        if 0 &lt; len(result):
++            result = list(result)
++        else:
++            result = None
+         return IntValues(result)
+ 
+ class Field:
+-    def __init__(self, id):
++    def __init__(self, id, type):
+         self.id = id    
+         self.values = {}
+         self.values_list = {}
+         self.streams = {}
++        self.type = type
+ 
+     def getStreamsByValue(self, value):
+         return self.streams.get(hash(value), [])
+@@ -163,8 +225,7 @@
+         return self.values_list.values()
+ 
+     def addValue(self, stream, value):
+-        if not isinstance(value, IntValues):
+-            value = IntValues(value)
++        assert type(value) == self.type
+         self.values[stream] = value
+         if hash(value) not in self.streams:
+             self.streams[hash(value)] = []
+@@ -176,32 +237,7 @@
+     def __init__(self):
+         self.fields = {}
+         self.streams = []
+-        
+-        # Feeded after analyse
+-        self.started = False
+-        self.min_size, self.max_size = None, None
+-        self.data_range = None
+-        self.cst_list = None
+-        self.data_list = None
+ 
+-    def _initAnalyse(self, data_range):
+-        if self.started:
+-            assert data_range == self.data_range
+-            return
+-        assert 0 &lt; len(self.streams)
+-        self.started = True        
+-        self.data_range = data_range
+-
+-        # Find mimimum/maximum stream size
+-        self.min_size = self.max_size = self.streams[0].getSize()
+-        for stream in self.streams[1:]:
+-            size = stream.getSize()
+-            if size &lt; self.min_size:
+-                self.min_size = size
+-            if size &gt; self.max_size:
+-                self.max_size = size            
+-        assert 1 &lt;= self.min_size                
+-
+     def _findConstant(self, streams, data_range):
+         assert 2 &lt;= len(streams)
+ 
+@@ -267,33 +303,17 @@
+             data = &quot; &quot;.join(data)
+             print &quot;Data %u: %s&quot; % (addr, data)
+ 
+-    def OLDfindField(self, id, data_range):
+-        self.cst_list, self.data_list = self._findConstant(self.streams, data_range)
+-        field = self.fields[id]
+-        values = field.getValues()
+-        addr = IntValues()
+-        possible_addr = self.data_list
+-        first = True
+-        for value in values:
+-            streams = field.getStreamsByValue(value)
+-            if 1&lt;len(streams):
+-                cst_list, data_list = self._findConstant(streams, self.data_list)
+-            else:
+-                cst_list = self.data_list
+-            if first:
+-                addr.add(cst_list)
+-                first = False
+-            else:
+-                addr = addr.intersection(cst_list)
+-            if addr.isEmpty():
+-                break            
+-        return (addr, possible_addr)
+-
+-    def findInteger(self, stream, value, range, size_bits):
++    def findInteger(self, stream, value, range, size_bits, endian=None):
+         assert size_bits &lt;= 32
+-        formats = [&quot;&lt;uint32&quot;, &quot;&gt;uint32&quot;]
++        if endian == None:
++            formats = [&quot;&lt;uint32&quot;, &quot;&gt;uint32&quot;]
++        else:            
++            formats = [endian+&quot;uint32&quot;]
+         if size_bits &lt;= 16:
+-            formats.extend([&quot;&lt;uint16&quot;, &quot;&gt;uint16&quot;])
++            if endian == None:
++                formats.extend([&quot;&lt;uint16&quot;, &quot;&gt;uint16&quot;])
++            else:
++                formats.append(endian+&quot;uint16&quot;)
+         if size_bits &lt;= 8:
+             formats.append(&quot;uint8&quot;)
+         ok = IntValues()
+@@ -306,9 +326,51 @@
+                     read = int( stream.getFormat(format, False) )
+                     if value.hasValue(read):
+                         ok.add(addr)
+-                        break
+-        return ok                    
++        return ok       
+ 
++    def guessPattern(self, stream, min_ok):
++        &quot;&quot;&quot;
++        Try differents parameters to obtain pattern like:
++           (header, size1, data1, size2, data2, ...)
++        
++        Notes:
++        - header is optionnal
++        - sizes may be shifted (ex: size+4) to get data size
++        &quot;&quot;&quot;
++        filter = self.guessPatternFormat(stream, &quot;&lt;uint32&quot;, min_ok)
++        if filter == None:
++            filter = self.guessPatternFormat(stream, &quot;&gt;uint32&quot;, min_ok)
++        if filter == None:
++            filter = self.guessPatternFormat(stream, &quot;&lt;uint16&quot;, min_ok)
++        if filter == None:
++            filter = self.guessPatternFormat(stream, &quot;&gt;uint16&quot;, min_ok)
++        return filter            
++
++    def guessPatternFormat(self, stream, chunk_size_format, min_ok):
++        &quot;&quot;&quot;
++        See guessPattern().
++        &quot;&quot;&quot;
++        # Config
++        max_header_size = 64 
++        chunk_size_deltas = IntValues((-20,20))
++
++        # Find possible header sizes
++        range = IntValues((0, max_header_size))
++        size_bits = getFormatSize(chunk_size_format)*8
++        value = IntValues((0, stream.getSize() - size_bits/8))
++        endian = getFormatEndian(chunk_size_format)
++        header_sizes = self.findInteger(stream, value, range, size_bits, endian)
++        print &quot;Possible header sizes: %s&quot; % header_sizes
++
++        # Find chunk size delta
++        for header_size in header_sizes.values():
++            for chunk_size_delta in chunk_size_deltas.values(): 
++                # Try a pattern ...
++                pattern = FirstPattern(header_size, chunk_size_format, chunk_size_delta)
++                if pattern.check(stream, min_ok):
++                    print &quot;Found filter -&gt; header size=%s, chunk size delta=%s (format \&quot;%s\&quot;)&quot; % (header_size, chunk_size_delta, chunk_size_format)
++                    return pattern.testFilter(stream)
++
+     def findField(self, id, data_range):
+         field = self.fields[id]
+         ok = data_range
+@@ -320,130 +382,15 @@
+             value = field.getValueByStream(stream)
+             addr = self.findInteger(stream, value, data_range, size_bits)
+             ok = ok.intersection(addr)
++            if ok.isEmpty():
++                break
+             i += 1
+         return ok            
+ 
+     def addSource(self, stream, fields={}):
+-        assert not self.started
+         self.streams.append(stream)
+         for id in fields:
++            value = fields[id]
+             if id not in self.fields:
+-                self.fields[id] = Field(id)
+-            self.fields[id].addValue(stream, fields[id])
+-
+-def loadGZ(filename):
+-    f = open(filename, 'r')
+-    input = FileStream(f, filename)
+-    return GzipFile(input, None) 
+-
+-def gzip_size():
+-    reverse = Reverse()
+-    for filename in sys.argv[1:]:
+-        g = loadGZ(filename)
+-        stream = g.getStream()
+-        sub = stream.createSub(start=stream.getSize()-50)
+-        size = int(g[&quot;size&quot;])
+-        size = IntValues( (size-30, size+30) )
+-        reverse.addSource(sub, {&quot;size&quot;: size})
+-    header = IntValues( (0,49) )
+-#    reverse.displayConstant(header)
+-    addr = reverse.findField(&quot;size&quot;, header)
+-    print &quot;Address of field n: %s&quot; % addr 
+-
+-def int16Bits(value):
+-    v = []
+-    for i in range(0,16):
+-        mask = 1 &lt;&lt; i
+-        if (value &amp; mask) == mask:
+-            v.append(1)
+-        else:
+-            v.append(0)  
+-    return v
+-
+-def guessBits(d):    
+-    for n in d:
+-        val = d[n]
+-        data = val[0]
+-        print &quot;====== n=%u, data set=%u items&quot; % (n, len(val))
+-        if 1&lt;len(val):
+-            for i in range(0, 11):
+-                cst = True
+-                for bits in val[1:]:
+-                    if bits[i] != data[i]:
+-                        cst = False
+-                        break
+-                if cst:
+-                    print &quot;bit %u: const=%s&quot; % (i, data[i])
+-        else:
+-            print &quot;(not enough data)&quot;
+-   
+-def worms2_sprite(res):    
+-    #sprite_range = IntValues( (0,73) )
+-    #sprite_range = IntValues( (0,100) )
+-    sprite_range = IntValues( (0,100) )
+-    d = {}
+-    for i in sprite_range.values():
+-        sprite = res[&quot;res[%u]&quot; % i][&quot;data&quot;]
+-        flags = sprite[&quot;flags_b&quot;]
+-        w,h = sprite[&quot;width[0]&quot;],sprite[&quot;height[0]&quot;]
+-        if w &lt; 10 or 1000&lt;w or h&lt;10 or 1000&lt;h:
+-            print &quot;res[%u] errone&quot; % i
+-        else:
+-            n = sprite.n
+-            stream = sprite.getStream()
+-            stream.seek(81*3+1) ; m = stream.getFormat(&quot;uint8&quot;)-1
+-            #stream.seek(258) ;  data = stream.getN(14)
+-            stream.seek(81*3) ;  data = stream.getN(272-243)
+-            if n not in d:
+-                d[n] = []
+-#            d[n].append( (sprite[&quot;type&quot;],int16Bits(flags),sprite[&quot;width[0]&quot;],sprite[&quot;height[0]&quot;],i) )
+-            d[n].append( (i, m, data) )
+-#    guessBits(d)        
+-#    return
+-        
+-    for n in d:
+-        print &quot;======== %s =========&quot; % n
+-        for data in d[n]:
+-            print &quot;% 3s] n=% 2s m=% 2s %s&quot; % (data[0], n, data[1], str2hex(data[2]))
+-#            xxx = &quot;&quot;.join(map(str,bits[1]))
+-#            print &quot;%s] %s (%ux%u), id=res[%u]&quot; % (bits[0], xxx, bits[2], bits[3], bits[4])
+-
+-def worms2_n(res):
+-    reverse = Reverse()
+-    sprite_range = IntValues( (0,72) )
+-    for i in sprite_range.values():
+-        sprite = res[&quot;res[%u]&quot; % i][&quot;data&quot;]
+-        #stream = sprite.getStream().createSub(start=sprite.getAddr(), size=sprite.getSize())
+-        reverse.addSource(stream, {&quot;n&quot;: sprite.n})
+-    header = IntValues( (243, 258) )
+-    print &quot;Find field in range %s&quot; % header
+-#    reverse.displayData(header)        
+-#     reverse.displayConstant(header)
+-    addr = reverse.findField(&quot;n&quot;, header)
+-    print &quot;Address of field n: %s\n(or in %s)&quot; % (addr[0], addr[1])
+-
+-def worms2_font(res):
+-    reverse = Reverse()
+-    sprite_range = IntValues( (713,739) )
+-    for i in sprite_range.values():
+-        font = res[&quot;res[%u]&quot; % i][&quot;data&quot;]
+-        reverse.addSource(font.getStream(), {&quot;nb&quot;: font[&quot;nb_char&quot;]})
+-    header = IntValues( (0, 600) )
+-    print &quot;Find field in range %s&quot; % header
+-#    reverse.displayData(header)        
+-#     reverse.displayConstant(header)
+-    addr = reverse.findField(&quot;nb&quot;, header)
+-    print &quot;Address of field n: %s&quot; % (addr)
+-#    print &quot;Address of field n: %s\n(or in %s)&quot; % (addr[0], addr[1])
+-
+-def worms2():
+-    f = open('/home/haypo/worms/Gfx.dir', 'r')
+-    input = FileStream(f, None)
+-    res = Worms2_Dir_File(input, None)[&quot;resources&quot;]
+-#    worms2_sprite(res)
+-#    worms2_n(res)
+-    worms2_font(res)
+- 
+-if __name__==&quot;__main__&quot;:
+-    worms2()
+-#    gzip_size()
++                self.fields[id] = Field(id, type(value))
++            self.fields[id].addValue(stream, value)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000284.html">[Happyboom-svn] r382 - in haypo/hachoir/trunk: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000286.html">[Happyboom-svn] r384 - haypo/hachoir/trunk/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#285">[ date ]</a>
+              <a href="thread.html#285">[ thread ]</a>
+              <a href="subject.html#285">[ subject ]</a>
+              <a href="author.html#285">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

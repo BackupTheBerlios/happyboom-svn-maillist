@@ -1,0 +1,192 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r341 - in haypo/hachoir: . fallback plugins ui
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r341%20-%20in%20haypo/hachoir%3A%20.%20fallback%20plugins%20ui&In-Reply-To=%3C200512201345.jBKDjsAk024855%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000245.html">
+   <LINK REL="Next"  HREF="000247.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r341 - in haypo/hachoir: . fallback plugins ui</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r341%20-%20in%20haypo/hachoir%3A%20.%20fallback%20plugins%20ui&In-Reply-To=%3C200512201345.jBKDjsAk024855%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r341 - in haypo/hachoir: . fallback plugins ui">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec 20 14:45:54 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000245.html">[Happyboom-svn] r339 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000247.html">[Happyboom-svn] r342 - haypo/hachoir/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#246">[ date ]</a>
+              <a href="thread.html#246">[ thread ]</a>
+              <a href="subject.html#246">[ subject ]</a>
+              <a href="author.html#246">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-20 14:45:51 +0100 (Tue, 20 Dec 2005)
+New Revision: 341
+
+Added:
+   haypo/hachoir/AUTHORS
+Modified:
+   haypo/hachoir/fallback/magic.py
+   haypo/hachoir/plugins/avi.py
+   haypo/hachoir/ui/hachoir.glade
+Log:
+Commit patch of Aur?\195?\169lien Jacobs and add him in AUTHORS list (create AUTHORS
+file and update About dialog). Patch:
+- Fix fallback/magic.py MIME type of AVI file
+- Improve AVI plugin: can read more audio/video headers
+
+
+Added: haypo/hachoir/AUTHORS
+===================================================================
+--- haypo/hachoir/AUTHORS	2005-12-19 15:15:41 UTC (rev 340)
++++ haypo/hachoir/AUTHORS	2005-12-20 13:45:51 UTC (rev 341)
+@@ -0,0 +1,2 @@
++Aur&#233;lien Jacobs - &lt;aurel AT gnuage.org&gt;
++Victor Stinner - &lt;victor.stinner AT haypocalc.com&gt;
+
+Modified: haypo/hachoir/fallback/magic.py
+===================================================================
+--- haypo/hachoir/fallback/magic.py	2005-12-19 15:15:41 UTC (rev 340)
++++ haypo/hachoir/fallback/magic.py	2005-12-20 13:45:51 UTC (rev 341)
+@@ -115,6 +115,7 @@
+   [0L, 'string', '=', 'SBI', 'audio/x-sbi'],
+   [0L, 'string', '=', 'Creative Voice File', 'audio/x-voc'],
+   [0L, 'belong', '=', 1314148939L, 'audio/x-multitrack'],
++  [8L, 'string', '=', 'AVI ', 'video/x-msvideo'],
+   [0L, 'string', '=', 'RIFF', 'audio/x-wav'],
+   [0L, 'string', '=', 'EMOD', 'audio/x-emod'],
+   [0L, 'belong', '=', 779248125L, 'audio/x-pn-realaudio'],
+
+Modified: haypo/hachoir/plugins/avi.py
+===================================================================
+--- haypo/hachoir/plugins/avi.py	2005-12-19 15:15:41 UTC (rev 340)
++++ haypo/hachoir/plugins/avi.py	2005-12-20 13:45:51 UTC (rev 341)
+@@ -19,10 +19,35 @@
+             while 8 &lt;= end - stream.tell():
+                 chunk = self.readChild(&quot;chunk[]&quot;, AVI_Chunk)            
+         elif tag == &quot;strl&quot;:
++            stype = None
+             while 8 &lt;= end - stream.tell():
+                 stag = self.read(&quot;stag[]&quot;, &quot;4s&quot;, &quot;String tag&quot;).value
+                 size = self.read(&quot;ssize[]&quot;, &quot;&lt;L&quot;, &quot;String size&quot;).value
+-                if stag == &quot;strf&quot; and size == 40:
++                if stag == &quot;strh&quot; and size &gt;= 56:
++                    # Stream header
++                    hend = stream.tell() + size
++                    stype = self.read(&quot;type_fourcc&quot;, &quot;4s&quot;, &quot;Stream type four character code&quot;).value
++                    self.read(&quot;fourcc&quot;, &quot;4s&quot;, &quot;Stream four character code&quot;)
++                    self.read(&quot;flags&quot;, &quot;&lt;L&quot;, &quot;Stream flags&quot;)
++                    self.read(&quot;priority&quot;, &quot;&lt;H&quot;, &quot;Stream priority&quot;)
++                    self.read(&quot;langage&quot;, &quot;2s&quot;, &quot;Stream language&quot;)
++                    self.read(&quot;init_frames&quot;, &quot;&lt;L&quot;, &quot;InitialFrames&quot;)
++                    self.read(&quot;scale&quot;, &quot;&lt;L&quot;, &quot;Time scale&quot;)
++                    self.read(&quot;rate&quot;, &quot;&lt;L&quot;, &quot;Divide by scale to give frame rate&quot;)
++                    self.read(&quot;start&quot;, &quot;&lt;L&quot;, &quot;Stream start time (unit: rate/scale)&quot;)
++                    self.read(&quot;length&quot;, &quot;&lt;L&quot;, &quot;Stream length (unit: rate/scale)&quot;)
++                    self.read(&quot;buf_size&quot;, &quot;&lt;L&quot;, &quot;Suggested buffer size&quot;)
++                    self.read(&quot;quality&quot;, &quot;&lt;L&quot;, &quot;Stream quality&quot;)
++                    self.read(&quot;sample_size&quot;, &quot;&lt;L&quot;, &quot;Size of samples&quot;)
++                    self.read(&quot;left&quot;, &quot;&lt;H&quot;, &quot;Destination rectangle (left)&quot;)
++                    self.read(&quot;top&quot;, &quot;&lt;H&quot;, &quot;Destination rectangle (top)&quot;)
++                    self.read(&quot;right&quot;, &quot;&lt;H&quot;, &quot;Destination rectangle (right)&quot;)
++                    self.read(&quot;bottom&quot;, &quot;&lt;H&quot;, &quot;Destination rectangle (bottom)&quot;)
++                    diff = hend-stream.tell()
++                    if 0 &lt; diff:
++                        self.read(&quot;h_extra&quot;, &quot;%us&quot; % diff, &quot;Extra junk&quot;)
++                    assert stream.tell() == hend
++                elif stag == &quot;strf&quot; and stype == &quot;vids&quot; and size == 40:
+                     # Video header
+                     self.read(&quot;v_size&quot;, &quot;&lt;L&quot;, &quot;Video format: Size&quot;)                    
+                     self.read(&quot;v_width&quot;, &quot;&lt;L&quot;, &quot;Video format: Width&quot;)                    
+@@ -35,21 +60,29 @@
+                     self.read(&quot;v_ypels_meter&quot;, &quot;&lt;L&quot;, &quot;Video format: YPelsPerMeter&quot;)
+                     self.read(&quot;v_clr_used&quot;, &quot;&lt;L&quot;, &quot;Video format: ClrUsed&quot;)
+                     self.read(&quot;v_clr_importand&quot;, &quot;&lt;L&quot;, &quot;Video format: ClrImportant&quot;)
+-                elif stag == &quot;strf&quot; and size == 30:
++                elif stag == &quot;strf&quot; and stype == &quot;auds&quot;:
+                     # Audio (wav) header
+                     aend = stream.tell() + size
+-                    self.read(&quot;a_id&quot;, &quot;&lt;H&quot;, &quot;Audio format: ID&quot;)                    
+-                    self.read(&quot;a_channel&quot;, &quot;&lt;H&quot;, &quot;Audio format: Channels&quot;)                    
++                    self.read(&quot;a_id&quot;, &quot;&lt;H&quot;, &quot;Audio format: Codec id&quot;)                    
++                    a_chan = self.read(&quot;a_channel&quot;, &quot;&lt;H&quot;, &quot;Audio format: Channels&quot;).value
+                     self.read(&quot;a_sample_rate&quot;, &quot;&lt;L&quot;, &quot;Audio format: Sample rate&quot;)                    
+                     self.read(&quot;a_bit_rate&quot;, &quot;&lt;L&quot;, &quot;Audio format: Bit rate&quot;)
+                     self.read(&quot;a_block_align&quot;, &quot;&lt;H&quot;, &quot;Audio format: Block align&quot;)
+-                    #&#160;if size == 14: bits_per_sample = 8
+-                    self.read(&quot;a_bits_per_sample&quot;, &quot;&lt;H&quot;, &quot;Audio format: Bits per sample&quot;)
+-                    self.read(&quot;a_codec_id&quot;, &quot;&lt;H&quot;, &quot;Audio format: Codec id&quot;)
++                    if size &gt;= 16:
++                        self.read(&quot;a_bits_per_sample&quot;, &quot;&lt;H&quot;, &quot;Audio format: Bits per sample&quot;)
++                    if size &gt;= 18:
++                        self.read(&quot;ext_size&quot;, &quot;&lt;H&quot;, &quot;Audio format: Size of extra information&quot;)
++                    if a_chan &gt; 2 and size &gt;= 28:
++                        self.read(&quot;reserved&quot;, &quot;&lt;H&quot;, &quot;Audio format: &quot;)
++                        self.read(&quot;channel_mask&quot;, &quot;&lt;L&quot;, &quot;Audio format: channels placement bitmask&quot;)
++                        self.read(&quot;subformat&quot;, &quot;&lt;L&quot;, &quot;Audio format: Subformat id&quot;)
+                     diff = aend-stream.tell()
+                     if 0 &lt; diff:
+                         self.read(&quot;a_extra&quot;, &quot;%us&quot; % diff, &quot;Audio format: Extra&quot;)
+                     assert stream.tell() == aend
++                elif stag == &quot;strn&quot;:
++                    # Stream description
++                    self.read(&quot;desc&quot;, &quot;%us&quot; % size, &quot;Stream description&quot;)
+                 else:
+                     self.read(&quot;svalue[]&quot;, &quot;%us&quot; % size, &quot;String value&quot;)
+         else:
+
+Modified: haypo/hachoir/ui/hachoir.glade
+===================================================================
+--- haypo/hachoir/ui/hachoir.glade	2005-12-19 15:15:41 UTC (rev 340)
++++ haypo/hachoir/ui/hachoir.glade	2005-12-20 13:45:51 UTC (rev 341)
+@@ -1459,7 +1459,8 @@
+   &lt;property name=&quot;wrap_license&quot;&gt;False&lt;/property&gt;
+   &lt;property name=&quot;website&quot;&gt;<A HREF="http://www.haypocalc.com/wiki/Hachoir&lt;/property">http://www.haypocalc.com/wiki/Hachoir&lt;/property</A>&gt;
+   &lt;property name=&quot;website_label&quot; translatable=&quot;yes&quot;&gt;Website&lt;/property&gt;
+-  &lt;property name=&quot;authors&quot;&gt;Victor Stinner &lt;victor.stinner AT haypocalc.com&gt;&lt;/property&gt;
++  &lt;property name=&quot;authors&quot;&gt;Aur&#233;lien Jacobs - &lt;aurel AT gnuage.org&gt;
++Victor Stinner &lt;victor.stinner AT haypocalc.com&gt;&lt;/property&gt;
+   &lt;property name=&quot;translator_credits&quot; translatable=&quot;yes&quot; comments=&quot;TRANSLATORS: Replace this string with your names, one name per line.&quot;&gt;translator-credits&lt;/property&gt;
+ &lt;/widget&gt;
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000245.html">[Happyboom-svn] r339 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000247.html">[Happyboom-svn] r342 - haypo/hachoir/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#246">[ date ]</a>
+              <a href="thread.html#246">[ thread ]</a>
+              <a href="subject.html#246">[ subject ]</a>
+              <a href="author.html#246">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

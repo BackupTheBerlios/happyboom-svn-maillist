@@ -1,0 +1,43 @@
+From haypo at mail.berlios.de  Tue Jul  3 19:35:04 2007
+From: haypo at mail.berlios.de (haypo at mail.berlios.de)
+Date: Tue, 3 Jul 2007 19:35:04 +0200
+Subject: [Happyboom-svn] r468 - haypo/lamer
+Message-ID: <200707031735.l63HZ4BA030527@sheep.berlios.de>
+
+Author: haypo
+Date: 2007-07-03 19:35:02 +0200 (Tue, 03 Jul 2007)
+New Revision: 468
+
+Modified:
+   haypo/lamer/mod_gajim.py
+Log:
+Gajim: read port and ssl config
+
+
+Modified: haypo/lamer/mod_gajim.py
+===================================================================
+--- haypo/lamer/mod_gajim.py	2007-06-27 17:07:14 UTC (rev 467)
++++ haypo/lamer/mod_gajim.py	2007-07-03 17:35:02 UTC (rev 468)
+@@ -9,7 +9,7 @@
+     def _extract(self):
+         accounts = {}
+         for line in self.readText("~/.gajim/config"):
+-            match = re.match("^accounts\.([a-z0-9.-]+)\.([a-z0-9-]+) = (.*)$", line)
++            match = re.match("^accounts\.([a-z0-9.-]+)\.([a-z0-9_-]+) = (.*)$", line)
+             if match:
+                 account = match.group(1)
+                 key = match.group(2)
+@@ -23,6 +23,10 @@
+     def displayAccount(self, data):
+         try:
+             message = 'Account "%s@%s"' % (data["name"], data["hostname"])
++            if "custom_port" in data:
++                message += ' port %s' % data["custom_port"]
++            if "usessl" in data:
++                message += ' (SSL)'
+             if "password" in data:
+                 message += ' with password "%s"' % data["password"]
+             elif self.skip_no_password:
+
+
+

@@ -1,0 +1,572 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r438 - in haypo/hachoir: . branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/3d branches/hachoir-yield/unit_test
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r438%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield/doc%20branches/hachoir-yield/libhachoir%20branches/hachoir-yield/libhachoir/field%20branches/hachoir-yield/libhachoir/parser/3d%20branches/hachoir-yield/unit_test&In-Reply-To=%3C200603040136.k241aLkj021442%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000339.html">
+   <LINK REL="Next"  HREF="000341.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r438 - in haypo/hachoir: . branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/3d branches/hachoir-yield/unit_test</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r438%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield/doc%20branches/hachoir-yield/libhachoir%20branches/hachoir-yield/libhachoir/field%20branches/hachoir-yield/libhachoir/parser/3d%20branches/hachoir-yield/unit_test&In-Reply-To=%3C200603040136.k241aLkj021442%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r438 - in haypo/hachoir: . branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/3d branches/hachoir-yield/unit_test">haypo at berlios.de
+       </A><BR>
+    <I>Sat Mar  4 02:36:21 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000339.html">[Happyboom-svn] r437 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser branches/hachoir-yield/libhachoir/parser/3d branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/unit_test
+</A></li>
+        <LI>Next message: <A HREF="000341.html">[Happyboom-svn] r439 - in haypo/hachoir: . branches/hachoir-yield/doc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#340">[ date ]</a>
+              <a href="thread.html#340">[ thread ]</a>
+              <a href="subject.html#340">[ subject ]</a>
+              <a href="author.html#340">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-04 02:36:12 +0100 (Sat, 04 Mar 2006)
+New Revision: 438
+
+Added:
+   haypo/hachoir/branches/hachoir-yield/doc/0-intro.txt
+   haypo/hachoir/branches/hachoir-yield/doc/2-internals.txt
+   haypo/hachoir/branches/hachoir-yield/doc/3-end.txt
+   haypo/hachoir/branches/hachoir-yield/libhachoir/__init__.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/bit_field.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/3d/3ds.py
+   haypo/hachoir/branches/hachoir-yield/unit_test/stream_search.py
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/__init__.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/integer.py
+Log:
+Send changes from svk to svn using 'svk smerge -f'
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:31
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:51
+
+Added: haypo/hachoir/branches/hachoir-yield/doc/0-intro.txt
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/doc/0-intro.txt	2006-03-04 00:30:47 UTC (rev 437)
++++ haypo/hachoir/branches/hachoir-yield/doc/0-intro.txt	2006-03-04 01:36:12 UTC (rev 438)
+@@ -0,0 +1,11 @@
++Introduction
++============
++
++Hachoir is a library written in Python to access binary streams using
++nice API. It aims to be easy to use (hide complex mechanisms) and only read
++or compute data when it's really needed.
++
++Examples of Hachoir use: extract some informations from a file (size of an
++image, author of a music, comment of an archive, etc.), edit some fields of
++a file, convert a format to another one.
++
+
+Added: haypo/hachoir/branches/hachoir-yield/doc/2-internals.txt
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/doc/2-internals.txt	2006-03-04 00:30:47 UTC (rev 437)
++++ haypo/hachoir/branches/hachoir-yield/doc/2-internals.txt	2006-03-04 01:36:12 UTC (rev 438)
+@@ -0,0 +1,135 @@
++Some Hachoir internals
++======================
++
++When a field is really created?
++-------------------------------
++
++A field is created when someone ask to access it, or when another field is
++asked and the field is before it. So if you use a field in your field set
++constructor, one or more fields will be created.
++
++Example:
++&gt;&gt;&gt; from field import FieldSet, Integer, String
++&gt;&gt;&gt; class Point(FieldSet):
++...     def __init__(self, parent, name, stream, description=&quot;Point&quot;):
++...         FieldSet.__init__(self, parent, name, stream, description)
++...         if self[&quot;color&quot;].value == -1:
++...             self.description += &quot; (no color)&quot;
++...
++...     def createFields(self):
++...         yield Integer(self, &quot;color&quot;, &quot;int8&quot;, &quot;Point color (-1 for none)&quot;)
++...         yield Integer(self, &quot;use_3d&quot;, &quot;int8&quot;, &quot;Does it use Z axis?&quot;)
++...         yield Integer(self, &quot;x&quot;, &quot;int8&quot;, &quot;X axis value&quot;)
++...         yield Integer(self, &quot;y&quot;, &quot;int8&quot;, &quot;Y axis value&quot;)
++...         if self[&quot;use_3d&quot;] == 1:
++...             yield Integer(self, &quot;z&quot;, &quot;int8&quot;, &quot;Z axis value&quot;)
++...
++
++In the constructor, the field &quot;color&quot; is asked. So the field list will
++contains one field (color):
++&gt;&gt;&gt; from stream import StringInputStream
++&gt;&gt;&gt; stream = StringInputStream(&quot;\x2A\x00\x04\x05&quot;)
++&gt;&gt;&gt; p = Point(None, &quot;point&quot;, stream)
++&gt;&gt;&gt; len(p.fields)
++1
++
++WARNING: Only access 'fields' attribute if you know what you are doing.
++
++If you access another field, the field list will grow up until the requested
++field is reached:
++&gt;&gt;&gt; x = p[&quot;x&quot;].value
++&gt;&gt;&gt; len(p.fields)
++3
++
++Some field set methods which create new fields:
++ * __getitem__(): feed field list until requested field is reached
++   (or raise MissingField exception) ;
++ * __len__(): create all fields ;
++ * __iter__(): begin to iterate in existing fields, and the iterate in new
++   fields until all fields are created ;
++ * __contains__(): feed field list until requested field is reached, may
++   create all fields if the field is missing.
++
++The size attribute also interact with field list creation, but it's mechanism
++is little bit more complex. By default, the whole field list have to be built
++before size value can be read. But you can specify field list size:
++ * if field list is fixed, use class attribute static_size ;
++ * else you can set _size instance attribute in the constructor.
++
++Two examples:
++&gt;&gt;&gt; class FourBytes(FieldSet):
++...     static_size = 32
++...     def createFields(self):
++...         yield Integer(self, &quot;four&quot;, &quot;uint32&quot;)
++...
++&gt;&gt;&gt; class DynamicSize(FieldSet):
++...     def __init__(self, parent, name, stream, nb_items, description=&quot;Point&quot;):
++...         FieldSet.__init__(self, parent, name, stream, description)
++...         self.nb_items = nb_items
++...         self._size = nb_items * 32   # 32 is the size of one item
++...
++...     def createFields(self):
++...         for index in range(self.nb_items):
++...             yield Integer(self, &quot;item[]&quot;, &quot;uint32&quot;)
++...
++
++When the value of a field is read?
++----------------------------------
++
++When a field is created, the value of the field doesn't exist (equals to
++None). The value is really read when you read the field value using '.value'
++or '.display' field attributes. The value is then stored in the field.
++
++Details about field name
++------------------------
++
++The name of a field have to be unique in a field set because it is used as
++key in the field list. The argument 'name' of the Field constructor can be
++changed in the the constructor, but should not (and can no) be changed after
++that.
++
++For arrays, you can use the 'magic' prefix &#171; [] &#187; (eg. &quot;item[]&quot;) which will
++be replaced by &#171; [index] &#187; where the number index is a counter starting a
++zero.
++
++Endian
++------
++
++The &quot;endian&quot; is the way in which ''bytes'' are stored. There are two important
++orders:
++ * &#171; Big endian &#187; in which _big_ numbers are written first (Intel x86 CPU)
++ * &#171; Little endian &#187; in which _little_ numbers are written first (PowerPC CPU)
++
++The number 0x1020 whill be stored &quot;\x10\x20&quot; in big endian and &quot;\x20\x10&quot; in
++little endian.
++
++The endian is global to a FieldSet and is a class attribute. Two allowed
++values are &quot;&lt;&quot; (little endian) and &quot;&gt;&quot; (big endian). Default value is the
++international network order: &quot;&lt;&quot;, big endian.
++
++Example to set endian:
++&gt;&gt;&gt; class UseLittleEndian(FieldSet):
++...     endian = &quot;&gt;&quot;
++...     # (...)
++...
++
++Explore a field set using it's path
++-----------------------------------
++
++Fields are stored in a tree. To explore the tree you have differents tools:
++ * attribute root of a field which go to tree root ;
++ * attribute parent go to field parent (is None for tree root) ;
++ * and you can specify a path in __getitem__() argument.
++
++There are differents valid syntax of a path:
++ * path to a child of current node: field[&quot;content&quot;] ;
++ * path to a child of the parent: field[&quot;../brother&quot;] ;
++ * path from the root: field[&quot;/header/key&quot;].
++
++Event handling
++--------------
++
++Code is not finished yet, so don't need documentation :-) See:
++ * FieldSet.connect(event, handler)
++ * FieldSet.raiseEvent(event,  arg1, arg2, ...)
++
+
+Added: haypo/hachoir/branches/hachoir-yield/doc/3-end.txt
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/doc/3-end.txt	2006-03-04 00:30:47 UTC (rev 437)
++++ haypo/hachoir/branches/hachoir-yield/doc/3-end.txt	2006-03-04 01:36:12 UTC (rev 438)
+@@ -0,0 +1,6 @@
++Get more informations
++=====================
++
++Hachoir website:
++   <A HREF="http://www.haypocalc.com/wiki/Hachoir">http://www.haypocalc.com/wiki/Hachoir</A>
++
+
+Added: haypo/hachoir/branches/hachoir-yield/libhachoir/__init__.py
+===================================================================
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/__init__.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/__init__.py	2006-03-04 00:30:47 UTC (rev 437)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/__init__.py	2006-03-04 01:36:12 UTC (rev 438)
+@@ -1,4 +1,5 @@
+ from libhachoir.field.field import Field
+-from libhachoir.field.integer import Integer, Enum, Bits, Bit
++from libhachoir.field.bit_field import Bits, Bit
++from libhachoir.field.integer import Integer, Enum 
+ from libhachoir.field.string_field import RawBytes, String
+ from libhachoir.field.field_set import FieldSet, ParserError
+
+Added: haypo/hachoir/branches/hachoir-yield/libhachoir/field/bit_field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/bit_field.py	2006-03-04 00:30:47 UTC (rev 437)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/bit_field.py	2006-03-04 01:36:12 UTC (rev 438)
+@@ -0,0 +1,31 @@
++from libhachoir.field.field import Field
++
++class Bits(Field):
++    def __init__(self, parent, name, size, description=None):
++        assert issubclass(parent.__class__, Field)
++        Field.__init__(self, parent, name, size=size, description=description)
++        self.big_endian = True
++
++    def _getValue(self):
++        if self._value == None:
++            self._value = self.parent.stream.getBits(
++                self.absolute_address, self.size, self.big_endian) 
++        return self._value
++    value = property(_getValue, Field._setValue)
++   
++    def _getDisplay(self):
++        return self.value
++    display = property(_getDisplay)
++
++class Bit(Bits):
++    def __init__(self, parent, name, description=None):
++        Bits.__init__(self, parent, name, 1, description=description)
++
++    def _getValue(self):
++        if self._value == None:
++            data = self.parent.stream.getBits(
++                self.absolute_address, 1, True) 
++            self._value = (data == 1)
++        return self._value
++    value = property(_getValue, Field._setValue)
++ 
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/integer.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/integer.py	2006-03-04 00:30:47 UTC (rev 437)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/integer.py	2006-03-04 01:36:12 UTC (rev 438)
+@@ -1,36 +1,7 @@
+-from field import Field
+ from libhachoir.format import getFormatSize
+ from libhachoir.text_handler import hexadecimal
+-
+-class Bits(Field):
+-    def __init__(self, parent, name, size, description=None):
+-        assert issubclass(parent.__class__, Field)
+-        Field.__init__(self, parent, name, size=size, description=description)
+-        self.big_endian = True
+-
+-    def _getValue(self):
+-        if self._value == None:
+-            self._value = self.parent.stream.getBits(
+-                self.absolute_address, self.size, self.big_endian) 
+-        return self._value
+-    value = property(_getValue, Field._setValue)
+-   
+-    def _getDisplay(self):
+-        return self.value
+-    display = property(_getDisplay)
+-
+-class Bit(Bits):
+-    def __init__(self, parent, name, description=None):
+-        Bits.__init__(self, parent, name, 1, description=description)
+-
+-    def _getValue(self):
+-        if self._value == None:
+-            data = self.parent.stream.getBits(
+-                self.absolute_address, 1, True) 
+-            self._value = (data == 1)
+-        return self._value
+-    value = property(_getValue, Field._setValue)
+-   
++from libhachoir.field.bit_field import Bits
++  
+ class Integer(Bits):
+     def __init__(self, parent, name, format, description=None, text_handler=None):
+         if format[0] not in &quot;!&lt;&gt;&quot;:
+
+Added: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/3d/3ds.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/parser/3d/3ds.py	2006-03-04 00:30:47 UTC (rev 437)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/parser/3d/3ds.py	2006-03-04 01:36:12 UTC (rev 438)
+@@ -0,0 +1,189 @@
++&quot;&quot;&quot;
++3D Studio Max file (.3ds) parser.
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from libhachoir.field import FieldSet, Integer, RawBytes, Enum, String
++from libhachoir.parser.image.common import RGB
++
++#def readObject(self, stream, last_pos):
++#    yield String(self, &quot;name&quot;, &quot;C&quot;, &quot;Object name&quot;)
++#    while self._total_field_size &lt; last_pos:
++#        yield Chunk(self)
++#
++def readTextureFilename(parent):
++    yield String(parent, &quot;filename&quot;, &quot;C&quot;, &quot;Texture filename&quot;)
++
++def readVersion(parent):
++    yield Integer(parent, &quot;version&quot;, &quot;uint32&quot;, &quot;3DS file format version&quot;)
++
++def readMaterialName(parent):
++    yield String(parent, &quot;name&quot;, &quot;C&quot;, &quot;Material name&quot;)
++
++#class Filter_3DS_MapUV(OnDemandFilter):
++#    def __init__(self, stream, parent):
++#        OnDemandFilter.__init__(self, &quot;3ds_map&quot;, &quot;3DS UV map&quot;, stream, parent, &quot;&lt;&quot;)
++#        self.read(&quot;u&quot;, &quot;Map U&quot;, (FormatChunk, &quot;float&quot;))
++#        self.read(&quot;v&quot;, &quot;Map V&quot;, (FormatChunk, &quot;float&quot;))
++#
++#    @staticmethod
++#    def getStaticSize(stream, args):
++#        return 4*2
++# 
++class Filter_3DS_Vertex(FieldSet):
++    static_size = 4*3*8
++    def __init__(self, parent, name=&quot;vertex[]&quot;, description=&quot;Vertex&quot;):
++        FieldSet.__init__(self, parent, name, parent.stream, description=description)
++
++    def createFields(self):
++        self.read(&quot;x&quot;, &quot;X&quot;, (FormatChunk, &quot;float&quot;))
++        self.read(&quot;y&quot;, &quot;Y&quot;, (FormatChunk, &quot;float&quot;))
++        self.read(&quot;z&quot;, &quot;Z&quot;, (FormatChunk, &quot;float&quot;))
++#
++#    @staticmethod
++#    def getStaticSize(stream, args):
++#        return 4*3
++#
++#class Filter_3DS_Polygon(OnDemandFilter):
++#    def __init__(self, stream, parent):
++#        OnDemandFilter.__init__(self, &quot;3ds_polygon&quot;, &quot;3DS polygon&quot;, stream, parent, &quot;&lt;&quot;)
++#        self.read(&quot;a&quot;, &quot;Vertex A&quot;, (FormatChunk, &quot;uint16&quot;))
++#        self.read(&quot;b&quot;, &quot;Vertex B&quot;, (FormatChunk, &quot;uint16&quot;))
++#        self.read(&quot;c&quot;, &quot;Vertex C&quot;, (FormatChunk, &quot;uint16&quot;))
++#        self.read(&quot;flags&quot;, &quot;Flags&quot;, (FormatChunk, &quot;uint16&quot;))
++#
++#    @staticmethod
++#    def getStaticSize(stream, args):
++#        return 4*2
++#    
++#def readMapList(filter, stream, last_pos):
++#    filter.read(&quot;count&quot;, &quot;Map count&quot;, (FormatChunk, &quot;uint16&quot;))
++#    for i in range(0, filter[&quot;count&quot;]):
++#        filter.read(&quot;map[]&quot;, &quot;Map UV&quot;, (Filter_3DS_MapUV,))
++#
++def readColor(parent):
++    yield RGB(parent, &quot;color&quot;, parent.stream)
++
++def readVertexList(parent):
++    count = Integer(parent, &quot;count&quot;, &quot;uint16&quot;, &quot;Vertex count&quot;)
++    for i in range(0, count.value):
++        yield Vertex(parent)
++    
++#def readPolygonList(filter, stream, last_pos):
++#    filter.read(&quot;count&quot;, &quot;Vertex count&quot;, (FormatChunk, &quot;uint16&quot;))
++#    for i in range(0, filter[&quot;count&quot;]):
++#        filter.read(&quot;polygon[]&quot;, &quot;Polygon&quot;, (Filter_3DS_Polygon,))
++#    while stream.tell() &lt; last_pos:
++#        filter.read(&quot;chunk[]&quot;, &quot;Chunk&quot;, (Filter_3DS_Chunk,))
++#
++class Chunk(FieldSet):
++    # List of chunk type name
++    type_name = {
++        0x0011: &quot;Color&quot;,
++        0x4D4D: &quot;Main chunk&quot;,
++        0x0002: &quot;File version&quot;,
++        0x3D3D: &quot;Materials and objects&quot;,
++        0x4000: &quot;Object&quot;,
++        0x4100: &quot;Mesh (triangular)&quot;,
++        0x4110: &quot;Vertices list&quot;,
++        0x4120: &quot;Polygon (faces) list&quot;,
++        0x4140: &quot;Map UV list&quot;,
++        0x4130: &quot;Object material&quot;,
++        0xAFFF: &quot;New material&quot;,
++        0xA000: &quot;Material name&quot;,
++        0xA010: &quot;Material ambiant&quot;,
++        0xA020: &quot;Material diffuse&quot;,
++        0xA030: &quot;Texture specular&quot;,
++        0xA200: &quot;Texture&quot;,
++        0xA300: &quot;Texture filename&quot;,
++
++        # Key frames
++        0xB000: &quot;Keyframes&quot;,
++        0xB002: &quot;Object node tag&quot;,
++        0xB006: &quot;Light target node tag&quot;,
++        0xB007: &quot;Spot light node tag&quot;,
++        0xB00A: &quot;Keyframes header&quot;,
++        0xB009: &quot;Keyframe current time&quot;,
++        0xB030: &quot;Node identifier&quot;,
++        0xB010: &quot;Node header&quot;,
++        0x7001: &quot;Viewport layout&quot;
++    }
++
++    chunk_id_by_type = {
++        0x4d4d: &quot;main&quot;,
++        0x0002: &quot;version&quot;,
++        0x3d3d: &quot;obj_mat&quot;,
++        0xb000: &quot;keyframes&quot;,
++        0xafff: &quot;material[]&quot;,
++        0x4000: &quot;object&quot;,
++        0x4110: &quot;vertices_list&quot;,
++        0x4120: &quot;polygon_list&quot;,
++        0x4140: &quot;mapuv_list&quot;,
++        0x4100: &quot;mesh&quot;
++    }
++
++    # List of chunks which contains other chunks
++    sub_chunks = \
++        (0x4D4D, 0x4100, 0x3D3D, 0xAFFF, 0xA200,
++         0xB002, 0xB006, 0xB007,
++         0xA010, 0xA030, 0xA020, 0xB000)
++
++    # List of chunk type handlers
++    handlers = {
++        0xA000: readMaterialName,
++#        0x4000: readObject,
++        0xA300: readTextureFilename,
++        0x0011: readColor,
++        0x0002: readVersion,
++        0x4110: readVertexList,
++#        0x4120: readPolygonList,
++#        0x4140: readMapList
++    }
++
++    endian = &quot;&lt;&quot;
++    
++    def __init__(self, parent, name=&quot;chunk[]&quot;):
++        FieldSet.__init__(self, parent, name, parent.stream)
++
++        # Set description
++        self.description = &quot;Chunk: %s&quot; % self[&quot;type&quot;].display
++
++        # Set name based on type field
++        type = self[&quot;type&quot;].value 
++        if type in Chunk.chunk_id_by_type:
++            self._name = Chunk.chunk_id_by_type[type]
++        else:
++            self._name = &quot;chunk_%04x&quot; % type
++
++        # Guess chunk size
++        self._size = self[&quot;size&quot;].value * 8
++
++    def hexadecimal(self, field):
++        return &quot;%04X&quot; % field.value    
++
++    def createFields(self):        
++        yield Enum(self, &quot;type&quot;, &quot;uint16&quot;, Chunk.type_name, &quot;Chunk type&quot;, text_handler=self.hexadecimal)
++        yield Integer(self, &quot;size&quot;, &quot;uint32&quot;, &quot;Chunk size (in bytes)&quot;)
++        chunk_size = self[&quot;size&quot;].value
++        content_size = chunk_size - 6
++        type = self[&quot;type&quot;].value
++        if type in Chunk.sub_chunks:
++            while self._total_field_size &lt; chunk_size*8:
++                yield Chunk(self)
++            assert self._total_field_size == (chunk_size * 8)
++        else:
++            if type in Chunk.handlers: 
++                fields = Chunk.handlers[type] (self)
++                for field in fields:
++                    yield field
++                assert self._total_field_size == (chunk_size * 8)
++            else:
++                yield RawBytes(self, &quot;data&quot;, content_size)
++
++class Parser3dsFile(FieldSet):
++    mime_types = &quot;image/x-3ds&quot;
++
++    def createFields(self):
++        while self._total_field_size &lt; self.stream.size:
++            yield Chunk(self)
++
+
+Added: haypo/hachoir/branches/hachoir-yield/unit_test/stream_search.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/unit_test/stream_search.py	2006-03-04 00:30:47 UTC (rev 437)
++++ haypo/hachoir/branches/hachoir-yield/unit_test/stream_search.py	2006-03-04 01:36:12 UTC (rev 438)
+@@ -0,0 +1,18 @@
++from libhachoir.field import FieldSet, Integer, String, Bits, Bit
++from libhachoir.stream import StringInputStream
++
++def test1():
++    stream = StringInputStream(&quot;\x00\x0A\x00\x0B\x05\x07&quot;)
++    assert stream.searchBytes(&quot;\x0A&quot;, 0) == 8
++    assert stream.searchBytes(&quot;\xFF&quot;, 0) == None
++    assert stream.searchBytes(&quot;\x00&quot;, 8) == 16
++
++def runTests():
++    print &quot;Test FieldSet.__getitem__&quot;
++    try:
++        test1()
++        print &quot;Test FieldSet.__getitem__: done&quot;
++    except Exception, msg:
++        print &quot;Test FieldSet.__getitem__: error!&quot;
++        print msg
++        raise
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000339.html">[Happyboom-svn] r437 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser branches/hachoir-yield/libhachoir/parser/3d branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/unit_test
+</A></li>
+	<LI>Next message: <A HREF="000341.html">[Happyboom-svn] r439 - in haypo/hachoir: . branches/hachoir-yield/doc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#340">[ date ]</a>
+              <a href="thread.html#340">[ thread ]</a>
+              <a href="subject.html#340">[ subject ]</a>
+              <a href="author.html#340">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,1171 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r113 - in languetudes: . locale locale/en locale/en/LC_MESSAGES locale/eo locale/eo/LC_MESSAGES src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r113%20-%20in%20languetudes%3A%20.%20locale%20locale/en%20locale/en/LC_MESSAGES%20locale/eo%20locale/eo/LC_MESSAGES%20src&In-Reply-To=%3C200509022206.j82M6EQe030505%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000015.html">
+   <LINK REL="Next"  HREF="000020.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r113 - in languetudes: . locale locale/en locale/en/LC_MESSAGES locale/eo locale/eo/LC_MESSAGES src</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r113%20-%20in%20languetudes%3A%20.%20locale%20locale/en%20locale/en/LC_MESSAGES%20locale/eo%20locale/eo/LC_MESSAGES%20src&In-Reply-To=%3C200509022206.j82M6EQe030505%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r113 - in languetudes: . locale locale/en locale/en/LC_MESSAGES locale/eo locale/eo/LC_MESSAGES src">dboucard at berlios.de
+       </A><BR>
+    <I>Sat Sep  3 00:06:14 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000015.html">[Happyboom-svn] r112 - lamer
+</A></li>
+        <LI>Next message: <A HREF="000020.html">[Happyboom-svn] r114 - languetudes/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24">[ date ]</a>
+              <a href="thread.html#24">[ thread ]</a>
+              <a href="subject.html#24">[ subject ]</a>
+              <a href="author.html#24">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-03 00:06:14 +0200 (Sat, 03 Sep 2005)
+New Revision: 113
+
+Added:
+   languetudes/locale/
+   languetudes/locale/en/
+   languetudes/locale/en/LC_MESSAGES/
+   languetudes/locale/en/LC_MESSAGES/languetudes.mo
+   languetudes/locale/en/LC_MESSAGES/languetudes.po
+   languetudes/locale/eo/
+   languetudes/locale/eo/LC_MESSAGES/
+   languetudes/locale/eo/LC_MESSAGES/languetudes.mo
+   languetudes/locale/eo/LC_MESSAGES/languetudes.po
+   languetudes/trunk/
+Modified:
+   languetudes/languetudes.py
+   languetudes/src/common.py
+   languetudes/src/console.py
+   languetudes/src/ncurses.py
+   languetudes/src/tkinter.py
+Log:
+UTF-8 compliant, gettext compliant (EN &amp; EO)
+
+
+Modified: languetudes/languetudes.py
+===================================================================
+--- languetudes/languetudes.py	2005-09-02 15:41:06 UTC (rev 112)
++++ languetudes/languetudes.py	2005-09-02 22:06:14 UTC (rev 113)
+@@ -1,3 +1,5 @@
++#!/usr/bin/python
++# -*- coding: UTF-8 -*-
+ import sys, getopt
+ 
+ usage = &quot;&quot;&quot;
+
+Added: languetudes/locale/en/LC_MESSAGES/languetudes.mo
+===================================================================
+(Binary files differ)
+
+
+Property changes on: languetudes/locale/en/LC_MESSAGES/languetudes.mo
+___________________________________________________________________
+Name: svn:mime-type
+   + application/octet-stream
+
+Added: languetudes/locale/en/LC_MESSAGES/languetudes.po
+===================================================================
+--- languetudes/locale/en/LC_MESSAGES/languetudes.po	2005-09-02 15:41:06 UTC (rev 112)
++++ languetudes/locale/en/LC_MESSAGES/languetudes.po	2005-09-02 22:06:14 UTC (rev 113)
+@@ -0,0 +1,192 @@
++# Languetudes : outil d'apprentissage de vocabulaire.
++# Copyright (C) 2005 Damien Boucard &lt;damien POINT boucard AROBE tchoy POINT net&gt;
++#
++msgid &quot;&quot;
++msgstr &quot;&quot;
++&quot;Project-Id-Version: 0.2\n&quot;
++&quot;POT-Creation-Date: 2005-09-02 22:03+CEST\n&quot;
++&quot;PO-Revision-Date: 2005-09-02 22:00+CEST\n&quot;
++&quot;Last-Translator: Damien Boucard &lt;damien POINT boucard AROBE tchoy POINT net&gt;\n&quot;
++&quot;Language-Team: English\n&quot;
++&quot;MIME-Version: 1.0\n&quot;
++&quot;Content-Type: text/plain; charset=utf-8\n&quot;
++&quot;Content-Transfer-Encoding: 8bit\n&quot;
++&quot;Generated-By: pygettext.py 1.5\n&quot;
++
++
++#: tkinter.py:11
++msgid &quot;Languetudes&quot;
++msgstr &quot;Langstudy&quot;
++
++#: tkinter.py:12
++msgid &quot;fran\303\247ais&quot;
++msgstr &quot;english&quot;
++
++#: tkinter.py:19
++msgid &quot;Langue : aucune&quot;
++msgstr &quot;Language : none&quot;
++
++#: tkinter.py:32
++msgid &quot;Langue : %s&quot;
++msgstr &quot;Language : %s&quot;
++
++#: tkinter.py:43
++msgid &quot;Dictionnaires&quot;
++msgstr &quot;Dictionaries&quot;
++
++#: tkinter.py:49
++msgid &quot;Version&quot;
++msgstr &quot;Translation into English&quot;
++
++#: tkinter.py:54
++msgid &quot;Th\303\250me&quot;
++msgstr &quot;Translation from English&quot;
++
++#: tkinter.py:59
++msgid &quot;Sortie&quot;
++msgstr &quot;Exit&quot;
++
++#: tkinter.py:69 tkinter.py:76 tkinter.py:86
++msgid &quot;Aucune langue selectionn\303\251e&quot;
++msgstr &quot;No language selected&quot;
++
++#: tkinter.py:69 tkinter.py:76 tkinter.py:86
++msgid &quot;Veuillez d'abord choisir une langue.&quot;
++msgstr &quot;Please choose a language first.&quot;
++
++#: tkinter.py:79 tkinter.py:89
++msgid &quot;Aucun dictionnaire selectionn\303\251&quot;
++msgstr &quot;No dictionary selected&quot;
++
++#: tkinter.py:79 tkinter.py:89
++msgid &quot;Veuillez d'abord choisir un ou plusieurs dictionnaires.&quot;
++msgstr &quot;Please choose one or more dictionaries first.&quot;
++
++#: tkinter.py:97
++msgid &quot;Choisir une langue&quot;
++msgstr &quot;Choose a language&quot;
++
++#: tkinter.py:102
++msgid &quot;Annuler&quot;
++msgstr &quot;Cancel&quot;
++
++#: tkinter.py:122 tkinter.py:201 tkinter.py:291
++msgid &quot;Ajouter&quot;
++msgstr &quot;Add&quot;
++
++#: tkinter.py:134
++msgid &quot;Veuillez indiquer un nom de langue dans le champ de texte.&quot;
++msgstr &quot;Please enter a language name into the text field.&quot;
++
++#: tkinter.py:134 tkinter.py:139
++msgid &quot;Nom de langue incorrect&quot;
++msgstr &quot;Incorrect language name&quot;
++
++#: tkinter.py:139
++msgid &quot;Le nom de langue saisi est d\303\251j\303\240 dans la liste.&quot;
++msgstr &quot;The entered language name is already in the list.&quot;
++
++#: tkinter.py:150
++msgid &quot;dictionnaires&quot;
++msgstr &quot;dictionaries&quot;
++
++#: tkinter.py:157 tkinter.py:265 tkinter.py:341
++msgid &quot;Fermer&quot;
++msgstr &quot;Close&quot;
++
++#: tkinter.py:171
++msgid &quot;Sel&quot;
++msgstr &quot;Sel&quot;
++
++#: tkinter.py:178
++msgid &quot;\303\211dit&quot;
++msgstr &quot;Edit&quot;
++
++#: tkinter.py:183
++msgid &quot;Voir&quot;
++msgstr &quot;See&quot;
++
++#: tkinter.py:188
++msgid &quot;Supp&quot;
++msgstr &quot;Rem&quot;
++
++#: tkinter.py:232
++msgid &quot;Confirmation de la suppression&quot;
++msgstr &quot;Removal confirmation&quot;
++
++#: tkinter.py:232
++msgid &quot;\303\212tes-vous certain de vouloir supprimer le dictionnaire intitul\303\251 \&quot;%s\&quot; ?&quot;
++msgstr &quot;Are you sure to remove the dictionary entitled \&quot;%s\&quot; ?&quot;
++
++#: tkinter.py:241
++msgid &quot;Veuillez indiquer un nom au dictionnaire dans le champ de texte.&quot;
++msgstr &quot;Please enter a dictionary name in the text field.&quot;
++
++#: tkinter.py:241 tkinter.py:246
++msgid &quot;Nom de dictionnaire incorrect&quot;
++msgstr &quot;Incorrect dictionary name&quot;
++
++#: tkinter.py:246
++msgid &quot;Un dictionnaire existant porte d\303\251j\303\240 ce nom. Veuillez en taper un autre.&quot;
++msgstr &quot;An existing dictionary already has this title. Please enter another one.&quot;
++
++#: tkinter.py:300 tkinter.py:304
++msgid &quot;Libell\303\251 incorrect&quot;
++msgstr &quot;Incorrect label&quot;
++
++#: tkinter.py:300 tkinter.py:304
++msgid &quot;Veuillez remplir tous les champs de cette bo\303\256te de dialogue.&quot;
++msgstr &quot;Please fill all the fields of this dialog box.&quot;
++
++#: tkinter.py:309
++msgid &quot;Ce couple a d\303\251j\303\240 \303\251t\303\251 entr\303\251. Vous ne pouvez pas faire de doublons.&quot;
++msgstr &quot;This tuple has already been entered. Duplicate entries are not allowed.&quot;
++
++#: tkinter.py:309 tkinter.py:315 tkinter.py:320
++msgid &quot;Doublons d\303\251tect\303\251s&quot;
++msgstr &quot;Duplicate entries detected&quot;
++
++#: tkinter.py:315 tkinter.py:320
++msgid &quot;Le mot %s \&quot;%s\&quot; est d\303\251j\303\240 dans le dictionnaire. \303\212tes-vous certain de l'associer \303\240 un second mot %s ?&quot;
++msgstr &quot;The %s word \&quot;%s\&quot; is already in the dictionary. Are you sure to link it to a second %s word ?&quot;
++
++#: tkinter.py:398
++msgid &quot;M.A.J&quot;
++msgstr &quot;UPDATE&quot;
++
++#: tkinter.py:421
++msgid &quot;Confirmation suppression&quot;
++msgstr &quot;Removal confirmation&quot;
++
++#: tkinter.py:421
++msgid &quot;\303\212tes-vous certain de vouloir supprimer le couple de mot \&quot;%s\&quot; / \&quot;%s\&quot; ?&quot;
++msgstr &quot;Are you sure to remove the tuple \&quot;%s\&quot; / \&quot;%s\&quot; ?&quot;
++
++#: tkinter.py:453
++msgid &quot;version&quot;
++msgstr &quot;translation into English&quot;
++
++#: tkinter.py:458 tkinter.py:516
++msgid &quot;Terminer&quot;
++msgstr &quot;Finish&quot;
++
++#: tkinter.py:464 tkinter.py:522
++msgid &quot;Score&quot;
++msgstr &quot;Score&quot;
++
++#: tkinter.py:488 tkinter.py:546
++msgid &quot;Valider&quot;
++msgstr &quot;Validate&quot;
++
++#: tkinter.py:497 tkinter.py:555
++msgid &quot;Faux. La bonne traduction est : \&quot;%s\&quot;&quot;
++msgstr &quot;Wrong. The correct answer is : \&quot;%s\&quot;&quot;
++
++#: tkinter.py:497 tkinter.py:555
++msgid &quot;Mauvaise r\303\251ponse&quot;
++msgstr &quot;Wrong answer&quot;
++
++#: tkinter.py:511
++msgid &quot;th\303\250me&quot;
++msgstr &quot;translation from English&quot;
++
+
+Added: languetudes/locale/eo/LC_MESSAGES/languetudes.mo
+===================================================================
+(Binary files differ)
+
+
+Property changes on: languetudes/locale/eo/LC_MESSAGES/languetudes.mo
+___________________________________________________________________
+Name: svn:mime-type
+   + application/octet-stream
+
+Added: languetudes/locale/eo/LC_MESSAGES/languetudes.po
+===================================================================
+--- languetudes/locale/eo/LC_MESSAGES/languetudes.po	2005-09-02 15:41:06 UTC (rev 112)
++++ languetudes/locale/eo/LC_MESSAGES/languetudes.po	2005-09-02 22:06:14 UTC (rev 113)
+@@ -0,0 +1,188 @@
++# Languetudes : outils d'apprentissage de vocabulaire.
++# Copyright (C) 2005 Damien Boucard &lt;damien POINT boucard AROBE tchoy POINT net&gt;
++#
++msgid &quot;&quot;
++msgstr &quot;&quot;
++&quot;Project-Id-Version: 0.2\n&quot;
++&quot;POT-Creation-Date: 2005-09-02 23:16+CEST\n&quot;
++&quot;PO-Revision-Date: 2005-09-02 23:20+CEST\n&quot;
++&quot;Last-Translator: Damien Boucard &lt;damien POINT boucard AROBE tchoy POINT net&gt;\n&quot;
++&quot;Language-Team: Esperanto\n&quot;
++&quot;MIME-Version: 1.0\n&quot;
++&quot;Content-Type: text/plain; charset=utf-8\n&quot;
++&quot;Content-Transfer-Encoding: 8bit\n&quot;
++&quot;Generated-By: pygettext.py 1.5\n&quot;
++
++
++#: tkinter.py:14
++msgid &quot;Languetudes&quot;
++msgstr &quot;Lingvostudoj&quot;
++
++#: tkinter.py:15
++msgid &quot;fran\303\247ais&quot;
++msgstr &quot;esperante&quot;
++
++#: tkinter.py:22
++msgid &quot;Langue : aucune&quot;
++msgstr &quot;Lingvo : nenio&quot;
++
++#: tkinter.py:35
++msgid &quot;Langue : %s&quot;
++msgstr &quot;Lingvo : %s&quot;
++
++#: tkinter.py:46
++msgid &quot;Dictionnaires&quot;
++msgstr &quot;Vortaroj&quot;
++
++#: tkinter.py:52
++msgid &quot;Version&quot;
++msgstr &quot;Detraduko&quot;
++
++#: tkinter.py:57
++msgid &quot;Th\303\250me&quot;
++msgstr &quot;Altraduko&quot;
++
++#: tkinter.py:62
++msgid &quot;Sortie&quot;
++msgstr &quot;Eliro&quot;
++
++#: tkinter.py:72 tkinter.py:79 tkinter.py:89
++msgid &quot;Aucune langue selectionn\303\251e&quot;
++msgstr &quot;Neniu elekta lingvo&quot;
++
++#: tkinter.py:72 tkinter.py:79 tkinter.py:89
++msgid &quot;Veuillez d'abord choisir une langue.&quot;
++msgstr &quot;Anta&#365;e bonvolu elekti lingvon.&quot;
++
++#: tkinter.py:82 tkinter.py:92
++msgid &quot;Aucun dictionnaire selectionn\303\251&quot;
++msgstr &quot;Nenio elekta vortaro&quot;
++
++#: tkinter.py:82 tkinter.py:92
++msgid &quot;Veuillez d'abord choisir un ou plusieurs dictionnaires.&quot;
++msgstr &quot;Anta&#365;e bonvolu elekti unu a&#365; plurajn vortarojn.&quot;
++
++#: tkinter.py:100
++msgid &quot;Choisir une langue&quot;
++msgstr &quot;Elektu lingvon&quot;
++
++#: tkinter.py:105
++msgid &quot;Annuler&quot;
++msgstr &quot;Nuligi&quot;
++
++#: tkinter.py:125 tkinter.py:204 tkinter.py:294
++msgid &quot;Ajouter&quot;
++msgstr &quot;Almeti&quot;
++
++#: tkinter.py:137
++msgid &quot;Veuillez indiquer un nom de langue dans le champ de texte.&quot;
++msgstr &quot;Bonvolu enigi lingvan nomon en la teksta kampo.&quot;
++
++#: tkinter.py:137 tkinter.py:142
++msgid &quot;Nom de langue incorrect&quot;
++msgstr &quot;Erara lingva nomo&quot;
++
++#: tkinter.py:142
++msgid &quot;Le nom de langue saisi est d\303\251j\303\240 dans la liste.&quot;
++msgstr &quot;La enigita lingva nomo jam estas en la listo.&quot;
++
++#: tkinter.py:153
++msgid &quot;dictionnaires&quot;
++msgstr &quot;vortaroj&quot;
++
++#: tkinter.py:160 tkinter.py:268 tkinter.py:344
++msgid &quot;Fermer&quot;
++msgstr &quot;Fermi&quot;
++
++#: tkinter.py:174
++msgid &quot;Sel&quot;
++msgstr &quot;Elekt&quot;
++
++#: tkinter.py:181
++msgid &quot;\303\211dit&quot;
++msgstr &quot;Eldon&quot;
++
++#: tkinter.py:186
++msgid &quot;Voir&quot;
++msgstr &quot;Vid&quot;
++
++#: tkinter.py:191
++msgid &quot;Supp&quot;
++msgstr &quot;Forig&quot;
++
++#: tkinter.py:235
++msgid &quot;\303\212tes-vous certain de vouloir supprimer le dictionnaire intitul\303\251 \&quot;%s\&quot; ?&quot;
++msgstr &quot;&#264;u vi estas certa forigi la vortaron titola \&quot;%s\&quot; ?&quot;
++
++#: tkinter.py:235 tkinter.py:424
++msgid &quot;Confirmation de la suppression&quot;
++msgstr &quot;Konfirmo de la forigo&quot;
++
++#: tkinter.py:244
++msgid &quot;Veuillez indiquer un nom au dictionnaire dans le champ de texte.&quot;
++msgstr &quot;Bonvolu enigi vortara nomo en la teksta kampo.&quot;
++
++#: tkinter.py:244 tkinter.py:249
++msgid &quot;Nom de dictionnaire incorrect&quot;
++msgstr &quot;Erara vortara nomo&quot;
++
++#: tkinter.py:249
++msgid &quot;Un dictionnaire existant porte d\303\251j\303\240 ce nom. Veuillez en taper un autre.&quot;
++msgstr &quot;Ekzistanta vortaro jam havas tiu nomo. Bonvolu enigi alion.&quot;
++
++#: tkinter.py:303 tkinter.py:307
++msgid &quot;Libell\303\251 incorrect&quot;
++msgstr &quot;Erara vortigo&quot;
++
++#: tkinter.py:303 tkinter.py:307
++msgid &quot;Veuillez remplir tous les champs de cette bo\303\256te de dialogue.&quot;
++msgstr &quot;Bonvolu plenigi cxiujn kampojn de tiu invitilo.&quot;
++
++#: tkinter.py:312
++msgid &quot;Ce couple a d\303\251j\303\240 \303\251t\303\251 entr\303\251. Vous ne pouvez pas faire de doublons.&quot;
++msgstr &quot;Tiu paro jam estis enigita. Vi ne povas fari duoblojn&quot;
++
++#: tkinter.py:312 tkinter.py:318 tkinter.py:323
++msgid &quot;Doublons d\303\251tect\303\251s&quot;
++msgstr &quot;Eltrova duobloj&quot;
++
++#: tkinter.py:318 tkinter.py:323
++msgid &quot;Le mot %s \&quot;%s\&quot; est d\303\251j\303\240 dans le dictionnaire. \303\212tes-vous certain de l'associer \303\240 un second mot %s ?&quot;
++msgstr &quot;La %s vorto \&quot;%s\&quot; jam estas en la vortaro. &#264;u vi estas certa de kunligi &#285;in kun duan %s vorton ?&quot;
++
++#: tkinter.py:401
++msgid &quot;M.A.J&quot;
++msgstr &quot;&#285;isdatig&quot;
++
++#: tkinter.py:424
++msgid &quot;\303\212tes-vous certain de vouloir supprimer le couple de mot \&quot;%s\&quot; / \&quot;%s\&quot; ?&quot;
++msgstr &quot;&#264;u vi estas certa forigi la vortan paron \&quot;%s\&quot; / \&quot;%s\&quot; ?&quot;
++
++#: tkinter.py:456
++msgid &quot;version&quot;
++msgstr &quot;detraduko&quot;
++
++#: tkinter.py:461 tkinter.py:519
++msgid &quot;Terminer&quot;
++msgstr &quot;Fini&quot;
++
++#: tkinter.py:467 tkinter.py:525
++msgid &quot;Score&quot;
++msgstr &quot;Poentaro&quot;
++
++#: tkinter.py:491 tkinter.py:549
++msgid &quot;Valider&quot;
++msgstr &quot;Validigi&quot;
++
++#: tkinter.py:500 tkinter.py:558
++msgid &quot;Faux. La bonne traduction est : \&quot;%s\&quot;&quot;
++msgstr &quot;Mal&#285;usta. La &#285;usta tradukto estas : \&quot;%s\&quot;&quot;
++
++#: tkinter.py:500 tkinter.py:558
++msgid &quot;Mauvaise r\303\251ponse&quot;
++msgstr &quot;Mal&#285;usta respondo&quot;
++
++#: tkinter.py:514
++msgid &quot;th\303\250me&quot;
++msgstr &quot;Altraduko&quot;
++
+
+Modified: languetudes/src/common.py
+===================================================================
+--- languetudes/src/common.py	2005-09-02 15:41:06 UTC (rev 112)
++++ languetudes/src/common.py	2005-09-02 22:06:14 UTC (rev 113)
+@@ -1,3 +1,5 @@
++#!/usr/bin/python
++# -*- coding: UTF-8 -*-
+ import ConfigParser
+ 
+ class Application:
+@@ -32,7 +34,7 @@
+         self.connexion = bdd.connect(**params)
+         # creation d'un curseur de parcours de resultat SQL
+         self.curseur = self.connexion.cursor(bdd.cursors.DictCursor)
+-        self.curseur.execute(&quot;SHOW tables&quot;)
++        self.curseur.execute(u&quot;SHOW tables&quot;)
+         result = []
+         for i in self.curseur.fetchall():
+             result.extend(i.values())
+@@ -42,94 +44,103 @@
+     id INT(9) primary key auto_increment,
+     intitule VARCHAR(63),
+     langue INT(9) REFERENCES __langue(id),
+-    INDEX(langue, intitule)
++    UNIQUE(langue, intitule)
+     )&quot;&quot;&quot;)
+             self.curseur.execute(&quot;&quot;&quot;CREATE TABLE __langue (
+     id INT(9) PRIMARY KEY AUTO_INCREMENT,
+     intitule VARCHAR(31) NOT NULL,
+-    INDEX(intitule)
++    UNIQUE(intitule)
+     )&quot;&quot;&quot;)
+         
+     def getLangues(self):
+         self.curseur.execute(&quot;SELECT intitule FROM __langue ORDER BY intitule&quot;)
+         result = []
+         for i in self.curseur.fetchall():
+-            result.append(i[&quot;intitule&quot;])
++            result.append(i[&quot;intitule&quot;].replace(&quot;\\\\&quot;, &quot;\\&quot;).replace(&quot;\\'&quot;, &quot;'&quot;).replace('\\&quot;', '&quot;'))
+         return result
+         
+     def addLangue(self, langue):
+-        self.curseur.execute(&quot;INSERT INTO __langue(intitule) VALUES('%s')&quot; %langue.lower())
++        langue = langue.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        requete = &quot;INSERT INTO __langue(intitule) VALUES('%s')&quot; %langue.lower()
++        self.curseur.execute(requete.encode(&quot;utf-8&quot;))
+ 
+     def getDictionnaires(self, langue):
+-        self.curseur.execute(&quot;SELECT __dictionnaire.intitule FROM __langue, __dictionnaire WHERE __dictionnaire.langue = __langue.id AND __langue.intitule = '%s' ORDER BY __dictionnaire.intitule&quot; %langue)
++        langue = langue.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        requete = &quot;SELECT __dictionnaire.intitule FROM __langue, __dictionnaire WHERE __dictionnaire.langue = __langue.id AND __langue.intitule = '%s' ORDER BY __dictionnaire.intitule&quot; %langue
++        self.curseur.execute(requete.encode(&quot;utf-8&quot;))
+         result = []
+         for i in self.curseur.fetchall():
+             result.append(i[&quot;intitule&quot;].replace(&quot;\\\\&quot;, &quot;\\&quot;).replace(&quot;\\'&quot;, &quot;'&quot;).replace('\\&quot;', '&quot;'))
+         return result
+         
+     def addDictionnaire(self, nom, langue):
+-        self.curseur.execute(&quot;SELECT id FROM __langue WHERE intitule='%s'&quot; %langue)
++        langue = langue.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        requete = &quot;SELECT id FROM __langue WHERE intitule='%s'&quot; %langue
++        self.curseur.execute(requete.encode(&quot;utf-8&quot;))
+         langue_id = self.curseur.fetchall()[0][&quot;id&quot;]
+-        nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
+-        self.curseur.execute(&quot;INSERT INTO __dictionnaire(intitule, langue) VALUES('%s', %s)&quot; %(nom, langue_id))
+-        self.curseur.execute(&quot;SELECT id FROM __dictionnaire WHERE langue=%s AND intitule='%s'&quot; %(langue_id, nom))
++        requete = &quot;INSERT INTO __dictionnaire(intitule, langue) VALUES('%s', %s)&quot; %(nom, langue_id)
++        self.curseur.execute(requete.encode(&quot;utf-8&quot;))
++        requete = &quot;SELECT id FROM __dictionnaire WHERE langue=%s AND intitule='%s'&quot; %(langue_id, nom)
++        self.curseur.execute(requete.encode(&quot;utf-8&quot;))
+         dico_id = self.curseur.fetchall()[0][&quot;id&quot;]
+         self.curseur.execute(&quot;&quot;&quot;CREATE TABLE dico%s(
+ id INT(9) PRIMARY KEY AUTO_INCREMENT,
+ francais VARCHAR(63) NOT NULL,
+ etranger VARCHAR(63) NOT NULL,
+-INDEX(francais, etranger),
++UNIQUE(francais, etranger),
+ INDEX(etranger, francais)
+ )&quot;&quot;&quot; %dico_id)
++    
++    def getDicoId(self, langue, nom):
++        langue = langue.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        requete = self.dico_id_sql %(langue, nom)
++        self.curseur.execute(requete.encode(&quot;utf-8&quot;))
++        return self.curseur.fetchall()[0][&quot;id&quot;]
+         
+     def delDictionnaire(self, nom, langue):
+-        nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
+-        self.curseur.execute(self.dico_id_sql %(langue, nom))
+-        dico_id = self.curseur.fetchall()[0][&quot;id&quot;]
+-        self.curseur.execute(&quot;DELETE FROM __dictionnaire WHERE id=%s&quot; %dico_id)
+-        self.curseur.execute(&quot;DROP TABLE dico%s&quot; %dico_id)
++        dico_id = self.getDicoId(langue, nom)
++        self.curseur.execute(u&quot;DELETE FROM __dictionnaire WHERE id=%s&quot; %dico_id)
++        self.curseur.execute(u&quot;DROP TABLE dico%s&quot; %dico_id)
+         
+     def verifierDoublons(self, langue, nom, francais, etranger):
+-        nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        dico_id = self.getDicoId(langue, nom)
+         francais = francais.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
+         etranger = etranger.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
+-        self.curseur.execute(self.dico_id_sql %(langue, nom))
+-        dico_id = self.curseur.fetchall()[0][&quot;id&quot;]
+-        self.curseur.execute(&quot;SELECT francais, etranger FROM dico%s WHERE francais='%s' OR etranger='%s'&quot; %(dico_id, francais, etranger))
++        requete = &quot;SELECT francais, etranger FROM dico%s WHERE francais='%s' OR etranger='%s'&quot; %(dico_id, francais, etranger)
++        self.curseur.execute(requete.encode(&quot;utf-8&quot;))
+         f, e = (False, False)
+         for i in self.curseur.fetchall():
+-            if i[&quot;francais&quot;] == francais and i[&quot;etranger&quot;] == etranger:
++            if i[&quot;francais&quot;] == francais.encode(&quot;utf-8&quot;) and i[&quot;etranger&quot;] == etranger.encode(&quot;utf-8&quot;):
+                 return (True, True, True)
+-            if i[&quot;francais&quot;] == francais:
++            if i[&quot;francais&quot;] == francais.encode(&quot;utf-8&quot;):
+                 f = True
+-            if i[&quot;etranger&quot;] == etranger:
++            if i[&quot;etranger&quot;] == etranger.encode(&quot;utf-8&quot;):
+                 e = True
+         return (f, e, False)
+         
+     def addCouple(self, langue, nom, francais, etranger):
+-        nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
+         francais = francais.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
+         etranger = etranger.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
+-        self.curseur.execute(self.dico_id_sql %(langue, nom))
+-        dico_id = self.curseur.fetchall()[0][&quot;id&quot;]
+-        self.curseur.execute(&quot;INSERT INTO dico%s(francais, etranger) VALUES ('%s', '%s')&quot; %(dico_id, francais, etranger))
++        dico_id = self.getDicoId(langue, nom)
++        requete = &quot;INSERT INTO dico%s(francais, etranger) VALUES ('%s', '%s')&quot; %(dico_id, francais, etranger)
++        self.curseur.execute(requete.encode(&quot;utf-8&quot;))
+         
+     def delCouple(self, langue, nom, francais, etranger):
+-        nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
+         francais = francais.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
+         etranger = etranger.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
+-        self.curseur.execute(self.dico_id_sql %(langue, nom))
+-        dico_id = self.curseur.fetchall()[0][&quot;id&quot;]
+-        self.curseur.execute(&quot;DELETE FROM dico%s WHERE francais='%s' AND etranger='%s'&quot; %(dico_id, francais, etranger))
++        dico_id = self.getDicoId(langue, nom)
++        requete = &quot;DELETE FROM dico%s WHERE francais='%s' AND etranger='%s'&quot; %(dico_id, francais, etranger)
++        self.curseur.execute(requete.encode(&quot;utf-8&quot;))
+         
+     def getCouples(self, langue, nom, ordre=&quot;francais ASC&quot;, longueur=None, debut=0):
+-        nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
+-        self.curseur.execute(self.dico_id_sql %(langue, nom))
+-        dico_id = self.curseur.fetchall()[0][&quot;id&quot;]
+-        limit = &quot;&quot;
++        dico_id = self.getDicoId(langue, nom)
++        limit = u&quot;&quot;
+         if longueur != None:
+-            limit = &quot; LIMIT %s, %s&quot; %(debut, longueur)
+-        self.curseur.execute(&quot;SELECT francais, etranger FROM dico%s ORDER BY %s%s&quot; %(dico_id, ordre, limit))
++            limit = u&quot; LIMIT %s, %s&quot; %(debut, longueur)
++            requete = &quot;SELECT francais, etranger FROM dico%s ORDER BY %s%s&quot; %(dico_id, ordre, limit)
++        self.curseur.execute(requete.encode(&quot;utf-8&quot;))
+         result = self.curseur.fetchall()
+         for i in range(len(result)):
+             result[i][&quot;francais&quot;] = result[i][&quot;francais&quot;].replace(&quot;\\\\&quot;, &quot;\\&quot;).replace(&quot;\\'&quot;, &quot;'&quot;).replace('\\&quot;', '&quot;')
+@@ -137,13 +148,12 @@
+         return result
+         
+     def getAleatoire(self, langue, dicos):
+-        requete = &quot;&quot;
++        requete = u&quot;&quot;
+         for nom in dicos:
+-            nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
+-            self.curseur.execute(self.dico_id_sql %(langue, nom))
+-            dico_id = self.curseur.fetchall()[0][&quot;id&quot;]
+-            requete = requete + &quot;SELECT francais, etranger FROM dico%s UNION &quot; %dico_id
+-        self.curseur.execute(&quot;%s ORDER BY RAND() LIMIT 1&quot; %(requete[:-7]))
++            dico_id = self.getDicoId(langue, nom)
++            requete = requete + u&quot;SELECT francais, etranger FROM dico%s UNION &quot; %dico_id
++            requete = &quot;%s ORDER BY RAND() LIMIT 1&quot; %(requete[:-7])
++        self.curseur.execute(requete.encode(&quot;utf-8&quot;))
+         result = self.curseur.fetchall()[0]
+         result[&quot;francais&quot;] = result[&quot;francais&quot;].replace(&quot;\\\\&quot;, &quot;\\&quot;).replace(&quot;\\'&quot;, &quot;'&quot;).replace('\\&quot;', '&quot;')
+         result[&quot;etranger&quot;] = result[&quot;etranger&quot;].replace(&quot;\\\\&quot;, &quot;\\&quot;).replace(&quot;\\'&quot;, &quot;'&quot;).replace('\\&quot;', '&quot;')
+@@ -153,25 +163,23 @@
+         francais = francais.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
+         etranger = etranger.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
+         if type == &quot;version&quot;:
+-            test = &quot;etranger='%s'&quot; %etranger
++            test = u&quot;etranger='%s'&quot; %etranger
+         else:
+-            test = &quot;francais='%s'&quot; %francais
+-        requete = &quot;&quot;
++            test = u&quot;francais='%s'&quot; %francais
++        requete = u&quot;&quot;
+         for nom in dicos:
+-            nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
+-            self.curseur.execute(self.dico_id_sql %(langue, nom))
+-            dico_id = self.curseur.fetchall()[0][&quot;id&quot;]
+-            requete = requete + &quot;SELECT francais, etranger FROM dico%s WHERE %s UNION &quot; %(dico_id, test)
+-        self.curseur.execute(requete[:-7])
++            dico_id = self.getDicoId(langue, nom)
++            requete = requete + u&quot;SELECT francais, etranger FROM dico%s WHERE %s UNION &quot; %(dico_id, test)
++        self.curseur.execute(requete[:-7].encode(&quot;utf-8&quot;))
+         result = self.curseur.fetchall()
+         if type == &quot;version&quot;:
+             for i in result:
+-                if i[&quot;francais&quot;] == francais:
++                if i[&quot;francais&quot;] == francais.encode(&quot;utf-8&quot;):
+                     return True
+             return False
+         else:
+             for i in result:
+-                if i[&quot;etranger&quot;] == etranger:
++                if i[&quot;etranger&quot;] == etranger.encode(&quot;utf-8&quot;):
+                     return True
+             return False
+         
+
+Modified: languetudes/src/console.py
+===================================================================
+--- languetudes/src/console.py	2005-09-02 15:41:06 UTC (rev 112)
++++ languetudes/src/console.py	2005-09-02 22:06:14 UTC (rev 113)
+@@ -1,3 +1,5 @@
++#!/usr/bin/python
++# -*- coding: UTF-8 -*-
+ import common
+ 
+ class Application(common.Application):
+
+Modified: languetudes/src/ncurses.py
+===================================================================
+--- languetudes/src/ncurses.py	2005-09-02 15:41:06 UTC (rev 112)
++++ languetudes/src/ncurses.py	2005-09-02 22:06:14 UTC (rev 113)
+@@ -1,3 +1,5 @@
++#!/usr/bin/python
++# -*- coding: UTF-8 -*-
+ import common
+ 
+ class Application(common.Application):
+
+Modified: languetudes/src/tkinter.py
+===================================================================
+--- languetudes/src/tkinter.py	2005-09-02 15:41:06 UTC (rev 112)
++++ languetudes/src/tkinter.py	2005-09-02 22:06:14 UTC (rev 113)
+@@ -1,13 +1,26 @@
++#!/usr/bin/python
++# -*- coding: UTF-8 -*-
+ from Tkinter import *
+-import tkMessageBox
++import tkMessageBox, gettext
+ import common
++
++try:
++    t = gettext.translation('languetudes', './locale')
++    _ = t.ugettext
++except IOError:
++    def ident(s): return s
++    _ = ident
++
++application_name = _(&quot;Languetudes&quot;)
++application_language = _(u&quot;fran&#231;ais&quot;)
+     
+ class Application(common.Application, Frame, object):
+     def __init__(self):
+         common.Application.__init__(self)
+         Frame.__init__(self)
+-        self.master.title(&quot;Languetudes&quot;)
+-        self.__langue = &quot;aucune&quot;
++        self.master.title(application_name)
++        self.aucuneLangue = _(&quot;Langue : aucune&quot;)
++        self.__langue = self.aucuneLangue
+         self.dico = []
+         self.pack()
+         self.createWidgets()
+@@ -19,34 +32,34 @@
+         if langue != self.__langue:
+             self.dico = []
+         self.__langue = langue
+-        self.btnLangue[&quot;text&quot;] = &quot;Langue : %s&quot; %self.__langue
++        self.btnLangue[&quot;text&quot;] = _(&quot;Langue : %s&quot;) %self.__langue
+     langue = property(getLangue, setLangue)
+     
+     def createWidgets(self):
+         self.btnLangue = Button(self)
+-        self.btnLangue[&quot;text&quot;] = &quot;Langue : %s&quot; %self.__langue
++        self.btnLangue[&quot;text&quot;] = self.__langue
+         self.btnLangue[&quot;command&quot;] = self.choisirLangue
+         self.btnLangue[&quot;fg&quot;]   = &quot;blue&quot;
+         self.btnLangue.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
+         
+         self.btnDico = Button(self)
+-        self.btnDico[&quot;text&quot;] = &quot;Dictionnaires&quot;
++        self.btnDico[&quot;text&quot;] = _(&quot;Dictionnaires&quot;)
+         self.btnDico[&quot;command&quot;] = self.dictionnaire
+         self.btnDico[&quot;fg&quot;]   = &quot;darkgreen&quot;
+         self.btnDico.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
+         
+         self.btnVersion = Button(self)
+-        self.btnVersion[&quot;text&quot;] = &quot;Version&quot;
++        self.btnVersion[&quot;text&quot;] = _(&quot;Version&quot;)
+         self.btnVersion[&quot;command&quot;] = self.version
+         self.btnVersion.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
+         
+         self.btnTheme = Button(self)
+-        self.btnTheme[&quot;text&quot;] = &quot;Theme&quot;
++        self.btnTheme[&quot;text&quot;] = _(u&quot;Th&#232;me&quot;)
+         self.btnTheme[&quot;command&quot;] = self.theme
+         self.btnTheme.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
+         
+         self.btnQuit = Button(self)
+-        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 15 + &quot;Sortie&quot; + &quot; &quot; * 15
++        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 15 + _(&quot;Sortie&quot;) + &quot; &quot; * 15
+         self.btnQuit[&quot;fg&quot;]   = &quot;red&quot;
+         self.btnQuit[&quot;command&quot;] =  self.quit
+         self.btnQuit.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
+@@ -55,28 +68,28 @@
+         Langue(self)
+         
+     def dictionnaire(self):
+-        if self.langue == &quot;aucune&quot;:
+-            tkMessageBox.showinfo(&quot;Aucune langue selectionnee&quot;, &quot;Veuillez d'abord choisir une langue.&quot;)
++        if self.langue == self.aucuneLangue:
++            tkMessageBox.showinfo(_(u&quot;Aucune langue selectionn&#233;e&quot;), _(u&quot;Veuillez d'abord choisir une langue.&quot;))
+             Langue(self)
+         else:
+             Dictionnaire(self, self.langue)
+         
+     def version(self):
+-        if self.langue == &quot;aucune&quot;:
+-            tkMessageBox.showinfo(&quot;Aucune langue selectionnee&quot;, &quot;Veuillez d'abord choisir une langue.&quot;)
++        if self.langue == self.aucuneLangue:
++            tkMessageBox.showinfo(_(u&quot;Aucune langue selectionn&#233;e&quot;), _(&quot;Veuillez d'abord choisir une langue.&quot;))
+             Langue(self)
+         elif self.dico == []:
+-            tkMessageBox.showinfo(&quot;Aucun dictionnaire selectionne&quot;, &quot;Veuillez d'abord choisir un ou plusieurs dictionnaires.&quot;)
++            tkMessageBox.showinfo(_(u&quot;Aucun dictionnaire selectionn&#233;&quot;), _(&quot;Veuillez d'abord choisir un ou plusieurs dictionnaires.&quot;))
+             Dictionnaire(self, self.langue)
+         else:
+             Version(self, self.langue, self.dico)
+     
+     def theme(self):
+-        if self.langue == &quot;aucune&quot;:
+-            tkMessageBox.showinfo(&quot;Aucune langue selectionnee&quot;, &quot;Veuillez d'abord choisir une langue.&quot;)
++        if self.langue == self.aucuneLangue:
++            tkMessageBox.showinfo(_(u&quot;Aucune langue selectionn&#233;e&quot;), _(&quot;Veuillez d'abord choisir une langue.&quot;))
+             Langue(self)
+         elif self.dico == []:
+-            tkMessageBox.showinfo(&quot;Aucun dictionnaire selectionne&quot;, &quot;Veuillez d'abord choisir un ou plusieurs dictionnaires.&quot;)
++            tkMessageBox.showinfo(_(u&quot;Aucun dictionnaire selectionn&#233;&quot;), _(&quot;Veuillez d'abord choisir un ou plusieurs dictionnaires.&quot;))
+             Dictionnaire(self, self.langue)
+         else:
+             Theme(self, self.langue, self.dico)
+@@ -84,12 +97,12 @@
+ class Langue(Toplevel):
+     def __init__(self, master):
+         Toplevel.__init__(self, master)
+-        self.title(&quot;Choisir une langue&quot;)
++        self.title(_(&quot;Choisir une langue&quot;))
+         self.createWidgets()
+         
+     def createWidgets(self):
+         self.btnQuit = Button(self)
+-        self.btnQuit[&quot;text&quot;] = &quot;Annuler&quot;
++        self.btnQuit[&quot;text&quot;] = _(&quot;Annuler&quot;)
+         self.btnQuit[&quot;fg&quot;]   = &quot;red&quot;
+         self.btnQuit[&quot;command&quot;] =  self.destroy
+         self.btnQuit.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
+@@ -109,7 +122,7 @@
+         self.txtAjouter.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
+         
+         self.btnAjouter = Button(self)
+-        self.btnAjouter[&quot;text&quot;] = &quot;Ajouter&quot;
++        self.btnAjouter[&quot;text&quot;] = _(&quot;Ajouter&quot;)
+         self.btnAjouter[&quot;fg&quot;]   = &quot;blue&quot;
+         self.btnAjouter[&quot;command&quot;] =  self.addLangue
+         self.btnAjouter.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
+@@ -121,9 +134,15 @@
+     def addLangue(self, event=None):
+         txt = self.txtAjouter.get().strip().lower()
+         if txt == &quot;&quot;:
+-            tkMessageBox.showwarning(&quot;Nom de langue incorrect&quot;, &quot;Veuillez indiquer un nom de langue dans le champ de texte.&quot;)
++            tkMessageBox.showwarning(_(&quot;Nom de langue incorrect&quot;), _(&quot;Veuillez indiquer un nom de langue dans le champ de texte.&quot;))
+             self.txtAjouter.focus()
+             return
++        for btn in self.btn:
++            if btn[&quot;text&quot;] == txt:
++                tkMessageBox.showwarning(_(&quot;Nom de langue incorrect&quot;), _(u&quot;Le nom de langue saisi est d&#233;j&#224; dans la liste.&quot;))
++                self.txtAjouter.delete(0, len(self.txtAjouter.get()))
++                self.txtAjouter.focus()
++                return
+         self.master.addLangue(txt)
+         self.master.langue = txt
+         self.destroy()
+@@ -131,14 +150,14 @@
+ class Dictionnaire(Toplevel):
+     def __init__(self, master, langue):
+         Toplevel.__init__(self, master)
+-        self.title(&quot;%s : dictionnaires&quot; %langue)
++        self.title(&quot;%s : %s&quot; %(langue, _(&quot;dictionnaires&quot;)))
+         self.langue = langue
+         self.createWidgets()
+         
+     def createWidgets(self):  
+         self.btnQuit = Button(self)
+         self.defCouleur = self.btnQuit[&quot;bg&quot;]
+-        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 30 + &quot;Fermer&quot; + &quot; &quot; * 30
++        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 30 + _(&quot;Fermer&quot;) + &quot; &quot; * 30
+         self.btnQuit[&quot;fg&quot;]   = &quot;red&quot;
+         self.btnQuit[&quot;command&quot;] =  self.destroy
+         self.btnQuit.grid(row=0, columnspan=5)
+@@ -152,24 +171,24 @@
+             label.grid(row=cptrow, column=0)
+             
+             btnSelect = Button(self)
+-            btnSelect[&quot;text&quot;] = &quot;Sel&quot;
++            btnSelect[&quot;text&quot;] = _(&quot;Sel&quot;)
+             if dico in self.master.dico:
+                 btnSelect[&quot;bg&quot;] = &quot;green&quot;
+             btnSelect.bind(&quot;&lt;Button-1&gt;&quot;, self.choisirDico)
+             btnSelect.grid(row=cptrow, column=1)
+             
+             btnEdit = Button(self)
+-            btnEdit[&quot;text&quot;] = &quot;Edit&quot;
++            btnEdit[&quot;text&quot;] = _(u&quot;&#201;dit&quot;)
+             btnEdit.bind(&quot;&lt;Button-1&gt;&quot;, self.editerDico)
+             btnEdit.grid(row=cptrow, column=2)
+             
+             btnVoir = Button(self)
+-            btnVoir[&quot;text&quot;] = &quot;Voir&quot;
++            btnVoir[&quot;text&quot;] = _(&quot;Voir&quot;)
+             btnVoir.bind(&quot;&lt;Button-1&gt;&quot;, self.voirDico)
+             btnVoir.grid(row=cptrow, column=3)
+             
+             btnSuppr = Button(self)
+-            btnSuppr[&quot;text&quot;] = &quot;Supp&quot;
++            btnSuppr[&quot;text&quot;] = _(&quot;Supp&quot;)
+             btnSuppr.bind(&quot;&lt;Button-1&gt;&quot;, self.supprimerDico)
+             btnSuppr.grid(row=cptrow, column=4)
+             
+@@ -182,7 +201,7 @@
+         self.txtAjouter.grid(row=cptrow+1, columnspan=3)
+         
+         self.btnAjouter = Button(self)
+-        self.btnAjouter[&quot;text&quot;] = &quot;Ajouter&quot;
++        self.btnAjouter[&quot;text&quot;] = _(&quot;Ajouter&quot;)
+         self.btnAjouter[&quot;fg&quot;]   = &quot;blue&quot;
+         self.btnAjouter[&quot;command&quot;] =  self.ajouterDico
+         self.btnAjouter.grid(row=cptrow+1, column=3, columnspan=2)
+@@ -213,7 +232,7 @@
+     def supprimerDico(self, event):
+         for i in self.dicos:
+             if i[4] == event.widget:
+-                if tkMessageBox.askquestion(&quot;Confirmation de la suppression&quot;, &quot;Etes-vous certain de vouloir supprimer le dictionnaire intitule \&quot;%s\&quot; ?&quot; %i[0][&quot;text&quot;])==&quot;yes&quot;:
++                if tkMessageBox.askquestion(_(&quot;Confirmation de la suppression&quot;), _(u&quot;&#202;tes-vous certain de vouloir supprimer le dictionnaire intitul&#233; \&quot;%s\&quot; ?&quot;) %i[0][&quot;text&quot;])==&quot;yes&quot;:
+                     self.master.delDictionnaire(i[0][&quot;text&quot;], self.langue)
+                     Dictionnaire(self.master, self.langue)
+                     self.destroy()
+@@ -222,13 +241,13 @@
+     def ajouterDico(self, event=None):
+         txt = self.txtAjouter.get().strip().lower()
+         if txt == &quot;&quot;:
+-            tkMessageBox.showwarning(&quot;Nom de dictionnaire incorrect&quot;, &quot;Veuillez indiquer un nom au dictionnaire dans le champ de texte.&quot;)
++            tkMessageBox.showwarning(_(&quot;Nom de dictionnaire incorrect&quot;), _(&quot;Veuillez indiquer un nom au dictionnaire dans le champ de texte.&quot;))
+             self.txtAjouter.focus()
+             return
+         for b in self.dicos:
+             if b[0][&quot;text&quot;] == txt:
+-                tkMessageBox.showwarning(&quot;Nom de dictionnaire incorrect&quot;, &quot;Un dictionnaire existant porte deja ce nom. Veuillez en taper un autre.&quot;)
+-                self.txtAjouter.delete(0)
++                tkMessageBox.showwarning(_(&quot;Nom de dictionnaire incorrect&quot;), _(u&quot;Un dictionnaire existant porte d&#233;j&#224; ce nom. Veuillez en taper un autre.&quot;))
++                self.txtAjouter.delete(0,len(self.txtAjouter.get()))
+                 self.txtAjouter.focus()
+                 return
+         self.master.addDictionnaire(txt, self.langue)
+@@ -246,13 +265,13 @@
+         
+     def createWidgets(self):
+         self.btnQuit = Button(self)
+-        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 15 + &quot;Fermer&quot; + &quot; &quot; * 15
++        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 15 + _(&quot;Fermer&quot;) + &quot; &quot; * 15
+         self.btnQuit[&quot;fg&quot;]   = &quot;red&quot;
+         self.btnQuit[&quot;command&quot;] =  self.destroy
+         self.btnQuit.grid(row=0, columnspan=2)
+         
+         self.lblFrancais = Label(self)
+-        self.lblFrancais[&quot;text&quot;] = &quot;francais&quot;
++        self.lblFrancais[&quot;text&quot;] = langue
+         self.lblFrancais.grid(row=1, column=0)
+         
+         self.txtFrancais = Entry(self)
+@@ -272,7 +291,7 @@
+         self.txtEtranger.grid(row=2, column=1)
+         
+         self.btnAjouter = Button(self)
+-        self.btnAjouter[&quot;text&quot;] = &quot;Ajouter&quot;
++        self.btnAjouter[&quot;text&quot;] = _(&quot;Ajouter&quot;)
+         self.btnAjouter[&quot;fg&quot;]   = &quot;blue&quot;
+         self.btnAjouter[&quot;command&quot;] =  self.valider
+         self.btnAjouter.grid(row=3, columnspan=2)    
+@@ -281,28 +300,28 @@
+         francais = self.txtFrancais.get().strip().lower()
+         etranger = self.txtEtranger.get().strip().lower()
+         if francais==&quot;&quot;:
+-            tkMessageBox.showwarning(&quot;Libelle incorrect&quot;, &quot;Veuillez remplir tous les champs de cette boite de dialogue.&quot;)
++            tkMessageBox.showwarning(_(u&quot;Libell&#233; incorrect&quot;), _(u&quot;Veuillez remplir tous les champs de cette bo&#238;te de dialogue.&quot;))
+             self.txtFrancais.focus()
+             return
+         if etranger==&quot;&quot;:
+-            tkMessageBox.showwarning(&quot;Libelle incorrect&quot;, &quot;Veuillez remplir tous les champs de cette boite de dialogue.&quot;)
++            tkMessageBox.showwarning(_(u&quot;Libell&#233; incorrect&quot;), _(u&quot;Veuillez remplir tous les champs de cette bo&#238;te de dialogue.&quot;))
+             self.txtEtranger.focus()
+             return
+         (f, e, d) = self.master.master.verifierDoublons(self.langue, self.dico, francais, etranger)
+         if d == True:
+-            tkMessageBox.showwarning(&quot;Doublons detectes&quot;, &quot;Ce couple a deja ete entre. Vous ne pouvez pas faire de doublons.&quot;)
+-            self.txtEtranger.delete(0)
+-            self.txtFrancais.delete(0)
++            tkMessageBox.showwarning(_(u&quot;Doublons d&#233;tect&#233;s&quot;), _(u&quot;Ce couple a d&#233;j&#224; &#233;t&#233; entr&#233;. Vous ne pouvez pas faire de doublons.&quot;))
++            self.txtEtranger.delete(0, len(self.txtEtranger.get()))
++            self.txtFrancais.delete(0, len(self.txtFrancais.get()))
+             self.txtFrancais.focus()
+             return
+         if f == True:
+-            if tkMessageBox.askquestion(&quot;Doublons detectes&quot;, &quot;Le mot francais \&quot;%s\&quot; est deja dans le dictionnaire. Etes-vous certain de l'associer a un second mot %s ?&quot; %(francais, self.langue))==&quot;no&quot;:
+-                self.txtFrancais.delete(0)
++            if tkMessageBox.askquestion(_(u&quot;Doublons d&#233;tect&#233;s&quot;), _(u&quot;Le mot %s \&quot;%s\&quot; est d&#233;j&#224; dans le dictionnaire. &#202;tes-vous certain de l'associer &#224; un second mot %s ?&quot;) %(application_language, francais, self.langue))==&quot;no&quot;:
++                self.txtFrancais.delete(0, len(self.txtFrancais.get()))
+                 self.txtFrancais.focus()
+                 return
+         if e == True:
+-            if tkMessageBox.askquestion(&quot;Doublons detectes&quot;, &quot;Le mot %s \&quot;%s\&quot; est deja dans le dictionnaire. Etes-vous certain de l'associer a un second mot francais ?&quot; %(self.langue, etranger))==&quot;no&quot;:
+-                self.txtEtranger.delete(0)
++            if tkMessageBox.askquestion(_(u&quot;Doublons d&#233;tect&#233;s&quot;), _(u&quot;Le mot %s \&quot;%s\&quot; est d&#233;j&#224; dans le dictionnaire. &#202;tes-vous certain de l'associer &#224; un second mot %s ?&quot;) %(self.langue, etranger, application_language))==&quot;no&quot;:
++                self.txtEtranger.delete(0, len(self.txtEtranger.get()))
+                 self.txtEtranger.focus()
+                 return
+         self.master.master.addCouple(self.langue, self.dico, francais, etranger)
+@@ -322,13 +341,13 @@
+         
+     def createWidgets(self):
+         self.btnQuit = Button(self)
+-        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 15 + &quot;Fermer&quot; + &quot; &quot; * 15
++        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 15 + _(&quot;Fermer&quot;) + &quot; &quot; * 15
+         self.btnQuit[&quot;fg&quot;]   = &quot;red&quot;
+         self.btnQuit[&quot;command&quot;] =  self.destroy
+         self.btnQuit.grid(row=0, columnspan=4)
+         
+         self.btnFrancais = Button(self)
+-        self.btnFrancais[&quot;text&quot;] = &quot;francais&quot;
++        self.btnFrancais[&quot;text&quot;] = application_language
+         self.btnFrancais[&quot;fg&quot;]   = &quot;blue&quot;
+         self.btnFrancais.bind(&quot;&lt;Button-1&gt;&quot;, self.changerOrdre)
+         self.btnFrancais.grid(row=1, column=0, columnspan=2)
+@@ -379,7 +398,7 @@
+         self.btnSuiv.grid(row=rowcpt+1, column=2)
+         
+         self.btnMAJ = Button(self)
+-        self.btnMAJ[&quot;text&quot;] = &quot;M.A.J&quot;
++        self.btnMAJ[&quot;text&quot;] = _(&quot;M.A.J&quot;)
+         self.btnMAJ[&quot;fg&quot;]   = &quot;blue&quot;
+         self.btnMAJ[&quot;command&quot;] = self.mettreAJour
+         self.btnMAJ.grid(row=rowcpt+1, column=3)
+@@ -402,7 +421,7 @@
+     def supprimerCouple(self, event):
+         for i in self.couples:
+             if i[2] == event.widget:
+-                if tkMessageBox.askquestion(&quot;Confirmation suppression&quot;, &quot;Etes-vous certain de vouloir supprimer le couple de mot \&quot;%s\&quot; / \&quot;%s\&quot;&quot; %(i[0][&quot;text&quot;], i[1][&quot;text&quot;]))==&quot;yes&quot;:
++                if tkMessageBox.askquestion(_(&quot;Confirmation de la suppression&quot;), _(u&quot;&#202;tes-vous certain de vouloir supprimer le couple de mot \&quot;%s\&quot; / \&quot;%s\&quot; ?&quot;) %(i[0][&quot;text&quot;], i[1][&quot;text&quot;]))==&quot;yes&quot;:
+                     self.master.master.delCouple(self.langue, self.dico, i[0][&quot;text&quot;], i[1][&quot;text&quot;])
+                 self.mettreAJour()
+                 break
+@@ -434,18 +453,18 @@
+         self.dicos = dicos
+         self.total = total
+         self.points = points
+-        self.title(&quot;%s : version&quot; %(langue))
++        self.title(&quot;%s : %s&quot; %(langue, _(&quot;version&quot;)))
+         self.createWidgets()
+         
+     def createWidgets(self):
+         self.btnQuit = Button(self)
+-        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 15 + &quot;Terminer&quot; + &quot; &quot; * 15
++        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 15 + _(&quot;Terminer&quot;) + &quot; &quot; * 15
+         self.btnQuit[&quot;fg&quot;]   = &quot;red&quot;
+         self.btnQuit[&quot;command&quot;] =  self.terminer
+         self.btnQuit.grid(row=0, columnspan=2)
+         
+         self.lblScore = Label(self)
+-        self.lblScore[&quot;text&quot;] = &quot;Score : %s / %s&quot; %(self.points, self.total)
++        self.lblScore[&quot;text&quot;] = &quot;%s : %s / %s&quot; %(_(&quot;Score&quot;), self.points, self.total)
+         self.lblScore[&quot;fg&quot;] = &quot;blue&quot;
+         self.lblScore.grid(row=1, columnspan=2)
+         
+@@ -459,7 +478,7 @@
+         self.txtEtranger.grid(row=2, column=1, sticky=W+E)
+         
+         self.lblFrancais = Label(self)
+-        self.lblFrancais[&quot;text&quot;] = &quot;francais&quot;
++        self.lblFrancais[&quot;text&quot;] = application_language
+         self.lblFrancais.grid(row=3, column=0)
+         
+         self.txtFrancais = Entry(self)
+@@ -469,7 +488,7 @@
+         self.txtFrancais.grid(row=3, column=1)
+         
+         self.btnAjouter = Button(self)
+-        self.btnAjouter[&quot;text&quot;] = &quot;Valider&quot;
++        self.btnAjouter[&quot;text&quot;] = _(&quot;Valider&quot;)
+         self.btnAjouter[&quot;fg&quot;]   = &quot;blue&quot;
+         self.btnAjouter[&quot;command&quot;] =  self.valider
+         self.btnAjouter.grid(row=4, columnspan=2)
+@@ -478,7 +497,7 @@
+         if self.master.corriger(self.langue, self.dicos, self.txtFrancais.get(), self.txtEtranger[&quot;text&quot;], &quot;version&quot;):
+             Version(self.master, self.langue, self.dicos, self.total+1, self.points+1)
+         else:
+-            tkMessageBox.showinfo(&quot;Mauvaise reponse&quot;, &quot;Faux. La bonne traduction est : \&quot;%s\&quot;&quot; %self.reponse)
++            tkMessageBox.showinfo(_(u&quot;Mauvaise r&#233;ponse&quot;), _(u&quot;Faux. La bonne traduction est : \&quot;%s\&quot;&quot;) %self.reponse)
+             Version(self.master, self.langue, self.dicos, self.total+1, self.points)
+         self.destroy()
+         
+@@ -492,23 +511,23 @@
+         self.dicos = dicos
+         self.total = total
+         self.points = points
+-        self.title(&quot;%s : theme&quot; %(langue))
++        self.title(&quot;%s : %s&quot; %(langue, _(u&quot;th&#232;me&quot;)))
+         self.createWidgets()
+         
+     def createWidgets(self):
+         self.btnQuit = Button(self)
+-        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 15 + &quot;Terminer&quot; + &quot; &quot; * 15
++        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 15 + _(&quot;Terminer&quot;) + &quot; &quot; * 15
+         self.btnQuit[&quot;fg&quot;]   = &quot;red&quot;
+         self.btnQuit[&quot;command&quot;] =  self.terminer
+         self.btnQuit.grid(row=0, columnspan=2)
+         
+         self.lblScore = Label(self)
+-        self.lblScore[&quot;text&quot;] = &quot;Score : %s / %s&quot; %(self.points, self.total)
++        self.lblScore[&quot;text&quot;] = &quot;%s : %s / %s&quot; %(_(&quot;Score&quot;), self.points, self.total)
+         self.lblScore[&quot;fg&quot;] = &quot;blue&quot;
+         self.lblScore.grid(row=1, columnspan=2)
+         
+         self.lblFrancais = Label(self)
+-        self.lblFrancais[&quot;text&quot;] = &quot;francais&quot;
++        self.lblFrancais[&quot;text&quot;] = application_language
+         self.lblFrancais.grid(row=2, column=0)
+         
+         self.txtFrancais = Label(self)
+@@ -527,7 +546,7 @@
+         self.txtEtranger.grid(row=3, column=1)
+         
+         self.btnAjouter = Button(self)
+-        self.btnAjouter[&quot;text&quot;] = &quot;Valider&quot;
++        self.btnAjouter[&quot;text&quot;] = _(&quot;Valider&quot;)
+         self.btnAjouter[&quot;fg&quot;]   = &quot;blue&quot;
+         self.btnAjouter[&quot;command&quot;] =  self.valider
+         self.btnAjouter.grid(row=4, columnspan=2)
+@@ -536,7 +555,7 @@
+         if self.master.corriger(self.langue, self.dicos, self.txtFrancais[&quot;text&quot;], self.txtEtranger.get(), &quot;theme&quot;):
+             Theme(self.master, self.langue, self.dicos, self.total+1, self.points+1)
+         else:
+-            tkMessageBox.showinfo(&quot;Mauvaise reponse&quot;, &quot;Faux. La bonne traduction est : \&quot;%s\&quot;&quot; %self.reponse)
++            tkMessageBox.showinfo(_(u&quot;Mauvaise r&#233;ponse&quot;), _(u&quot;Faux. La bonne traduction est : \&quot;%s\&quot;&quot;) %self.reponse)
+             Theme(self.master, self.langue, self.dicos, self.total+1, self.points)
+         self.destroy()
+         
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000015.html">[Happyboom-svn] r112 - lamer
+</A></li>
+	<LI>Next message: <A HREF="000020.html">[Happyboom-svn] r114 - languetudes/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#24">[ date ]</a>
+              <a href="thread.html#24">[ thread ]</a>
+              <a href="subject.html#24">[ subject ]</a>
+              <a href="author.html#24">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

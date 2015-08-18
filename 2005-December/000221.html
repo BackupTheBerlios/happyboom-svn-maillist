@@ -1,0 +1,265 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r315 - in haypo/hachoir: plugins ui
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r315%20-%20in%20haypo/hachoir%3A%20plugins%20ui&In-Reply-To=%3C200512110849.jBB8nBAx027624%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000220.html">
+   <LINK REL="Next"  HREF="000222.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r315 - in haypo/hachoir: plugins ui</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r315%20-%20in%20haypo/hachoir%3A%20plugins%20ui&In-Reply-To=%3C200512110849.jBB8nBAx027624%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r315 - in haypo/hachoir: plugins ui">haypo at berlios.de
+       </A><BR>
+    <I>Sun Dec 11 09:49:11 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000220.html">[Happyboom-svn] r314 - haypo/hachoir
+</A></li>
+        <LI>Next message: <A HREF="000222.html">[Happyboom-svn] r316 - in haypo/hachoir: . ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#221">[ date ]</a>
+              <a href="thread.html#221">[ thread ]</a>
+              <a href="subject.html#221">[ subject ]</a>
+              <a href="author.html#221">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-11 09:48:30 +0100 (Sun, 11 Dec 2005)
+New Revision: 315
+
+Modified:
+   haypo/hachoir/plugins/gif.py
+   haypo/hachoir/plugins/jpeg.py
+   haypo/hachoir/plugins/png.py
+   haypo/hachoir/ui/hachoir.glade
+   haypo/hachoir/ui/ui_window.py
+Log:
+Replace some readArray() with classic Python while structure.
+Add &quot;copy to clipboard&quot; button to copy chunk text.
+
+
+Modified: haypo/hachoir/plugins/gif.py
+===================================================================
+--- haypo/hachoir/plugins/gif.py	2005-12-11 07:48:58 UTC (rev 314)
++++ haypo/hachoir/plugins/gif.py	2005-12-11 08:48:30 UTC (rev 315)
+@@ -45,7 +45,10 @@
+             assert issubclass(parent.__class__, GifFile)
+             screen = parent.getChunk(&quot;screen&quot;).getFilter()
+             self._nb_colors = (1 &lt;&lt; screen.bits_per_pixel)
+-        self.readArray(&quot;color&quot;, GifColor, &quot;Color map&quot;, self.checkEndOfMap)
++        n = 0
++        while n&lt;self._nb_colors:
++            self.readChild(&quot;color[]&quot;, GifColor)
++            n = n + 1
+ 
+     def checkEndOfMap(self, stream, array, color):
+         return len(array) == self._nb_colors 
+@@ -60,11 +63,10 @@
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;gif_ext&quot;, &quot;GIF extension&quot;, stream, parent)
+         self.read(&quot;func&quot;, &quot;&lt;B&quot;, &quot;Function&quot;)
+-        self.readArray(&quot;chunks&quot;, GifExtensionChunk, &quot;Extension chunks&quot;, self.checkEnd)
+-
+-    def checkEnd(self, stream, array, chunk):
+-        if chunk == None: return False
+-        return chunk[&quot;size&quot;] == 0 
++        while True:
++            chunk = self.readChild(&quot;chunk[]&quot;, GifExtensionChunk)
++            if chunk.getFilter()[&quot;size&quot;] == 0:
++                break
+         
+ class GifScreenDescriptor(Filter):
+     def __init__(self, stream, parent):
+
+Modified: haypo/hachoir/plugins/jpeg.py
+===================================================================
+--- haypo/hachoir/plugins/jpeg.py	2005-12-11 07:48:58 UTC (rev 314)
++++ haypo/hachoir/plugins/jpeg.py	2005-12-11 08:48:30 UTC (rev 315)
+@@ -29,6 +29,20 @@
+             self.read(&quot;thumb_data&quot;, &quot;%us&quot; % size, &quot;Thumbnail data&quot;)
+ 
+ class JpegChunk(Filter):
++    type_name = {
++        0xC0: &quot;Start Of Frame 0 (SOF0)&quot;,
++        0xC3: &quot;Define Huffman Table (DHT)&quot;,
++        0xD8: &quot;Start of image (SOI)&quot;,
++        0xD9: &quot;End of image (EOI)&quot;,
++        0xDA: &quot;Start Of Scan (SOS)&quot;,
++        0xDB: &quot;Define Quantization Table (DQT)&quot;,
++        0xDC: &quot;Define number of Lines (DNL)&quot;,
++        0xDD: &quot;Define Restart Interval (DRI)&quot;,
++        0xE1: &quot;EXIF&quot;,
++        0xE0: &quot;APP0&quot;,
++        0xFE: &quot;Comment&quot;
++    }
++
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;jpeg_chunk&quot;, &quot;JPEG chunk&quot;, stream, parent)
+         chunk = self.read(&quot;header&quot;, &quot;B&quot;, &quot;Header&quot;)
+@@ -50,37 +64,20 @@
+             self.read(&quot;data&quot;, &quot;!%us&quot; % size, &quot;Data&quot;)
+ 
+     def getChunkType(self, chunk):
+-        types = {
+-            0xC0: &quot;Start Of Frame 0 (SOF0)&quot;,
+-            0xC3: &quot;Define Huffman Table (DHT)&quot;,
+-            0xD8: &quot;Start of image (SOI)&quot;,
+-            0xD9: &quot;End of image (EOI)&quot;,
+-            0xDA: &quot;Start Of Scan (SOS)&quot;,
+-            0xDB: &quot;Define Quantization Table (DQT)&quot;,
+-            0xDC: &quot;Define number of Lines (DNL)&quot;,
+-            0xDD: &quot;Define Restart Interval (DRI)&quot;,
+-            0xE1: &quot;EXIF&quot;,
+-            0xE0: &quot;APP0&quot;,
+-            0xFE: &quot;Comment&quot;
+-        }
+         type = chunk.value
+-        if type in types:
+-            type = types[type]
+-        else:
+-            type = &quot;Unknow type (%02X)&quot; % type
++        type = JpegChunk.type_name.get(type, &quot;Unknow type (%02X)&quot; % type)
+         self.setDescription(&quot;JPEG chunk \&quot;%s\&quot;&quot; % type)
+         return type
+ 
+ class JpegFile(Filter):
+-    def checkEndOfChunks(self, stream, array, chunk):
+-        if chunk != None and chunk[&quot;type&quot;] == 0xDA: return True
+-        return stream.eof()
+-
+     def __init__(self, stream, parent=None):
+         Filter.__init__(self, &quot;jpeg_file&quot;, &quot;JPEG file&quot;, stream, parent)
+         self.read(&quot;header&quot;, &quot;!2B&quot;, &quot;Header \&quot;start of image\&quot; (0xFF, 0xD8)&quot;)
+         assert self[&quot;header&quot;] == (0xFF, 0xD8)
+-        self.readArray(&quot;chunk&quot;, JpegChunk, &quot;Chunks&quot;, self.checkEndOfChunks)
++        while not stream.eof():
++            chunk = self.readChild(&quot;chunk[]&quot;, JpegChunk)
++            if chunk.getFilter()[&quot;type&quot;] == 0xDA:
++                break
+         self.read(&quot;data&quot;, &quot;!{@end@}s&quot;, &quot;JPEG data&quot;)
+         
+ registerPlugin(JpegFile, &quot;image/jpeg&quot;)
+
+Modified: haypo/hachoir/plugins/png.py
+===================================================================
+--- haypo/hachoir/plugins/png.py	2005-12-11 07:48:58 UTC (rev 314)
++++ haypo/hachoir/plugins/png.py	2005-12-11 08:48:30 UTC (rev 315)
+@@ -75,20 +75,6 @@
+         return &quot;PNG time chunk &lt;%04u-%02u-%02u %02u:%02u:%02u&gt;&quot; % \
+             (self[&quot;year&quot;], self[&quot;month&quot;], self[&quot;day&quot;],
+              self[&quot;hour&quot;], self[&quot;minute&quot;], self[&quot;second&quot;])
+-
+-class PngFile(Filter):
+-    &quot;&quot;&quot;
+-    Split a PNG file into chunks.
+-    &quot;&quot;&quot;
+-
+-    def __init__(self, stream, parent=None):
+-        Filter.__init__(self, &quot;png_file&quot;, &quot;PNG file&quot;, stream, parent)
+-        self.read(&quot;header&quot;, &quot;!8s&quot;, &quot;File header&quot;)
+-        assert self[&quot;header&quot;] == &quot;\x89\x50\x4E\x47\x0D\x0A\x1A\x0A&quot;
+-        self.readArray(&quot;chunks&quot;, PngChunk, &quot;Png chunks&quot;, self.checkEndOfChunks)
+-
+-    def checkEndOfChunks(self, stream, array, png_chunk):
+-        return stream.eof()
+         
+ class PngChunk(Filter):
+     def __init__(self, stream, parent):
+@@ -119,4 +105,16 @@
+     def __str__(self):
+         return &quot;PngChunk &lt;size=%u, type=%s&gt;&quot; % (self[&quot;size&quot;], self[&quot;type&quot;])
+ 
++class PngFile(Filter):
++    &quot;&quot;&quot;
++    Split a PNG file into chunks.
++    &quot;&quot;&quot;
++
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;png_file&quot;, &quot;PNG file&quot;, stream, parent)
++        self.read(&quot;header&quot;, &quot;!8s&quot;, &quot;File header&quot;)
++        assert self[&quot;header&quot;] == &quot;\x89\x50\x4E\x47\x0D\x0A\x1A\x0A&quot;
++        while not stream.eof():
++            self.readChild(&quot;chunks[]&quot;, PngChunk)
++
+ registerPlugin(PngFile, [&quot;image/png&quot;, &quot;image/x-png&quot;])
+
+Modified: haypo/hachoir/ui/hachoir.glade
+===================================================================
+--- haypo/hachoir/ui/hachoir.glade	2005-12-11 07:48:58 UTC (rev 314)
++++ haypo/hachoir/ui/hachoir.glade	2005-12-11 08:48:30 UTC (rev 315)
+@@ -935,6 +935,19 @@
+ 		  &lt;/child&gt;
+ 
+ 		  &lt;child&gt;
++		    &lt;widget class=&quot;GtkButton&quot; id=&quot;on_chunk_copy&quot;&gt;
++		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;can_default&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;label&quot;&gt;gtk-copy&lt;/property&gt;
++		      &lt;property name=&quot;use_stock&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;relief&quot;&gt;GTK_RELIEF_NORMAL&lt;/property&gt;
++		      &lt;property name=&quot;focus_on_click&quot;&gt;True&lt;/property&gt;
++		      &lt;signal name=&quot;clicked&quot; handler=&quot;onChunkCopy&quot; last_modification_time=&quot;Sun, 11 Dec 2005 08:45:53 GMT&quot;/&gt;
++		    &lt;/widget&gt;
++		  &lt;/child&gt;
++
++		  &lt;child&gt;
+ 		    &lt;widget class=&quot;GtkButton&quot; id=&quot;info_chunk_delete&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 		      &lt;property name=&quot;can_default&quot;&gt;True&lt;/property&gt;
+
+Modified: haypo/hachoir/ui/ui_window.py
+===================================================================
+--- haypo/hachoir/ui/ui_window.py	2005-12-11 07:48:58 UTC (rev 314)
++++ haypo/hachoir/ui/ui_window.py	2005-12-11 08:48:30 UTC (rev 315)
+@@ -68,6 +68,13 @@
+         self.table.connect(&quot;button_press_event&quot;, self.on_treeview_button_press_event)
+         self.window.set_size_request(600,560)
+         self.build_table()
++        
++    def onChunkCopy(self, event):
++        chunk = self.getActiveChunk()
++        print &quot;Copy %s&quot; % chunk
++        assert chunk != None
++        text = chunk.getStringValue()
++        self.ui.getClipboard().set_text(text)
+ 
+     def onSaveChunk(self, event):
+         chunk = self.getActiveChunk()
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000220.html">[Happyboom-svn] r314 - haypo/hachoir
+</A></li>
+	<LI>Next message: <A HREF="000222.html">[Happyboom-svn] r316 - in haypo/hachoir: . ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#221">[ date ]</a>
+              <a href="thread.html#221">[ thread ]</a>
+              <a href="subject.html#221">[ subject ]</a>
+              <a href="author.html#221">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

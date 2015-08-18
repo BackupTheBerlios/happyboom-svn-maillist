@@ -1,0 +1,816 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r310 - in haypo/hachoir: . plugins stream
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r310%20-%20in%20haypo/hachoir%3A%20.%20plugins%20stream&In-Reply-To=%3C200512110615.jBB6Fncs030322%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000215.html">
+   <LINK REL="Next"  HREF="000217.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r310 - in haypo/hachoir: . plugins stream</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r310%20-%20in%20haypo/hachoir%3A%20.%20plugins%20stream&In-Reply-To=%3C200512110615.jBB6Fncs030322%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r310 - in haypo/hachoir: . plugins stream">haypo at berlios.de
+       </A><BR>
+    <I>Sun Dec 11 07:15:49 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000215.html">[Happyboom-svn] r309 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000217.html">[Happyboom-svn] r311 - haypo/hachoir
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#216">[ date ]</a>
+              <a href="thread.html#216">[ thread ]</a>
+              <a href="subject.html#216">[ subject ]</a>
+              <a href="author.html#216">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-11 07:15:28 +0100 (Sun, 11 Dec 2005)
+New Revision: 310
+
+Modified:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/default.py
+   haypo/hachoir/filter.py
+   haypo/hachoir/format.py
+   haypo/hachoir/hachoir.py
+   haypo/hachoir/hachoir_class.py
+   haypo/hachoir/plugins/3ds.py
+   haypo/hachoir/plugins/gzip.py
+   haypo/hachoir/plugins/jpeg.py
+   haypo/hachoir/plugins/tar.py
+   haypo/hachoir/plugins/zip.py
+   haypo/hachoir/stream/file.py
+Log:
+Speed improvment:
+- Extract regex to compile them only once
+- Add filter size cache (only compute size once)
+- FormatChunk.getRealFormat only call regex if &quot;{&quot; is present
+- Add chunk counter to speed up Filter.getUniqChunkId
+
+Filters don't use truncate/can_truncate parameter (not needed anymore).
+
+Add load_ui attribute to hachoir class, so it's possible to no load UI
+(with --no-ui command line argument).
+
+Write file cache.
+
+Write (buggy?) chunk clone methods.
+
+
+
+Modified: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-12-10 15:26:24 UTC (rev 309)
++++ haypo/hachoir/chunk.py	2005-12-11 06:15:28 UTC (rev 310)
+@@ -15,6 +15,9 @@
+         self.post_process = None
+         self.display = None
+ 
++    def clone(self):
++        raise Exception(&quot;%s doesn't implement clone() method!&quot; % self)
++
+     def postProcess(self):        
+         if self.post_process != None:
+             self.display = self.post_process(self)
+@@ -65,14 +68,14 @@
+     def _setAddr(self, addr): self._addr = addr
+     def _getAddr(self): return self._addr
+     def _getSize(self): return self._size
+-    def __getId(self): return self.__id
+-    def __setId(self, id):
++    def _getId(self): return self.__id
++    def _setId(self, id):
+         if self.__id == id: return
+         self._parent.updateChunkId(self, id)
+         self.__id = id
+     addr = property(_getAddr, _setAddr)        
+     size = property(_getSize)        
+-    id = property(__getId, __setId)
++    id = property(_getId, _setId)
+     value = property(getValue)
+     raw = property(getRaw)
+     
+@@ -86,6 +89,12 @@
+             filter.getDescription(), filter.getStream(), filter.getAddr(), \
+             filter.getSize(), parent)
+     
++    def clone(self, addr=None):
++        filter_copy = self._filter.clone(addr=addr)
++        # TODO: Is it always alright? (or use parent_addr = self.parent_addr)
++        parent_addr = addr
++        return FilterChunk(self.id, filter_copy, self.getParent(), parent_addr)
++    
+     def getFormat(self):
+         return self._filter.getId()
+ 
+@@ -118,6 +127,11 @@
+     def getFilter(self):
+         return self._filter
+ 
++    def _setId(self, id):
++        Chunk._setId(self, id)
++        self._filter.setId(id)
++    id = property(Chunk._getId, _setId)
++
+     def _getDescription(self):
+         return self._description
+     def _setDescription(self, description):
+@@ -126,7 +140,7 @@
+     description = property(_getDescription, _setDescription)
+ 
+ class StringChunk(Chunk):
+-    cache_hit = 0
++    regex_eol_nr = re.compile(&quot;[\n\r]&quot;)
+ 
+     def __init__(self, id, description, stream, str_type, parent):
+         assert str_type in (&quot;C&quot;, &quot;UnixLine&quot;, &quot;WindowsLine&quot;, &quot;MacLine&quot;, &quot;AutoLine&quot;)
+@@ -152,7 +166,7 @@
+     def _findSize(self):
+         self._stream.seek(self.addr)
+         if self._str_type == &quot;AutoLine&quot;:
+-            self._size = self._stream.searchLength(re.compile(&quot;[\n\r]&quot;), True)
++            self._size = self._stream.searchLength(StringChunk.regex_eol_nr, True)
+             assert self._size != -1
+             self._stream.seek(self.addr + self._size-1)
+             self.eol = self._stream.getN(1)
+@@ -177,7 +191,6 @@
+         
+     def _read(self, max_size):
+         if self._cache_addr==self.addr and self._cache_max_size==max_size:
+-            StringChunk.cache_hit = StringChunk.cache_hit + 1
+             return self._cache_value
+         self._cache_addr = self.addr
+         self._cache_max_size = max_size
+@@ -212,6 +225,7 @@
+         self._value = {}
+         self._addr = None
+         self._format = None
++        self._orig_format = None
+         self._size = None
+         self._chunk = chunk
+         
+@@ -237,11 +251,11 @@
+                 return data, True
+ 
+     def update(self):
+-        real_format = self._chunk.getRealFormat(self._chunk.getFormat())
+-        if self._addr != self._chunk.addr or self._format != real_format:
++        if self._addr != self._chunk.addr or self._orig_format != self._chunk.getFormat():
+             # Invalidate the cache
+             self._value = {}
+-            self._format = real_format
++            self._orig_format = self._chunk.getFormat()
++            self._format = self._chunk.getRealFormat(self._orig_format)
+             self._addr = self._chunk.addr
+             self._size = struct.calcsize(self._format)
+ 
+@@ -265,12 +279,19 @@
+         return self._value[max_size]
+ 
+ class FormatChunk(Chunk):
++    regex_sub_format = re.compile(r'\{([^}]+)\}')
++
+     def __init__(self, id, description, stream, addr, format, parent):
+         Chunk.__init__(self, id, description, stream, addr, 0, parent)
+         if not checkFormat(format):
+             raise Exception(&quot;Invalid FormatChunk format: \&quot;%s\&quot;!&quot; % format)
+         self.__format = format
+         self._cache = FormatChunkCache(self)
++        
++    def clone(self, addr=None):
++        if addr == None:
++            addr = self._addr
++        return FormatChunk(self.id, self.description, self._stream, addr, self.__format, self._parent)
+ 
+     def getFormat(self):
+         return self.__format
+@@ -280,7 +301,10 @@
+     size = property(_getSize)        
+ 
+     def getRealFormat(self, format):
+-        return re.sub(r'\{([^}]+)\}', self.__replaceFieldFormat, format)
++        if &quot;{&quot; in format:
++            return FormatChunk.regex_sub_format.sub(self.__replaceFieldFormat, format)
++        else:
++            return format
+ 
+     def isString(self):
+         return self.__format[-1] == &quot;s&quot;
+
+Modified: haypo/hachoir/default.py
+===================================================================
+--- haypo/hachoir/default.py	2005-12-10 15:26:24 UTC (rev 309)
++++ haypo/hachoir/default.py	2005-12-11 06:15:28 UTC (rev 310)
+@@ -7,4 +7,4 @@
+ class DefaultFilter(Filter):
+     def __init__(self, stream, parent=None):
+         Filter.__init__(self, &quot;default&quot;, &quot;Default filter&quot;, stream, parent)
+-        self.read(&quot;data&quot;, &quot;!{@end@}s&quot;, &quot;Data&quot;, truncate=True)
++        self.read(&quot;data&quot;, &quot;!{@end@}s&quot;, &quot;Data&quot;)
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-12-10 15:26:24 UTC (rev 309)
++++ haypo/hachoir/filter.py	2005-12-11 06:15:28 UTC (rev 310)
+@@ -11,6 +11,9 @@
+ from tools import getBacktrace
+ 
+ class Filter:
++    regex_chunk_uniq_id = re.compile(&quot;^(.*?)([0-9]+)$&quot;)
++    regex_array_chunk = re.compile(r&quot;^([^[]+)\[\]$&quot;)
++
+     def __init__(self, id, description, stream, parent):
+         self._id = id
+         self._description = description
+@@ -24,14 +27,18 @@
+         self._chunks = []
+         self._chunks_dict = {}
+         self._addr = self._stream.tell()
++        self._cache_valid = False
++        self._cache_size = None
+ 
+     def __getitem__(self, chunk_id):
+         return self.getChunk(chunk_id).getValue()
+ 
+-    def clone(self):
++    def clone(self, addr=None):
+         if self.__class__ == Filter:
+             return None
+-        self.getStream().seek(self.getAddr())
++        if addr == None:
++            addr = self.getAddr()
++        self.getStream().seek(addr)
+         try:
+             new = self.__class__(self.getStream(), self.getParent())
+         except:
+@@ -46,6 +53,7 @@
+     def setDescription(self, description): self._description = description
+ 
+     def _deleteChunk(self, pos):
++        self._cache_valid = False
+         chunk = self._chunks[pos]
+         if chunk.id in self._chunks_dict:
+             del self._chunks_dict[chunk.id]
+@@ -69,18 +77,21 @@
+         return self._chunks
+ 
+     def _getUniqChunkId(self, pattern, root, index):
+-        new_id = pattern % (root, index)
+-        while new_id in self._chunks_dict:
+-            index = index + 1
+-            new_id = pattern % (root, index)
+-        return new_id 
++        if not hasattr(self, &quot;_chunk_counter&quot;):
++            self._chunk_counter = {}
++        
++        if root in self._chunk_counter:
++            self._chunk_counter[root] = self._chunk_counter[root]+1
++        else:
++            self._chunk_counter[root] = 0
++        return pattern % (root, self._chunk_counter[root])
+ 
+     def getUniqChunkId(self, id):
+         if id[-2:] == &quot;[]&quot;:
+             return self._getUniqChunkId(&quot;%s[%u]&quot;, id[:-2], 0)
+ 
+         if id in self._chunks_dict:
+-            m = re.compile(&quot;^(.*?)([0-9]+)$&quot;).match(id)
++            m = Filter.regex_chunk_uniq_id.match(id)
+             if m != None:
+                 return self._getUniqChunkId(&quot;%s%u&quot;, m.group(1), int(m.group(2))+1)
+             else:
+@@ -108,7 +119,7 @@
+             addr = self.getAddr()
+             chunk_pos = len(self._chunks)
+         chunk = FormatChunk(id, description, self.getStream(), addr, &quot;!%ss&quot; % size, self)
+-        self._appendChunk(chunk, can_truncate=True, position=chunk_pos)
++        self.appendChunk(chunk, position=chunk_pos)
+ 
+     def rescan(self, from_chunk, diff_size, new_id=None, new_description=None, truncate=False):
+         if from_chunk != None:
+@@ -158,6 +169,7 @@
+             self.addRawChunk(prev_chunk, id, size, description)
+ 
+     def _rescanUpdateChunks(self, start, prev_chunk):
++        self._cache_valid = False
+         pos = start
+         try:
+             for chunk in self._chunks[start:]:
+@@ -179,6 +191,7 @@
+ 
+     def rescanFromPos(self, start, diff_size, new_id=None, new_description=None, truncate=False):
+         assert 0&lt;=start and start &lt;= len(self._chunks)
++        self._cache_valid = False
+         if 0&lt;start:
+             prev_chunk = self._chunks[start-1]
+         else:
+@@ -209,10 +222,13 @@
+         return last_chunk.addr + last_chunk.size
+ 
+     def getSize(self):
+-        size = 0
+-        for chunk in self._chunks:
+-            size = size + chunk.size
+-        return size
++        if not self._cache_valid:
++            self._cache_valid = True
++            size = 0
++            for chunk in self._chunks:
++                size = size + chunk.size
++            self._cache_size = size
++        return self._cache_size
+ 
+     def addString(self, str_type, before_chunk):
+         if before_chunk != None:
+@@ -225,7 +241,7 @@
+         stream.seek(addr)
+         id = self.getUniqChunkId(&quot;str&quot;)
+         str_chunk = StringChunk(id, &quot;String&quot;, stream, str_type, self)
+-        self._appendChunk(str_chunk, can_truncate=True, position=pos)
++        self.appendChunk(str_chunk, position=pos)
+         str_chunk.postProcess()
+         before_chunk.addr = before_chunk.addr + str_chunk.size
+         before_chunk.convertToStringSize(before_chunk.size - str_chunk.size)
+@@ -296,31 +312,17 @@
+ 
+     def updateFormatChunk(self, chunk):
+         if chunk.id == None: return
++        self._cache_valid = False
+         data = chunk.getValue(config.max_string_length)
+         setattr(self, chunk.id, data)       
+ 
+-    def _appendChunk(self, chunk, can_truncate=False, position=None):
++    def appendChunk(self, chunk, position=None):
++        self._cache_valid = False
+         if position != None:
+             self._chunks.insert(position, chunk)
+         else:
+             self._chunks.append(chunk)
+-        id = chunk.id
+-        assert id != None
+-        m = re.compile(r&quot;^([^[]+)\[\]$&quot;).match(id)
+-        if m != None:
+-            id = m.group(1)
+-            if hasattr(self, id):
+-                array = getattr(self, id)
+-            else:
+-                array = []
+-                setattr(self, id, array)
+-            assert type(array) == types.ListType
+-            chunk.id = &quot;%s[%u]&quot; % (id, len(array))
+-            array.append(chunk)
+-            if id not in self._chunks_dict:
+-                self._chunks_dict[id] = array 
+-        else:
+-            self._chunks_dict[id] = chunk
++        self._chunks_dict[chunk.id] = chunk
+ 
+     def readLimitedChild(self, id, size, filter_class, *args):
+         start = self._stream.tell()
+@@ -344,9 +346,8 @@
+     
+     def addFilter(self, id, filter, addr): 
+         chunk = FilterChunk(id, filter, self, addr)
+-        self._appendChunk(chunk)
++        self.appendChunk(chunk)
+         filter.updateParent(chunk)
+-#        self._stream.seek(chunk.addr + chunk.size)
+         return chunk
+ 
+     def readArray(self, id, entry_class, description, end_func): 
+@@ -362,16 +363,16 @@
+     def readString(self, id, format, description, post=None):
+         &quot;&quot;&quot; Returns chunk &quot;&quot;&quot;
+         chunk = StringChunk(id, description, self._stream, format, self)
+-        self._appendChunk(chunk)
++        self.appendChunk(chunk)
+         self._stream.seek(chunk.addr + chunk.size)
+         chunk.post_process = post
+         chunk.postProcess()
+         return chunk
+     
+-    def read(self, id, format, description, post=None, truncate=False):
++    def read(self, id, format, description, post=None):
+         &quot;&quot;&quot; Returns chunk &quot;&quot;&quot;
+         chunk = FormatChunk(id, description, self._stream, self._stream.tell(), format, self)
+-        self._appendChunk(chunk, can_truncate=truncate)
++        self.appendChunk(chunk)
+         self._stream.seek(chunk.addr + chunk.size)
+         chunk.post_process = post
+         chunk.postProcess()
+@@ -411,7 +412,7 @@
+         stream.seek(chunk.addr)
+         filter = Filter(chunk.id, chunk.description, stream, self)
+         chunk.setParent(filter)
+-        filter._appendChunk(chunk, can_truncate=True)
++        filter.appendChunk(chunk)
+         
+         # Create new chunk and add it into self 
+         new_chunk = FilterChunk(chunk.id, filter, self, chunk.addr)
+@@ -446,7 +447,7 @@
+             nb = nb + 1
+             chunk = FilterChunk(chunk_id, filter, self, addr)
+             self._array.append( chunk )
+-            self._appendChunk(chunk)
++            self.appendChunk(chunk)
+             last_filter = filter
+ 
+         for chunk in self._array:
+@@ -465,6 +466,7 @@
+             del self._array[pos]
+ 
+     def update(self):
++        self._cache_valid = False
+         prev_chunk = None
+         pos = 0
+         try:
+@@ -492,8 +494,10 @@
+     def __getitem__(self, index):
+         return self._array[index]
+ 
+-    def clone(self):
+-        self.getStream().seek(self.getAddr())
++    def clone(self, addr=None):
++        if addr == None:
++            addr = self.getAddr()
++        self.getStream().seek(addr)
+         new = ArrayFilter( self.getId(), self.getDescription(), \
+             self.getStream(), self.getParent(), self._entry_class, self._end_func)
+         new.filter_chunk = self.filter_chunk
+
+Modified: haypo/hachoir/format.py
+===================================================================
+--- haypo/hachoir/format.py	2005-12-10 15:26:24 UTC (rev 309)
++++ haypo/hachoir/format.py	2005-12-11 06:15:28 UTC (rev 310)
+@@ -1,11 +1,14 @@
+ import re
+ 
++_regex_format1 = re.compile(&quot;^[!&lt;&gt;]?(?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?[BHLscfd]$&quot;)
++_regex_format2 = re.compile(&quot;^([!&lt;&gt;]?)((?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?)([BHLscfd])$&quot;)
++
+ def checkFormat(format):
+-    m = re.compile(&quot;^[!&lt;&gt;]?(?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?[BHLscfd]$&quot;).match(format)
++    m = _regex_format1.match(format)
+     return m != None
+ 
+ def splitFormat(format):
+-    m = re.compile(&quot;^([!&lt;&gt;]?)((?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?)([BHLscfd])$&quot;).match(format)
++    m = _regex_format2.match(format)
+     if m == None: return None
+     endian = m.group(1)
+     if endian==&quot;&quot;: endian=&quot;!&quot;
+
+Modified: haypo/hachoir/hachoir.py
+===================================================================
+--- haypo/hachoir/hachoir.py	2005-12-10 15:26:24 UTC (rev 309)
++++ haypo/hachoir/hachoir.py	2005-12-11 06:15:28 UTC (rev 310)
+@@ -21,6 +21,7 @@
+     print &quot;&quot;
+     print &quot;Options:&quot;
+     print &quot;\t--script file.py  : Load python script&quot;
++    print &quot;\t--no-ui           : Don't load user interface&quot;
+     print &quot;\t--version         : Show the program version&quot;
+     print &quot;\t--verbose         : Activate verbose mode&quot;
+     print &quot;\t--help            : Show this help&quot;
+@@ -31,7 +32,7 @@
+     
+     try:
+         short = &quot;&quot;
+-        long = [&quot;verbose&quot;, &quot;help&quot;, &quot;version&quot;, &quot;script=&quot;]
++        long = [&quot;verbose&quot;, &quot;help&quot;, &quot;version&quot;, &quot;script=&quot;, &quot;no-ui&quot;]
+         opts, args = getopt.getopt(sys.argv[1:], short, long)
+     except getopt.GetoptError:
+         usage(def_val)
+@@ -52,6 +53,8 @@
+         if o == &quot;--version&quot;:
+             print &quot;%s version %s&quot; % (PROGRAM, VERSION)
+             sys.exit()
++        if o == &quot;--no-ui&quot;:
++            val[&quot;load_ui&quot;] = False
+         if o == &quot;--script&quot;:
+             val[&quot;script&quot;] = a
+         if o == &quot;--verbose&quot;:
+@@ -78,17 +81,19 @@
+ 
+         opt = {
+             &quot;verbose&quot;: False,
+-            &quot;script&quot;: None
++            &quot;script&quot;: None,
++            &quot;load_ui&quot;: True            
+         }
+         opt, filename = parseArgs(opt)
+-
++        global hachoir 
+         hachoir = Hachoir()
+         for key in opt:
+             setattr(hachoir, key, opt[key])
+-        try:
+-            ui.loadInterface(hachoir)
+-        except ImportError, err:
+-            error(&quot;&quot;&quot;Error: a Python module is missing:
++        if hachoir.load_ui:
++            try:
++                ui.loadInterface(hachoir)
++            except ImportError, err:
++                error(&quot;&quot;&quot;Error: a Python module is missing:
+ %s
+ 
+ You can find PyGTK at: <A HREF="http://www.pygtk.org/">http://www.pygtk.org/</A>
+@@ -97,9 +102,16 @@
+ Gentoo: emerge pytgtk
+ Debian: apt-get install python2.4-gtk python2.4-magic
+ Ubuntu: apt-get install python-gtk2 python-glade2&quot;&quot;&quot; % (err))
+-            sys.exit(1)
+-        hachoir.run(filename)
++                sys.exit(1)
++        if True:
++            import profile, pstats
++            profile.run('global hachoir; hachoir.run(&quot;%s&quot;)' % filename, 'hachoir.loadStream')
++            #pstats.Stats('hachoir.loadStream').sort_stats('time').print_stats()
++            pstats.Stats('hachoir.loadStream').sort_stats('cumulative').print_stats()
++        else:
++            hachoir.run(filename)
+ 
++
+     except SystemExit:
+         pass
+     except Exception, err:
+
+Modified: haypo/hachoir/hachoir_class.py
+===================================================================
+--- haypo/hachoir/hachoir_class.py	2005-12-10 15:26:24 UTC (rev 309)
++++ haypo/hachoir/hachoir_class.py	2005-12-11 06:15:28 UTC (rev 310)
+@@ -19,6 +19,7 @@
+         self._main_filter = None
+         self._filter = None
+         self.script = None
++        self.load_ui = True
+ 
+     def getFilter(self):
+         return self._filter
+@@ -28,11 +29,14 @@
+         self._filter = filter
+         if filter != None:
+             self._addPadding()
+-            self._filter.display()
+-            self.ui.window.info.updateFilter(filter)
++            if self.load_ui:
++                self._filter.display()
++                self.ui.window.info.updateFilter(filter)
+         else:
+-            self.ui.window.clear_table()
+-        self.ui.window.updateToolbar()
++            if self.load_ui:
++                self.ui.window.clear_table()
++        if self.load_ui:
++            self.ui.window.updateToolbar()
+ 
+     def onGoParent(self):
+         if self._filter.getParent() == None: return
+@@ -69,7 +73,8 @@
+             chunk.setFilter(self._filter)
+             diff_size = self._filter.getSize() - old_size
+             chunk.getParent().rescan(chunk, diff_size)
+-        self._filter.display()
++        if self.load_ui:
++            self._filter.display()
+         self.ui.window.updateToolbar()
+     
+     def saveUser(self, filename):
+@@ -136,4 +141,5 @@
+             self.loadScript(self.script)
+         elif filename != None:
+             self.loadFile(filename)
+-        self.ui.run()      
++        if self.load_ui:
++            self.ui.run()      
+
+Modified: haypo/hachoir/plugins/3ds.py
+===================================================================
+
+Modified: haypo/hachoir/plugins/gzip.py
+===================================================================
+--- haypo/hachoir/plugins/gzip.py	2005-12-10 15:26:24 UTC (rev 309)
++++ haypo/hachoir/plugins/gzip.py	2005-12-11 06:15:28 UTC (rev 310)
+@@ -68,7 +68,7 @@
+         except Exception, msg:
+             error(&quot;Error while processing file in gzip: %s\ns%s&quot; % (msg, getBacktrace()))
+             stream.seek(oldpos)
+-            self.read(&quot;data&quot;, &quot;!%us&quot; % size, &quot;Compressed data&quot;, truncate=True)
++            self.read(&quot;data&quot;, &quot;!%us&quot; % size, &quot;Compressed data&quot;)
+         
+         self.read(&quot;crc32&quot;, &quot;&lt;L&quot;, &quot;CRC32&quot;)
+         self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Uncompressed size&quot;)
+
+Modified: haypo/hachoir/plugins/jpeg.py
+===================================================================
+--- haypo/hachoir/plugins/jpeg.py	2005-12-10 15:26:24 UTC (rev 309)
++++ haypo/hachoir/plugins/jpeg.py	2005-12-11 06:15:28 UTC (rev 310)
+@@ -26,7 +26,7 @@
+         self.read(&quot;thumb_h&quot;, &quot;B&quot;, &quot;Thumbnail height&quot;)
+         thumb = self[&quot;thumb_w&quot;] * self[&quot;thumb_h&quot;]
+         if thumb != 0:
+-            self.read(&quot;thumb_data&quot;, &quot;%us&quot; % size, &quot;Thumbnail data&quot;, truncate=True)
++            self.read(&quot;thumb_data&quot;, &quot;%us&quot; % size, &quot;Thumbnail data&quot;)
+ 
+ class JpegChunk(Filter):
+     def __init__(self, stream, parent):
+
+Modified: haypo/hachoir/plugins/tar.py
+===================================================================
+--- haypo/hachoir/plugins/tar.py	2005-12-10 15:26:24 UTC (rev 309)
++++ haypo/hachoir/plugins/tar.py	2005-12-11 06:15:28 UTC (rev 310)
+@@ -79,7 +79,7 @@
+ 
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;tar_file_entry&quot;,&quot;Tar file entry&quot;, stream, parent)
+-        self.read(&quot;name&quot;, &quot;!100s&quot;, &quot;Name&quot;, truncate=False, post=self.stripNul)
++        self.read(&quot;name&quot;, &quot;!100s&quot;, &quot;Name&quot;, post=self.stripNul)
+         self.name = self[&quot;name&quot;].strip(&quot;\0&quot;)
+         self.read(&quot;mode&quot;, &quot;!8s&quot;, &quot;Mode&quot;, post=self.convertOctal)
+         self.read(&quot;uid&quot;, &quot;!8s&quot;, &quot;User ID&quot;, post=self.convertOctal)
+@@ -89,7 +89,7 @@
+         self.read(&quot;mtime&quot;, &quot;!12s&quot;, &quot;Modification time&quot;, self.getTime)
+         self.read(&quot;check_sum&quot;, &quot;!8s&quot;, &quot;Check sum&quot;)
+         self.read(&quot;type&quot;, &quot;!c&quot;, &quot;Type&quot;)
+-        self.read(&quot;lname&quot;, &quot;!100s&quot;, &quot;Link name&quot;, post=self.stripNul, truncate=False)
++        self.read(&quot;lname&quot;, &quot;!100s&quot;, &quot;Link name&quot;, post=self.stripNul)
+         self.read(&quot;magic&quot;, &quot;!8s&quot;, &quot;Magic&quot;, post=self.stripNul)
+         self.read(&quot;uname&quot;, &quot;!32s&quot;, &quot;User name&quot;, post=self.stripNul)
+         self.read(&quot;gname&quot;, &quot;!32s&quot;, &quot;Group name&quot;, post=self.stripNul)
+@@ -109,11 +109,11 @@
+                 stream.seek(oldpos)
+                 chunk = self.readChild(&quot;filedata&quot;, EmptyFilter)
+                 filter = chunk.getFilter()
+-                filter.read(&quot;filedata&quot;, &quot;!%us&quot; % self.size, &quot;File data&quot;, truncate=True)
++                filter.read(&quot;filedata&quot;, &quot;!%us&quot; % self.size, &quot;File data&quot;)
+ 
+         if stream.tell() % 512 != 0:
+             padding = 512 - stream.tell() % 512
+-            self.read(&quot;padding&quot;, &quot;!%ss&quot; % padding, &quot;Padding (512 align)&quot;, truncate=True)
++            self.read(&quot;padding&quot;, &quot;!%ss&quot; % padding, &quot;Padding (512 align)&quot;)
+ 
+     def isEmpty(self):
+         return self.name == &quot;&quot;
+
+Modified: haypo/hachoir/plugins/zip.py
+===================================================================
+--- haypo/hachoir/plugins/zip.py	2005-12-10 15:26:24 UTC (rev 309)
++++ haypo/hachoir/plugins/zip.py	2005-12-11 06:15:28 UTC (rev 310)
+@@ -73,7 +73,7 @@
+         self.read(&quot;extra_length&quot;, &quot;&lt;H&quot;, &quot;Extra length&quot;)
+         self.read(&quot;filename&quot;, &quot;&lt;{filename_length}s&quot;, &quot;Filename&quot;)
+         self.read(&quot;extra&quot;, &quot;&lt;{extra_length}s&quot;, &quot;Extra&quot;)
+-        self.read(&quot;compressed_data&quot;, &quot;&lt;{compressed_size}s&quot;, &quot;Compressed data&quot;, truncate=True)
++        self.read(&quot;compressed_data&quot;, &quot;&lt;{compressed_size}s&quot;, &quot;Compressed data&quot;)
+         if (self[&quot;flags&quot;] &amp; 4) == 4:
+             self.read(&quot;file_crc32&quot;, &quot;&lt;L&quot;, &quot;Checksum (CRC32)&quot;)
+             self.read(&quot;file_compressed_size&quot;, &quot;&lt;L&quot;, &quot;Compressed size (bytes)&quot;)
+
+Modified: haypo/hachoir/stream/file.py
+===================================================================
+--- haypo/hachoir/stream/file.py	2005-12-10 15:26:24 UTC (rev 309)
++++ haypo/hachoir/stream/file.py	2005-12-11 06:15:28 UTC (rev 310)
+@@ -2,6 +2,50 @@
+ from stream import Stream
+ import os
+ 
++class FileCacheEntry:
++    def __init__(self, index, data):
++        self.index = index
++        self.data = data
++
++class FileCache:
++    def __init__(self, file, file_size):
++        self.file = file
++        self.file_size = file_size
++        self.block_size = 4096
++        self.max_block = 100
++        self.blocks = {}
++
++    def read(self, position, length):
++        block_position = position % self.block_size
++        block_index = position / self.block_size
++        length_copy = length
++        assert position+length &lt;= self.file_size
++        
++        # TODO: Be able to read two or more blocks
++        data = &quot;&quot;
++        while 0 &lt; length:
++            if block_index not in self.blocks:
++                if self.max_block &lt;= len(self.blocks):
++                    # TODO: Remove oldest block
++                    pass
++                self.file.seek(block_index * self.block_size)
++                block_data = self.file.read(self.block_size)
++                assert (len(block_data) == self.block_size) or self.file.tell() == self.file_size
++                self.blocks[block_index] = block_data
++            else:
++                block_data = self.blocks[block_index]
++            if block_position != 0 or length != self.block_size:
++                end = block_position+length
++                if self.block_size &lt; end:
++                    end = self.block_size
++                block_data = block_data[block_position:end]
++            data = data + block_data
++            block_position = 0
++            block_index = block_index + 1
++            length = length - len(block_data)
++        assert len(data) == length_copy
++        return data
++
+ class FileStream(Stream):
+     def __init__(self, file, filename=None, copy=None):
+         &quot;&quot;&quot;
+@@ -14,6 +58,7 @@
+             self._size = copy._size
+             self._seed = copy._seed
+             self._end = copy._end
++            self._cache = copy._cache
+         else:
+             self._file.seek(0,2) # Seek to end
+             self._size = self._file.tell()
+@@ -23,23 +68,21 @@
+                 self._end = self._size-1
+             else:
+                 self._end = 0
++            self._cache = FileCache(self._file, self._size)
+ 
+     def getType(self):
+         return &quot;%s (%s)&quot; % \
+             (self.__class__.__name__, self.filename)
+         
+     def read(self, size, seek=True):
+-        self._file.seek(self._seed)
+-        data = self._file.read(size)
++        data = self._cache.read(self._seed, size)
++#        self._file.seek(self._seed) ; data = self._file.read(size)
+         if seek:
+             self._seed = self._seed + len(data)
+-            assert self._seed == self._file.tell()
++#            assert self._seed == self._file.tell()
+         return data            
+ 
+     def clone(self):
+-        #&#160;TODO: Don't copy low-level file IO,
+-        # but only copy seed :-)
+-        # =&gt; use internal&#160;seed + cache
+         return FileStream(self._file, self.filename, copy=self)
+ 
+     def seek(self, pos, where=0):
+@@ -58,13 +101,13 @@
+         return self._seed
+ 
+     def getN(self, size, seek=True):
+-        self._file.seek(self._seed)
+-        data = self._file.read(size)
+-        if len(data) != size:
+-            raise StreamError(&quot;Can't read %u bytes in a stream (get %u bytes).&quot; % (size, len(data)))
++        data = self._cache.read(self._seed, size)
++#        self._file.seek(self._seed) ; data = self._file.read(size)
++#        if len(data) != size:
++#            raise StreamError(&quot;Can't read %u bytes in a stream (get %u bytes).&quot; % (size, len(data)))
+         if seek:
+             self._seed = self._seed + size
+-            assert self._seed == self._file.tell()
++#            assert self._seed == self._file.tell()
+         return data
+ 
+     def getSize(self):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000215.html">[Happyboom-svn] r309 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000217.html">[Happyboom-svn] r311 - haypo/hachoir
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#216">[ date ]</a>
+              <a href="thread.html#216">[ thread ]</a>
+              <a href="subject.html#216">[ subject ]</a>
+              <a href="author.html#216">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

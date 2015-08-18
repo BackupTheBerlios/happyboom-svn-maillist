@@ -1,0 +1,224 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r252 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r252%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511150517.jAF5HaP2015409%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000158.html">
+   <LINK REL="Next"  HREF="000160.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r252 - in haypo/hachoir: . plugins</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r252%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511150517.jAF5HaP2015409%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r252 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Tue Nov 15 06:17:36 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000158.html">[Happyboom-svn] r251 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000160.html">[Happyboom-svn] r253 - haypo/hachoir
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#159">[ date ]</a>
+              <a href="thread.html#159">[ thread ]</a>
+              <a href="subject.html#159">[ subject ]</a>
+              <a href="author.html#159">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-15 06:17:32 +0100 (Tue, 15 Nov 2005)
+New Revision: 252
+
+Modified:
+   haypo/hachoir/hachoir_class.py
+   haypo/hachoir/plugins/pdf.py
+   haypo/hachoir/plugins/zip.py
+Log:
+Fix zip plugin, improve pdf plugin: check header, debug font name extractor,
+only decompress data if needed, support some PDF version differences.
+
+
+Modified: haypo/hachoir/hachoir_class.py
+===================================================================
+--- haypo/hachoir/hachoir_class.py	2005-11-05 04:51:54 UTC (rev 251)
++++ haypo/hachoir/hachoir_class.py	2005-11-15 05:17:32 UTC (rev 252)
+@@ -92,8 +92,8 @@
+         try:
+             filter = split_func(stream)
+         except Exception, msg:
+-            error(&quot;Exception while processing file %s with filter %s:\n%s&quot; \
+-                % (filename, plugin_name, msg))
++            error(&quot;Exception while processing file %s with filter %s:\n%s\n%s&quot; \
++                % (filename, plugin_name, msg, getBacktrace()))
+             display_func = None
+             stream.seek(0)
+             filter = DefaultFilter(stream)
+
+Modified: haypo/hachoir/plugins/pdf.py
+===================================================================
+--- haypo/hachoir/plugins/pdf.py	2005-11-05 04:51:54 UTC (rev 251)
++++ haypo/hachoir/plugins/pdf.py	2005-11-15 05:17:32 UTC (rev 252)
+@@ -4,6 +4,7 @@
+ from stream import StreamError
+ from tools import convertDataToPrintableString, getBacktrace
+ from deflate import DeflateFilter
++from error import warning
+ 
+ def isEnd(stream, array, last):
+     return stream.eof()
+@@ -23,7 +24,7 @@
+             self.readXref()
+         else: 
+             self.type = &quot;obj&quot;
+-            m = re.match(&quot;([0-9]+) [0-9]+ obj&quot;, header)
++            m = re.match(r&quot;([0-9]+) [0-9]+ obj&quot;, header)
+             if m != None:
+                 id = int(m.group(1))
+                 self.metadata[&quot;id&quot;] = id
+@@ -45,33 +46,57 @@
+             info = &quot;XREF&quot;
+         self.setDescription(&quot;Object (%s)&quot; % info)
+ 
+-    def readObj(self):
++    def readContent(self):
+         chunk = self.readString(&quot;line[]&quot;, &quot;AutoLine&quot;, &quot;&quot;, post=stripLine)
+-        if re.match(&quot;^\&lt;\&lt;&quot;, chunk.value) != None:
++        deflate = False
++        while chunk.value not in (&quot;endobj&quot;, &quot;stream&quot;):
+             self.processLine(chunk.value)
+-            while re.match(&quot;^.*\&gt;\&gt;$&quot;, chunk.value) == None:
+-                chunk = self.readString(&quot;line[]&quot;, &quot;AutoLine&quot;, &quot;&quot;, post=stripLine)
+-                self.processLine(chunk.value)
+-        chunk = self.readString(&quot;endobj&quot;, &quot;AutoLine&quot;, &quot;Object end&quot;, post=stripLine)
+-        if chunk.value == &quot;stream&quot;:
++            if self.getStream().eof():
++                return &quot;eof&quot;
++            chunk = self.readString(&quot;line[]&quot;, &quot;AutoLine&quot;, &quot;&quot;, post=stripLine)
++            if re.match(r&quot;^.*/Filter /FlateDecode&quot;, chunk.value) != None:
++                deflate = True
++        if chunk.value == &quot;endobj&quot;:
++            chunk.id = &quot;endobj&quot;
++            chunk.description = &quot;Object end&quot;
++            return &quot;end&quot;
++        elif deflate:
++            return &quot;deflate&quot;
++        else:
++            return &quot;stream&quot;
++    
++    def readObj(self):
++        what = self.readContent()
++        if what == &quot;eof&quot;:
++            return
++        if what in (&quot;stream&quot;,&quot;deflate&quot;):
+             start = self.getStream().tell()
+-            chunk.id = &quot;xref&quot;
+             size = self._stream.searchLength(&quot;endstream&quot;, False)
+             if size == -1:
+                 raise Exception(&quot;Delimiter \&quot;%s\&quot; not found for %s (%s)!&quot; % (delimiter, id, description))
+ 
+-            old = self.getStream().tell()
+-            self.readChild(&quot;deflate&quot;, DeflateFilter, start, size)
+-            print &quot;%s+%s/%s&quot; % (start, size, self.getStream().tell())
++            if what==&quot;deflate&quot;:
++                try:
++                    old = self.getStream().tell()
++                    self.readChild(&quot;deflate&quot;, DeflateFilter, start, size)
++                except:
++                    warning(&quot;Error while decompressing data of an objet.&quot;)
++                    self.getStream().seek(start)
++                    self.read(&quot;data&quot;, &quot;!%us&quot; % size, &quot;Data (compressed with deflate)&quot;)
++            else:
++                self.read(&quot;data&quot;, &quot;!%us&quot; % size, &quot;Data&quot;)
+             assert self.getStream().tell() == (start+size)
+             
+             self.readString(&quot;data_end[]&quot;, &quot;AutoLine&quot;, &quot;Data end&quot;)
+             self.readString(&quot;endobj&quot;, &quot;AutoLine&quot;, &quot;Object end&quot;, post=stripLine)
+-        self.readString(&quot;emptyline&quot;, &quot;AutoLine&quot;, &quot;&quot;)
++        ver = self.getParent().version
++        if ver[0] &gt; 1 or (ver[0] == 1 and ver[1] &gt; 0):
++            # PDF &gt; 1.0 
++            self.readString(&quot;emptyline&quot;, &quot;AutoLine&quot;, &quot;&quot;)
+ 
+     def readXref(self):
+         chunk = self.readString(&quot;xref_header&quot;, &quot;AutoLine&quot;, &quot;XRef header&quot;, post=stripLine)
+-        m = re.match(&quot;^[0-9]+ ([0-9]+)$&quot;, chunk.value)
++        m = re.match(r&quot;^[0-9]+ ([0-9]+)$&quot;, chunk.value)
+         assert m != None
+         nb_ref = int(m.group(1)) - 1
+         n = 0
+@@ -82,8 +107,8 @@
+ 
+     def processLine(self, line):
+         tests = {
+-            &quot;type&quot;:  &quot;^.*/Type /([A-Za-z]+)$&quot;,
+-            &quot;fontname&quot;:  &quot;^.*/FontName /[BD]A+\+([A-Za-z-]+)$&quot;
++            &quot;type&quot;:  r&quot;^.*Type /([A-Za-z]+)$&quot;,
++            &quot;fontname&quot;:  r&quot;^.*(?:BaseFont|FontName) /(?:[A-Z]A+\+)?([A-Za-z-]+)$&quot;
+         }
+         for field in tests:
+             m = re.match(tests[field], line)
+@@ -94,8 +119,13 @@
+ class PdfFile(Filter):
+     def __init__(self, stream, parent=None):
+         Filter.__init__(self, &quot;id&quot;, &quot;&quot;, stream, parent)
+-        self.readString(&quot;version&quot;, &quot;AutoLine&quot;, &quot;PDF version&quot;)
+-        self.readString(&quot;header&quot;, &quot;AutoLine&quot;, &quot;PDF header&quot;)
++        self.readString(&quot;pdf_version&quot;, &quot;AutoLine&quot;, &quot;PDF version&quot;)
++        m = re.match(&quot;^%PDF-([0-9]+)\.([0-9]+)$&quot;, self.pdf_version)
++        assert m != None
++        self.version = ( int(m.group(1)), int(m.group(2)) )
++        if self.version[0] == 1 and self.version[1] &gt; 0:
++            # PDF &gt; 1.0
++            self.readString(&quot;header&quot;, &quot;AutoLine&quot;, &quot;PDF header&quot;)
+         self.nb_ref = None
+         while not stream.eof():
+             try:
+
+Modified: haypo/hachoir/plugins/zip.py
+===================================================================
+--- haypo/hachoir/plugins/zip.py	2005-11-05 04:51:54 UTC (rev 251)
++++ haypo/hachoir/plugins/zip.py	2005-11-15 05:17:32 UTC (rev 252)
+@@ -84,7 +84,7 @@
+         self.read(&quot;extra_length&quot;, &quot;&lt;H&quot;, &quot;Extra length&quot;)
+         self.read(&quot;filename&quot;, &quot;&lt;{filename_length}s&quot;, &quot;Filename&quot;)
+         self.read(&quot;extra&quot;, &quot;&lt;{extra_length}s&quot;, &quot;Extra&quot;)
+-        self.read(&quot;compressed_data&quot;, &quot;&lt;{compressed_size}s&quot;, &quot;Compressed data&quot;, True)
++        self.read(&quot;compressed_data&quot;, &quot;&lt;{compressed_size}s&quot;, &quot;Compressed data&quot;, truncate=True)
+         if (self.flags &amp; 4) == 4:
+             self.read(&quot;file_crc32&quot;, &quot;&lt;L&quot;, &quot;Checksum (CRC32)&quot;)
+             self.read(&quot;file_compressed_size&quot;, &quot;&lt;L&quot;, &quot;Compressed size (bytes)&quot;)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000158.html">[Happyboom-svn] r251 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000160.html">[Happyboom-svn] r253 - haypo/hachoir
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#159">[ date ]</a>
+              <a href="thread.html#159">[ thread ]</a>
+              <a href="subject.html#159">[ subject ]</a>
+              <a href="author.html#159">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

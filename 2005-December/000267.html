@@ -1,0 +1,304 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r365 - in haypo/hachoir/trunk: . broken_plugins plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r365%20-%20in%20haypo/hachoir/trunk%3A%20.%20broken_plugins%20plugins&In-Reply-To=%3C200512272015.jBRKFpDB005188%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000266.html">
+   <LINK REL="Next"  HREF="000268.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r365 - in haypo/hachoir/trunk: . broken_plugins plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r365%20-%20in%20haypo/hachoir/trunk%3A%20.%20broken_plugins%20plugins&In-Reply-To=%3C200512272015.jBRKFpDB005188%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r365 - in haypo/hachoir/trunk: . broken_plugins plugins">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec 27 21:15:51 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000266.html">[Happyboom-svn] r364 - in haypo/hachoir/trunk: broken_plugins plugins
+</A></li>
+        <LI>Next message: <A HREF="000268.html">[Happyboom-svn] r366 - in haypo/hachoir/trunk: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#267">[ date ]</a>
+              <a href="thread.html#267">[ thread ]</a>
+              <a href="subject.html#267">[ subject ]</a>
+              <a href="author.html#267">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-27 21:15:51 +0100 (Tue, 27 Dec 2005)
+New Revision: 365
+
+Added:
+   haypo/hachoir/trunk/plugins/worms2.py
+Removed:
+   haypo/hachoir/trunk/broken_plugins/worms2.py
+Modified:
+   haypo/hachoir/trunk/chunk.py
+   haypo/hachoir/trunk/format.py
+Log:
+Upgrade Worms2 plugin to new syntax
+
+
+Deleted: haypo/hachoir/trunk/broken_plugins/worms2.py
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/worms2.py	2005-12-27 19:40:23 UTC (rev 364)
++++ haypo/hachoir/trunk/broken_plugins/worms2.py	2005-12-27 20:15:51 UTC (rev 365)
+@@ -1,83 +0,0 @@
+-&quot;&quot;&quot;
+-Worms2 DIR file.
+-&quot;&quot;&quot;
+-
+-from plugin import registerPlugin 
+-from filter import Filter
+-from plugin import registerPlugin
+-from tools import humanFilesize
+-
+-class Worms2_Image(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;worms2_image&quot;, &quot;Worms2 image&quot;, stream, parent)
+-        nb_color = 244/3
+-        self.read(&quot;palette&quot;, &quot;%us&quot; % (nb_color*3), &quot;Palette (%u colors)&quot; % nb_color)
+-        self.read(&quot;padding&quot;, &quot;B&quot;, &quot;Padding&quot;)
+-        self.read(&quot;width&quot;, &quot;&lt;H&quot;, &quot;Width&quot;)
+-        self.read(&quot;height&quot;, &quot;&lt;H&quot;, &quot;Height&quot;)
+-        size = self[&quot;width&quot;] * self[&quot;height&quot;]
+-        self.read(&quot;img_data&quot;, &quot;%us&quot; % size, &quot;Data&quot;)
+-        size = stream.getSize() - stream.tell()
+-        self.read(&quot;end&quot;, &quot;%us&quot; % size, &quot;Raw end&quot;)
+-
+-class Worms2_Sprite(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;worms2_sprite&quot;, &quot;Worms2 sprite&quot;, stream, parent)
+-        # TODO ...
+-        size = stream.getSize() - stream.tell()
+-        self.read(&quot;end&quot;, &quot;%us&quot; % size, &quot;Raw end&quot;)
+-
+-class Worms2_Font(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;worms2_sprite&quot;, &quot;Worms2 sprite&quot;, stream, parent)
+-        self.read(&quot;palette&quot;, &quot;%us&quot; % (244+33), &quot;Palette (?)&quot;)
+-        self.read(&quot;charset&quot;, &quot;%us&quot; % (32), &quot;Charset&quot;)
+-        self.read(&quot;data&quot;, &quot;%us&quot; % (32+30+4+136), &quot;Data&quot;)
+-        # TODO ...
+-        size = stream.getSize() - stream.tell()
+-        self.read(&quot;end&quot;, &quot;%us&quot; % size, &quot;Raw end&quot;)
+-
+-class Worms2_Resource(Filter):
+-    handler = {
+-        &quot;IMG&quot;: Worms2_Image,
+-        &quot;SPR&quot;: Worms2_Sprite,
+-        &quot;FNT&quot;: Worms2_Font
+-    }
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;worms2_res&quot;, &quot;Worms2 resource&quot;, stream, parent)
+-        pos = stream.tell()
+-        self.tag = self.read(&quot;tag&quot;, &quot;3s&quot;, &quot;Type&quot;).value.strip(&quot;\0\n&quot;)
+-        self.valid = self.tag.strip(&quot;\0\n&quot;) != &quot;&quot;
+-        self.read(&quot;tag_end&quot;, &quot;1s&quot;, &quot;Type end&quot;)
+-        size = self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Size&quot;).value
+-        if not self.valid:
+-            return
+-        self.readString(&quot;name&quot;, &quot;C&quot;, &quot;Name&quot;)
+-        size = pos + size + 1 - stream.tell()
+-        if self.tag in Worms2_Resource.handler:
+-            sub = stream.createSub(size=size)
+-            self.readStreamChild(&quot;data&quot;, sub, Worms2_Resource.handler[self.tag])
+-        else:
+-            self.read(&quot;data&quot;, &quot;%us&quot; % size, &quot;Data&quot;)
+-
+-    def updateParent(self, chunk):            
+-        size = humanFilesize(self[&quot;size&quot;])
+-        tag = self.tag
+-        if tag != &quot;&quot;:
+-            name = self[&quot;name&quot;]
+-        else:
+-            tag = &quot;(invalid)&quot;
+-            name = &quot;(invalid)&quot;
+-        chunk.description = &quot;Resource \&quot;%s\&quot; (type=%s, size=%s)&quot; % (name, tag, size)
+-
+-class Worms2_Dir_File(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;worms2_dir_file&quot;, &quot;Worms2 directory (.dir) file&quot;, stream, parent)
+-        self.read(&quot;id&quot;, &quot;3s&quot;, &quot;Identifier (DIR)&quot;)
+-        self.read(&quot;raw&quot;, &quot;%us&quot; % (12-stream.tell()), &quot;Raw data&quot;)
+-        while stream.tell() &lt; 3432805:
+-            file = self.readChild(&quot;file[]&quot;, Worms2_Resource).getFilter()
+-            if not file.valid:
+-                break
+-         
+-registerPlugin(Worms2_Dir_File, &quot;hachoir/worms2&quot;)
+
+Modified: haypo/hachoir/trunk/chunk.py
+===================================================================
+--- haypo/hachoir/trunk/chunk.py	2005-12-27 19:40:23 UTC (rev 364)
++++ haypo/hachoir/trunk/chunk.py	2005-12-27 20:15:51 UTC (rev 365)
+@@ -1,6 +1,6 @@
+ import struct, re, types
+ import config
+-from format import checkFormat, splitFormat, getFormatSize, getRealFormat, formatIsString, formatIsArray, formatIsInteger
++from format import checkFormat, splitFormat, getFormatSize, getRealFormat, formatIsString, formatIsArray, formatIsInteger, formatIsArray
+ from error import warning, error
+ from tools import convertDataToPrintableString
+ 
+@@ -264,10 +264,7 @@
+         self._format = format
+         self._real_format = getRealFormat(format)
+         self._is_string = formatIsString(self._format)
+-        if not self._is_string:
+-            self._is_array = (1 &lt; splited[1])
+-        else:
+-            self._is_array = False 
++        self._is_array = formatIsArray(format)
+         self._size = getFormatSize(self._format)
+         self._value = {}
+        
+
+Modified: haypo/hachoir/trunk/format.py
+===================================================================
+--- haypo/hachoir/trunk/format.py	2005-12-27 19:40:23 UTC (rev 364)
++++ haypo/hachoir/trunk/format.py	2005-12-27 20:15:51 UTC (rev 365)
+@@ -102,4 +102,4 @@
+ 
+ def formatIsArray(format):
+     cache = FormatCache.getInstance()[format]
+-    return 1 &lt; cache[2]   
++    return (1 &lt; cache[2]) and (cache[3] != &quot;s&quot;)
+
+Copied: haypo/hachoir/trunk/plugins/worms2.py (from rev 351, haypo/hachoir/trunk/broken_plugins/worms2.py)
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/worms2.py	2005-12-26 03:53:11 UTC (rev 351)
++++ haypo/hachoir/trunk/plugins/worms2.py	2005-12-27 20:15:51 UTC (rev 365)
+@@ -0,0 +1,97 @@
++&quot;&quot;&quot;
++Worms2 DIR file parser.
++Parser based on Laurent DEFERT SIMONNEAU work.
++
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from plugin import registerPlugin 
++from filter import OnDemandFilter
++from plugin import registerPlugin
++from tools import humanFilesize
++from chunk import FormatChunk, StringChunk, EnumChunk
++
++class Worms2_Image(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;worms2_image&quot;, &quot;Worms2 image&quot;, stream, parent, &quot;&lt;&quot;)
++        nb_color = 244/3
++        self.read(&quot;palette&quot;, &quot;Palette (%u colors)&quot; % nb_color, (FormatChunk, &quot;string[%u]&quot; % (nb_color*3)))
++        self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
++        size = self[&quot;width&quot;] * self[&quot;height&quot;]
++        self.read(&quot;img_data&quot;, &quot;Data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        size = stream.getSize() - stream.tell()
++        self.read(&quot;end&quot;, &quot;Raw end&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++class Worms2_Sprite(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;worms2_sprite&quot;, &quot;Worms2 sprite&quot;, stream, parent)
++        # TODO ...
++        size = stream.getSize() - stream.tell()
++        self.read(&quot;end&quot;, &quot;Raw end&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++class Worms2_Font(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;worms2_sprite&quot;, &quot;Worms2 sprite&quot;, stream, parent)
++        self.read(&quot;palette&quot;, &quot;Palette (?)&quot;, (FormatChunk, &quot;string[%u]&quot; % (244+33)))
++        self.read(&quot;charset&quot;, &quot;Charset&quot;, (FormatChunk, &quot;string[%u]&quot; % (32)))
++        self.read(&quot;data&quot;, &quot;Data&quot;, (FormatChunk, &quot;string[%u]&quot; % (32+30+4+136)))
++        # TODO ...
++        size = stream.getSize() - stream.tell()
++        self.read(&quot;end&quot;, &quot;Raw end&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++class Resource(OnDemandFilter):
++    name = {
++        &quot;IMG&quot;: &quot;Image&quot;,
++        &quot;SPR&quot;: &quot;Sprite&quot;,
++        &quot;FNT&quot;: &quot;Font&quot;,
++        &quot;DIR&quot;: &quot;Directory&quot;
++    }
++
++    handler = {
++        &quot;IMG&quot;: Worms2_Image,
++        &quot;SPR&quot;: Worms2_Sprite,
++        &quot;FNT&quot;: Worms2_Font
++    }
++
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;worms2_res&quot;, &quot;Worms2 resource&quot;, stream, parent, &quot;&lt;&quot;)
++        pos = stream.tell()
++        self.tag = self.doRead(&quot;tag&quot;, &quot;Type&quot;, (EnumChunk, &quot;string[3]&quot;, Resource.name)).value
++        self.read(&quot;tag_end&quot;, &quot;Type end&quot;, (FormatChunk, &quot;string[1]&quot;))
++        size = self.doRead(&quot;size&quot;, &quot;Size&quot;, (FormatChunk, &quot;uint32&quot;)).value
++        if self.tag != &quot;DIR&quot;:
++            self.name = self.doRead(&quot;name&quot;, &quot;Name&quot;, (StringChunk, &quot;C&quot;)).value
++            
++            size = pos + size + 1 - stream.tell()
++            if self.tag in Resource.handler:
++                sub = stream.createSub(size=size)
++                self.read(&quot;data&quot;, &quot;Data&quot;, (Resource.handler[self.tag],), {&quot;stream&quot;: sub})
++            else:
++                self.read(&quot;data&quot;, &quot;Data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        else:
++            self.name = &quot;(directory)&quot;
++            end = self.doRead(&quot;last_pos&quot;, &quot;Last position&quot;, (FormatChunk, &quot;uint32&quot;)).value
++            while stream.tell() &lt; end:
++                self.read(&quot;res[]&quot;, &quot;Resource&quot;, (Resource,))
++
++#    def getStaticSize(stream, args):
++#        oldpos = stream.tell()
++#        stream.seek(4, 1)
++#        size = 1 + stream.getFormat(&quot;&lt;uint32&quot;)
++#        stream.seek(oldpos)
++#        return size
++#    getStaticSize = staticmethod(getStaticSize)
++
++    def updateParent(self, chunk):            
++        size = humanFilesize(self[&quot;size&quot;])
++        tag = self.getChunk(&quot;tag&quot;).getDisplayData()
++        chunk.description = tag+&quot;: %s (size=%s)&quot; % (self.name, size)
++
++class Worms2_Dir_File(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;worms2_dir_file&quot;, &quot;Worms2 directory (.dir) file&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;res[]&quot;, &quot;Resource&quot;, (Resource,))
++         
++registerPlugin(Worms2_Dir_File, &quot;hachoir/worms2&quot;)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000266.html">[Happyboom-svn] r364 - in haypo/hachoir/trunk: broken_plugins plugins
+</A></li>
+	<LI>Next message: <A HREF="000268.html">[Happyboom-svn] r366 - in haypo/hachoir/trunk: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#267">[ date ]</a>
+              <a href="thread.html#267">[ thread ]</a>
+              <a href="subject.html#267">[ subject ]</a>
+              <a href="author.html#267">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

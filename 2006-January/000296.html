@@ -1,0 +1,416 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r394 - in haypo/hachoir/trunk: . plugins ui
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r394%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins%20ui&In-Reply-To=%3C200601040353.k043rP7p002159%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000295.html">
+   <LINK REL="Next"  HREF="000299.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r394 - in haypo/hachoir/trunk: . plugins ui</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r394%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins%20ui&In-Reply-To=%3C200601040353.k043rP7p002159%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r394 - in haypo/hachoir/trunk: . plugins ui">haypo at berlios.de
+       </A><BR>
+    <I>Wed Jan  4 04:53:25 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000295.html">[Happyboom-svn] r393 - haypo/hachoir/trunk/plugins
+</A></li>
+        <LI>Next message: <A HREF="000299.html">[Happyboom-svn] r395 - in haypo/hachoir/trunk: plugins ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#296">[ date ]</a>
+              <a href="thread.html#296">[ thread ]</a>
+              <a href="subject.html#296">[ subject ]</a>
+              <a href="author.html#296">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-04 04:53:20 +0100 (Wed, 04 Jan 2006)
+New Revision: 394
+
+Added:
+   haypo/hachoir/trunk/plugins/plain_text.py
+Modified:
+   haypo/hachoir/trunk/mime.py
+   haypo/hachoir/trunk/plugins/gzip.py
+   haypo/hachoir/trunk/plugins/worms2.py
+   haypo/hachoir/trunk/tools.py
+   haypo/hachoir/trunk/ui/ui_window.py
+Log:
+- Create &quot;text/plain&quot; plugin
+- Worms2: can open single .spr, .img or .fnt file
+- convertDataToPrintableString display \n if keep_n=True
+- Disable &quot;format&quot; column in interface (can be re-enable later)
+
+
+Modified: haypo/hachoir/trunk/mime.py
+===================================================================
+--- haypo/hachoir/trunk/mime.py	2006-01-04 02:31:50 UTC (rev 393)
++++ haypo/hachoir/trunk/mime.py	2006-01-04 03:53:20 UTC (rev 394)
+@@ -71,11 +71,16 @@
+ def getAnotherBufferMime(buffer):    
+     if buffer[:2] == &quot;\x4d\x4d&quot; and buffer[6:12]==&quot;\x02\0\x0A\0\0\0&quot;:
+         return &quot;image/x-3ds&quot;
++
+     if 2&lt;=len(buffer) and ord(buffer[0])==31 and ord(buffer[1])==139:
+         return &quot;application/x-gzip&quot;
+-    if buffer[:4] == &quot;%PDF&quot;:
++
++    # Text
++    if buffer[0:4] == &quot;%PDF&quot;:
+         return &quot;application/pdf&quot;
+-    if buffer[:14] == &quot;gimp xcf file\0&quot;:
++
++    # Pictures
++    if buffer[0:14] == &quot;gimp xcf file\0&quot;:
+         return &quot;image/x-xcf&quot;
+ 
+     if buffer[0:2] == &quot;\0\0&quot; \
+@@ -87,15 +92,13 @@
+     and buffer[1] in &quot;\x00\x02\x03\x04\x05&quot; \
+     and buffer[64] == &quot;\0&quot;:
+         return &quot;image/x-pcx&quot;
+-        
++
++    # File system        
+     if 4096&lt;=len(buffer) \
+     and buffer[1080:1082]==&quot;\x53\xEF&quot; \
+     and buffer[1116:1120]==&quot;\x04\x00\x00\x00&quot;:
+         return &quot;hachoir/fs-ext2&quot;
+         
+-    if buffer[0:3] == &quot;DIR&quot;:
+-        return &quot;hachoir/worms2&quot;
+-        
+     if 512&lt;=len(buffer) \
+     and buffer[0] in &quot;\xEB\xFA&quot; \
+     and buffer[510:512] == &quot;\x55\xAA&quot; \
+@@ -104,6 +107,16 @@
+     and buffer[446+16*2] in &quot;\x00\x80&quot; \
+     and buffer[446+16*3] in &quot;\x00\x80&quot;:
+         return &quot;hachoir/master-boot-record&quot;
++    
++    # Worms2 files
++    if buffer[0:4] == &quot;IMG\x1A&quot;:
++        return &quot;hachoir/worms2-image&quot;
++    if buffer[0:4] == &quot;SPR\x1A&quot;:
++        return &quot;hachoir/worms2-sprite&quot;
++    if buffer[0:4] == &quot;FNT\x1A&quot;:
++        return &quot;hachoir/worms2-font&quot;
++    if buffer[0:4] == &quot;DIR\x1A&quot;:
++        return &quot;hachoir/worms2-directory&quot;
+     return None        
+ 
+ def splitMimes(mimes):
+
+Modified: haypo/hachoir/trunk/plugins/gzip.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/gzip.py	2006-01-04 02:31:50 UTC (rev 393)
++++ haypo/hachoir/trunk/plugins/gzip.py	2006-01-04 03:53:20 UTC (rev 394)
+@@ -58,7 +58,7 @@
+         self.read(&quot;os&quot;, &quot;Operating system&quot;, (EnumChunk, &quot;uint8&quot;, GzipFile.os_name))
+ 
+         # Optionnal fields
+-        if flags[&quot;extra&quot;] &amp; 4 == 4:
++        if flags[&quot;extra&quot;]:
+             self.read(&quot;extra_length&quot;, &quot;Extra length&quot;, (FormatChunk, &quot;uint16&quot;))
+             self.read(&quot;extra&quot;, &quot;Extra&quot;, (FormatChunk, &quot;string[%u]&quot;  % self[&quot;extra_length&quot;]))
+         if flags[&quot;filename&quot;]:
+
+Added: haypo/hachoir/trunk/plugins/plain_text.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/plain_text.py	2006-01-04 02:31:50 UTC (rev 393)
++++ haypo/hachoir/trunk/plugins/plain_text.py	2006-01-04 03:53:20 UTC (rev 394)
+@@ -0,0 +1,17 @@
++&quot;&quot;&quot;
++Plain text parser.
++
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from filter import OnDemandFilter
++from chunk import StringChunk
++from plugin import registerPlugin
++   
++class PlainTextFile(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;plain&quot;, &quot;Plain text file&quot;, stream, parent, &quot;&lt;&quot;)
++        while not stream.eof():
++            self.read(&quot;line[]&quot;, &quot;Line&quot;, (StringChunk, &quot;AutoLine&quot;))
++
++registerPlugin(PlainTextFile, &quot;text/plain&quot;)
+
+Modified: haypo/hachoir/trunk/plugins/worms2.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/worms2.py	2006-01-04 02:31:50 UTC (rev 393)
++++ haypo/hachoir/trunk/plugins/worms2.py	2006-01-04 03:53:20 UTC (rev 394)
+@@ -95,7 +95,6 @@
+ class Sprite(OnDemandFilter):
+     def __init__(self, stream, parent, use_bank):
+         OnDemandFilter.__init__(self, &quot;sprite&quot;, &quot;Sprite&quot;, stream, parent, &quot;&lt;&quot;)
+-        name = parent.name
+         self.read(&quot;nb_step&quot;, &quot;Number of steps&quot;, (FormatChunk, &quot;uint16&quot;))
+         if 0 &lt; self[&quot;nb_step&quot;]:
+             self.read(&quot;zero&quot;, &quot;Zero?&quot;, (FormatChunk, &quot;uint16&quot;))
+@@ -294,7 +293,7 @@
+         &quot;BNK&quot;: Bank
+     }
+ 
+-    def __init__(self, stream, parent, has_name, use_bank, has_separator):
++    def __init__(self, stream, parent, has_name=True, use_bank=False, has_separator=False):
+         OnDemandFilter.__init__(self, &quot;worms2_res&quot;, &quot;Worms2 resource&quot;, stream, parent, &quot;&lt;&quot;)
+         guess = stream.getN(3, False)
+         if guess not in Resource.tag_name:
+@@ -343,16 +342,17 @@
+             self.name = &quot;(directory)&quot;
+             end = self.doRead(&quot;last_pos&quot;, &quot;Last position&quot;, (FormatChunk, &quot;uint32&quot;)).value
+             self.count = 0
+-            guess = stream.getN(3, False)
+             has_name = True
+             use_bank = False
+             has_separator = True
+-            if guess == &quot;1\r\n&quot;:
+-                while guess == &quot;1\r\n&quot;:
++            guess = stream.getN(5, False)
++            if &quot;\r&quot; in guess:
++                while &quot;\r&quot; in guess:
+                     self.read(&quot;res[]&quot;, &quot;INF&quot;, (INF,))
+-                    guess = stream.getN(3, False)
++                    guess = stream.getN(5, False)
+                 self.read(&quot;res[]&quot;, &quot;String index&quot;, (StringIndex, use_bank))
+-            elif guess == &quot;BNK&quot;:
++                return
++            elif guess.startswith(&quot;BNK&quot;):
+                 use_bank = True
+                 has_name = False
+             while stream.tell() &lt; end:
+@@ -414,8 +414,8 @@
+         
+     def updateParent(self, chunk):
+         size = self.getChunk(&quot;size&quot;).getDisplayData()
+-        chunk.description = &quot;File: %s (%s)&quot; \
+-            % (self[&quot;name&quot;], size)
++        chunk.description = &quot;File: %s (%s), position=%s&quot; \
++            % (self[&quot;name&quot;], size, self[&quot;position&quot;])
+ 
+ class Numbers(OnDemandFilter):
+     def __init__(self, stream, parent, count):
+@@ -449,4 +449,5 @@
+             size = stream.getRemainSize()
+             self.read(&quot;fs&quot;, &quot;File system&quot;, (FileSystem,), {&quot;size&quot;: size})
+          
+-registerPlugin(Worms2_Dir_File, &quot;hachoir/worms2&quot;)
++registerPlugin(Resource, [&quot;hachoir/worms2-font&quot;, &quot;hachoir/worms2-image&quot;, &quot;hachoir/worms2-sprite&quot;])
++registerPlugin(Worms2_Dir_File, &quot;hachoir/worms2-directory&quot;)
+
+Modified: haypo/hachoir/trunk/tools.py
+===================================================================
+--- haypo/hachoir/trunk/tools.py	2006-01-04 02:31:50 UTC (rev 393)
++++ haypo/hachoir/trunk/tools.py	2006-01-04 03:53:20 UTC (rev 394)
+@@ -64,7 +64,6 @@
+             m = re_min_repetition.match(pattern)
+             if m != None:
+                 repetition = int(m.group(1))
+-                print &quot;(rep=%sx%s)&quot; % (atom_size, repetition)
+                 pattern = m.group(2)
+                 atom_size = atom_size * repetition
+             else:
+@@ -158,25 +157,16 @@
+                 &quot;\r&quot;: &quot;\\r&quot;,
+                 &quot;\t&quot;: &quot;\\t&quot;,
+                 &quot;\0&quot;: &quot;\\0&quot;}
+-            if c in know:
+-                if not keep_n or c != &quot;\n&quot;:
+-                    display = display + know[c]
+-                else:
+-                    display = display + c
++            if c == &quot;\n&quot; and keep_n:                
++                display = display + &quot;\\n\n&quot;
++            elif c in know:
++                display = display + know[c]
+             else:
+                 display = display + &quot;.&quot;
++        elif c == &quot;\&quot;&quot;:
++            display = display + &quot;\\\&quot;&quot;
+         else:
+             display = display + c
+-#            if is_8bit:
+-#                if ord(c) != 0xFF:
+-#                    display = display + c
+-#                else:
+-#                    display = display + &quot;.&quot;
+-#            else:                    
+-#                if c in string.printable:
+-#                    display = display + c
+-#                else:
+-#                    display = display + &quot;.&quot;
+     return u&quot;\&quot;%s\&quot;&quot; % display
+ 
+ def getBacktrace():
+
+Modified: haypo/hachoir/trunk/ui/ui_window.py
+===================================================================
+--- haypo/hachoir/trunk/ui/ui_window.py	2006-01-04 02:31:50 UTC (rev 393)
++++ haypo/hachoir/trunk/ui/ui_window.py	2006-01-04 03:53:20 UTC (rev 394)
+@@ -67,6 +67,9 @@
+         self.window.connect(&quot;key-press-event&quot;, self.onKeyUp)
+         self.table.connect(&quot;button_press_event&quot;, self.on_treeview_button_press_event)
+         self.window.set_size_request(600,560)
++
++        self.field_show_format = False 
++        self.row_chunk_id = None
+         self.build_table()
+         
+     def onChunkCopy(self, event):
+@@ -109,7 +112,7 @@
+         self.menu_close.set_sensitive(file_present)
+ 
+     def getTableChunk(self, col):
+-        chunk_id = self.table_store[col][3]
++        chunk_id = self.table_store[col][self.row_chunk_id]
+         if chunk_id == None: return None
+         return self.ui.hachoir.getFilter().getChunk(chunk_id)
+ 
+@@ -133,7 +136,7 @@
+ 
+     def clear_table(self):
+         self.table_store.clear()
+-        self.table_store.set_sort_column_id(-1, gtk.SORT_ASCENDING)
++#        self.table_store.set_sort_column_id(-1, gtk.SORT_ASCENDING)
+         self.table.columns_autosize()
+ 
+     def set_table_value(self, iter, column, value):
+@@ -141,19 +144,31 @@
+         row[column] = value
+        
+     def add_table_child(self, parent, addr, size, format, id, description):
+-        return self.table_store.append(parent, (addr, format, size, None, id, description, None,))
++        if self.field_show_format:
++            data = (addr, format, size, None, id, description, None,)
++        else:
++            data = (addr, size, None, id, description, None,)
++        return self.table_store.append(parent, data)
+        
+     def update_table(self, filter, ROW, parent, addr, size, format, id, description, value):
+         if filter != self.ui.hachoir.getFilter():
+             return
+         addr = str(addr)
+         size = str(size)
+-        self.table_store[ROW] = (addr, format, size, id, value, description)
++        if self.field_show_format:
++            data = (addr, format, size, id, value, description)
++        else:
++            data = (addr, size, id, value, description)
++        self.table_store[ROW] = data 
+ 
+     def add_table(self, parent, addr, size, format, id, description, value):
+         addr = str(addr)
+         size = str(size)
+-        return self.table_store.append(parent, (addr, format, size, id, value, description, ))
++        if self.field_show_format:
++            data = (addr, format, size, id, value, description, )
++        else:
++            data = (addr, size, id, value, description, )
++        return self.table_store.append(parent, data)
+ 
+     def onKeyUp(self, widget, key, data=None):
+         if key.keyval == gtk.keysyms.Escape:
+@@ -161,14 +176,14 @@
+         
+     def onTableRowActivate(self, widget, iter, data=None):
+         row = self.table_store[iter]
+-        self.ui.on_row_click(row[3])
++        self.ui.on_row_click(row[self.row_chunk_id])
+         
+     def getActiveChunk(self):
+         select = self.table.get_selection()
+         iter = select.get_selected()[1]
+         if iter != None:
+             row = self.table_store[iter]
+-            return self.ui.hachoir.getFilter().getChunk(row[3])
++            return self.ui.hachoir.getFilter().getChunk(row[self.row_chunk_id])
+         else:
+             return None 
+ 
+@@ -177,19 +192,28 @@
+         self.info.updateChunk(chunk)
+ 
+     def build_table(self):
+-        self.table_store = gtk.TreeStore(str, str, str, str, str, str)
++        types = [str, str, str, str, str]
++        if self.field_show_format:
++            types.append(str)
++        self.table_store = gtk.TreeStore(*types)
+         self.table.set_model(self.table_store)
+         self.table.connect(&quot;cursor-changed&quot;, self.onTableClick)
+         self.table.connect(&quot;row-activated&quot;, self.onTableRowActivate)
+-        self.treeview_add_column(self.table, &quot;Address&quot;, 0)
+-        self.table_store.set_sort_func(0, self.cmpColumnsLong, 0)
+-        self.treeview_add_column(self.table, &quot;Format&quot;, 1)
+-        self.treeview_add_column(self.table, &quot;Size&quot;, 2)
+-        self.table_store.set_sort_func(2, self.cmpColumnsLong, 2)
+-        self.treeview_add_column(self.table, &quot;Name&quot;, 3)
+-        self.treeview_add_column(self.table, &quot;Value&quot;, 4)
+-        self.treeview_add_column(self.table, &quot;Description&quot;, 5)
+-        self.table_store.set_default_sort_func(self.cmpDefault)
++
++        i = 0
++        self.treeview_add_column(self.table, &quot;Address&quot;, i)
++#        self.table_store.set_sort_func(0, self.cmpColumnsLong, i)
++        i += 1
++        if self.field_show_format:
++            i = self.treeview_add_column(self.table, &quot;Format&quot;, i)
++        self.treeview_add_column(self.table, &quot;Size&quot;, i)
++#        self.table_store.set_sort_func(i, self.cmpColumnsLong, i)
++        i += 1
++        self.row_chunk_id = i
++        i = self.treeview_add_column(self.table, &quot;Name&quot;, i)
++        i = self.treeview_add_column(self.table, &quot;Value&quot;, i)
++        i = self.treeview_add_column(self.table, &quot;Description&quot;, i)
++#        self.table_store.set_default_sort_func(self.cmpDefault)
+         self.table.columns_autosize()
+ 
+     def cmpDefault(self, model, a, b):
+@@ -211,6 +235,7 @@
+         col.add_attribute(cell, 'text', num)
+         treeview.set_search_column(num)
+         col.set_sort_column_id(num)
++        return num+1
+ 
+     def on_toolbutton_purge_cache(self, widget, data=None):
+         from cache import CacheList
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000295.html">[Happyboom-svn] r393 - haypo/hachoir/trunk/plugins
+</A></li>
+	<LI>Next message: <A HREF="000299.html">[Happyboom-svn] r395 - in haypo/hachoir/trunk: plugins ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#296">[ date ]</a>
+              <a href="thread.html#296">[ thread ]</a>
+              <a href="subject.html#296">[ subject ]</a>
+              <a href="author.html#296">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

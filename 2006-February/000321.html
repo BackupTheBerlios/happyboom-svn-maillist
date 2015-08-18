@@ -1,0 +1,454 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r417 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/unit_test
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-February/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r417%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/field%20branches/hachoir-yield/unit_test&In-Reply-To=%3C200602281220.k1SCKmRE024254%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000320.html">
+   <LINK REL="Next"  HREF="000322.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r417 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/unit_test</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r417%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/field%20branches/hachoir-yield/unit_test&In-Reply-To=%3C200602281220.k1SCKmRE024254%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r417 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/unit_test">haypo at berlios.de
+       </A><BR>
+    <I>Tue Feb 28 13:20:48 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000320.html">[Happyboom-svn] r416 - in haypo/hachoir: . branches/hachoir-yield/field
+</A></li>
+        <LI>Next message: <A HREF="000322.html">[Happyboom-svn] r418 - in haypo/hachoir: . branches/hachoir-yield/field branches/hachoir-yield/unit_test
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#321">[ date ]</a>
+              <a href="thread.html#321">[ thread ]</a>
+              <a href="subject.html#321">[ subject ]</a>
+              <a href="author.html#321">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-02-28 13:20:24 +0100 (Tue, 28 Feb 2006)
+New Revision: 417
+
+Added:
+   haypo/hachoir/branches/hachoir-yield/run_unit_test.py
+   haypo/hachoir/branches/hachoir-yield/unit_test/
+   haypo/hachoir/branches/hachoir-yield/unit_test/__init__.py
+   haypo/hachoir/branches/hachoir-yield/unit_test/create_fields.py
+   haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py
+Removed:
+   haypo/hachoir/branches/hachoir-yield/unit_test.py
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/field/field_set.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r9 at haypopc</A>:  haypo | 2006-02-28 13:20:30 +0100
+ * Split unit test in many files: now use 'python run_unit_test.py'
+ * FieldSet supports path with like '/header/width' and '../width'
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:6
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:9
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-02-28 11:57:13 UTC (rev 416)
++++ haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-02-28 12:20:24 UTC (rev 417)
+@@ -84,6 +84,28 @@
+         self.fields.append(field._name, field)
+         return field
+ 
++    def getChunkByPath(self, path):
++        names = path.split(&quot;/&quot;)
++        if names[0] == '':
++            # Path &quot;/...&quot; =&gt; start from root
++            field = self.root
++            names = names[1:]
++        elif names[0] == '..':
++            if self.parent == None:
++                raise FieldDoesExist(&quot;Field '%s' has no parent (can't get field %s)!&quot; \
++                    % (path, self.path))
++            field = self.parent
++            names = names[1:]
++        else:
++            field = self
++        for name in names:
++            if name==&quot;&quot; or not field.is_field_set:
++                raise FieldDoesExist(&quot;Field '%s' doesn't exist in %s&quot; \
++                    % (path, self.path))
++            field = field[name]
++        return field
++
++    
+     def __getitem__(self, name):
+         &quot;&quot;&quot;
+         Get an item with it's name or it's path.
+@@ -91,16 +113,8 @@
+         &quot;&quot;&quot;
+         
+         # Get item with a path? (eg. &quot;point/x&quot;)
+-        if &quot;/&quot; in name:
+-            path = name
+-            names = path.split(&quot;/&quot;)
+-            field = self
+-            for name in names:
+-                if name==&quot;&quot; or not field.is_field_set:
+-                    raise FieldDoesExist(&quot;Field '%s' doesn't exist in %s&quot; \
+-                        % (path, self.path))
+-                field = field[name]
+-            return field
++        if &quot;/&quot; in name or name.startswith(&quot;..&quot;):
++            return self.getChunkByPath(name)
+ 
+         # Field does exit?
+         if name in self.fields:
+
+Added: haypo/hachoir/branches/hachoir-yield/run_unit_test.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/run_unit_test.py	2006-02-28 11:57:13 UTC (rev 416)
++++ haypo/hachoir/branches/hachoir-yield/run_unit_test.py	2006-02-28 12:20:24 UTC (rev 417)
+@@ -0,0 +1,9 @@
++from unit_test import create_fields
++from unit_test import field_set_get_item
++
++def runAllTests():
++    create_fields.runTests()
++    field_set_get_item.runTests()
++
++if __name__ == &quot;__main__&quot;:
++    runAllTests()
+
+Added: haypo/hachoir/branches/hachoir-yield/unit_test/__init__.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/unit_test/__init__.py	2006-02-28 11:57:13 UTC (rev 416)
++++ haypo/hachoir/branches/hachoir-yield/unit_test/__init__.py	2006-02-28 12:20:24 UTC (rev 417)
+@@ -0,0 +1,3 @@
++import create_fields
++import field_set_get_item
++
+
+Added: haypo/hachoir/branches/hachoir-yield/unit_test/create_fields.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/unit_test/create_fields.py	2006-02-28 11:57:13 UTC (rev 416)
++++ haypo/hachoir/branches/hachoir-yield/unit_test/create_fields.py	2006-02-28 12:20:24 UTC (rev 417)
+@@ -0,0 +1,118 @@
++from StringIO import StringIO
++from field import FieldSet, Integer, String, Bits, Bit
++from stream.file import FileStream
++from bits import long2raw, str2hex
++
++def test1():
++    data = &quot;\x02\x01abc\x09&quot;
++    stream = FileStream(StringIO(data), None)
++    class TestInteger(FieldSet):
++        def __init__(self, a, b, c):
++            FieldSet.__init__(self, a, b, c)
++            self.endian = &quot;&gt;&quot;
++        def createFields(self):
++            yield Integer(self, &quot;word&quot;, &quot;uint16&quot;, &quot;One integer&quot;)
++            yield String(self, &quot;abc&quot;, &quot;string[3]&quot;, &quot;abc string&quot;)
++            yield Integer(self, &quot;byte&quot;, &quot;uint8&quot;, &quot;Byte&quot;)
++    test = TestInteger(None, &quot;test&quot;, stream) 
++
++    assert &quot;word&quot; in test
++    field = test[&quot;word&quot;]
++    assert field.size == 16
++    assert field.value == 0x0201
++
++    assert &quot;abc&quot; in test
++    field = test[&quot;abc&quot;]
++    assert field.address == 2*8
++    assert field.size == 3*8
++    assert field.value == &quot;abc&quot;
++
++    assert &quot;byte&quot; in test
++    field = test[&quot;byte&quot;]
++    assert field.address == 5*8
++    assert field.size == 8
++    assert field.value == 9
++
++def test2():
++    data = &quot;\x21\x43&quot; # concat(0x01, 0x23, 0x4)
++    stream = FileStream(StringIO(data), None)
++    class TestInteger(FieldSet):
++        def createFields(self):
++            yield Bits(self, &quot;a&quot;, 4)
++            yield Integer(self, &quot;b&quot;, &quot;uint8&quot;)
++            yield Bits(self, &quot;c&quot;, 4)
++    test = TestInteger(None, &quot;test&quot;, stream) 
++
++    assert test[&quot;a&quot;].value == 1
++    assert test[&quot;b&quot;].value == 0x32
++    assert test[&quot;c&quot;].value == 4 
++
++def test2_str():
++    data = &quot;\x19\x46&quot; # concat(0x09, 0x61, 0x4)
++    
++    stream = FileStream(StringIO(data), None)
++    class TestInteger(FieldSet):
++        def createFields(self):
++            yield Bits(self, &quot;a&quot;, 4)
++            yield String(self, &quot;b&quot;, &quot;string[1]&quot;)
++            yield Bits(self, &quot;c&quot;, 4)
++    test = TestInteger(None, &quot;test&quot;, stream) 
++
++    assert test[&quot;a&quot;].value == 9
++    assert test[&quot;b&quot;].value == &quot;a&quot;
++    assert test[&quot;c&quot;].value == 4 
++
++def test2_str2():
++    data   = 1        ;  data &lt;&lt;= 4
++    data  += 4        ;  data &lt;&lt;= 8
++    data  += ord(&quot;a&quot;) ;  data &lt;&lt;= 2
++    data  += 3
++    data = long2raw(data, big_endian=False)
++    
++    stream = FileStream(StringIO(data), None)
++    class TestInteger(FieldSet):
++        def createFields(self):
++            yield Bits(self, &quot;a&quot;, 2)
++            yield String(self, &quot;b&quot;, &quot;string[1]&quot;)
++            yield Bits(self, &quot;c&quot;, 4)
++            yield Bits(self, &quot;d&quot;, 2)
++    test = TestInteger(None, &quot;test&quot;, stream) 
++
++    assert test[&quot;a&quot;].value == 3
++    assert test[&quot;b&quot;].value == &quot;a&quot;
++    assert test[&quot;c&quot;].value == 4 
++    assert test[&quot;d&quot;].value == 1
++
++def test3():
++    data  = (1 &amp; 0x1) &lt;&lt; 0
++    data += (3 &amp; 0x7) &lt;&lt; 1
++    data += (0 &amp; 0x3) &lt;&lt; 4
++    data += (2 &amp; 0x3) &lt;&lt; 6
++    data = chr(data)
++    stream = FileStream(StringIO(data), None)
++    class TestInteger(FieldSet):
++        def createFields(self):
++            yield Bit(self, &quot;a&quot;)
++            yield Bits(self, &quot;b&quot;, 3)
++            yield Bits(self, &quot;c&quot;, 2)
++            yield Bits(self, &quot;d&quot;, 2)
++    test = TestInteger(None, &quot;test&quot;, stream) 
++
++    assert test[&quot;a&quot;].value == True
++    assert test[&quot;b&quot;].value == 3
++    assert test[&quot;c&quot;].value == 0
++    assert test[&quot;d&quot;].value == 2
++
++def runTests():
++    print &quot;Test FieldSet.createField()&quot;
++    try:
++        test1()   
++        test2()
++        test2_str()
++        test2_str2()
++        test3()
++        print &quot;Test FieldSet.createField(): done&quot;
++    except Exception, msg: 
++        print &quot;Test FieldSet.createField(): error&quot;
++        print msg
++
+
+Added: haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py	2006-02-28 11:57:13 UTC (rev 416)
++++ haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py	2006-02-28 12:20:24 UTC (rev 417)
+@@ -0,0 +1,41 @@
++from StringIO import StringIO
++from field import FieldSet, Integer, String, Bits, Bit
++from stream.file import FileStream
++
++class Header(FieldSet):
++    def createFields(self):
++        yield Integer(self, &quot;width&quot;, &quot;int16&quot;, &quot;Width&quot;) 
++        yield Integer(self, &quot;height&quot;, &quot;int16&quot;, &quot;Height&quot;) 
++
++class Body(FieldSet):
++    def createFields(self):
++        yield Integer(self, &quot;x&quot;, &quot;uint8&quot;, &quot;Item&quot;) 
++        yield Integer(self, &quot;y&quot;, &quot;uint8&quot;, &quot;Item&quot;) 
++
++class Document(FieldSet):
++    def createFields(self):
++        yield Header(self, &quot;header&quot;, self.stream)
++        yield Body(self, &quot;body&quot;, self.stream)
++
++def test():
++    data = &quot;\x00\x0A\x00\x0B\x05\x07&quot;
++    stream = FileStream(StringIO(data), None)
++    document = Document(None, &quot;document&quot;, stream)
++    
++    # Test path starting with &quot;/&quot;
++    assert id(document[&quot;/header&quot;]) == id(document[&quot;header&quot;])
++    header = document[&quot;/header&quot;]
++
++    # Test path starting with &quot;..&quot;
++    assert id(header[&quot;..&quot;]) == id(document)
++    assert id(header[&quot;../header&quot;]) == id(header)
++
++def runTests():
++    print &quot;Test FieldSet.__getitem__&quot;
++    try:
++        test()
++        print &quot;Test FieldSet.__getitem__: done&quot;
++    except Exception, msg:
++        print &quot;Test FieldSet.__getitem__: error!&quot;
++        print msg
++        raise
+
+Deleted: haypo/hachoir/branches/hachoir-yield/unit_test.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/unit_test.py	2006-02-28 11:57:13 UTC (rev 416)
++++ haypo/hachoir/branches/hachoir-yield/unit_test.py	2006-02-28 12:20:24 UTC (rev 417)
+@@ -1,111 +0,0 @@
+-from StringIO import StringIO
+-from field import FieldSet, Integer, String, Bits, Bit
+-from stream.file import FileStream
+-from bits import long2raw, str2hex
+-
+-def test1():
+-    data = &quot;\x02\x01abc\x09&quot;
+-    stream = FileStream(StringIO(data), None)
+-    class TestInteger(FieldSet):
+-        def __init__(self, a, b, c):
+-            FieldSet.__init__(self, a, b, c)
+-            self.endian = &quot;&gt;&quot;
+-        def createFields(self):
+-            yield Integer(self, &quot;word&quot;, &quot;uint16&quot;, &quot;One integer&quot;)
+-            yield String(self, &quot;abc&quot;, &quot;string[3]&quot;, &quot;abc string&quot;)
+-            yield Integer(self, &quot;byte&quot;, &quot;uint8&quot;, &quot;Byte&quot;)
+-    test = TestInteger(None, &quot;test&quot;, stream) 
+-
+-    assert &quot;word&quot; in test
+-    field = test[&quot;word&quot;]
+-    assert field.size == 16
+-    assert field.value == 0x0201
+-
+-    assert &quot;abc&quot; in test
+-    field = test[&quot;abc&quot;]
+-    assert field.address == 2*8
+-    assert field.size == 3*8
+-    assert field.value == &quot;abc&quot;
+-
+-    assert &quot;byte&quot; in test
+-    field = test[&quot;byte&quot;]
+-    assert field.address == 5*8
+-    assert field.size == 8
+-    assert field.value == 9
+-
+-def test2():
+-    data = &quot;\x21\x43&quot; # concat(0x01, 0x23, 0x4)
+-    stream = FileStream(StringIO(data), None)
+-    class TestInteger(FieldSet):
+-        def createFields(self):
+-            yield Bits(self, &quot;a&quot;, 4)
+-            yield Integer(self, &quot;b&quot;, &quot;uint8&quot;)
+-            yield Bits(self, &quot;c&quot;, 4)
+-    test = TestInteger(None, &quot;test&quot;, stream) 
+-
+-    assert test[&quot;a&quot;].value == 1
+-    assert test[&quot;b&quot;].value == 0x32
+-    assert test[&quot;c&quot;].value == 4 
+-
+-def test2_str():
+-    data = &quot;\x19\x46&quot; # concat(0x09, 0x61, 0x4)
+-    
+-    stream = FileStream(StringIO(data), None)
+-    class TestInteger(FieldSet):
+-        def createFields(self):
+-            yield Bits(self, &quot;a&quot;, 4)
+-            yield String(self, &quot;b&quot;, &quot;string[1]&quot;)
+-            yield Bits(self, &quot;c&quot;, 4)
+-    test = TestInteger(None, &quot;test&quot;, stream) 
+-
+-    assert test[&quot;a&quot;].value == 9
+-    assert test[&quot;b&quot;].value == &quot;a&quot;
+-    assert test[&quot;c&quot;].value == 4 
+-
+-def test2_str2():
+-    data   = 1        ;  data &lt;&lt;= 4
+-    data  += 4        ;  data &lt;&lt;= 8
+-    data  += ord(&quot;a&quot;) ;  data &lt;&lt;= 2
+-    data  += 3
+-    data = long2raw(data, big_endian=False)
+-    
+-    stream = FileStream(StringIO(data), None)
+-    class TestInteger(FieldSet):
+-        def createFields(self):
+-            yield Bits(self, &quot;a&quot;, 2)
+-            yield String(self, &quot;b&quot;, &quot;string[1]&quot;)
+-            yield Bits(self, &quot;c&quot;, 4)
+-            yield Bits(self, &quot;d&quot;, 2)
+-    test = TestInteger(None, &quot;test&quot;, stream) 
+-
+-    assert test[&quot;a&quot;].value == 3
+-    assert test[&quot;b&quot;].value == &quot;a&quot;
+-    assert test[&quot;c&quot;].value == 4 
+-    assert test[&quot;d&quot;].value == 1
+-
+-def test3():
+-    data  = (1 &amp; 0x1) &lt;&lt; 0
+-    data += (3 &amp; 0x7) &lt;&lt; 1
+-    data += (0 &amp; 0x3) &lt;&lt; 4
+-    data += (2 &amp; 0x3) &lt;&lt; 6
+-    data = chr(data)
+-    stream = FileStream(StringIO(data), None)
+-    class TestInteger(FieldSet):
+-        def createFields(self):
+-            yield Bit(self, &quot;a&quot;)
+-            yield Bits(self, &quot;b&quot;, 3)
+-            yield Bits(self, &quot;c&quot;, 2)
+-            yield Bits(self, &quot;d&quot;, 2)
+-    test = TestInteger(None, &quot;test&quot;, stream) 
+-
+-    assert test[&quot;a&quot;].value == True
+-    assert test[&quot;b&quot;].value == 3
+-    assert test[&quot;c&quot;].value == 0
+-    assert test[&quot;d&quot;].value == 2
+-
+-test1()   
+-test2()
+-test2_str()
+-test2_str2()
+-test3()
+-
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000320.html">[Happyboom-svn] r416 - in haypo/hachoir: . branches/hachoir-yield/field
+</A></li>
+	<LI>Next message: <A HREF="000322.html">[Happyboom-svn] r418 - in haypo/hachoir: . branches/hachoir-yield/field branches/hachoir-yield/unit_test
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#321">[ date ]</a>
+              <a href="thread.html#321">[ thread ]</a>
+              <a href="subject.html#321">[ subject ]</a>
+              <a href="author.html#321">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

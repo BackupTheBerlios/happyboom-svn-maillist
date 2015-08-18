@@ -1,0 +1,284 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r443 - in haypo/hachoir: . branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/3d
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r443%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield/libhachoir/field%20branches/hachoir-yield/libhachoir/parser/3d&In-Reply-To=%3C200603122002.k2CK2eFs022655%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000346.html">
+   <LINK REL="Next"  HREF="000348.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r443 - in haypo/hachoir: . branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/3d</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r443%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield/libhachoir/field%20branches/hachoir-yield/libhachoir/parser/3d&In-Reply-To=%3C200603122002.k2CK2eFs022655%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r443 - in haypo/hachoir: . branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/3d">haypo at berlios.de
+       </A><BR>
+    <I>Sun Mar 12 21:02:40 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000346.html">[Happyboom-svn] r442 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/stream branches/hachoir-yield/unit_test
+</A></li>
+        <LI>Next message: <A HREF="000348.html">[Happyboom-svn] r444 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/file_system branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#347">[ date ]</a>
+              <a href="thread.html#347">[ thread ]</a>
+              <a href="subject.html#347">[ subject ]</a>
+              <a href="author.html#347">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-12 21:02:39 +0100 (Sun, 12 Mar 2006)
+New Revision: 443
+
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/__init__.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/bit_field.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/3d/3ds.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r57 at haypopc</A>:  haypo | 2006-03-04 18:18:37 +0100
+ Finish to port 3DS parser to new syntax
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:56
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:57
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/__init__.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/__init__.py	2006-03-12 20:02:15 UTC (rev 442)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/__init__.py	2006-03-12 20:02:39 UTC (rev 443)
+@@ -1,5 +1,6 @@
+ from libhachoir.field.field import Field
+ from libhachoir.field.bit_field import Bits, Bit
+ from libhachoir.field.integer import Integer, Enum 
++from libhachoir.field.float import Float
+ from libhachoir.field.string_field import RawBytes, String
+ from libhachoir.field.field_set import FieldSet, ParserError
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/bit_field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/bit_field.py	2006-03-12 20:02:15 UTC (rev 442)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/bit_field.py	2006-03-12 20:02:39 UTC (rev 443)
+@@ -9,7 +9,7 @@
+     def _getValue(self):
+         if self._value == None:
+             self._value = self.parent.stream.getBits(
+-                self.absolute_address, self.size, self.big_endian) 
++                self.absolute_address, self._size, self.big_endian) 
+         return self._value
+     value = property(_getValue, Field._setValue)
+    
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py	2006-03-12 20:02:15 UTC (rev 442)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py	2006-03-12 20:02:39 UTC (rev 443)
+@@ -190,6 +190,7 @@
+     def _stopFeeding(self):
+         self._field_generator = None
+         self._size = self._total_field_size
++        assert not hasattr(self, &quot;static_size&quot;) or (self.static_size == self._size)
+ 
+     def _feedUntil(self, field_name):
+         try:
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/3d/3ds.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/parser/3d/3ds.py	2006-03-12 20:02:15 UTC (rev 442)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/parser/3d/3ds.py	2006-03-12 20:02:39 UTC (rev 443)
+@@ -3,14 +3,16 @@
+ Author: Victor Stinner
+ &quot;&quot;&quot;
+ 
+-from libhachoir.field import FieldSet, Integer, RawBytes, Enum, String
++from libhachoir.field import (FieldSet, ParserError,
++    Integer, RawBytes, Enum, String, Float)
+ from libhachoir.parser.image.common import RGB
+ 
+-#def readObject(self, stream, last_pos):
+-#    yield String(self, &quot;name&quot;, &quot;C&quot;, &quot;Object name&quot;)
+-#    while self._total_field_size &lt; last_pos:
+-#        yield Chunk(self)
+-#
++def readObject(parent):
++    yield String(parent, &quot;name&quot;, &quot;C&quot;, &quot;Object name&quot;)
++    size = parent[&quot;size&quot;].value * 8
++    while parent.newFieldAskAddress() &lt; size:
++        yield Chunk(parent)
++
+ def readTextureFilename(parent):
+     yield String(parent, &quot;filename&quot;, &quot;C&quot;, &quot;Texture filename&quot;)
+ 
+@@ -20,62 +22,58 @@
+ def readMaterialName(parent):
+     yield String(parent, &quot;name&quot;, &quot;C&quot;, &quot;Material name&quot;)
+ 
+-#class Filter_3DS_MapUV(OnDemandFilter):
+-#    def __init__(self, stream, parent):
+-#        OnDemandFilter.__init__(self, &quot;3ds_map&quot;, &quot;3DS UV map&quot;, stream, parent, &quot;&lt;&quot;)
+-#        self.read(&quot;u&quot;, &quot;Map U&quot;, (FormatChunk, &quot;float&quot;))
+-#        self.read(&quot;v&quot;, &quot;Map V&quot;, (FormatChunk, &quot;float&quot;))
+-#
+-#    @staticmethod
+-#    def getStaticSize(stream, args):
+-#        return 4*2
+-# 
+-class Filter_3DS_Vertex(FieldSet):
+-    static_size = 4*3*8
++class MapUV(FieldSet):
++    endian = &quot;&lt;&quot;
++    def __init__(self, parent, name=&quot;map[]&quot;, description=&quot;Mapping UV&quot;):
++        FieldSet.__init__(self, parent, name, parent.stream, size=64, description=description)
++        
++    def createFields(self):
++        yield Float(self, &quot;u&quot;, &quot;float&quot;, &quot;Map U&quot;)
++        yield Float(self, &quot;v&quot;, &quot;float&quot;, &quot;Map V&quot;)
++
++class Vertex(FieldSet):
++    static_size = 12*8
++    endian = &quot;&lt;&quot;
++
+     def __init__(self, parent, name=&quot;vertex[]&quot;, description=&quot;Vertex&quot;):
+         FieldSet.__init__(self, parent, name, parent.stream, description=description)
+ 
+     def createFields(self):
+-        self.read(&quot;x&quot;, &quot;X&quot;, (FormatChunk, &quot;float&quot;))
+-        self.read(&quot;y&quot;, &quot;Y&quot;, (FormatChunk, &quot;float&quot;))
+-        self.read(&quot;z&quot;, &quot;Z&quot;, (FormatChunk, &quot;float&quot;))
+-#
+-#    @staticmethod
+-#    def getStaticSize(stream, args):
+-#        return 4*3
+-#
+-#class Filter_3DS_Polygon(OnDemandFilter):
+-#    def __init__(self, stream, parent):
+-#        OnDemandFilter.__init__(self, &quot;3ds_polygon&quot;, &quot;3DS polygon&quot;, stream, parent, &quot;&lt;&quot;)
+-#        self.read(&quot;a&quot;, &quot;Vertex A&quot;, (FormatChunk, &quot;uint16&quot;))
+-#        self.read(&quot;b&quot;, &quot;Vertex B&quot;, (FormatChunk, &quot;uint16&quot;))
+-#        self.read(&quot;c&quot;, &quot;Vertex C&quot;, (FormatChunk, &quot;uint16&quot;))
+-#        self.read(&quot;flags&quot;, &quot;Flags&quot;, (FormatChunk, &quot;uint16&quot;))
+-#
+-#    @staticmethod
+-#    def getStaticSize(stream, args):
+-#        return 4*2
+-#    
+-#def readMapList(filter, stream, last_pos):
+-#    filter.read(&quot;count&quot;, &quot;Map count&quot;, (FormatChunk, &quot;uint16&quot;))
+-#    for i in range(0, filter[&quot;count&quot;]):
+-#        filter.read(&quot;map[]&quot;, &quot;Map UV&quot;, (Filter_3DS_MapUV,))
+-#
++        yield Float(self, &quot;x&quot;, &quot;float&quot;, &quot;X&quot;)
++        yield Float(self, &quot;y&quot;, &quot;float&quot;, &quot;Y&quot;)
++        yield Float(self, &quot;z&quot;, &quot;float&quot;, &quot;Z&quot;)
++
++class Polygon(FieldSet):
++    static_size = 64
++    endian = &quot;&lt;&quot;
++    def createFields(self):
++        yield Integer(self, &quot;a&quot;, &quot;uint16&quot;, &quot;Vertex A&quot;)
++        yield Integer(self, &quot;b&quot;, &quot;uint16&quot;, &quot;Vertex B&quot;)
++        yield Integer(self, &quot;c&quot;, &quot;uint16&quot;, &quot;Vertex C&quot;)
++        yield Integer(self, &quot;flags&quot;, &quot;uint16&quot;, &quot;Flags&quot;)
++
++def readMapList(parent):
++    yield Integer(parent, &quot;count&quot;, &quot;uint16&quot;, &quot;Map count&quot;)
++    for i in range(0, parent[&quot;count&quot;].value):
++        yield MapUV(parent)
++
+ def readColor(parent):
+     yield RGB(parent, &quot;color&quot;, parent.stream)
+ 
+ def readVertexList(parent):
++    yield Integer(parent, &quot;count&quot;, &quot;uint16&quot;, &quot;Vertex count&quot;)
++    for i in range(0, parent[&quot;count&quot;].value):
++        yield Vertex(parent)
++    
++def readPolygonList(parent):
+     count = Integer(parent, &quot;count&quot;, &quot;uint16&quot;, &quot;Vertex count&quot;)
++    yield count 
+     for i in range(0, count.value):
+-        yield Vertex(parent)
+-    
+-#def readPolygonList(filter, stream, last_pos):
+-#    filter.read(&quot;count&quot;, &quot;Vertex count&quot;, (FormatChunk, &quot;uint16&quot;))
+-#    for i in range(0, filter[&quot;count&quot;]):
+-#        filter.read(&quot;polygon[]&quot;, &quot;Polygon&quot;, (Filter_3DS_Polygon,))
+-#    while stream.tell() &lt; last_pos:
+-#        filter.read(&quot;chunk[]&quot;, &quot;Chunk&quot;, (Filter_3DS_Chunk,))
+-#
++        yield Polygon(parent, &quot;polygon[]&quot;, parent.stream)
++    size = parent[&quot;size&quot;].value * 8
++    while parent.newFieldAskAddress() &lt; size:
++        yield Chunk(parent)
++
+ class Chunk(FieldSet):
+     # List of chunk type name
+     type_name = {
+@@ -131,13 +129,13 @@
+     # List of chunk type handlers
+     handlers = {
+         0xA000: readMaterialName,
+-#        0x4000: readObject,
++        0x4000: readObject,
+         0xA300: readTextureFilename,
+         0x0011: readColor,
+         0x0002: readVersion,
+         0x4110: readVertexList,
+-#        0x4120: readPolygonList,
+-#        0x4140: readMapList
++        0x4120: readPolygonList,
++        0x4140: readMapList
+     }
+ 
+     endian = &quot;&lt;&quot;
+@@ -176,7 +174,10 @@
+                 fields = Chunk.handlers[type] (self)
+                 for field in fields:
+                     yield field
+-                assert self._total_field_size == (chunk_size * 8)
++                if self._total_field_size != (chunk_size * 8):
++                    raise ParserError( \
++                        &quot;Wrong chunk content size (%u bits instead of %u, field %s)&quot;
++                        % (self._total_field_size, chunk_size * 8, self.path))
+             else:
+                 yield RawBytes(self, &quot;data&quot;, content_size)
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000346.html">[Happyboom-svn] r442 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/stream branches/hachoir-yield/unit_test
+</A></li>
+	<LI>Next message: <A HREF="000348.html">[Happyboom-svn] r444 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/file_system branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#347">[ date ]</a>
+              <a href="thread.html#347">[ thread ]</a>
+              <a href="subject.html#347">[ subject ]</a>
+              <a href="author.html#347">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

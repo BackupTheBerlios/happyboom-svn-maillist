@@ -1,0 +1,164 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r278 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r278%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511272323.jARNNwxQ031643%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000182.html">
+   <LINK REL="Next"  HREF="000186.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r278 - in haypo/hachoir: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r278%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511272323.jARNNwxQ031643%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r278 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Mon Nov 28 00:23:58 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000182.html">[Happyboom-svn] r277 - haypo/hachoir
+</A></li>
+        <LI>Next message: <A HREF="000186.html">[Happyboom-svn] r279 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#185">[ date ]</a>
+              <a href="thread.html#185">[ thread ]</a>
+              <a href="subject.html#185">[ subject ]</a>
+              <a href="author.html#185">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-28 00:23:58 +0100 (Mon, 28 Nov 2005)
+New Revision: 278
+
+Added:
+   haypo/hachoir/plugins/elf.py
+Modified:
+   haypo/hachoir/export.template
+Log:
+Add very alpha ELF filter.
+
+
+Modified: haypo/hachoir/export.template
+===================================================================
+--- haypo/hachoir/export.template	2005-11-27 21:13:34 UTC (rev 277)
++++ haypo/hachoir/export.template	2005-11-27 23:23:58 UTC (rev 278)
+@@ -6,8 +6,11 @@
+ &quot;&quot;&quot;
+ 
+ from filter import Filter
++from plugins import registerPlugin
+ 
+ class MyFilter(Filter):
+-    def __init__(self, stream):
+-        Filter.__init__(self, &quot;{id}&quot;, &quot;{description}&quot;, stream, None)
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;{id}&quot;, &quot;{description}&quot;, stream, parent)
+ {chunks}
++
++#registerPlugin(MyFilter, &quot;&lt;MIME type&gt;&quot;)
+
+Added: haypo/hachoir/plugins/elf.py
+===================================================================
+--- haypo/hachoir/plugins/elf.py	2005-11-27 21:13:34 UTC (rev 277)
++++ haypo/hachoir/plugins/elf.py	2005-11-27 23:23:58 UTC (rev 278)
+@@ -0,0 +1,66 @@
++&quot;&quot;&quot;
++ELF filter.
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from filter import Filter
++from plugin import registerPlugin
++
++class ELF_Header(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;default&quot;, &quot;default&quot;, stream, parent)
++        self.read(&quot;id&quot;, &quot;4s&quot;, &quot;Identifier&quot;)
++        good_id = chr(127) + &quot;ELF&quot;
++        assert self[&quot;id&quot;] == good_id 
++        self.read(&quot;class&quot;, &quot;B&quot;, &quot;Class&quot;)
++        self.read(&quot;encoding&quot;, &quot;B&quot;, &quot;Encoding&quot;)
++        self.read(&quot;file_version&quot;, &quot;B&quot;, &quot;File version&quot;)
++        self.read(&quot;pad&quot;, &quot;8s&quot;, &quot;Pad&quot;)
++        self.read(&quot;nident&quot;, &quot;B&quot;, &quot;Size of ident[]&quot;)
++        self.read(&quot;type&quot;, &quot;&lt;H&quot;, &quot;File fype&quot;, post=self.getType)
++        self.read(&quot;machine&quot;, &quot;&lt;H&quot;, &quot;Machine type&quot;, post=self.getMachine)
++        self.read(&quot;version&quot;, &quot;&lt;L&quot;, &quot;Version of ELF&quot;)
++        self.read(&quot;entry&quot;, &quot;&lt;L&quot;, &quot;Number of entries&quot;)
++        self.read(&quot;phoff&quot;, &quot;&lt;L&quot;, &quot;PH offset&quot;)
++        self.read(&quot;shoff&quot;, &quot;&lt;L&quot;, &quot;SH offset&quot;)
++        self.read(&quot;flags&quot;, &quot;&lt;L&quot;, &quot;Flags&quot;)
++        self.read(&quot;ehsize&quot;, &quot;&lt;H&quot;, &quot;EH size&quot;)
++        self.read(&quot;phentsize&quot;, &quot;&lt;H&quot;, &quot;PH entry size&quot;)
++        self.read(&quot;phnum&quot;, &quot;&lt;H&quot;, &quot;PH entry count&quot;)
++        self.read(&quot;shentsize&quot;, &quot;&lt;H&quot;, &quot;SH entry size&quot;)
++        self.read(&quot;shnum&quot;, &quot;&lt;H&quot;, &quot;SH entre count&quot;)
++        self.read(&quot;shstrndx&quot;, &quot;&lt;H&quot;, &quot;SH strtab index&quot;)
++
++    def getType(self, chunk):
++        type = chunk.value
++        types = {
++            0: &quot;No file type&quot;,
++            1: &quot;Relocable file&quot;,
++            2: &quot;Executable file&quot;,
++            3: &quot;Shared object file&quot;,
++            4: &quot;Core file&quot;,
++            0xFF00: &quot;Processor-specific (0xFF00)&quot;,
++            0xFFFF: &quot;Processor-specific (0xFFFF)&quot;
++        }
++        return types.get(type, &quot;Unknow type (%u)&quot; % type)
++
++    def getMachine(self, chunk):
++        type = chunk.value
++        types = {
++            0: &quot;No machine&quot;,
++            1: &quot;AT&amp;T WE 32100&quot;,
++            2: &quot;SPARC&quot;,
++            3: &quot;Intel 80386&quot;,
++            4: &quot;Motorolla 68000&quot;,
++            5: &quot;Motorolla 88000&quot;,
++            7: &quot;Intel 80860&quot;,
++            8: &quot;MIPS RS3000&quot;
++        }
++        return types.get(type, &quot;Unknow machine (%u)&quot; % type)
++
++class ELF_Filter(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;default&quot;, &quot;default&quot;, stream, parent)
++        self.readChild(&quot;header&quot;, ELF_Header)
++
++registerPlugin(ELF_Filter, &quot;application/x-executable&quot;)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000182.html">[Happyboom-svn] r277 - haypo/hachoir
+</A></li>
+	<LI>Next message: <A HREF="000186.html">[Happyboom-svn] r279 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#185">[ date ]</a>
+              <a href="thread.html#185">[ thread ]</a>
+              <a href="subject.html#185">[ subject ]</a>
+              <a href="author.html#185">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

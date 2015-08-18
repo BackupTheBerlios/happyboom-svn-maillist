@@ -1,0 +1,198 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r329 - haypo/hachoir/stream
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r329%20-%20haypo/hachoir/stream&In-Reply-To=%3C200512151506.jBFF65YR002361%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000234.html">
+   <LINK REL="Next"  HREF="000236.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r329 - haypo/hachoir/stream</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r329%20-%20haypo/hachoir/stream&In-Reply-To=%3C200512151506.jBFF65YR002361%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r329 - haypo/hachoir/stream">haypo at berlios.de
+       </A><BR>
+    <I>Thu Dec 15 16:06:05 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000234.html">[Happyboom-svn] r328 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000236.html">[Happyboom-svn] r330 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#235">[ date ]</a>
+              <a href="thread.html#235">[ thread ]</a>
+              <a href="subject.html#235">[ subject ]</a>
+              <a href="author.html#235">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-15 16:06:05 +0100 (Thu, 15 Dec 2005)
+New Revision: 329
+
+Modified:
+   haypo/hachoir/stream/file.py
+Log:
+Fix file cache.
+
+
+Modified: haypo/hachoir/stream/file.py
+===================================================================
+--- haypo/hachoir/stream/file.py	2005-12-15 01:08:03 UTC (rev 328)
++++ haypo/hachoir/stream/file.py	2005-12-15 15:06:05 UTC (rev 329)
+@@ -6,34 +6,41 @@
+     def __init__(self, index, data):
+         self.index = index
+         self.data = data
++        self.used = 0
+ 
++    def __cmp__(self, to):
++        return cmp(self.used, to.used)
++
+ class FileCache:
+-    def __init__(self, file, file_size):
++    def __init__(self, file, file_size, block_size=4096, block_count=100):
+         self.file = file
+         self.file_size = file_size
+-        self.block_size = 4096
+-        self.max_block = 100
++        self.block_size = block_size
++        self.max_block = block_count
+         self.blocks = {}
+ 
++    def removeOldestBlock(self):
++        entry = min(self.blocks.values())
++        del self.blocks[entry.index]
++
+     def read(self, position, length):
+         block_position = position % self.block_size
+         block_index = position / self.block_size
+         length_copy = length
+         assert position+length &lt;= self.file_size
+         
+-        # TODO: Be able to read two or more blocks
+         data = &quot;&quot;
+         while 0 &lt; length:
+             if block_index not in self.blocks:
+                 if self.max_block &lt;= len(self.blocks):
+-                    # TODO: Remove oldest block
+-                    pass
++                    self.removeOldestBlock()
+                 self.file.seek(block_index * self.block_size)
+                 block_data = self.file.read(self.block_size)
+                 assert (len(block_data) == self.block_size) or self.file.tell() == self.file_size
+-                self.blocks[block_index] = block_data
++                self.blocks[block_index] = FileCacheEntry(block_index, block_data)
+             else:
+-                block_data = self.blocks[block_index]
++                block_data = self.blocks[block_index].data
++            self.blocks[block_index].used = self.blocks[block_index].used + 1
+             if block_position != 0 or length != self.block_size:
+                 end = block_position+length
+                 if self.block_size &lt; end:
+@@ -47,7 +54,7 @@
+         return data
+ 
+ class FileStream(Stream):
+-    def __init__(self, file, filename=None, copy=None):
++    def __init__(self, file, filename=None, copy=None, use_cache=True):
+         &quot;&quot;&quot;
+         Endian: See setEndian function. 
+         &quot;&quot;&quot;
+@@ -68,18 +75,22 @@
+                 self._end = self._size-1
+             else:
+                 self._end = 0
+-            self._cache = FileCache(self._file, self._size)
++            if use_cache:
++                self._cache = FileCache(self._file, self._size, 4096, 10)
++            else:
++                self._cache = None
+ 
+     def getType(self):
+         return &quot;%s (%s)&quot; % \
+             (self.__class__.__name__, self.filename)
+         
+     def read(self, size, seek=True):
+-        data = self._cache.read(self._seed, size)
+-#        self._file.seek(self._seed) ; data = self._file.read(size)
++        if self._cache != None:
++            data = self._cache.read(self._seed, size)
++        else:
++            self._file.seek(self._seed) ; data = self._file.read(size)
+         if seek:
+             self._seed = self._seed + len(data)
+-#            assert self._seed == self._file.tell()
+         return data            
+ 
+     def clone(self):
+@@ -87,27 +98,28 @@
+ 
+     def seek(self, pos, where=0):
+         &quot;&quot;&quot; Read file seek document to understand where. &quot;&quot;&quot;
+-        #&#160;TODO: Don't really seek
+         if where==0:
+             self._seed = pos
+         elif where==1:
+             self._seed = self._seed + pos
+         else:
+             self._seed = self._size - pos
+-        if self._size &lt; self._seed:
++        if self._seed &lt; 0 or self._size &lt; self._seed:
+             raise StreamError(&quot;Error when seek to (%s,%s) in a stream.&quot; % (pos, where))
+ 
+     def tell(self):
+         return self._seed
+ 
+     def getN(self, size, seek=True):
+-        data = self._cache.read(self._seed, size)
+-#        self._file.seek(self._seed) ; data = self._file.read(size)
+-#        if len(data) != size:
+-#            raise StreamError(&quot;Can't read %u bytes in a stream (get %u bytes).&quot; % (size, len(data)))
++        if self._cache != None:
++            data = self._cache.read(self._seed, size)
++        else:
++            self._file.seek(self._seed)
++            data = self._file.read(size)
++        if len(data) != size:
++            raise StreamError(&quot;Can't read %u bytes in a stream (get %u bytes).&quot; % (size, len(data)))
+         if seek:
+             self._seed = self._seed + size
+-#            assert self._seed == self._file.tell()
+         return data
+ 
+     def getSize(self):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000234.html">[Happyboom-svn] r328 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000236.html">[Happyboom-svn] r330 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#235">[ date ]</a>
+              <a href="thread.html#235">[ thread ]</a>
+              <a href="subject.html#235">[ subject ]</a>
+              <a href="author.html#235">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

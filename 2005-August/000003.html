@@ -1,0 +1,1068 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r95 - in happyboom/trunk: . boomboom boomboom/server boomboom/server/agents
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-August/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r95%20-%20in%20happyboom/trunk%3A%20.%20boomboom%20boomboom/server%20boomboom/server/agents&In-Reply-To=%3C200508050918.j759IYbg024844%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000002.html">
+   <LINK REL="Next"  HREF="000004.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r95 - in happyboom/trunk: . boomboom boomboom/server boomboom/server/agents</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r95%20-%20in%20happyboom/trunk%3A%20.%20boomboom%20boomboom/server%20boomboom/server/agents&In-Reply-To=%3C200508050918.j759IYbg024844%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r95 - in happyboom/trunk: . boomboom boomboom/server boomboom/server/agents">dboucard at berlios.de
+       </A><BR>
+    <I>Fri Aug  5 11:18:34 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000002.html">[Happyboom-svn] r94 - happyboom/trunk/boomboom/client/items
+</A></li>
+        <LI>Next message: <A HREF="000004.html">[Happyboom-svn] r96 - in happyboom/trunk: . boomboom
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3">[ date ]</a>
+              <a href="thread.html#3">[ thread ]</a>
+              <a href="subject.html#3">[ subject ]</a>
+              <a href="author.html#3">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-08-05 11:18:23 +0200 (Fri, 05 Aug 2005)
+New Revision: 95
+
+Added:
+   happyboom/trunk/boomboom/boomboom_server.py
+   happyboom/trunk/boomboom/server/
+   happyboom/trunk/boomboom/server/__init__.py
+   happyboom/trunk/boomboom/server/agents/
+   happyboom/trunk/boomboom/server/agents/__init__.py
+   happyboom/trunk/boomboom/server/agents/character.py
+   happyboom/trunk/boomboom/server/agents/game.py
+   happyboom/trunk/boomboom/server/agents/projectile.py
+   happyboom/trunk/boomboom/server/agents/weapon.py
+   happyboom/trunk/boomboom/server/agents/world.py
+   happyboom/trunk/boomboom/server/bb_agent.py
+   happyboom/trunk/boomboom/server/bb_server.py
+Removed:
+   happyboom/trunk/boomboom_server.py
+   happyboom/trunk/boomboom_server/
+Log:
+Rewrite of the BoomBoom server (undocumented)
+
+
+Added: happyboom/trunk/boomboom/boomboom_server.py
+===================================================================
+--- happyboom/trunk/boomboom/boomboom_server.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/boomboom_server.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,103 @@
++#!/usr/bin/python
++# -*- coding: ISO-8859-1 -*-
++VERSION=&quot;0.2.0&quot;
++PROGRAM=&quot;BoomBoom&quot;
++
++from server import BoomBoomServer
++import getopt
++import sys
++
++def usage(defval):
++	print &quot;%s server version %s&quot; % (PROGRAM, VERSION)
++	print &quot;&quot;
++	print &quot;Usage: %s [-v,--verbose] [-d,--debug] [-h,--help] [--version]&quot; % (sys.argv[0])
++	print &quot;&quot;
++	print &quot;Arguments :&quot;
++	print &quot;\t-h,--help         : Show this help&quot;
++	print &quot;\t--version         : Show the program version&quot;
++	print &quot;\t-v,--verbose      : Activate verbose mode&quot;
++	print &quot;\t-d,--debug        : Activate debug mode&quot;
++	print &quot;&quot;
++	print &quot;Other arguments :&quot;
++	print &quot;\t--max-input NB    : Max input clients (default %u)&quot; % (defval[&quot;max-input&quot;])
++	print &quot;\t--max-display NB     : Max display clients (default %u)&quot; % (defval[&quot;max-display&quot;])
++	print &quot;\t--display-port PORT  : Port number for display clients (default %u)&quot; % (defval[&quot;display-port&quot;])
++	print &quot;\t--input-port PORT : Port number for input clients (default %u)&quot; % (defval[&quot;input-port&quot;])
++
++def parseArgs(val):
++	import getopt
++	def_val = val.copy()
++	
++	try:
++		short = &quot;hdv&quot;
++		long = [&quot;debug&quot;, &quot;verbose&quot;, &quot;help&quot;, &quot;version&quot;, \
++			&quot;max-input=&quot;, &quot;max-display=&quot;, \
++			&quot;display-port=&quot;, &quot;input-port=&quot;]
++		opts, args = getopt.getopt(sys.argv[1:], short, long)
++	except getopt.GetoptError:
++		usage(def_val)
++		sys.exit(2)
++	
++	if 0&lt;len(args):
++		usage(def_val)
++		sys.exit(2)
++		
++	for o, a in opts:
++		if o in (&quot;-h&quot;, &quot;--help&quot;):
++			usage(def_val)
++			sys.exit()
++		if o == &quot;--version&quot;:
++			print &quot;%s server version %s&quot; % (PROGRAM, VERSION)
++			sys.exit()
++		if o == &quot;--input-port&quot;:
++			a = int(a)
++			if a == val[&quot;displayPort&quot;]:
++				print &quot;Sorry, input port should be different than display port!&quot;
++			else:
++				val[&quot;inputPort&quot;] = a 			
++		if o == &quot;--display-port&quot;:
++			a = int(a)
++			if a == val[&quot;inputPort&quot;]:
++				print &quot;Sorry, display port should be different than input port!&quot;
++			else:
++				val[&quot;displayPort&quot;] = a 
++		if o == &quot;--max-input&quot;:
++			a = int(a)
++			if a &lt; 1: 
++				a=1
++			elif 100 &lt; a:
++				a = 100
++			val[&quot;maxInput&quot;] = a
++		if o == &quot;--max-display&quot;:
++			a = int(a)
++			if a &lt; 1: 
++				a=1
++			elif 100 &lt; a:
++				a = 100
++			val[&quot;maxDisplay&quot;] = a
++		if o in (&quot;-v&quot;, &quot;--verbose&quot;):
++			val[&quot;verbose&quot;] = True
++		if o in (&quot;-d&quot;, &quot;--debug&quot;):
++			val[&quot;debug&quot;] = True
++	return val
++
++def main():
++	val = { \
++		&quot;displayPort&quot;: 12430, \
++		&quot;inputPort&quot;: 12431, \
++		&quot;maxInput&quot;: 4, \
++		&quot;maxDisplay&quot;: 4, \
++		&quot;verbose&quot;: False,
++		&quot;debug&quot;: False}
++	arg = parseArgs(val)
++	
++	server = BoomBoomServer(**arg)
++
++	try:
++		server.start()
++	except KeyboardInterrupt:
++		print &quot;Program interrupted (CTRL+C).&quot;
++	server.stop()
++	print &quot;Server quit.&quot;
++
++if __name__==&quot;__main__&quot;: main()
+
+
+Property changes on: happyboom/trunk/boomboom/boomboom_server.py
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: happyboom/trunk/boomboom/server/__init__.py
+===================================================================
+--- happyboom/trunk/boomboom/server/__init__.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/__init__.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,2 @@
++from bb_server import BoomBoomServer
++from bb_agent import BoomBoomAgent, BoomBoomMessage
+
+Added: happyboom/trunk/boomboom/server/agents/__init__.py
+===================================================================
+--- happyboom/trunk/boomboom/server/agents/__init__.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/agents/__init__.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,5 @@
++from projectile import Projectile
++from weapon import Weapon
++from world import World
++from character import Character
++from game import Game
+\ No newline at end of file
+
+Added: happyboom/trunk/boomboom/server/agents/character.py
+===================================================================
+--- happyboom/trunk/boomboom/server/agents/character.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/agents/character.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,47 @@
++from server.bb_agent import BoomBoomAgent, BoomBoomMessage
++
++class Character(BoomBoomAgent):
++	def __init__(self, x, team, **args):
++		BoomBoomAgent.__init__(self, &quot;character&quot;, **args)
++		self.x = x
++		self.y = 0
++		self.width = 28
++		self.height = 29
++		self.team = team
++		self.next = False
++		self.current = False
++		
++	def born(self):
++		BoomBoomAgent.born(self)
++		self.requestActions(&quot;game&quot;)
++		self.requestActions(&quot;network&quot;)
++		self.sendBroadcastMessage(BoomBoomMessage(&quot;find_place&quot;, (self.x, self.width, self.height)), &quot;world&quot;)
++		self.sendBroadcastMessage(BoomBoomMessage(&quot;new_character&quot;, (self.id, self.team)), &quot;game&quot;)
++		self.sendBroadcastMessage(BoomBoomMessage(&quot;new_item&quot;, (self.type, self.id)), &quot;network&quot;)
++
++	def move(self, x, y, force=False):
++		if self.x == x and self.y == y and not force: return
++		self.x = x
++		self.y = y
++		self.sendBroadcastMessage(BoomBoomMessage(&quot;character_move&quot;, (&quot;%u,%i,%i&quot; % (self.id, self.x, self.y),)), &quot;network&quot;)
++		if self.current:
++			self.sendBBMessage(BoomBoomMessage(&quot;active_coord&quot;, (self.x, self.y)))
++
++	def sync(self):
++		self.move(self.x, self.y, force=True)
++
++	def msg_found_place(self, x, y):
++		self.move(x, y, True)
++		
++	def msg_next_character(self, char, team):
++		if self.id == char:
++			self.next = True
++		
++	def msg_next_turn(self):
++		self.current = self.next
++		if self.current:
++			self.sendBBMessage(BoomBoomMessage(&quot;active_coord&quot;, (self.x, self.y)))
++		self.next = False
++		
++	def msg_sync(self):
++		self.sync()
+\ No newline at end of file
+
+Added: happyboom/trunk/boomboom/server/agents/game.py
+===================================================================
+--- happyboom/trunk/boomboom/server/agents/game.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/agents/game.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,63 @@
++from server.bb_agent import BoomBoomAgent, BoomBoomMessage
++import traceback
++
++class Game(BoomBoomAgent):
++	def __init__(self, **args):
++		BoomBoomAgent.__init__(self, &quot;game&quot;, **args)
++		self.teams = []
++		self.characters = {}
++		self.next_team_pos = None
++		self.next_char_pos = {}
++		self.current = (None, None)
++
++	def born(self):
++		BoomBoomAgent.born(self)
++		self.requestActions(&quot;world&quot;)
++		self.requestActions(&quot;network&quot;)
++
++	def sendNextCharacter(self, char_pos, team_pos):
++		if self.next_team_pos != None:
++			self.current = (self.nextCharacter, self.nextTeam)
++		self.next_team_pos = team_pos
++		self.next_char_pos[self.nextTeam] = char_pos
++		self.sendBBMessage(BoomBoomMessage(&quot;next_character&quot;, (self.nextCharacter, self.nextTeam)))
++
++	def msg_sync(self):
++		self.sync()
++
++	def msg_new_character(self, character, team):
++		if team in self.teams:
++			self.characters[team].append(character)
++		else:
++			self.teams.append(team)
++			self.characters[team] = [character,]
++			self.next_char_pos[team] = 0
++
++	def sync(self):
++		char, team = self.current
++		self.sendBroadcastMessage(BoomBoomMessage(&quot;current_character&quot;, (char, team)), &quot;network&quot;)
++
++	def __getNextCharacter(self):
++		return self.characters[self.nextTeam][self.next_char_pos[self.nextTeam]]
++	nextCharacter = property(__getNextCharacter)
++
++	def __getNextTeam(self):
++		return self.teams[self.next_team_pos]
++	nextTeam = property(__getNextTeam)
++
++	def incCharacter(self):
++		tpos = (self.next_team_pos + 1) % 2
++		cpos = (self.next_char_pos[self.teams[tpos]] + 1) % len(self.characters[self.teams[tpos]])
++		self.sendNextCharacter(cpos, tpos)
++
++	def msg_hit_ground(self, x, y):
++		self.sendBBMessage(BoomBoomMessage(&quot;next_turn&quot;, ()))
++		self.incCharacter()
++		
++	def msg_start(self):
++		self.launchGame()
++
++	def launchGame(self):	
++		self.sendNextCharacter(0, 0)
++		self.sendBBMessage(BoomBoomMessage(&quot;next_turn&quot;, ()))
++		self.incCharacter()
+\ No newline at end of file
+
+Added: happyboom/trunk/boomboom/server/agents/projectile.py
+===================================================================
+--- happyboom/trunk/boomboom/server/agents/projectile.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/agents/projectile.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,76 @@
++from server.bb_agent import BoomBoomAgent, BoomBoomMessage
++import time
++import math
++
++class Projectile(BoomBoomAgent):
++	def __init__(self, **args):
++		BoomBoomAgent.__init__(self, &quot;projectile&quot;, **args)
++		self.x, self.y = 0, 0
++		self.start_pos = None
++		self.active = False
++		self.time = None
++		self.speed = None
++		self.weapon_angle = None
++		self.weapon_strength = None
++		self.mass = 10
++
++	def born(self):
++		BoomBoomAgent.born(self)
++		self.requestRole(&quot;command_manager&quot;)
++		self.requestActions(&quot;weapon&quot;)
++		self.requestActions(&quot;character&quot;)
++		self.requestActions(&quot;world&quot;)
++		self.requestActions(&quot;game&quot;)
++		self.requestActions(&quot;network&quot;)
++		self.sendBroadcastMessage(BoomBoomMessage(&quot;new_item&quot;, (self.type, self.id)), &quot;network&quot;)
++
++	def msg_strength(self, arg):
++		self.weapon_strength = int(arg) * 4
++		
++	def msg_angle(self, angle):
++		self.weapon_angle = (-int(angle)) * math.pi / 180
++
++	def msg_new(self, cmd):
++		if cmd == &quot;shoot&quot; and not self.active:
++			self.shoot()
++
++	def msg_active_coord(self, x, y):
++		self.start_pos = (x, y)
++
++	def msg_hit_ground(self, x, y):
++		self.setActive(False)
++
++	def setActive(self, active):
++		self.active = active
++		self.sendBBMessage(BoomBoomMessage(&quot;projectile_activate&quot;, (active,)))
++
++	def shoot(self):
++		if self.weapon_angle==None: return
++		if self.weapon_strength==None: return
++		self.move(self.start_pos[0], self.start_pos[1])
++		self.setActive(True)
++		self.time = time.time()
++		sx = self.weapon_strength * math.cos(self.weapon_angle)
++		sy = self.weapon_strength * math.sin(self.weapon_angle)
++		if self.start_pos[0] &gt; 300: # TODO: Bad test to know which character it is
++			sx = -sx
++		self.speed = (sx, sy,)
++
++	def move(self, x, y):
++		self.x = x
++		self.y = y
++		self.sendBBMessage(BoomBoomMessage(&quot;projectile_move&quot;, (x,y)))
++
++	def live(self):
++		BoomBoomAgent.live(self)
++		if self.active:
++			dt = time.time() - self.time
++			x = self.start_pos[0] +self.speed[0] * dt
++			y = self.start_pos[1] +self.speed[1] * dt +9.8*dt*dt*self.mass
++			self.move (x, y)
++
++	def sync(self):
++		self.setActive(self.active)
++
++	def msg_sync(self):
++		self.sync()
+\ No newline at end of file
+
+Added: happyboom/trunk/boomboom/server/agents/weapon.py
+===================================================================
+--- happyboom/trunk/boomboom/server/agents/weapon.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/agents/weapon.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,56 @@
++from server.bb_agent import BoomBoomAgent, BoomBoomMessage
++
++class Weapon(BoomBoomAgent):
++    def __init__(self, **args):
++        BoomBoomAgent.__init__(self, &quot;weapon&quot;, **args)
++        self.angle = None
++        self.strength = None
++        self.last_values = {}
++        self.currentTeam = None
++        self.nextTeam = None
++
++    def born(self):
++    	BoomBoomAgent.born(self)
++        self.requestRole(&quot;command_manager&quot;)
++        self.requestActions(&quot;game&quot;)
++        self.requestActions(&quot;network&quot;)
++        self.sendBroadcastMessage(BoomBoomMessage(&quot;new_item&quot;, (self.type, self.id)), &quot;network&quot;)
++
++    def msg_next_character(self, char, team):
++        self.nextTeam = team
++
++    def msg_next_turn(self):
++        self.last_values[self.currentTeam] = (self.angle, self.strength,)
++        self.currentTeam = self.nextTeam
++        angle, strength = self.last_values.get(self.currentTeam, (45, 50,))
++        self.updateAngle(angle)
++        self.updateStrength(strength)
++
++    def msg_new(self, cmd):
++        if cmd == &quot;move_left&quot;:
++            self.updateStrength (self.strength - 5)
++        if cmd == &quot;move_right&quot;:
++            self.updateStrength (self.strength + 5)
++        if cmd == &quot;move_down&quot;:
++            self.updateAngle (self.angle - 5)
++        if cmd == &quot;move_up&quot;:
++            self.updateAngle (self.angle + 5)
++
++    def updateAngle(self, angle):
++        if angle &lt; -80: angle = -80
++        elif 80 &lt; angle: angle = 80
++        self.angle = angle 
++        self.sendBBMessage(BoomBoomMessage(&quot;angle&quot;, (angle,)))
++
++    def updateStrength(self, strength):
++        if strength &lt; 10: strength = 10
++        elif 100 &lt; strength: strength = 100
++        self.strength = strength
++        self.sendBBMessage(BoomBoomMessage(&quot;strength&quot;, (strength,)))
++
++    def sync(self):
++        self.updateStrength(self.strength)
++        self.updateAngle(self.angle)
++
++    def msg_sync(self):
++        self.sync()
+\ No newline at end of file
+
+Added: happyboom/trunk/boomboom/server/agents/world.py
+===================================================================
+--- happyboom/trunk/boomboom/server/agents/world.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/agents/world.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,95 @@
++from server.bb_agent import BoomBoomAgent, BoomBoomMessage
++import random
++
++class Building:
++	def __init__(self, x, y, height, width):
++		self.x = x
++		self.y = y
++		self.width = width
++		self.height = height
++
++	def isPartOf(self, x, y):
++		if x &lt; self.x:
++			return False
++		if self.x + self.width &lt; x:
++			return False
++		if y &lt; self.y:
++			return False
++		if self.y + self.height &lt; y:
++			return False
++		return True
++
++
++class World(BoomBoomAgent):
++	def __init__(self, **args):
++		BoomBoomAgent.__init__(self, &quot;world&quot;, **args)
++		self.buildings = None
++		self.height = 350
++		self.width = 640
++		self.generate()
++
++	def born(self):
++		BoomBoomAgent.born(self)
++		self.requestActions(&quot;projectile&quot;)
++		self.requestActions(&quot;game&quot;)
++		self.requestActions(&quot;network&quot;)
++		self.sendBroadcastMessage(BoomBoomMessage(&quot;new_item&quot;, (self.type, self.id)), &quot;network&quot;)
++
++	def generate(self):
++		width = self.width
++		x = 0
++		self.buildings = []
++		building_hmin = 100
++		building_hmax = self.height-100
++		building_wmin = 40
++		building_wmax = 60
++		while building_wmin&lt;width:
++			w = random.randint(building_wmin, building_wmax)
++			h = random.randint(building_hmin, building_hmax)
++			building = Building(x, self.height-h, h, w)
++			self.buildings.append(building)
++			width = width - w
++			x = x + w
++		if 0 &lt; width:
++			h = random.randint(building_hmin, building_hmax)
++			building = Building(x, self.height-h, h, width)
++			self.buildings.append(building)
++
++	def hitGround(self, x, y):
++		# Testing screen bounds
++		if self.height &lt;= y or x &lt; 0 or self.width &lt;= x:
++			return True
++		# Testing building collision
++		for b in self.buildings:
++			if b.isPartOf(x,y):
++				return True
++		return False	
++
++	def sync(self):
++		msg = &quot;&quot;
++		for b in self.buildings:
++			if len(msg) != 0: msg = msg + &quot;;&quot;
++			msg = msg + &quot;%i,%i,%i,%i&quot; % (b.x, b.y, b.width, b.height)
++		self.sendBroadcastMessage(BoomBoomMessage(&quot;world_create&quot;, (msg,)), &quot;network&quot;)
++
++	def msg_find_place(self, x0, width, height):
++		if x0 &lt; 0:
++			x0 = self.width + x0
++		else:
++			x0 = x0
++		x1 = x0 + width
++		x = -1
++		y = -1
++		for b in self.buildings:
++			if x1 &lt;= b.x + b.width and width &lt; b.width:
++				x = int(b.x + (b.width - width) / 2)
++				y = b.y - height
++				break
++		self.sendMessage(BoomBoomMessage(&quot;found_place&quot;, (x, y)), self.currentMessage.sender)
++				
++	def msg_projectile_move(self, x, y):
++		if self.hitGround(x, y):
++			self.sendBBMessage(BoomBoomMessage(&quot;hit_ground&quot;, (x, y)))
++
++	def msg_sync(self):
++		self.sync()
+\ No newline at end of file
+
+Added: happyboom/trunk/boomboom/server/bb_agent.py
+===================================================================
+--- happyboom/trunk/boomboom/server/bb_agent.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/bb_agent.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,24 @@
++from pysma import ActionAgent, ActionMessage
++
++class BoomBoomMessage(ActionMessage):
++	def __init__(self, action, arg, kw={}):
++		ActionMessage.__init__(self, action, arg, kw)
++
++class BoomBoomAgent(ActionAgent):
++	def __init__(self, type, **args):
++		ActionAgent.__init__(self, prefix=&quot;msg_&quot;)
++		self.type = type
++		self.__debug = args.get(&quot;debug&quot;, False)
++
++	def born(self):
++		self.requestRole(self.type)
++
++	def requestActions(self, type):
++		self.requestRole(&quot;%s_listener&quot; %type)
++		
++	def sendBBMessage(self, message):
++		self.sendBroadcastMessage(message, &quot;%s_listener&quot; %self.type)
++
++	def messageReceived(self, msg):
++		if self.__debug:
++			print &quot;Unhandled message : %s -- %s&quot; %(type(self), msg)
+\ No newline at end of file
+
+Added: happyboom/trunk/boomboom/server/bb_server.py
+===================================================================
+--- happyboom/trunk/boomboom/server/bb_server.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/bb_server.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,326 @@
++from bb_agent import BoomBoomAgent, BoomBoomMessage
++from agents import Character, Projectile, Weapon, World, Game
++from net import io, io_udp, net_buffer
++from pysma import Kernel, DummyScheduler
++import re, random, thread, traceback, time
++
++class BoomBoomServer(BoomBoomAgent):
++	def __init__(self, maxDisplay=2, displayPort=12430, maxInput=2, inputPort=12431, verbose=False, debug=False):
++		BoomBoomAgent.__init__(self, &quot;network&quot;)
++		self.__display_io = io_udp.IO_UDP(is_server=True)
++		self.__input_io = io_udp.IO_UDP(is_server=True)
++		self.__input_buffer = net_buffer.NetBuffer()
++		self.__display_buffer = net_buffer.NetBuffer()
++		self.__input_protocol_version = &quot;0.1.4&quot;
++		self.__display_protocol_version = &quot;0.1.4&quot;
++		self.__debug = debug
++		self.__display_io.debug = debug
++		self.__input_io.debug = debug
++		self.__verbose = verbose
++		self.__display_io.verbose = verbose
++		self.__input_io.verbose = verbose
++		self.__inputs = []
++		self.__items = []
++		self.__stopped = False
++		self.__stoplock = thread.allocate_lock()
++		self.__supportedFeatures = {}
++		self.maxDisplay = maxDisplay
++		self.displayPort = displayPort
++		self.maxInput = maxInput
++		self.inputPort = inputPort
++		self.started = False
++		self.nextChar = None
++		random.seed()
++		Kernel().addAgent(DummyScheduler(sleep=0.01))
++		
++	def born(self):
++		BoomBoomAgent.born(self)
++		self.requestActions(&quot;game&quot;)
++		self.requestActions(&quot;weapon&quot;)
++		self.requestActions(&quot;character&quot;)
++		self.requestActions(&quot;world&quot;)
++		self.requestActions(&quot;projectile&quot;)
++		
++	def start(self):
++		if self.__verbose: print &quot;[*] Starting server...&quot;
++		self.initIO()
++		self.createAgents()
++		print &quot;[*] Server started&quot;
++		
++		self.__stoplock.acquire()
++		running = not self.__stopped
++		self.__stoplock.release()
++		while running:
++			self.processInputs()
++			time.sleep(0.01)
++			self.__stoplock.acquire()
++			running = not self.__stopped
++			self.__stoplock.release()
++
++	def stop(self):
++		self.__stoplock.acquire()
++		if self.__stopped:
++			self.__stoplock.release()
++			return
++		self.__stopped = True
++		self.__stoplock.release()
++		print &quot;[*] Stopping server...&quot;
++		Kernel.instance.stopKernel()
++		self.sendNetworkMessage(&quot;game&quot;, &quot;Stop&quot;, skippable=True)
++		self.__display_io.stop()
++		self.__input_io.stop()
++		if self.__verbose: print &quot;[*] Server stopped&quot;
++
++	def initIO(self):
++		if self.__verbose: print &quot;[*] Starting display server&quot;
++		self.__display_io.name = &quot;display server&quot;
++		self.__display_io.on_client_connect = self.openDisplay
++		self.__display_io.on_client_disconnect = self.closeDisplay
++		self.__display_io.on_new_packet = self.recvDisplayPacket
++		self.__display_io.connect('', self.displayPort)
++		if self.__verbose: print &quot;[*] Starting input server&quot;
++		self.__input_io.name = &quot;input server&quot;
++		self.__input_io.on_client_connect = self.openInput
++		self.__input_io.on_client_disconnect = self.closeInput
++		self.__input_io.on_new_packet = self.recvInputPacket
++		self.__input_io.connect('', self.inputPort)
++		thread.start_new_thread(self.run_io_thread, ())
++		
++	def createAgents(self):
++		if self.__verbose: print &quot;[*] Creating agents&quot;
++		Kernel.instance.addAgent(self)
++		self.addAgent(Game(debug=self.__debug))
++		self.addAgent(World(debug=self.__debug))
++		self.addAgent(Character(100, 1, debug=self.__debug))
++		self.addAgent(Character(-150, 2, debug=self.__debug))
++		self.addAgent(Weapon(debug=self.__debug))
++		self.addAgent(Projectile(debug=self.__debug))
++		self.sendBroadcastMessage(BoomBoomMessage(&quot;start&quot;, ()), &quot;game&quot;)
++		
++	def openDisplay(self, client):
++		thread.start_new_thread( self.__clientChallenge, (client,self.__do_openDisplay,&quot;DISPLAY&quot;,))
++
++	def openInput(self, client):
++		thread.start_new_thread( self.__clientChallenge, (client,self.__do_openInput,&quot;INPUT&quot;,))
++		
++	def closeInput(self, client):
++		if self.__verbose: print &quot;[*] Input %s disconnected.&quot; % (client.name)
++		if not (client in self.__inputs): return
++		self.__inputs.remove (client)
++		txt = &quot;Client %s (input) leave us.&quot; % (client.name)
++		self.sendText(txt)
++
++	def closeDisplay(self, client):
++		if self.__verbose: print &quot;[*] Display %s disconnected.&quot; % (client.name)
++		txt = &quot;Client %s (display) leave us.&quot; % (client.name)
++		self.sendText(txt)
++		
++	def __clientChallenge(self, client, func, client_type):
++		try:
++			func(client)
++		except Exception, msg:
++			print &quot;EXCEPTION WHEN %s TRY TO CONNECT :&quot; % (client_type)
++			print msg
++			print &quot;--&quot;
++			traceback.print_exc()
++			self.stop()
++
++	# Function which should be called in a thread
++	def run_io_thread(self):
++		try:
++			while self.__input_io.isRunning() and self.__display_io.isRunning():
++				self.__input_io.live()				
++				self.__display_io.live()				
++				time.sleep(0.001)
++		except Exception, msg:
++			print &quot;EXCEPTION IN IO THREAD :&quot;
++			print msg
++			print &quot;--&quot;			
++			traceback.print_exc()
++			self.stop()
++
++	def __do_openDisplay(self, client):
++		if self.__verbose: print &quot;[*] Display %s try to connect ...&quot; % (client.name)
++		
++		self.__display_buffer.clear(client.addr)
++		
++		# Ask protocol version
++		msg = self.createMsg(&quot;agent_manager&quot;, &quot;AskVersion&quot;)
++		client.send(io.Packet(msg))
++		answer = self.readDisplayAnswer(client)
++		if answer != self.__display_protocol_version:
++			txt = &quot;Sorry, you don't have same protocol version (%s VS %s)&quot; \
++				% (answer, self.__display_protocol_version)
++			self.sendText(txt)
++			client.disconnect()
++			return
++		
++		# ask client name
++		msg = self.createMsg(&quot;agent_manager&quot;, &quot;AskName&quot;)
++		client.send(io.Packet(msg))
++		name = self.readDisplayAnswer(client)
++		if name not in (&quot;-&quot;, &quot;&quot;): client.name = name
++
++		self.registerFeature(client, &quot;agent_manager&quot;)
++		self.registerFeature(client, &quot;game&quot;)
++		for type, id in self.__items:
++			msg = self.createMsg(&quot;agent_manager&quot;, &quot;Create&quot;, &quot;%s:%u&quot; % (type, id))
++			client.send (io.Packet(msg))
++			answer = self.readDisplayAnswer(client)
++			if answer == &quot;yes&quot;: 
++				role = self.readDisplayAnswer(client)
++				while role != &quot;.&quot;:
++					self.registerFeature(client, role)
++					role = self.readDisplayAnswer(client)
++
++		msg = self.createMsg(&quot;game&quot;, &quot;Start&quot;)
++		client.send(io.Packet(msg))
++			
++		txt = &quot;Welcome to new (display) client : %s&quot; % (client.name)
++		self.sendText(txt)
++		if self.__verbose: print &quot;[*] Display %s connected&quot; % (client.name)
++		self.sendBBMessage(BoomBoomMessage(&quot;sync&quot;, ()))
++
++	def __do_openInput(self, client):
++		if self.__verbose: print &quot;[*] Input %s try to connect ...&quot; % (client.name)
++
++		self.__input_buffer.clear(client.addr)
++
++		client.send(io.Packet(&quot;Version?&quot;))
++		answer = self.readInputAnswer(client)
++		if answer == None:
++			if self.__verbose: print &quot;[*] Client doesn't sent version&quot;
++			client.disconnect()
++			return
++		if answer != self.__input_protocol_version:
++			txt = &quot;Sorry, you don't have same protocol version (%s VS %s)&quot; \
++				% (answer, self.__input_protocol_version)
++			self.sendText(txt, client)
++			client.disconnect()
++			return	
++		client.send(io.Packet(&quot;OK&quot;))
++		
++		# ask client name
++		client.send(io.Packet(&quot;Name?&quot;))
++		name = self.readInputAnswer(client)
++		if name == None:
++			if self.__verbose: print &quot;[*] Client doesn't sent name&quot;
++			client.disconnect()
++			return
++		if name not in (&quot;-&quot;, &quot;&quot;): client.name = name
++		client.send(io.Packet(&quot;OK&quot;))
++
++		self.__inputs.append (client)
++		if self.__verbose: print &quot;Input %s connected.&quot; % (client.name)
++		txt = &quot;Welcome to new (input) client : %s&quot; % (client.name)
++		self.sendText(txt)
++		
++	# Convert a (role,type,arg) to string (to be sent throw network)
++	def createMsg(self, role, type, arg=None):
++		if arg != None:
++			return &quot;%s:%s:%s&quot; % (role, type, arg)
++		else:
++			return &quot;%s:%s&quot; % (role, type)
++		
++	def recvInputPacket(self, packet):
++		self.__input_buffer.append(packet.recv_from.addr, packet)
++		
++	def recvDisplayPacket(self, packet):
++		msg = packet.data
++		self.__display_buffer.append(packet.recv_from.addr, packet)
++
++	def readDisplayAnswer(self, client):
++		return self.__readClientAnswer(self.__display_buffer, client)
++		
++	def readInputAnswer(self, client):
++		return self.__readClientAnswer(self.__input_buffer, client)
++
++	def __readClientAnswer(self, buffer, client, timeout=3.000):
++		answer = buffer.readBlocking(client.addr, timeout)
++		if answer==None: return None
++		answer = answer.data
++		return answer
++
++	def sendText(self, txt, client=None):
++		if client != None:
++			msg = self.createMsg(&quot;agent_manager&quot;, &quot;Text&quot;, txt)
++			client.send(io.Packet(msg))
++		else:
++			self.sendNetworkMessage(&quot;agent_manager&quot;, &quot;Text&quot;, txt)
++
++	def processInputCmd(self, input, cmd):
++		cmd_ok = (\
++			&quot;move_left&quot;, &quot;move_right&quot;, &quot;move_up&quot;, &quot;move_down&quot;,
++			&quot;shoot&quot;, )
++		if self.__verbose and cmd != &quot;Ping?&quot;:
++			print &quot;Command from %s: %s&quot; % (input.name, cmd)
++		if re.compile(&quot;^chat:(.*)$&quot;).match(cmd) != None:
++			print &quot;New chat message: %s&quot; % (r.group(1))
++			self.sendNetworkMessage(&quot;chat_server&quot;, &quot;new&quot;, r.group(1))
++		elif cmd in cmd_ok:	self.sendBroadcastMessage(BoomBoomMessage(&quot;new&quot;, (cmd,)), &quot;command_manager&quot;)
++		
++	def processInputs(self):
++		inputs = self.__inputs[:]
++		for client in inputs:
++			packets = self.__input_buffer.readNonBlocking(client.addr)
++
++			for packet in packets:	
++				self.processInputCmd (packet.recv_from, packet.data)
++
++	def registerFeature(self, client, role):
++		if role in self.__supportedFeatures:
++			if client not in self.__supportedFeatures[role]:
++				self.__supportedFeatures[role].append(client)
++		else:
++			self.__supportedFeatures[role] = [client,]
++
++	def sendNetworkMessage(self, role, type, arg=None, skippable=False):
++		msg = self.createMsg(role, type, arg)
++		clients = self.__supportedFeatures.get(role, ())
++		for client in clients:
++			client.send (io.Packet(msg, skippable=skippable))
++						
++	def msg_next_character(self, char, team):
++		if self.__debug: print &quot;Next character : %s,%s&quot; %(char, team)
++		self.nextChar = char
++						
++	def msg_next_turn(self):
++		if self.__debug: print &quot;Next turn : %s&quot; %self.nextChar
++		self.sendNetworkMessage(&quot;game&quot;, &quot;next_turn&quot;)
++		self.sendNetworkMessage(&quot;game&quot;, &quot;active_character&quot;, self.nextChar)
++		
++	def msg_hit_ground(self, x, y):
++		if self.__debug: print &quot;Hit ground : %s,%s&quot; %(x, y)
++		self.sendNetworkMessage(&quot;projectile&quot;, &quot;hit_ground&quot;)
++	
++	def msg_projectile_move(self, x, y):
++		if self.__debug: print &quot;Projectile move : %s,%s&quot; %(x, y)
++		self.sendNetworkMessage(&quot;projectile&quot;, &quot;move&quot;, &quot;%u,%u&quot; %(x,y), True)
++		
++	def msg_projectile_activate(self, flag):
++		if self.__debug: print &quot;Projectile activate : %s&quot; %flag
++		self.sendNetworkMessage(&quot;projectile&quot;, &quot;activate&quot;, &quot;%u&quot; %(flag))
++		
++	def msg_angle(self, a):
++		if self.__debug: print &quot;Weapon angle : %s&quot; %a
++		self.sendNetworkMessage(&quot;weapon&quot;, &quot;angle&quot;, a)
++		
++	def msg_strength(self, s):
++		if self.__debug: print &quot;Weapon strength : %s&quot; %s
++		self.sendNetworkMessage(&quot;weapon&quot;, &quot;force&quot;, s)
++		
++	def msg_world_create(self, m):
++		if self.__debug: print &quot;World create : %s&quot; %m
++		self.sendNetworkMessage(&quot;world&quot;, &quot;create&quot;, m)
++		
++	def msg_character_move(self, m):
++		if self.__debug: print &quot;Character move : %s&quot; %m
++		self.sendNetworkMessage(&quot;character&quot;, &quot;move&quot;, m)
++		
++	def msg_new_item(self, type, id):
++		if self.__debug: print &quot;New item : %s,%s&quot; %(type, id)
++		self.__items.append((type, id))
++		
++	def msg_current_character(self, char, team):
++		if self.__debug: print &quot;Current character : %s,%s&quot; %(char, team)
++		self.sendNetworkMessage(&quot;game&quot;, &quot;active_character&quot;, char)
+\ No newline at end of file
+
+Deleted: happyboom/trunk/boomboom_server.py
+===================================================================
+--- happyboom/trunk/boomboom_server.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom_server.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -1,106 +0,0 @@
+-#!/usr/bin/python
+-# -*- coding: ISO-8859-1 -*-
+-VERSION=&quot;0.0.0&quot;
+-PROGRAM=&quot;BoomBoom&quot;
+-
+-import time
+-from boomboom_server import *
+-import getopt
+-import sys
+-
+-def usage(defval):
+-	print &quot;%s server version %s&quot; % (PROGRAM, VERSION)
+-	print &quot;&quot;
+-	print &quot;Usage: %s [-v,--verbose] [-d,--debug] [-h,--help]&quot; % (sys.argv[0])
+-	print &quot;&quot;
+-	print &quot;Arguments :&quot;
+-	print &quot;\t-h,--help         : Show this help&quot;
+-	print &quot;\t-v,--verbose      : Activate verbose mode&quot;
+-	print &quot;\t-d,--debug        : Activate debug mode&quot;
+-	print &quot;&quot;
+-	print &quot;Other arguments :&quot;
+-	print &quot;\t--max-input NB    : Max input clients (default %u)&quot; % (defval[&quot;max-input&quot;])
+-	print &quot;\t--max-view NB     : Max view clients (default %u)&quot; % (defval[&quot;max-view&quot;])
+-	print &quot;\t--view-port PORT  : Port number for view clients (default %u)&quot; % (defval[&quot;view-port&quot;])
+-	print &quot;\t--input-port PORT : Port number for input clients (default %u)&quot; % (defval[&quot;input-port&quot;])
+-
+-def parseArgs(val):
+-	import getopt
+-	def_val = val.copy()
+-	
+-	try:
+-		short = &quot;hdv&quot;
+-		long = [&quot;debug&quot;, &quot;verbose&quot;, &quot;help&quot;, \
+-			&quot;max-input=&quot;, &quot;max-view=&quot;, \
+-			&quot;view-port=&quot;, &quot;input-port=&quot;]
+-		opts, args = getopt.getopt(sys.argv[1:], short, long)
+-	except getopt.GetoptError:
+-		usage(def_val)
+-		sys.exit(2)
+-	
+-	if 0&lt;len(args):
+-		usage(def_val)
+-		sys.exit(2)
+-		
+-	for o, a in opts:
+-		if o == &quot;--help&quot;:
+-			usage(def_val)
+-			sys.exit()
+-		if o == &quot;--input-port&quot;:
+-			a = int(a)
+-			if a == val[&quot;view-port&quot;]:
+-				print &quot;Sorry, input port should be different than view port!&quot;
+-			else:
+-				val[&quot;input-port&quot;] = a 			
+-		if o == &quot;--view-port&quot;:
+-			a = int(a)
+-			if a == val[&quot;input-port&quot;]:
+-				print &quot;Sorry, view port should be different than input port!&quot;
+-			else:
+-				val[&quot;view-port&quot;] = a 
+-		if o == &quot;--max-input&quot;:
+-			a = int(a)
+-			if a &lt; 1: 
+-				a=1
+-			elif 100 &lt; a:
+-				a = 100
+-			val[&quot;max-input&quot;] = a
+-		if o == &quot;--max-view&quot;:
+-			a = int(a)
+-			if a &lt; 1: 
+-				a=1
+-			elif 100 &lt; a:
+-				a = 100
+-			val[&quot;max-view&quot;] = a
+-		if o in (&quot;-v&quot;, &quot;--verbose&quot;):
+-			val[&quot;verbose&quot;] = True
+-		if o in (&quot;-d&quot;, &quot;--debug&quot;):
+-			val[&quot;debug&quot;] = True
+-	return val
+-
+-def main():
+-	val = { \
+-		&quot;view-port&quot;: 12430, \
+-		&quot;input-port&quot;: 12431, \
+-		&quot;max-input&quot;: 4, \
+-		&quot;max-view&quot;: 4, \
+-		&quot;verbose&quot;: False,
+-		&quot;debug&quot;: False}
+-	arg = parseArgs(val)
+-	
+-	server = BoomBoomServer()
+-	server.setVerbose(arg[&quot;verbose&quot;])
+-	server.setDebug(arg[&quot;debug&quot;])
+-
+-	server.start(arg)
+-	try:
+-		while server.quit==False:
+-			server.live()
+-			time.sleep(0.010)
+-	except KeyboardInterrupt:
+-		print &quot;Program interrupted (CTRL+C).&quot;
+-		pass
+-	server.stop()
+-	print &quot;Server quit.&quot;
+-
+-if __name__==&quot;__main__&quot;: main()
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000002.html">[Happyboom-svn] r94 - happyboom/trunk/boomboom/client/items
+</A></li>
+	<LI>Next message: <A HREF="000004.html">[Happyboom-svn] r96 - in happyboom/trunk: . boomboom
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3">[ date ]</a>
+              <a href="thread.html#3">[ thread ]</a>
+              <a href="subject.html#3">[ subject ]</a>
+              <a href="author.html#3">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

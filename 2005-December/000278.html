@@ -1,0 +1,290 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r376 - in haypo/hachoir/trunk: . generic plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r376%20-%20in%20haypo/hachoir/trunk%3A%20.%20generic%20plugins&In-Reply-To=%3C200512290154.jBT1swdT016902%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000277.html">
+   <LINK REL="Next"  HREF="000279.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r376 - in haypo/hachoir/trunk: . generic plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r376%20-%20in%20haypo/hachoir/trunk%3A%20.%20generic%20plugins&In-Reply-To=%3C200512290154.jBT1swdT016902%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r376 - in haypo/hachoir/trunk: . generic plugins">haypo at berlios.de
+       </A><BR>
+    <I>Thu Dec 29 02:54:58 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000277.html">[Happyboom-svn] r375 - in haypo/hachoir/trunk: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000279.html">[Happyboom-svn] r377 - haypo/hachoir/trunk/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#278">[ date ]</a>
+              <a href="thread.html#278">[ thread ]</a>
+              <a href="subject.html#278">[ subject ]</a>
+              <a href="author.html#278">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-29 02:54:53 +0100 (Thu, 29 Dec 2005)
+New Revision: 376
+
+Added:
+   haypo/hachoir/trunk/generic/win32.py
+   haypo/hachoir/trunk/plugins/ico.py
+Modified:
+   haypo/hachoir/trunk/generic/image.py
+   haypo/hachoir/trunk/mime.py
+Log:
+Add ICO picture plugin.
+
+
+Modified: haypo/hachoir/trunk/generic/image.py
+===================================================================
+--- haypo/hachoir/trunk/generic/image.py	2005-12-29 00:49:11 UTC (rev 375)
++++ haypo/hachoir/trunk/generic/image.py	2005-12-29 01:54:53 UTC (rev 376)
+@@ -1,6 +1,8 @@
+ from chunk import FormatChunk
+ from filter import OnDemandFilter
+ 
++# TODO: Merge RGB and RGBA classes? (same for Palette and PaletteRGBA)
++
+ class RGB(OnDemandFilter):
+     name = {
+         0x000000: &quot;Black&quot;,
+@@ -28,3 +30,34 @@
+         OnDemandFilter.__init__(self, &quot;palette&quot;, &quot;Palette of %u RGB colors&quot; % count, stream, parent)
+         for i in range(0, count):
+             self.read(&quot;color[]&quot;, &quot;Color&quot;, (RGB,))
++            
++class RGBA(OnDemandFilter):
++    name = {
++        0x000000: &quot;Black&quot;,
++        0xFFFFFF: &quot;White&quot;
++    }
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;rgb_color&quot;, &quot;RGB color&quot;, stream, parent, &quot;!&quot;)
++        self.read(&quot;red&quot;, &quot;Red&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;green&quot;, &quot;Green&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;blue&quot;, &quot;Blue&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;alpha&quot;, &quot;Blue&quot;, (FormatChunk, &quot;uint8&quot;))
++
++    def getStaticSize(stream, args):
++        return 4
++    getStaticSize = staticmethod(getStaticSize)
++
++    def updateParent(self, chunk):
++        value = (self[&quot;red&quot;] &lt;&lt; 16) + (self[&quot;green&quot;] &lt;&lt; 8) + self[&quot;blue&quot;]
++        desc = &quot;RGBA color: &quot;
++        if value in RGB.name:
++            desc += RGB.name[value]
++        else:
++            desc += &quot;#%02X%02X%02X&quot; % (self[&quot;red&quot;], self[&quot;green&quot;], self[&quot;blue&quot;])
++        chunk.description = desc+&quot;, opacity=%u%%&quot; % (self[&quot;alpha&quot;]*100/256)
++
++class PaletteRGBA(OnDemandFilter):
++    def __init__(self, stream, parent, count):
++        OnDemandFilter.__init__(self, &quot;palette&quot;, &quot;Palette of %u RGBA colors&quot; % count, stream, parent)
++        for i in range(0, count):
++            self.read(&quot;color[]&quot;, &quot;Color&quot;, (RGBA,))
+
+Added: haypo/hachoir/trunk/generic/win32.py
+===================================================================
+--- haypo/hachoir/trunk/generic/win32.py	2005-12-29 00:49:11 UTC (rev 375)
++++ haypo/hachoir/trunk/generic/win32.py	2005-12-29 01:54:53 UTC (rev 376)
+@@ -0,0 +1,42 @@
++&quot;&quot;&quot;
++Windows (Win32) structures parsers.
++&quot;&quot;&quot;
++
++from filter import OnDemandFilter
++from chunk import FormatChunk, EnumChunk
++
++class BitmapInfoHeader(OnDemandFilter):
++    &quot;&quot;&quot; Win32 BITMAPINFOHEADER structure from GDI &quot;&quot;&quot;
++
++    compression_name = {
++        0: &quot;Uncompressed (RGB)&quot;,
++        1: &quot;RLE (8 bits)&quot;,
++        2: &quot;RLE (4 bits)&quot;,
++        3: &quot;Bitfields&quot;,
++        4: &quot;JPEG&quot;,
++        5: &quot;PNG&quot;
++    }
++    
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;icon_header3&quot;, &quot;Icon header3&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;hdr_size&quot;, &quot;Header size (in bytes) (=40)&quot;, (FormatChunk, &quot;uint32&quot;))
++        assert self[&quot;hdr_size&quot;] == 40
++        self.read(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;planes&quot;, &quot;Color planes&quot;, (FormatChunk, &quot;uint16&quot;))
++        assert self[&quot;planes&quot;] == 1
++        self.read(&quot;bpp&quot;, &quot;Bits/pixel&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;compression&quot;, &quot;Compression&quot;, (EnumChunk, &quot;uint32&quot;, BitmapInfoHeader.compression_name))
++        self.read(&quot;size&quot;, &quot;Image size (in bytes)&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;xres&quot;, &quot;X pixels per meter&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;yres&quot;, &quot;Y pixels per meter&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;color_used&quot;, &quot;Number of used colors&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;color_important&quot;, &quot;Number of important colors&quot;, (FormatChunk, &quot;uint32&quot;))
++
++    def getStaticSize(stream, args):
++        return 40 
++    getStaticSize = staticmethod(getStaticSize)
++
++    def updateParent(self, chunk):
++        chunk.description = &quot;Bitmap info header: %ux%u pixels, %u bits/pixel&quot; \
++            % (self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;bpp&quot;])
+
+Modified: haypo/hachoir/trunk/mime.py
+===================================================================
+--- haypo/hachoir/trunk/mime.py	2005-12-29 00:49:11 UTC (rev 375)
++++ haypo/hachoir/trunk/mime.py	2005-12-29 01:54:53 UTC (rev 376)
+@@ -14,6 +14,11 @@
+ 
+ instance = None
+ 
++_mime_by_ext = {
++    '.gz':  'application/x-gzip',
++    '.ico': 'image/x-ico'
++}
++
+ class GuessMime:
+     def __init__(self):
+         self.use_fallback = False
+@@ -50,9 +55,8 @@
+     return getBufferMime(buffer, filename)
+ 
+ def getMimeByExt(ext):    
+-    if ext == '.gz':
+-        return 'application/x-gzip'
+-    return None        
++    global _mime_by_ext
++    return _mime_by_ext.get(ext, None)
+ 
+ def getStreamMime(stream, filename):
+     oldpos = stream.tell()
+@@ -74,6 +78,11 @@
+     if buffer[:14] == &quot;gimp xcf file\0&quot;:
+         return &quot;image/x-xcf&quot;
+ 
++    if buffer[0:2] == &quot;\0\0&quot; \
++    and buffer[2:4] in (&quot;\x01\0&quot;, &quot;\x02\0&quot;) \
++    and buffer[9] == &quot;\0&quot;:
++        return &quot;image/x-ico&quot;
++
+     if buffer[0] == &quot;\x0A&quot; \
+     and buffer[1] in &quot;\x00\x02\x03\x04\x05&quot; \
+     and buffer[64] == &quot;\0&quot;:
+
+Added: haypo/hachoir/trunk/plugins/ico.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/ico.py	2005-12-29 00:49:11 UTC (rev 375)
++++ haypo/hachoir/trunk/plugins/ico.py	2005-12-29 01:54:53 UTC (rev 376)
+@@ -0,0 +1,71 @@
++&quot;&quot;&quot;
++ICO picture file format parser.
++
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from filter import OnDemandFilter
++from plugin import registerPlugin
++from chunk import FormatChunk, EnumChunk
++from generic.image import PaletteRGBA
++from generic.win32 import BitmapInfoHeader
++
++class IconData(OnDemandFilter):
++    def __init__(self, stream, parent, header):
++        OnDemandFilter.__init__(self, &quot;icon_data&quot;, &quot;Icon data&quot;, stream, parent, &quot;&lt;&quot;)
++        start = stream.tell()
++        self.read(&quot;header&quot;, &quot;Header&quot;, (BitmapInfoHeader,))
++        
++        # Read palette if needed
++        nb_color = header[&quot;nb_color&quot;]
++        if header[&quot;bpp&quot;] == 8:
++            nb_color = 256
++        if nb_color != 0:            
++            self.read(&quot;palette&quot;, &quot;Palette&quot;, (PaletteRGBA, nb_color))
++
++        # Read pixels
++        size = header[&quot;width&quot;] * header[&quot;height&quot;] * header[&quot;bpp&quot;] / 8
++        self.read(&quot;pixels&quot;, &quot;Image pixels&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++        padding = stream.getLastPos() - stream.tell() + 1
++        if 0 &lt; padding:
++            self.read(&quot;padding&quot;, &quot;(padding)&quot;, (FormatChunk, &quot;string[%u]&quot; % padding))
++
++class IconHeader(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;icon&quot;, &quot;Icon header&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;nb_color&quot;, &quot;Number of colors&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;reserved&quot;, &quot;(reserved)&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;planes&quot;, &quot;Color planes (=1)&quot;, (FormatChunk, &quot;uint16&quot;))
++        assert self[&quot;planes&quot;] == 1
++        self.read(&quot;bpp&quot;, &quot;Bits per pixel&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;size&quot;, &quot;Content size in bytes&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;offset&quot;, &quot;Data offset&quot;, (FormatChunk, &quot;uint32&quot;))
++
++    def updateParent(self, chunk):
++        chunk.description = &quot;Icon: %ux%u pixels, %u bits/pixel&quot; \
++            % (self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;bpp&quot;])
++
++class IcoFile(OnDemandFilter):
++    type_name = {
++        1: &quot;Icon&quot;,
++        2: &quot;Mouse cursor&quot;
++    }
++    def __init__(self, stream, parent=None):
++        OnDemandFilter.__init__(self, &quot;ico_file&quot;, &quot;ICO picture file&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;id&quot;, &quot;Identifier (\&quot;\\0\\0\&quot;)&quot;, (FormatChunk, &quot;string[2]&quot;))
++        assert self[&quot;id&quot;] == &quot;\0\0&quot;
++        self.read(&quot;type&quot;, &quot;Resource type&quot;, (EnumChunk, &quot;uint16&quot;, IcoFile.type_name))
++        self.read(&quot;nb_items&quot;, &quot;Number of items&quot;, (FormatChunk, &quot;uint16&quot;))
++        items = []
++        for i in range(0, self[&quot;nb_items&quot;]):
++            item = self.doRead(&quot;icon_header[]&quot;, &quot;Icon header %u&quot; % i, (IconHeader,))
++            items.append(item)
++        for header in items:
++            assert header[&quot;offset&quot;] == stream.tell()
++            sub = stream.createLimited(size=header[&quot;size&quot;])
++            self.read(&quot;icon_data[]&quot;, &quot;Icon data&quot;, (IconData, header), {&quot;stream&quot;: sub})
++
++registerPlugin(IcoFile, &quot;image/x-ico&quot;)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000277.html">[Happyboom-svn] r375 - in haypo/hachoir/trunk: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000279.html">[Happyboom-svn] r377 - haypo/hachoir/trunk/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#278">[ date ]</a>
+              <a href="thread.html#278">[ thread ]</a>
+              <a href="subject.html#278">[ subject ]</a>
+              <a href="author.html#278">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

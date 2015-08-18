@@ -1,0 +1,445 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r461 - in haypo/lamer: . tool
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2007-June/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r461%20-%20in%20haypo/lamer%3A%20.%20tool&In-Reply-To=%3C200706270047.l5R0lPSA003986%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000364.html">
+   <LINK REL="Next"  HREF="000366.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r461 - in haypo/lamer: . tool</H1>
+    <B>haypo at mail.berlios.de</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r461%20-%20in%20haypo/lamer%3A%20.%20tool&In-Reply-To=%3C200706270047.l5R0lPSA003986%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r461 - in haypo/lamer: . tool">haypo at mail.berlios.de
+       </A><BR>
+    <I>Wed Jun 27 02:47:25 CEST 2007</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000364.html">[Happyboom-svn] r460 - haypo/lamer
+</A></li>
+        <LI>Next message: <A HREF="000366.html">[Happyboom-svn] r462 - haypo/lamer
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#365">[ date ]</a>
+              <a href="thread.html#365">[ thread ]</a>
+              <a href="subject.html#365">[ subject ]</a>
+              <a href="author.html#365">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2007-06-27 02:47:21 +0200 (Wed, 27 Jun 2007)
+New Revision: 461
+
+Added:
+   haypo/lamer/lamer.py
+   haypo/lamer/mod_konversation.py
+   haypo/lamer/mod_svn.py
+Removed:
+   haypo/lamer/mod_svn.sh
+   haypo/lamer/tool/parse_svn_simple.py
+Modified:
+   haypo/lamer/mod_gajim.py
+Log:
+ * Rewrite mod_svn in Python
+ * Add mod_konversation
+ * Create Lamer Python class
+
+
+Added: haypo/lamer/lamer.py
+===================================================================
+--- haypo/lamer/lamer.py	2007-06-26 23:42:14 UTC (rev 460)
++++ haypo/lamer/lamer.py	2007-06-27 00:47:21 UTC (rev 461)
+@@ -0,0 +1,40 @@
++from errno import ENOENT
++from os.path import normpath, expanduser
++from sys import stderr
++from glob import glob
++
++class Lamer:
++    def __init__(self, name, verbose):
++        self.name = name
++        self.verbose = verbose
++        if self.verbose:
++            print &gt;&gt;stderr, &quot;[ Module %s ]&quot; % self.name
++
++    def extract(self):
++        try:
++            self._extract()
++        except IOError, err:
++            if err.errno == ENOENT:
++                print err
++                pass
++            else:
++                raise
++
++    def normpath(self, filename):
++        filename = expanduser(filename)
++        filename = normpath(filename)
++        return filename
++
++    def glob(self, pattern):
++        return glob(self.normpath(pattern))
++
++    def open(self, filename, mode='r'):
++        return open(self.normpath(filename), mode)
++
++    def readText(self, filename):
++        for line in self.open(&quot;~/.gajim/config&quot;):
++            yield line.rstrip()
++
++    def write(self, text):
++        print &quot;[%s] %s&quot; % (self.name, text)
++
+
+
+Property changes on: haypo/lamer/lamer.py
+___________________________________________________________________
+Name: svn:eol-style
+   + native
+
+Modified: haypo/lamer/mod_gajim.py
+===================================================================
+--- haypo/lamer/mod_gajim.py	2007-06-26 23:42:14 UTC (rev 460)
++++ haypo/lamer/mod_gajim.py	2007-06-27 00:47:21 UTC (rev 461)
+@@ -1,35 +1,7 @@
+ #!/usr/bin/python
+-from errno import ENOENT
+-from sys import stderr
+ import re
+-from os.path import normpath, expanduser
++from lamer import Lamer
+ 
+-class Lamer:
+-    def __init__(self, name, verbose):
+-        self.name = name
+-        self.verbose = verbose
+-        if self.verbose:
+-            print &gt;&gt;stderr, &quot;[ Module %s ]&quot; % self.name
+-
+-    def extract(self):
+-        try:
+-            self._extract()
+-        except IOError, err:
+-            if err.errno == ENOENT:
+-                print err
+-                pass
+-            else:
+-                raise
+-
+-    def open(self, filename, mode='r'):
+-        filename = expanduser(filename)
+-        filename = normpath(filename)
+-        return open(filename, mode)
+-
+-    def readText(self, filename):
+-        for line in self.open(&quot;~/.gajim/config&quot;):
+-            yield line.rstrip()
+-
+ class Gajim(Lamer):
+     def __init__(self, verbose):
+         Lamer.__init__(self, &quot;gajim&quot;, verbose)
+
+Added: haypo/lamer/mod_konversation.py
+===================================================================
+--- haypo/lamer/mod_konversation.py	2007-06-26 23:42:14 UTC (rev 460)
++++ haypo/lamer/mod_konversation.py	2007-06-27 00:47:21 UTC (rev 461)
+@@ -0,0 +1,137 @@
++#!/usr/bin/python
++from lamer import Lamer
++from ConfigParser import RawConfigParser
++
++class Identity:
++    def __init__(self, data):
++        self.name = data[&quot;name&quot;]
++        self.nicknames = data[&quot;nicknames&quot;]
++        self.password = data[&quot;password&quot;]
++
++class Channel:
++    def __init__(self, data):
++        self.name = data[&quot;name&quot;]
++        self.password = data[&quot;password&quot;]
++
++class Server:
++    def __init__(self, data):
++        self.port = int(data[&quot;port&quot;])
++        self.password = data[&quot;password&quot;]
++        self.server = data[&quot;server&quot;]
++
++    def __str__(self):
++        return &quot;%s:%s&quot; % (self.server, self.port)
++
++    def __repr__(self):
++        return &quot;&lt;Server %s&gt;&quot; % self
++
++class ServerGroup:
++    def __init__(self, data):
++        self.channels = set(data[&quot;autojoinchannels&quot;].split(&quot;,&quot;)) | set(data[&quot;channelhistory&quot;].split(&quot;,&quot;))
++        self.name = data[&quot;name&quot;]
++        self.identity = data[&quot;identity&quot;]
++        if &quot;serverlist&quot; in data:
++            self.server_list = data[&quot;serverlist&quot;].split(&quot;,&quot;)
++        else:
++            self.server_list = []
++
++class Konversation(Lamer):
++    def __init__(self, verbose):
++        Lamer.__init__(self, &quot;konversation&quot;, verbose)
++
++    def configDict(self, config, section):
++        data = {}
++        for key,value in config.items(section):
++            key = unicode(key, &quot;UTF-8&quot;)
++            value = unicode(value, &quot;UTF-8&quot;)
++            data[key] = value
++        return data
++
++    def _extract(self):
++        rc = self.open(&quot;~/.kde/share/config/konversationrc&quot;)
++        config = RawConfigParser()
++        config.readfp(rc)
++        self.identities = {}
++        self.channels = {}
++        self.server_groups = {}
++        self.servers = {}
++        for section in config.sections():
++            section = unicode(section, &quot;UTF-8&quot;)
++            server = None
++            channel = None
++            password = None
++            if section.startswith(&quot;Channel &quot;):
++                data = self.configDict(config, section)
++                try:
++                    channel = Channel(data)
++                    if channel.password:
++                        self.channels[section] = channel
++                except KeyError:
++                    pass
++
++            elif section.startswith(&quot;Identity &quot;):
++                data = self.configDict(config, section)
++                try:
++                    identity = Identity(data)
++                    if identity.password:
++                        self.identities[identity.name] = identity
++                except KeyError:
++                    pass
++
++            elif section.startswith(&quot;ServerGroup &quot;):
++                data = self.configDict(config, section)
++                try:
++                    self.server_groups[section] = ServerGroup(data)
++                except KeyError, err:
++                    pass
++
++            elif section.startswith(&quot;Server &quot;):
++                data = self.configDict(config, section)
++                try:
++                    self.servers[section] = Server(data)
++                except KeyError:
++                    pass
++
++        for server_id, server_group in self.server_groups.iteritems():
++            # Create server list
++            servers = []
++            if server_group.server_list:
++                for server_id in server_group.server_list:
++                    try:
++                        server = self.servers[server_id]
++                        servers.append(server)
++                    except KeyError:
++                        pass
++            else:
++                try:
++                    server_id = &quot;Server %s&quot; % (server_id.split(&quot; &quot;,1)[1])
++                    server = self.servers[server_id]
++                    servers.append(server)
++                except KeyError:
++                    pass
++
++            # Search identity
++            try:
++                identity = self.identities[server_group.identity]
++            except LookupError:
++                identity = None
++
++            # Search channels
++            channels = []
++            for channel_id, channel in self.channels.iteritems():
++                if channel_id in server_group.channels:
++                    channels.append(channel)
++
++            if not(identity or channels):
++                continue
++            if identity:
++                self.dump(servers, 'identify -- nicknames=%s -- password=%s' % (identity.nicknames, identity.password))
++            for channel in channels:
++                self.dump(servers, &quot;/join %s %s&quot; % (channel.name, channel.password))
++
++    def dump(self, servers, text):
++        servers = &quot;, &quot;.join(str(item) for item in servers)
++        self.write(&quot;%s: %s&quot; % (servers, text))
++
++Konversation(False).extract()
++
+
+
+Property changes on: haypo/lamer/mod_konversation.py
+___________________________________________________________________
+Name: svn:executable
+   + *
+Name: svn:eol-style
+   + native
+
+Added: haypo/lamer/mod_svn.py
+===================================================================
+--- haypo/lamer/mod_svn.py	2007-06-26 23:42:14 UTC (rev 460)
++++ haypo/lamer/mod_svn.py	2007-06-27 00:47:21 UTC (rev 461)
+@@ -0,0 +1,46 @@
++#!/usr/bin/python
++from sys import stderr, argv, exit
++import re
++from lamer import Lamer
++from glob import glob
++
++class Subversion(Lamer):
++    def __init__(self, verbose):
++        Lamer.__init__(self, &quot;subversion&quot;, verbose)
++
++    def parse(self, filename):
++        infos = {
++            'username': None,
++            'password': None,
++            'svn:realmstring': None,
++        }
++        next = None
++        skip = False
++        for line in open(filename):
++            if skip:
++                skip = False
++                continue
++            line = line.strip()
++            if line in infos.keys():
++                next = line
++                skip = True
++            elif next:
++                infos[next] = line
++                next = None
++        server = infos[&quot;svn:realmstring&quot;]
++        if not server:
++            return
++        server = re.sub(&quot;^&lt;(.+)&gt; .+$&quot;, r&quot;\1&quot;, server)
++
++        self.write(&quot;svn co %s --username=%s --password=%s&quot; % (
++            server, infos[&quot;username&quot;], infos[&quot;password&quot;])
++
++    def _extract(self):
++        for filename in self.glob(&quot;~/.subversion/auth/svn.simple/*&quot;):
++            self.parse(filename)
++
++def main():
++    Subversion(False).extract()
++
++if __name__ == &quot;__main__&quot;:
++    main()
+
+
+Property changes on: haypo/lamer/mod_svn.py
+___________________________________________________________________
+Name: svn:executable
+   + *
+Name: svn:eol-style
+   + native
+
+Deleted: haypo/lamer/mod_svn.sh
+===================================================================
+--- haypo/lamer/mod_svn.sh	2007-06-26 23:42:14 UTC (rev 460)
++++ haypo/lamer/mod_svn.sh	2007-06-27 00:47:21 UTC (rev 461)
+@@ -1,8 +0,0 @@
+-#!/bin/bash
+-export MOD=svn
+-IN=~/.subversion/auth
+-if [ ! -d $IN ]; then exit 0; fi
+-tool/common.sh
+-for filename in $(ls $IN/svn.simple/*); do
+-  tool/parse_svn_simple.py $filename;
+-done
+
+Deleted: haypo/lamer/tool/parse_svn_simple.py
+===================================================================
+--- haypo/lamer/tool/parse_svn_simple.py	2007-06-26 23:42:14 UTC (rev 460)
++++ haypo/lamer/tool/parse_svn_simple.py	2007-06-27 00:47:21 UTC (rev 461)
+@@ -1,40 +0,0 @@
+-#!/usr/bin/python
+-from sys import stderr, argv, exit
+-import re
+-
+-def parse(filename):
+-    infos = {
+-        'username': None,
+-        'password': None,
+-        'svn:realmstring': None,
+-    }
+-    next = None
+-    skip = False
+-    for line in open(filename):
+-        if skip:
+-            skip = False
+-            continue
+-        line = line.strip()
+-        if line in infos.keys():
+-            next = line
+-            skip = True
+-        elif next:
+-            infos[next] = line
+-            next = None
+-    server = infos[&quot;svn:realmstring&quot;]
+-    if not server:
+-        return
+-    server = re.sub(&quot;^&lt;(.+)&gt; .+$&quot;, r&quot;\1&quot;, server)
+-
+-    print &quot;svn co %s --username=%s --password=%s&quot; % (
+-        server, infos[&quot;username&quot;], infos[&quot;password&quot;])
+-
+-def main():
+-    if len(argv) != 2:
+-        print &gt;&gt;stderr, &quot;usage: %s filename&quot; % argv[0]
+-        exit(1)
+-    parse(argv[1])
+-
+-if __name__ == &quot;__main__&quot;:
+-    main()
+-
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000364.html">[Happyboom-svn] r460 - haypo/lamer
+</A></li>
+	<LI>Next message: <A HREF="000366.html">[Happyboom-svn] r462 - haypo/lamer
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#365">[ date ]</a>
+              <a href="thread.html#365">[ thread ]</a>
+              <a href="subject.html#365">[ subject ]</a>
+              <a href="author.html#365">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

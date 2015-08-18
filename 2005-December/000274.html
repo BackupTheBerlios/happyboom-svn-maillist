@@ -1,0 +1,256 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r372 - in haypo/hachoir/trunk: broken_plugins plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r372%20-%20in%20haypo/hachoir/trunk%3A%20broken_plugins%20plugins&In-Reply-To=%3C200512280545.jBS5jutI010363%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000273.html">
+   <LINK REL="Next"  HREF="000275.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r372 - in haypo/hachoir/trunk: broken_plugins plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r372%20-%20in%20haypo/hachoir/trunk%3A%20broken_plugins%20plugins&In-Reply-To=%3C200512280545.jBS5jutI010363%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r372 - in haypo/hachoir/trunk: broken_plugins plugins">haypo at berlios.de
+       </A><BR>
+    <I>Wed Dec 28 06:45:56 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000273.html">[Happyboom-svn] r371 - in haypo/hachoir/trunk: . broken_plugins plugins
+</A></li>
+        <LI>Next message: <A HREF="000275.html">[Happyboom-svn] r373 - in haypo/hachoir/trunk: . plugins ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#274">[ date ]</a>
+              <a href="thread.html#274">[ thread ]</a>
+              <a href="subject.html#274">[ subject ]</a>
+              <a href="author.html#274">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-28 06:45:55 +0100 (Wed, 28 Dec 2005)
+New Revision: 372
+
+Added:
+   haypo/hachoir/trunk/plugins/asn1.py
+Removed:
+   haypo/hachoir/trunk/broken_plugins/asn1.py
+Log:
+Upgrade ASN1 plugin to new synta
+
+
+Deleted: haypo/hachoir/trunk/broken_plugins/asn1.py
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/asn1.py	2005-12-28 05:35:04 UTC (rev 371)
++++ haypo/hachoir/trunk/broken_plugins/asn1.py	2005-12-28 05:45:55 UTC (rev 372)
+@@ -1,92 +0,0 @@
+-&quot;&quot;&quot;
+-ASN1 Parser
+-
+-Information: <A HREF="http://www.openssl.org/docs/apps/asn1parse.html">http://www.openssl.org/docs/apps/asn1parse.html</A>
+-
+-Author: Victor Stinner
+-&quot;&quot;&quot;
+-
+-from filter import Filter
+-
+-class ASN1_Sequence(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;asn1_seq&quot;, &quot;ASN1 sequence&quot;, stream, parent)
+-        self.readArray(&quot;item&quot;, ASN1_Object, &quot;Items&quot;, self.checkEnd)
+-
+-    def checkEnd(self, stream, array, last):        
+-        return stream.eof()
+-
+-class ASN1_Object(Filter):
+-    def __init__(self, stream, parent=None):
+-        Filter.__init__(self, &quot;asn1_obj&quot;, &quot;ASN1 object&quot;, stream, parent)
+-        
+-        import sys
+-        sys.stdout.write(&quot;%s: &quot; % stream.tell())
+-        
+-        self.read(&quot;type&quot;, &quot;B&quot;, &quot;type&quot;)
+-        tag = self.type &amp; 0x1f
+-        if tag == 0x1f:
+-            raise Exception(&quot;Error in ASN1 parser: TODO ...&quot;)
+-        else:
+-            length = stream.getFormat(&quot;B&quot;, False)[0]
+-            if 128 &lt;= length:
+-                size = length &amp; 0x7f 
+-                length = 0
+-                oldpos = stream.tell()
+-                for i in range(0,size):
+-                    stream.seek(oldpos+1+i)
+-                    new = stream.getFormat(&quot;B&quot;, False)[0]
+-                    length = length * 256 + new
+-                    assert length &lt; (1 &lt;&lt; 32)
+-                stream.seek(oldpos)
+-                self.length = length
+-                self.read(&quot;dummylength&quot;, &quot;%uB&quot; % (1+size), &quot;Length&quot;)
+-            else:
+-                self.read(&quot;length&quot;, &quot;B&quot;, &quot;Length&quot;)
+-            print &quot;Length = %s&quot; % self.length
+-            self.getChunk(&quot;type&quot;).description = &quot;type (tag=%s)&quot; % tag
+-            handler = {
+-                0: self.readEOC,
+-                1: self.readBoolean,
+-                4: self.readOctetString,
+-#                6: self.readObject,
+-                10: self.readEnum,
+-                12: self.readUTF8,
+-                16: self.readSequence
+-            }
+-            if tag in handler:
+-                handler[tag]()
+-            else:
+-                self.read(&quot;value&quot;, &quot;%us&quot; % length, \
+-                    &quot;Value (don't know tag %s)&quot; % tag)
+-
+-    def readEnum(self):
+-        self.read(&quot;value&quot;, &quot;%us&quot; % self.length, &quot;Value (EOC)&quot;)
+-
+-    def readObject(self):
+-        self.readChild(&quot;object&quot;, ASN1_Object)
+-
+-    def readEOC(self):
+-        self.read(&quot;value&quot;, &quot;%us&quot; % self.length, &quot;Value (EOC)&quot;)
+-
+-    def readOctetString(self):
+-        self.read(&quot;value&quot;, &quot;%us&quot; % self.length, &quot;Value (octet string)&quot;)
+-
+-    def readBoolean(self):
+-        self.read(&quot;value&quot;, &quot;B&quot;, &quot;Value (boolean)&quot;)
+-
+-    def readUTF8(self):
+-        self.read(&quot;value&quot;, &quot;%us&quot; % self.length, &quot;Value (string)&quot;)
+-        
+-    def readSequence(self):
+-        self.readLimitedChild(&quot;sequence&quot;, self.length, ASN1_Sequence)
+-
+-class ASN1_Parser(Filter):
+-    def __init__(self, stream, parent=None):
+-        Filter.__init__(self, &quot;asn1&quot;, &quot;ASN1 parser&quot;, stream, parent)
+-        #self.readArray(&quot;item&quot;, ASN1_Object, &quot;Items&quot;, self.checkEnd)
+-        self.readChild(&quot;a&quot;, ASN1_Object)
+-#        self.readChild(&quot;b&quot;, ASN1_Object)
+-
+-    def checkEnd(self, stream, array, last):        
+-        return stream.eof()
+
+Copied: haypo/hachoir/trunk/plugins/asn1.py (from rev 351, haypo/hachoir/trunk/broken_plugins/asn1.py)
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/asn1.py	2005-12-26 03:53:11 UTC (rev 351)
++++ haypo/hachoir/trunk/plugins/asn1.py	2005-12-28 05:45:55 UTC (rev 372)
+@@ -0,0 +1,79 @@
++&quot;&quot;&quot;
++(Very experimental) ASN1 Parser
++
++Information: <A HREF="http://www.openssl.org/docs/apps/asn1parse.html">http://www.openssl.org/docs/apps/asn1parse.html</A>
++
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from filter import OnDemandFilter
++
++class ASN1_Sequence(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;asn1_seq&quot;, &quot;ASN1 sequence&quot;, stream, parent)
++        while not stream.eof():
++            self.read(&quot;item[]&quot;, &quot;Item&quot;, (ASN1_Object,))
++
++class ASN1_Object(OnDemandFilter):
++    def __init__(self, stream, parent=None):
++        OnDemandFilter.__init__(self, &quot;asn1_obj&quot;, &quot;ASN1 object&quot;, stream, parent)
++        self.read(&quot;type&quot;, &quot;type&quot;, (FormatChunk, &quot;uint8&quot;))
++        tag = self.type &amp; 0x1f
++        if tag == 0x1f:
++            raise Exception(&quot;Error in ASN1 parser: TODO ...&quot;)
++        else:
++            length = stream.getFormat(&quot;uint8&quot;, False)[0]
++            if 128 &lt;= length:
++                size = length &amp; 0x7f 
++                length = 0
++                oldpos = stream.tell()
++                for i in range(0,size):
++                    stream.seek(oldpos+1+i)
++                    new = stream.getFormat(&quot;uint8&quot;, False)[0]
++                    length = length * 256 + new
++                    assert length &lt; (1 &lt;&lt; 32)
++                stream.seek(oldpos)
++                self.length = length
++                self.read(&quot;dummylength&quot;, &quot;Length&quot;, (FormatChunk, &quot;string[%u]&quot; % (1+size)))
++            else:
++                self.read(&quot;length&quot;, &quot;Length&quot;, (FormatChunk, &quot;uint8&quot;))
++            self.getChunk(&quot;type&quot;).description = &quot;type (tag=%s)&quot; % tag
++            handler = {
++                0: self.readEOC,
++                1: self.readBoolean,
++                4: self.readOctetString,
++#                6: self.readObject,
++                10: self.readEnum,
++                12: self.readUTF8,
++                16: self.readSequence
++            }
++            if tag in handler:
++                handler[tag] ()
++            else:
++                self.read(&quot;value&quot;, &quot;Value (don't know tag %s)&quot; % tag, (FormatChunk, &quot;string[%u]&quot; % length))
++
++    def readEnum(self):
++        self.read(&quot;value&quot;, &quot;Value (EOC)&quot;, (FormatChunk, &quot;string[%u]&quot; % self.length))
++
++    def readObject(self):
++        self.read(&quot;object&quot;, &quot;Object&quot;, (ASN1_Object,))
++
++    def readEOC(self):
++        self.read(&quot;value&quot;, &quot;Value (EOC)&quot;, (FormatChunk, &quot;string[%u]&quot; % self.length))
++
++    def readOctetString(self):
++        self.read(&quot;value&quot;, &quot;Value (octet string)&quot;, (FormatChunk, &quot;string[%u]&quot; % self.length))
++
++    def readBoolean(self):
++        self.read(&quot;value&quot;, &quot;Value (boolean)&quot;, (FormatChunk, &quot;uint8&quot;))
++
++    def readUTF8(self):
++        self.read(&quot;value&quot;, &quot;Value (string)&quot;, (FormatChunk, &quot;string[%u]&quot; % self.length))
++        
++    def readSequence(self):
++        self.readLimitedChild(&quot;sequence&quot;, self.length, ASN1_Sequence)
++
++class ASN1_Parser(OnDemandFilter):
++    def __init__(self, stream, parent=None):
++        OnDemandFilter.__init__(self, &quot;asn1&quot;, &quot;ASN1 parser&quot;, stream, parent)
++        self.read(&quot;object&quot;, &quot;Ojbect&quot;, (ASN1_Object,))
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000273.html">[Happyboom-svn] r371 - in haypo/hachoir/trunk: . broken_plugins plugins
+</A></li>
+	<LI>Next message: <A HREF="000275.html">[Happyboom-svn] r373 - in haypo/hachoir/trunk: . plugins ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#274">[ date ]</a>
+              <a href="thread.html#274">[ thread ]</a>
+              <a href="subject.html#274">[ subject ]</a>
+              <a href="author.html#274">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,728 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r152 - in happyboom/trunk: common net/io net/io_tcp net/io_udp server
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r152%20-%20in%20happyboom/trunk%3A%20common%20net/io%20net/io_tcp%20net/io_udp%20server&In-Reply-To=%3C200509140506.j8E560IK008569%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000058.html">
+   <LINK REL="Next"  HREF="000060.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r152 - in happyboom/trunk: common net/io net/io_tcp net/io_udp server</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r152%20-%20in%20happyboom/trunk%3A%20common%20net/io%20net/io_tcp%20net/io_udp%20server&In-Reply-To=%3C200509140506.j8E560IK008569%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r152 - in happyboom/trunk: common net/io net/io_tcp net/io_udp server">haypo at berlios.de
+       </A><BR>
+    <I>Wed Sep 14 07:06:00 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000058.html">[Happyboom-svn] r151 - in boomboom: . server server/agents
+</A></li>
+        <LI>Next message: <A HREF="000060.html">[Happyboom-svn] r153 - in happyboom/trunk/net: io io_tcp io_udp
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#59">[ date ]</a>
+              <a href="thread.html#59">[ thread ]</a>
+              <a href="subject.html#59">[ subject ]</a>
+              <a href="author.html#59">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-14 07:05:49 +0200 (Wed, 14 Sep 2005)
+New Revision: 152
+
+Modified:
+   happyboom/trunk/common/log.py
+   happyboom/trunk/common/protocol.py
+   happyboom/trunk/net/io/base_io.py
+   happyboom/trunk/net/io/io_client.py
+   happyboom/trunk/net/io/packet.py
+   happyboom/trunk/net/io_tcp/server_waiter.py
+   happyboom/trunk/net/io_tcp/tcp.py
+   happyboom/trunk/net/io_tcp/tcp_client.py
+   happyboom/trunk/net/io_udp/udp.py
+   happyboom/trunk/net/io_udp/udp_client.py
+   happyboom/trunk/net/io_udp/udp_ping.py
+   happyboom/trunk/server/agent.py
+   happyboom/trunk/server/base_server.py
+   happyboom/trunk/server/client_manager.py
+Log:
+Replace all print by log.(info|warning|error).
+
+
+Modified: happyboom/trunk/common/log.py
+===================================================================
+--- happyboom/trunk/common/log.py	2005-09-14 04:17:31 UTC (rev 151)
++++ happyboom/trunk/common/log.py	2005-09-14 05:05:49 UTC (rev 152)
+@@ -71,7 +71,7 @@
+         &quot;&quot;&quot;
+         self.new_message(Log.LOG_INFO, str)
+ 
+-    def warn(self, str):
++    def warning(self, str):
+         &quot;&quot;&quot;
+         New warning message.
+         @type str: C{str}
+
+Modified: happyboom/trunk/common/protocol.py
+===================================================================
+--- happyboom/trunk/common/protocol.py	2005-09-14 04:17:31 UTC (rev 151)
++++ happyboom/trunk/common/protocol.py	2005-09-14 05:05:49 UTC (rev 152)
+@@ -142,7 +142,4 @@
+                 e.addParam( \
+                     param.getAttribute(&quot;name&quot;),
+                     param.getAttribute(&quot;type&quot;))
+-    print &quot;-- Protocol --&quot;                
+-    print p
+-    print &quot;-- Protocol end --&quot;                
+     return p
+
+Modified: happyboom/trunk/net/io/base_io.py
+===================================================================
+--- happyboom/trunk/net/io/base_io.py	2005-09-14 04:17:31 UTC (rev 151)
++++ happyboom/trunk/net/io/base_io.py	2005-09-14 05:05:49 UTC (rev 152)
+@@ -99,6 +99,9 @@
+         &quot;&quot;&quot; Stop the IO (close connections). &quot;&quot;&quot;
+         pass
+ 
++    def __str__(self):
++        return self.__name
++
+     #--- Private functions ------------------------------------------------------
+ 
+     def __getName(self):
+
+Modified: happyboom/trunk/net/io/io_client.py
+===================================================================
+--- happyboom/trunk/net/io/io_client.py	2005-09-14 04:17:31 UTC (rev 151)
++++ happyboom/trunk/net/io/io_client.py	2005-09-14 05:05:49 UTC (rev 152)
+@@ -39,6 +39,9 @@
+         self.connected = False
+         self.io.disconnectClient(self)
+ 
++    def __str__(self):
++        return self.name
++
+     def __getAddr(self):
+         return self.__addr
+     def __getHost(self):
+
+Modified: happyboom/trunk/net/io/packet.py
+===================================================================
+--- happyboom/trunk/net/io/packet.py	2005-09-14 04:17:31 UTC (rev 151)
++++ happyboom/trunk/net/io/packet.py	2005-09-14 05:05:49 UTC (rev 152)
+@@ -1,10 +1,14 @@
+-&quot;&quot;&quot;A network packet. It can have differents types :
++&quot;&quot;&quot;
++A network packet. It can have differents types :
+ 1. Data
+ 2. Ping
+ 3. Pong
+ 4. Ack
+ 
+-Ping, pong and ack(nowledge) are only used on transport layer.&quot;&quot;&quot;
++Ping, pong and ack(nowledge) are only used on transport layer.
++&quot;&quot;&quot;
++
++from happyboom.common.log import log
+ import time
+ import struct
+ 
+@@ -99,7 +103,7 @@
+             format = &quot;!I&quot;
+             size = struct.calcsize(format)
+             if len(binary_data) &lt;  size:
+-                print &quot;Taille du paquet (%s) incorrect !&quot; % (binary_data)
++                log.warning(&quot;Wrong network packet size from %s!&quot; % (self.recv_from)
+                 return None
+             data = struct.unpack(format, binary_data[:size])
+             data_len = data[0]
+@@ -109,7 +113,7 @@
+             format = &quot;!BBII&quot;
+             size = struct.calcsize(format)
+             if len(binary_data) &lt;  size:
+-                print &quot;Taille du paquet (%s) incorrect !&quot; % (binary_data)
++                log.warning(&quot;Wrong network packet size from %s!&quot; % (self.recv_from)
+                 return None
+             data = struct.unpack(format, binary_data[:size])
+             self.type = data[0]
+@@ -123,7 +127,7 @@
+             format = &quot;!%us&quot; % (data_len)
+             size = struct.calcsize(format)
+             if len(binary_data) &lt; size:
+-                print &quot;Taille du paquet (%s) incorrect !&quot; % (binary_data)
++                log.warning(&quot;Wrong network packet size from %s!&quot; % (self.recv_from)
+                 return None
+             data = struct.unpack(format, binary_data[:size]) 
+             self.__data = data[0] 
+
+Modified: happyboom/trunk/net/io_tcp/server_waiter.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/server_waiter.py	2005-09-14 04:17:31 UTC (rev 151)
++++ happyboom/trunk/net/io_tcp/server_waiter.py	2005-09-14 05:05:49 UTC (rev 152)
+@@ -2,6 +2,8 @@
+ import thread
+ import traceback
+ from tcp_client import TCP_Client
++from happyboom.common.log import log
++from happyboom.common.thread import getBacktrace
+ 
+ class NetworkServerWaiter(object):
+     def __init__(self, server):
+@@ -24,22 +26,21 @@
+             self.__running = True
+             self.start(port, max_connection)
+         except Exception, msg:
+-            print &quot;NETWORK SERVER EXCEPTION!&quot;
+-            print &quot;ERROR MSG: %s&quot; % (msg)
+-            traceback.print_exc()
++            log.error(&quot;EXCEPTION IN TCP SERVER WAITER!\n%s\n%s&quot; \
++                % (msg, getBacktrace())
+         self.__running = False 
+         
+     def clientConnect(self, client):
+         if self.__server.debug:
+-            print &quot;Client %s enter server %s.&quot; \
+-                % (client.name, self.__server.name)
++            log.info(&quot;Client %s enter server %s.&quot; \
++                % (client.name, self.__server.name))
+         self.__nb_clients_sema.acquire()
+         self.__nb_clients = self.__nb_clients + 1
+         self.__nb_clients_sema.release()
+         self.__server.clientConnect (client)
+ 
+     def clientDisconnect(self, client):
+-        if self.__server.debug: print &quot;New client : %s&quot; % (client.getName())
++        if self.__server.debug: log.info(&quot;New client : %s&quot; % (client.getName()))
+         self.__nb_clients_sema.acquire()
+         self.__nb_clients = self.__nb_clients - 1
+         self.__nb_clients_sema.release()
+@@ -53,9 +54,9 @@
+             raise
+         if self.__max_clients &lt;= self.getNbClients():
+             if self.__server.debug:
+-                print &quot;Client %s refused on server %s (too many connection, %u/%u).&quot; \
+-                    % (addr, self.__server.name, \
+-                       self.getNbClients(), self.__max_clients)
++                log.info( \
++                    &quot;Client %s refused on server %s (too many connection, %u/%u).&quot; \
++                    % (addr, self.__server.name, self.getNbClients(), self.__max_clients))
+             conn.close()
+             return None
+         return TCP_Client(self.__server, addr, socket=conn)
+@@ -64,21 +65,21 @@
+         self.__max_clients = max_connection
+         self.__port = port
+         if self.__server.debug: 
+-            print &quot;Start %s on port %u.&quot; \
+-                % (self.__server.name, port)
++            log.info(&quot;Start %s on port %u.&quot; \
++                % (self.__server.name, port))
+         self.__socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+         try:
+             self.__socket.bind((self.__host, self.__port))
+             self.__socket.listen(max_connection)
+         except socket.error, err:
+             if self.__server.debug:
+-                print &quot;Binding error for %s.&quot; % (self.__server.name)
++                log.error(&quot;Binding error for %s.&quot; % (self.__server.name))
+             if self.__server.on_binding_error != None:
+                 self.__server.on_binding_error (self.__server)
+             return
+         if self.__server.debug: 
+-            print &quot;Server %s is listening (max=%u clients).&quot; \
+-                % (self.__server.name, max_connection)
++            log.info(&quot;Server %s is listening (max=%u clients).&quot; \
++                % (self.__server.name, max_connection))
+         self.__listening_sema.acquire()
+         self.__listening = True 
+         self.__listening_sema.release()
+
+Modified: happyboom/trunk/net/io_tcp/tcp.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/tcp.py	2005-09-14 04:17:31 UTC (rev 151)
++++ happyboom/trunk/net/io_tcp/tcp.py	2005-09-14 05:05:49 UTC (rev 152)
+@@ -9,6 +9,8 @@
+ from tcp_client import TCP_Client
+ from net import io
+ from server_waiter import NetworkServerWaiter
++from happyboom.common.log import log
++from happyboom.common.thread import getBacktrace
+ 
+ class IO_TCP(io.BaseIO):
+     &quot;&quot;&quot;
+@@ -53,18 +55,18 @@
+         self.__addr = (host, port,)
+         if self.__is_server:
+             if self.verbose:
+-                print &quot;Run server at %s:%u (tcp)&quot; % (self.host, self.port)
++                log.info(&quot;Run server at %s:%u (tcp)&quot; % (self.host, self.port))
+             thread.start_new_thread( self.__waiter.run_thread, (port,max_connection,))
+         else:
+             if self.verbose:
+-                print &quot;Connect to server %s:%u&quot; % (self.host, self.port)            
++                log.info(&quot;Connect to server %s:%u&quot; % (self.host, self.port))
+             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+             try:
+                 s.connect(self.__addr)
+             except socket.error, err:
+                 if err[0]==111:
+                     if self.verbose:
+-                        print &quot;Fail to connect to server %s:%u&quot; % (self.host, self.port)            
++                        log.warning(&quot;Fail to connect to server %s:%u&quot; % (self.host, self.port))
+                     if self.on_connection_fails:
+                         self.on_connection_fails()
+                     return
+@@ -97,7 +99,7 @@
+         if  self.__clients.has_key(client.addr): del self.__clients[client.addr]
+         self.__clients_sema.release()
+         if self.verbose:
+-            print &quot;Disconnect client %s:%u&quot; % (client.host, client.port)
++            log.info(&quot;Disconnect client %s.&quot; % client)
+         if self.on_client_disconnect != None: self.on_client_disconnect (client)
+         if self.__server == client: self.disconnect()
+     
+@@ -139,9 +141,11 @@
+             packet.recv_from = client
+             data = packet.unpack(data)
+             if not packet.isValid():
+-                print &quot;Bad data packet (%s) from %s !&quot; % (data, client.name)
++                if self.debug:
++                    log.warning(&quot;Received buggy network packet from %s!&quot; % client)
+                 return
+-            if self.debug: print &quot;Received %s:%u =&gt; \&quot;%s\&quot;&quot; % (client.host, client.port, packet.data)
++            if self.debug:
++                log.info(&quot;Received %s:%u =&gt; \&quot;%s\&quot;&quot; % (client.host, client.port, packet.data))
+             if self.on_new_packet: self.on_new_packet(packet)
+     
+     def run_thread(self):
+@@ -151,9 +155,9 @@
+                 self.live()                
+                 time.sleep(self.thread_sleep)
+         except Exception, msg:
+-            print &quot;EXCEPTION DANS LE THREAD IO :&quot;
+-            print msg
+-            traceback.print_exc()
++            log.error( \
++                &quot;EXCEPTION DANS LE THREAD IO :\n%s\n%s&quot;
++                % (msg, getBacktrace()))
+         self.stop()
+ 
+     def stop(self):
+@@ -199,9 +203,8 @@
+         if self.on_client_connect != None: self.on_client_connect (client)
+         
+     def clientDisconnect(self, client):
+-        if self.debug:
+-            print &quot;Client %s leave server %s.&quot; \
+-                % (client.name, self.name)
++        if self.verbose:
++            log.info(&quot;Client %s leave server %s.&quot; % (client, self))
+         self.__clients_sema.acquire()
+         self.__clients.remove(client)
+         self.__clients_sema.release()
+
+Modified: happyboom/trunk/net/io_tcp/tcp_client.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/tcp_client.py	2005-09-14 04:17:31 UTC (rev 151)
++++ happyboom/trunk/net/io_tcp/tcp_client.py	2005-09-14 05:05:49 UTC (rev 152)
+@@ -1,4 +1,5 @@
+ from net import io
++from happyboom.common.log import log
+ import socket
+ 
+ class TCP_Client(io.IO_Client):
+@@ -58,7 +59,6 @@
+             if err[0] in (32, 104,):
+                 self.disconnect()
+                 return None
+-            print err
+             raise
+         return self.__processRecvData(data)
+ 
+@@ -71,7 +71,7 @@
+         # If no data, connection is lost
+         if len(data)==0:
+             if self.io.verbose:
+-                print &quot;Client %s lost connection with server!&quot; % (self.name)
++                log.warning(&quot;Client %s lost connection with server!&quot; % self)
+             self.disconnect()
+             return None
+ 
+
+Modified: happyboom/trunk/net/io_udp/udp.py
+===================================================================
+--- happyboom/trunk/net/io_udp/udp.py	2005-09-14 04:17:31 UTC (rev 151)
++++ happyboom/trunk/net/io_udp/udp.py	2005-09-14 05:05:49 UTC (rev 152)
+@@ -7,6 +7,8 @@
+ import struct
+ from net import io
+ from udp_client import UDP_Client
++from happyboom.common.log import log
++from happyboom.common.thread import getBacktrace
+ 
+ class IO_UDP(io.BaseIO):
+     &quot;&quot;&quot; IO for UDP transport.
+@@ -64,11 +66,11 @@
+         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+         if self.__is_server:
+             if self.verbose:
+-                print &quot;Run server at %s:%u (udp)&quot; % (&quot;&quot;, self.port)
++                log.info(&quot;Run server on port %u (udp).&quot; % self.port)
+             self.__socket.bind((&quot;&quot;,port,))
+         else:
+             if self.verbose:
+-                print &quot;Connect to server %s:%u&quot; % (self.host, self.port)
++                log.info(&quot;Connect to server %s:%u.&quot; % (self.host, self.port))
+             self.__server = UDP_Client(self, self.__addr)
+             self.__server.name = &quot;server&quot;
+             self.__server.send_ping = True
+@@ -103,7 +105,7 @@
+         if self.__clients.has_key(client.addr): del self.__clients[client.addr]
+         self.__clients_sema.release()
+         if self.verbose:
+-            print &quot;Disconnect client %s&quot; % (client.name)
++            log.info(&quot;Disconnect client %s.&quot; % client)
+         if self.on_client_disconnect != None: self.on_client_disconnect(client)
+     
+     def send(self, packet, to=None):
+@@ -148,7 +150,8 @@
+         @type data: C{str}
+         @type client: C{L{IO_Client&lt;io.IO_Client&gt;}}
+         &quot;&quot;&quot;        
+-        if self.debug: print &quot;Send data %s to %s (without ack)&quot; % (data, client.name)
++        if self.debug:
++            log.info(&quot;Send data %s to %s (without ack)&quot; % (data, client))
+         self.__socket.sendto(data, client.addr)    
+         
+         # Call user event if needed
+@@ -160,7 +163,8 @@
+         @type client: C{L{IO_Client&lt;io.IO_Client&gt;}}
+         @type need_ack: C{bool}
+         &quot;&quot;&quot;
+-        if self.debug: print &quot;Send packet %s to %s&quot; % (packet.toStr(), client.name)
++        if self.debug:
++            log.info(&quot;Send packet %s to %s&quot; % (packet.toStr(), client))
+         self.__socket.sendto(data, client.addr)
+ 
+         # If the packet need an ack, add it to the list
+@@ -208,12 +212,12 @@
+         if not client.addr in self.__clients: return
+         client = self.__clients[client.addr]
+         if self.verbose:
+-            print &quot;Lost connection with client %s !&quot; % (client.name)
++            log.warning(&quot;Lost connection with client %s !&quot; % client)
+         self.disconnectClient(client)
+     
+     def lostConnection(self):
+         if self.verbose:
+-            print &quot;Lost connection to %s:%u!&quot; % (self.host, self.port)
++            log.warning(&quot;Lost connection to %s:%u!&quot; % (self.host, self.port))
+         if self.__socket_open:
+             self.__socket.close()
+             self.__socket_open = False
+@@ -227,9 +231,9 @@
+                 self.live()                
+                 time.sleep(self.thread_sleep)
+         except Exception, msg:
+-            print &quot;EXCEPTION DANS LE THREAD IO :&quot;
+-            print msg
+-            traceback.print_exc()
++            log.error( \
++                &quot;EXCEPTION IN UDP SERVER:\n%s\n%s&quot; \
++                msg, getBacktrace())
+             self.stop()
+ 
+     def stop(self):
+@@ -248,7 +252,7 @@
+                 client = UDP_Client(self, addr)
+                 self.__clients[addr] = client
+                 self.__clients_sema.release()
+-                if self.verbose: print &quot;New client : %s:%u&quot; % (addr[0], addr[1])
++                if self.verbose: log.info(&quot;New client: %s:%u.&quot; % (addr[0], addr[1]))
+                 client.send_ping = True
+                 if self.on_client_connect != None: self.on_client_connect(client)
+             else:
+@@ -258,7 +262,7 @@
+             # Drop packets which doesn't come from server
+             if self.__server.addr != addr:
+                 if self.debug:
+-                    print &quot;Drop packet from %s:%u (it isn't the server address)&quot; % (addr[0], addr[1])
++                    log.warning(&quot;Drop packet from %s:%u (it isn't the server address).&quot; % (addr[0], addr[1]))
+                 return None
+             client = self.__server
+     
+@@ -269,7 +273,8 @@
+         packet = io.Packet()
+         packet.unpack(data)
+         if not packet.isValid():
+-            if self.debug: print &quot;Drop invalid packet (%s) from %s&quot; % (data, client.name)            
++            if self.debug:
++                log.warning(&quot;Drop invalid network packet from %s&quot; % (data, client))
+             return None
+         
+         # Return packet
+@@ -280,7 +285,7 @@
+         client = packet.recv_from
+ 
+         if self.debug:
+-            print &quot;Received packet %s from %s:%u&quot; % (packet.toStr(), client.host, client.port)
++            log.info(&quot;Received packet %s from %s:%u&quot; % (packet.toStr(), client.host, client.port))
+         
+         # Send an ack if needed
+         if not packet.skippable: self.__sendAck(packet)
+@@ -299,7 +304,7 @@
+         # This packet is already received ? Drop it!
+         if client.alreadyReceived(packet.id):
+             if self.debug:
+-                print &quot;Drop packet %u (already received)&quot; % (packet.id)
++                log.warning(&quot;Drop packet %u (already received)&quot; % packet.id))
+             return None    
+             
+         client.receivePacket(packet)
+@@ -315,7 +320,7 @@
+         ack = io.Packet(skippable=True)
+         ack.type = io.Packet.PACKET_ACK
+         ack.writeStr( struct.pack(&quot;!I&quot;, packet.id) )
+-        #if self.debug: print &quot;Send ACK %u.&quot; % (ack.id)
++        #if self.debug: log.info(&quot;Send ACK %u.&quot; % ack.id)
+         packet.recv_from.send(ack)
+ 
+     def __processNewPacket(self, packet):
+@@ -323,7 +328,7 @@
+         @type packet: C{L{Packet&lt;io.Packet&gt;}}
+         &quot;&quot;&quot;
+         if self.verbose:
+-            print &quot;New udp message : %s&quot; % (packet.toStr())
++            log.info(&quot;New udp message : %s&quot; % packet.toStr())
+         if self.on_new_packet != None: self.on_new_packet(packet)        
+ 
+     def __getPort(self):
+
+Modified: happyboom/trunk/net/io_udp/udp_client.py
+===================================================================
+--- happyboom/trunk/net/io_udp/udp_client.py	2005-09-14 04:17:31 UTC (rev 151)
++++ happyboom/trunk/net/io_udp/udp_client.py	2005-09-14 05:05:49 UTC (rev 152)
+@@ -2,6 +2,7 @@
+ import thread
+ import time
+ import struct
++from happyboom.common.log import log
+ from udp_ping import UDP_Pinger 
+ 
+ class UDP_Client(io.IO_Client):
+@@ -86,7 +87,7 @@
+         # Debug message
+         if self.io.debug:
+             t = time.time() - self.__waitAck[id].creation
+-            print &quot;Ack %u received (time=%.1f ms)&quot; % (id, t*1000)
++            log.info(&quot;Ack %u received (time=%.1f ms)&quot; % (id, t*1000))
+ 
+         # The packet don't need ack anymore
+         del self.__waitAck[id]
+@@ -127,8 +128,8 @@
+         for id,timeout in receivedCopy.items():
+             if timeout &lt; time.time():
+                 if self.io.debug:
+-                    print &quot;Supprime ancien paquet %u de %s:%u (timeout)&quot; \
+-                        % (id, self.host, self.port)
++                    log.info(&quot;Remove old packet %u from %s:%u (clear cache).&quot; \
++                        % (id, self.host, self.port))
+                 self.__received_sema.acquire()
+                 del self.__received[id]
+                 self.__received_sema.release()
+
+Modified: happyboom/trunk/net/io_udp/udp_ping.py
+===================================================================
+--- happyboom/trunk/net/io_udp/udp_ping.py	2005-09-14 04:17:31 UTC (rev 151)
++++ happyboom/trunk/net/io_udp/udp_ping.py	2005-09-14 05:05:49 UTC (rev 152)
+@@ -1,6 +1,7 @@
+ import time
+ import struct
+ from net import io
++from happyboom.common.log import log
+ 
+ class UDP_Ping:
+     &quot;&quot;&quot; One UDP ping.
+@@ -69,9 +70,9 @@
+         @parameter id: The ping id.
+         @type id: C{int}
+         &quot;&quot;&quot;
+-        print &quot;Ping timeout.&quot;
+-#        print &quot;Disconnect client %s:%u (ping timeout).&quot; \
+-#            % (self.client.host, self.client.port)
++        log.error(&quot;UDP ping timeout.&quot;)
++#        log.error(&quot;Disconnect client %s:%u (ping timeout).&quot; \
++#            % (self.client.host, self.client.port))
+ #        self.client.disconnect()
+ 
+     def live(self):
+@@ -113,7 +114,7 @@
+         id = self.__getPingId(packet.data)
+         if id == None:
+             if self.debug:
+-                print &quot;Wrong ping packet (%s)!&quot; % (packet.toStr())
++                log.warning(&quot;Received invalid udp ping packet!&quot;)
+             return
+ 
+         # Received too late ?
+
+Modified: happyboom/trunk/server/agent.py
+===================================================================
+--- happyboom/trunk/server/agent.py	2005-09-14 04:17:31 UTC (rev 151)
++++ happyboom/trunk/server/agent.py	2005-09-14 05:05:49 UTC (rev 152)
+@@ -1,4 +1,5 @@
+ from pysma import ActionAgent, ActionMessage
++from happyboom.common.log import log
+ 
+ class Agent(ActionAgent):
+     &quot;&quot;&quot;
+@@ -22,12 +23,11 @@
+         self.sendBroadcastMessage(message, &quot;%s_listener&quot; %self.type)
+ 
+     def sendNetMsg(self, func, event, *args):
+-        print args
+         self._gateway.sendNetMsg(func, event, *args)
+ 
+     def messageReceived(self, msg):
+         if self.__debug:
+-            print &quot;Unhandled message : %s -- %s&quot; %(type(self), msg)
++            log.warning(&quot;Unhandled message : %s -- %s&quot; %(type(self), msg))
+ 
+ class Message(ActionMessage):
+     def __init__(self, action, arg, kw={}):
+
+Modified: happyboom/trunk/server/base_server.py
+===================================================================
+--- happyboom/trunk/server/base_server.py	2005-09-14 04:17:31 UTC (rev 151)
++++ happyboom/trunk/server/base_server.py	2005-09-14 05:05:49 UTC (rev 152)
+@@ -1,5 +1,6 @@
+ # TODO: Check if it's always possible to send skippable packets
+ 
++from happyboom.common.log import log
+ from happyboom.server.gateway import Gateway
+ from happyboom.server.client_manager import ClientManager
+ import random, thread, time
+@@ -20,9 +21,9 @@
+         self.gateway.born()
+         
+     def start(self):
+-        if self.__verbose: print &quot;[*] Starting server...&quot;
++        if self.__verbose: log.info(&quot;[*] Starting server...&quot;)
+         self.__gateway.start()
+-        print &quot;[*] Server started&quot;
++        log.info(&quot;[*] Server started&quot;)
+         
+         self.__stoplock.acquire()
+         running = not self.__stopped
+@@ -41,6 +42,6 @@
+             return
+         self.__stopped = True
+         self.__stoplock.release()
+-        print &quot;[*] Stopping server...&quot;
++        if self.__verbose: log.info(&quot;[*] Stopping server...&quot;)
+         self.__gateway.stop()
+-        if self.__verbose: print &quot;[*] Server stopped&quot;
++        log.info(&quot;[*] Server stopped&quot;)
+
+Modified: happyboom/trunk/server/client_manager.py
+===================================================================
+--- happyboom/trunk/server/client_manager.py	2005-09-14 04:17:31 UTC (rev 151)
++++ happyboom/trunk/server/client_manager.py	2005-09-14 05:05:49 UTC (rev 152)
+@@ -1,5 +1,7 @@
+ from happyboom.net import io, io_udp, io_tcp, net_buffer
+-import thread, traceback, time
++import thread, time
++from happyboom.common.log import log
++from happyboom.common.thread import getBacktrace
+ 
+ class ClientManager(object):
+     def __init__(self, arg): 
+@@ -28,7 +30,7 @@
+ #        processInputs()
+ 
+     def start(self):
+-        if self.__verbose: print &quot;[*] Starting server&quot;
++        if self.__verbose: log.info(&quot;[*] Starting server&quot;)
+         self.__io.name = &quot;server&quot;
+         self.__io.on_client_connect = self.openClient
+         self.__io.on_client_disconnect = self.closeClient
+@@ -65,10 +67,9 @@
+         try:
+             func(client)
+         except Exception, msg:
+-            print &quot;EXCEPTION WHEN A CLIENT TRY TO CONNECT :&quot;
+-            print msg
+-            print &quot;--&quot;
+-            traceback.print_exc()
++            log.error( \
++                &quot;EXCEPTION WHEN A CLIENT TRY TO CONNECT :\n%s\n%s&quot; \
++                % (msg, getBacktrace()))
+             self.stop()
+ 
+     # Function which should be called in a thread
+@@ -79,10 +80,9 @@
+                 self.__io.live()                
+                 time.sleep(0.001)
+         except Exception, msg:
+-            print &quot;EXCEPTION IN IO THREAD :&quot;
+-            print msg
+-            print &quot;--&quot;            
+-            traceback.print_exc()
++            log.error( \
++                &quot;EXCEPTION IN IO THREAD :\n%s\n%s&quot; \
++                % (msg, getBacktrace()))
+             self.stop()
+ 
+     def generateSignature(self, client):
+@@ -91,7 +91,7 @@
+         return r
+ 
+     def __do_openClient(self, io_client):
+-        if self.__verbose: print &quot;[*] Display %s try to connect ...&quot; % (client.name)
++        log.info(&quot;[*] Display %s try to connect ...&quot; % (client.name))
+         client = ClientSocket(io_client, self)
+         
+ #        self.__buffer.clear(client.addr)
+@@ -125,7 +125,7 @@
+ 
+         txt = &quot;Welcome to new (display) client : %s&quot; % (client.name)
+         self.__gateway.sendText(txt)
+-        if self.__verbose: print &quot;[*] Display %s connected&quot; % (client.name)
++        log.info(&quot;[*] Display %s connected&quot; % (client.name))
+         self.sendBBMessage(&quot;sync&quot;)
+ 
+     def __getSupportedFeatures(self): return self.__supported_features
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000058.html">[Happyboom-svn] r151 - in boomboom: . server server/agents
+</A></li>
+	<LI>Next message: <A HREF="000060.html">[Happyboom-svn] r153 - in happyboom/trunk/net: io io_tcp io_udp
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#59">[ date ]</a>
+              <a href="thread.html#59">[ thread ]</a>
+              <a href="subject.html#59">[ subject ]</a>
+              <a href="author.html#59">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

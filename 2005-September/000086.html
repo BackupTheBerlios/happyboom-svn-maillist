@@ -1,0 +1,242 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r179 - boomboom/client boomboom/server/agents happyboom/trunk/common happyboom/trunk/server
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r179%20-%20boomboom/client%20boomboom/server/agents%20happyboom/trunk/common%20happyboom/trunk/server&In-Reply-To=%3C200509152328.j8FNSIBM026053%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000085.html">
+   <LINK REL="Next"  HREF="000087.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r179 - boomboom/client boomboom/server/agents happyboom/trunk/common happyboom/trunk/server</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r179%20-%20boomboom/client%20boomboom/server/agents%20happyboom/trunk/common%20happyboom/trunk/server&In-Reply-To=%3C200509152328.j8FNSIBM026053%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r179 - boomboom/client boomboom/server/agents happyboom/trunk/common happyboom/trunk/server">haypo at berlios.de
+       </A><BR>
+    <I>Fri Sep 16 01:28:18 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000085.html">[Happyboom-svn] r178 - boomboom boomboom/client boomboom/server happyboom/trunk/common happyboom/trunk/server
+</A></li>
+        <LI>Next message: <A HREF="000087.html">[Happyboom-svn] r180 - happyboom/trunk/client
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#86">[ date ]</a>
+              <a href="thread.html#86">[ thread ]</a>
+              <a href="subject.html#86">[ subject ]</a>
+              <a href="author.html#86">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-16 01:28:07 +0200 (Fri, 16 Sep 2005)
+New Revision: 179
+
+Modified:
+   boomboom/client/bb_display.py
+   boomboom/server/agents/projectile.py
+   happyboom/trunk/common/presentation.py
+   happyboom/trunk/server/client_manager.py
+   happyboom/trunk/server/gateway.py
+Log:
+Diverses corrections pour faire marcher client et serveur.
+
+
+Modified: boomboom/client/bb_display.py
+===================================================================
+--- boomboom/client/bb_display.py	2005-09-15 23:00:40 UTC (rev 178)
++++ boomboom/client/bb_display.py	2005-09-15 23:28:07 UTC (rev 179)
+@@ -73,13 +73,16 @@
+         
+         self.registerEvent(&quot;weapon&quot;)
+         self.registerEvent(&quot;happyboom&quot;)
++        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;connection&quot;, self.onConnection)
++        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;disconnection&quot;, self.onDisconnection)
+ 
+-    def evt_happyboom_connection(self, ioclient, version, signature):
++    def onConnection(self, ioclient, version, signature):
+         # TODO: Save signature to reuse it later
+         features = &quot;TODO: Feed me!&quot;
+-        self.launchEvent(&quot;happyboom&quot;, &quot;features&quot;, features)
++        if self.__verbose: log.info(&quot;Connected to server, send features ...&quot;)
++        self.launchEvent(&quot;happyboom&quot;, &quot;features&quot;, self.__io, features)
+     
+-    def evt_happyboom_disconnection(self, ioclient, reason):
++    def onDisconnection(self, ioclient, reason):
+         log.warning(u&quot;Received disconnected from server: %s&quot; % reason)
+         self.launchEvent(&quot;game&quot;, &quot;stop&quot;)
+         
+
+Modified: boomboom/server/agents/projectile.py
+===================================================================
+--- boomboom/server/agents/projectile.py	2005-09-15 23:00:40 UTC (rev 178)
++++ boomboom/server/agents/projectile.py	2005-09-15 23:28:07 UTC (rev 179)
+@@ -22,7 +22,7 @@
+         self.requestActions(&quot;character&quot;)
+         self.requestActions(&quot;world&quot;)
+         self.requestActions(&quot;game&quot;)
+-        self.requestActions(&quot;network&quot;)
++        self.requestActions(&quot;gateway&quot;)
+         self.sendBroadcastMessage(Message(&quot;new_item&quot;, (self.type, self.id)), &quot;network&quot;)
+ 
+     def msg_weapon_strength(self, arg):
+@@ -74,8 +74,9 @@
+             y = self.start_pos[1] +self.speed[1] * dt +9.8*dt*dt*self.mass
+             self.move (x, y)
+ 
+-    def sync(self):
++    def sync(self, client):
++        # TODO: Only send it to client
+         self.setActive(self.active)
+ 
+-    def msg_network_sync(self):
+-        self.sync()
++    def msg_gateway_syncClient(self, client):
++        self.sync(client)
+
+Modified: happyboom/trunk/common/presentation.py
+===================================================================
+--- happyboom/trunk/common/presentation.py	2005-09-15 23:00:40 UTC (rev 178)
++++ happyboom/trunk/common/presentation.py	2005-09-15 23:28:07 UTC (rev 179)
+@@ -71,11 +71,11 @@
+         @type reason Unicode
+         &quot;&quot;&quot;
+         self.evt_happyboom_disconnection(ioclient, reason)
+-            
+-    def featuresPacket(self, features=&quot;TODO: Feed me!&quot;):
++
++    def evt_happyboom_features(self, ioclient, features):
+         data = struct.pack(&quot;!B&quot;, self.FEATURES)
+         data = data + packBin(features)
+-        return Packet(data)
++        ioclient.send( Packet(data) )
+        
+     def evt_happyboom_connection(self, ioclient, version, signature):
+         &quot;&quot;&quot;
+
+Modified: happyboom/trunk/server/client_manager.py
+===================================================================
+--- happyboom/trunk/server/client_manager.py	2005-09-15 23:00:40 UTC (rev 178)
++++ happyboom/trunk/server/client_manager.py	2005-09-15 23:28:07 UTC (rev 179)
+@@ -31,12 +31,15 @@
+ 
+     def onClientConnection(self, ioclient, version, signature):
+         # TODO: Case where signature != &quot;&quot; ??? (reconnection)
++        if self.__verbose: log.info(&quot;Client %s try to connect : check version.&quot; % ioclient)
+         server_version = self.__protocol.version
+         if version == server_version:
++            if self.__verbose: log.info(&quot;Client %s try to connect: version ok.&quot; % ioclient)
+             signature = self.generateSignature(ioclient)
+-            self.launchEvent(&quot;happyboom&quot;, &quot;clientConnection&quot;, ioclient, server_version, signature)
++            self.launchEvent(&quot;happyboom&quot;, &quot;connection&quot;, ioclient, server_version, signature)
+         else:    
+-            self.launchEvent(&quot;happyboom&quot;, &quot;closeConnection&quot;, ioclient, u&quot;Wrong server version (%s VS %s)&quot; % (version, serverur_version))
++            if self.__verbose: log.warning(&quot;Client %s try to connect: wrong version (%s).&quot; % version)
++            self.launchEvent(&quot;happyboom&quot;, &quot;closeConnection&quot;, ioclient, u&quot;Wrong server version (%s VS %s)&quot; % (version, serveur_version))
+ 
+     def onClientFeatures(self, ioclient, features):
+         # Register client in the clients list
+@@ -46,7 +49,6 @@
+         self.__clients_lock.release() 
+ 
+         # Register client to features
+-        features = unpackBin(features)
+         for feature in features:
+             if feature in self.__supported_features:
+                 self.__supported_features[feature].append(ioclient)
+@@ -79,6 +81,7 @@
+         self.__io.connect('', self.client_port)
+         self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;connection&quot;, self.onClientConnection)
+         self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;disconnection&quot;, self.onClientDisconnection)
++        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;features&quot;, self.onClientFeatures)
+         thread.start_new_thread(self.run_io_thread, ())
+ 
+     def readClientAnswer(self, client, timeout=1.000):
+@@ -93,14 +96,12 @@
+         else:
+             self.__supported_features[role] = [client,]
+         
+-    def openClient(self, client):
+-        log.info(&quot;[*] Client %s try to connect ...&quot; % client)
++    def openClient(self, ioclient):
++        log.info(&quot;[*] Client %s try to connect ...&quot; % ioclient)
+ 
+     def removeClient(self, ioclient):
+-        client = self.getClientByAddr(ioclient.addr)
+-        if client == None: return
+-        log.info(&quot;Disconnect client %s.&quot; % client)
+-        self.gateway.sendText(u&quot;Client %s leave us.&quot; % client)
++        log.info(&quot;Disconnect client %s.&quot; % ioclient)
++        self.gateway.sendText(u&quot;Client %s leave us.&quot; % ioclient)
+ 
+         self.__clients_lock.acquire() 
+         del self.__clients[ioclient.addr]
+@@ -110,7 +111,9 @@
+         # TODO: get client of type Client for the client of type ClientIO to send
+         # him bye
+ #        client.sendNetMsg(&quot;presentation&quot;, &quot;bye&quot;, &quot;utf8&quot;, u&quot;Lost connection&quot;)
+-        log.info(&quot;[*] Client %s leave us.&quot; % ioclient)
++        client = self.getClientByAddr(ioclient.addr)
++        if client == None: return
++        log.info(&quot;[*] Client %s leave us.&quot; % client)
+         self.removeClient(ioclient)
+         
+     def __clientChallenge(self, client, func):
+@@ -137,8 +140,9 @@
+ 
+     def generateSignature(self, ioclient):
+         import random
+-        r = random.randint(0,1000000)
+-        return r
++        r1 = random.randint(0,1000000)
++        r2 = random.randint(0,1000000)
++        return &quot;%s%s%s&quot; % (r1,ioclient.addr,r2)
+ 
+     def getClientByAddr(self, addr):
+         &quot;&quot;&quot; Returns None if no client matchs. &quot;&quot;&quot;
+
+Modified: happyboom/trunk/server/gateway.py
+===================================================================
+--- happyboom/trunk/server/gateway.py	2005-09-15 23:00:40 UTC (rev 178)
++++ happyboom/trunk/server/gateway.py	2005-09-15 23:28:07 UTC (rev 179)
+@@ -59,7 +59,7 @@
+         self.sendBroadcastMessage(message, &quot;%s_listener&quot; % feature)
+ 
+     def evt_happyboom_newClient(self, client):
+-        self.send(&quot;sync&quot;) #TODO: Add client argument ...
++        self.send(&quot;syncClient&quot;, client)
+ 
+     def sendNetMsg(self, feature, event, *args):
+         clients = self.client_manager.supported_features.get(feature, ())
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000085.html">[Happyboom-svn] r178 - boomboom boomboom/client boomboom/server happyboom/trunk/common happyboom/trunk/server
+</A></li>
+	<LI>Next message: <A HREF="000087.html">[Happyboom-svn] r180 - happyboom/trunk/client
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#86">[ date ]</a>
+              <a href="thread.html#86">[ thread ]</a>
+              <a href="subject.html#86">[ subject ]</a>
+              <a href="author.html#86">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

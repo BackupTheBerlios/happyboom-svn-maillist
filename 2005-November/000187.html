@@ -1,0 +1,325 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r280 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r280%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511280252.jAS2qgMr014287%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000186.html">
+   <LINK REL="Next"  HREF="000188.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r280 - in haypo/hachoir: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r280%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511280252.jAS2qgMr014287%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r280 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Mon Nov 28 03:52:42 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000186.html">[Happyboom-svn] r279 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000188.html">[Happyboom-svn] r281 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#187">[ date ]</a>
+              <a href="thread.html#187">[ thread ]</a>
+              <a href="subject.html#187">[ subject ]</a>
+              <a href="author.html#187">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-28 03:52:23 +0100 (Mon, 28 Nov 2005)
+New Revision: 280
+
+Added:
+   haypo/hachoir/plugins/exif.py
+Modified:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/filter.py
+   haypo/hachoir/mime.py
+   haypo/hachoir/plugins/3ds.py
+   haypo/hachoir/plugins/jpeg.py
+Log:
+- 3DS filter: add keyframe identifiers
+- Create EXIF filter (eg. for JPEG pictures)
+- In JPEG chunk, use sub-stream, and supports Exif
+- Fix FormatChunk.getValue() -&gt; don't change stream position
+- Fix Filter.readStreamChild() stream seek (use parent stream old
+  position and no more chunk address)
+
+
+Modified: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-11-28 00:58:10 UTC (rev 279)
++++ haypo/hachoir/chunk.py	2005-11-28 02:52:23 UTC (rev 280)
+@@ -203,12 +203,15 @@
+ 
+     def _getRawData(self, max_size=None):
+         stream = self._chunk.getStream()
++        oldpos = stream.tell()
+         stream.seek(self._addr)
+         if (max_size == None or self._size&lt;max_size) or not self._chunk.isString():
+             data = stream.getN(self._size)
++            stream.seek(oldpos)
+             return data, False
+         else:
+             data = stream.getN(max_size)
++            stream.seek(oldpos)
+             return data+&quot;(...)&quot;, True
+ 
+     def update(self):
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-11-28 00:58:10 UTC (rev 279)
++++ haypo/hachoir/filter.py	2005-11-28 02:52:23 UTC (rev 280)
+@@ -335,7 +335,7 @@
+         filter.setId(id)
+         chunk = self.addFilter(id, filter, oldpos)
+         chunk.postProcess()
+-        self._stream.seek(chunk.addr + chunk.size)
++        self._stream.seek(oldpos + chunk.size)
+         return chunk
+         
+     def readChild(self, id, filter_class, *args): 
+
+Modified: haypo/hachoir/mime.py
+===================================================================
+--- haypo/hachoir/mime.py	2005-11-28 00:58:10 UTC (rev 279)
++++ haypo/hachoir/mime.py	2005-11-28 02:52:23 UTC (rev 280)
+@@ -44,7 +44,6 @@
+       =&gt; [['text/plain', {'charset': 'ISO-8859-1', 'format': 'flowed'}]]
+     &quot;&quot;&quot;
+     
+-    print mimes
+     list = []
+     for mime in map(string.strip, mimes.split(&quot;,&quot;)):
+         parts = mime.split(&quot;;&quot;)
+
+Modified: haypo/hachoir/plugins/3ds.py
+===================================================================
+--- haypo/hachoir/plugins/3ds.py	2005-11-28 00:58:10 UTC (rev 279)
++++ haypo/hachoir/plugins/3ds.py	2005-11-28 02:52:23 UTC (rev 280)
+@@ -64,6 +64,12 @@
+         filter.readChild(&quot;polygon[]&quot;, Filter_3DS_Polygon)
+ 
+ class Filter_3DS_Chunk(Filter):
++    # List of chunks which contains other chunks
++    sub_chunks = \
++        (0x4D4D, 0x4100, 0x3D3D, 0xAFFF, 0xA200,
++         0xB002, 0xB006, 0xB007,
++         0xA010, 0xA030, 0xA020, 0xB000)
++    
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;3ds_chunk&quot;, &quot;3DS chunk&quot;, stream, parent)
+         chunk = self.read(&quot;type&quot;, &quot;&lt;H&quot;, &quot;Chunk type&quot;, post=self.toHex)
+@@ -74,6 +80,7 @@
+             0x4000: readObject,
+             0xA300: readTextureFilename,
+             0x0011: readColor,
++# TODO: Uncomment these functions, it's too slow yet            
+ #            0x4110: readVertexList,
+ #            0x4120: readPolygonList,
+ #            0x4140: readMapList,
+@@ -82,7 +89,7 @@
+         size = self[&quot;size&quot;] - 6
+         type = self[&quot;type&quot;] 
+         end = stream.tell() + size
+-        if type in (0x4D4D, 0x4100, 0x3D3D, 0xAFFF, 0xA200, 0xA010, 0xA030, 0xA020):
++        if type in Filter_3DS_Chunk.sub_chunks:
+             while stream.tell() &lt; end:
+                 self.readChild(&quot;chunk[]&quot;, Filter_3DS_Chunk)
+             assert stream.tell() == end 
+@@ -124,7 +131,18 @@
+             0xA020: &quot;Material diffuse&quot;,
+             0xA030: &quot;Texture specular&quot;,
+             0xA200: &quot;Texture&quot;,
+-            0xA300: &quot;Texture filename&quot;
++            0xA300: &quot;Texture filename&quot;,
++
++            # Key frames
++            0xB000: &quot;Keyframes&quot;,
++            0xB002: &quot;Object node tag&quot;,
++            0xB006: &quot;Light target node tag&quot;,
++            0xB007: &quot;Spot light node tag&quot;,
++            0xB00A: &quot;Keyframes header&quot;,
++            0xB009: &quot;Keyframe current time&quot;,
++            0xB030: &quot;Node identifier&quot;,
++            0xB010: &quot;Node header&quot;,
++            0x7001: &quot;Viewport layout&quot;
+         }
+         if type in know:
+             return know[type]
+
+Added: haypo/hachoir/plugins/exif.py
+===================================================================
+--- haypo/hachoir/plugins/exif.py	2005-11-28 00:58:10 UTC (rev 279)
++++ haypo/hachoir/plugins/exif.py	2005-11-28 02:52:23 UTC (rev 280)
+@@ -0,0 +1,59 @@
++&quot;&quot;&quot;
++Exif filter.
++
++Informations about Exif at:
++- <A HREF="http://www.exif.org/">http://www.exif.org/</A>
++- <A HREF="http://libexif.sourceforge.net/">http://libexif.sourceforge.net/</A>
++
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from filter import Filter
++
++class ExifEntry(Filter):
++    def __init__(self, stream, parent, endian):
++        Filter.__init__(self, &quot;exif_entry&quot;, &quot;Exif entry&quot;, stream, parent)
++        self.endian = endian
++        self.read(&quot;tag&quot;, endian+&quot;H&quot;, &quot;Tag&quot;, post=self.processTag)
++        self.read(&quot;whatsthis&quot;, &quot;10s&quot;, &quot;What's this?&quot;)
++
++    def updateParent(self, parent):
++        parent.description = &quot;Exif entry (%s)&quot; % self.getTag() 
++
++    def getTag(self):
++        know = {
++            0x010e: &quot;Image description&quot;,
++            0x010f: &quot;Camera constructor&quot;,
++            0x0110: &quot;Camera model&quot;,
++            0x0131: &quot;Software&quot;
++        }
++        return know.get(self[&quot;tag&quot;], &quot;Unknown tag (0x%03X)&quot; % self[&quot;tag&quot;])
++
++    def processTag(self, chunk):
++        chunk.description = self.getTag()
++        return &quot;(0x%04X)&quot; % chunk.value 
++
++class ExifFilter(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;exif&quot;, &quot;Exif&quot;, stream, parent)
++
++        # Headers
++        self.read(&quot;header&quot;, &quot;6s&quot;, &quot;Header (Exif\\0\\0)&quot;)
++        assert self[&quot;header&quot;] == &quot;Exif\0\0&quot;
++        self.read(&quot;byte_order&quot;, &quot;2s&quot;, &quot;Byte order&quot;)
++        assert self[&quot;byte_order&quot;] in (&quot;II&quot;, &quot;MM&quot;)
++        if self[&quot;byte_order&quot;] == &quot;II&quot;:
++           endian = &quot;&lt;&quot;
++        else:
++           endian = &quot;&gt;&quot;
++        self.read(&quot;header2&quot;, endian+&quot;H&quot;, &quot;Header2 (42)&quot;)
++
++        # Part 0
++        self.read(&quot;nb_entry&quot;, endian+&quot;H&quot;, &quot;Number of entries&quot;)
++        self.read(&quot;offset&quot;, endian+&quot;L&quot;, &quot;Reserved&quot;)
++        nb_entry = self[&quot;nb_entry&quot;]
++        for i in range(0,nb_entry):
++            self.readChild(&quot;entry[]&quot;, ExifEntry, endian)
++
++        # TODO: To be continued...
++        self.read(&quot;end&quot;, &quot;{@end@}s&quot;, &quot;End&quot;)
+
+Modified: haypo/hachoir/plugins/jpeg.py
+===================================================================
+--- haypo/hachoir/plugins/jpeg.py	2005-11-28 00:58:10 UTC (rev 279)
++++ haypo/hachoir/plugins/jpeg.py	2005-11-28 02:52:23 UTC (rev 280)
+@@ -7,11 +7,11 @@
+ 
+ from filter import Filter
+ from plugin import registerPlugin
++from exif import ExifFilter
+ 
+ class JpegChunkApp0(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;jpeg_chunk&quot;, &quot;JPEG chunk App0&quot;, stream, parent)
+-        self.read(&quot;size&quot;, &quot;!H&quot;, &quot;Size&quot;)
+         self.read(&quot;jfif&quot;, &quot;5s&quot;, &quot;JFIF string&quot;)
+         self.read(&quot;ver_maj&quot;, &quot;B&quot;, &quot;Major version&quot;)
+         self.read(&quot;ver_min&quot;, &quot;B&quot;, &quot;Minor version&quot;)
+@@ -27,18 +27,27 @@
+         thumb = self[&quot;thumb_w&quot;] * self[&quot;thumb_h&quot;]
+         if thumb != 0:
+             self.read(&quot;thumb_data&quot;, &quot;%us&quot; % size, &quot;Thumbnail data&quot;, truncate=True)
+-        assert self[&quot;size&quot;] == self.getSize()
+ 
+ class JpegChunk(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;jpeg_chunk&quot;, &quot;JPEG chunk&quot;, stream, parent)
+-        chunk = self.read(&quot;header&quot;, &quot;!2B&quot;, &quot;Header&quot;, post=self.getChunkType)
+-        assert self[&quot;header&quot;][0] == 0xFF
+-        if self[&quot;header&quot;][1] == 0xE0:
+-            self.readChild(&quot;app0&quot;, JpegChunkApp0)
++        chunk = self.read(&quot;header&quot;, &quot;B&quot;, &quot;Header&quot;)
++        assert self[&quot;header&quot;] == 0xFF
++        chunk = self.read(&quot;type&quot;, &quot;B&quot;, &quot;Type&quot;, post=self.getChunkType)
++        known = {
++            0xE0: JpegChunkApp0,
++            0xE1: ExifFilter
++        }
++        chunk_type = self[&quot;type&quot;]
++        self.read(&quot;size&quot;, &quot;!H&quot;, &quot;Size&quot;)
++        size = self[&quot;size&quot;] - 2
++        if chunk_type in known:
++            end = stream.tell() + size
++            sub = stream.createSub(size=size)
++            self.readStreamChild(&quot;app0&quot;, sub, known[chunk_type])
++            assert stream.tell() == end
+         else:
+-            self.read(&quot;size&quot;, &quot;!H&quot;, &quot;Size&quot;)
+-            self.read(&quot;data&quot;, &quot;!%us&quot; % (self[&quot;size&quot;] - 2), &quot;Data&quot;)
++            self.read(&quot;data&quot;, &quot;!%us&quot; % size, &quot;Data&quot;)
+ 
+     def getChunkType(self, chunk):
+         types = {
+@@ -50,10 +59,11 @@
+             0xDB: &quot;Define Quantization Table (DQT)&quot;,
+             0xDC: &quot;Define number of Lines (DNL)&quot;,
+             0xDD: &quot;Define Restart Interval (DRI)&quot;,
++            0xE1: &quot;EXIF&quot;,
+             0xE0: &quot;APP0&quot;,
+             0xFE: &quot;Comment&quot;
+         }
+-        type = chunk.value[1]
++        type = chunk.value
+         if type in types:
+             type = types[type]
+         else:
+@@ -63,7 +73,7 @@
+ 
+ class JpegFile(Filter):
+     def checkEndOfChunks(self, stream, array, chunk):
+-        if chunk != None and chunk[&quot;header&quot;][1] == 0xDA: return True
++        if chunk != None and chunk[&quot;type&quot;] == 0xDA: return True
+         return stream.eof()
+ 
+     def __init__(self, stream, parent=None):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000186.html">[Happyboom-svn] r279 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000188.html">[Happyboom-svn] r281 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#187">[ date ]</a>
+              <a href="thread.html#187">[ thread ]</a>
+              <a href="subject.html#187">[ subject ]</a>
+              <a href="author.html#187">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,265 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r195 - happyboom/trunk/client
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r195%20-%20happyboom/trunk/client&In-Reply-To=%3C200509180556.j8I5uwGM028577%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000101.html">
+   <LINK REL="Next"  HREF="000103.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r195 - happyboom/trunk/client</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r195%20-%20happyboom/trunk/client&In-Reply-To=%3C200509180556.j8I5uwGM028577%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r195 - happyboom/trunk/client">dboucard at berlios.de
+       </A><BR>
+    <I>Sun Sep 18 07:56:58 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000101.html">[Happyboom-svn] r194 - happyboom/trunk/server
+</A></li>
+        <LI>Next message: <A HREF="000103.html">[Happyboom-svn] r196 - in boomboom: . curses_client curses_client/items
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#102">[ date ]</a>
+              <a href="thread.html#102">[ thread ]</a>
+              <a href="subject.html#102">[ subject ]</a>
+              <a href="author.html#102">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-18 07:56:52 +0200 (Sun, 18 Sep 2005)
+New Revision: 195
+
+Modified:
+   happyboom/trunk/client/base_client.py
+Log:
+client code cleaning
+
+
+Modified: happyboom/trunk/client/base_client.py
+===================================================================
+--- happyboom/trunk/client/base_client.py	2005-09-18 05:56:27 UTC (rev 194)
++++ happyboom/trunk/client/base_client.py	2005-09-18 05:56:52 UTC (rev 195)
+@@ -4,8 +4,7 @@
+ from happyboom.common.event import EventLauncher, EventListener
+ from happyboom.net.io.packet import Packet
+ from happyboom.net.io_tcp.tcp import IO_TCP
+-import struct, string
+-import thread
++import struct, string, thread, imp, os.path, sys
+ 
+ class Client(object, EventListener, EventLauncher):
+     &quot;&quot;&quot;
+@@ -23,7 +22,7 @@
+     &quot;&quot;&quot;
+     
+     def __init__(self, args):
+-        EventListener.__init__(self) # TODO : Fix me (with good arguments)
++        EventListener.__init__(self)
+         EventLauncher.__init__(self)
+         self.host = args.get(&quot;host&quot;, &quot;127.0.0.1&quot;)
+         self.port = args.get(&quot;port&quot;, 12430)
+@@ -40,20 +39,13 @@
+         self.presentation = HappyboomProtocol(protocol, args)
+         self.gateway = Gateway(protocol, args)
+         self.registerEvent(&quot;happyboom&quot;)
++        
++    def evt_happyboom_stop(self):
++        self.stop()
+ 
+     def evt_happyboom_network(self, feature, event, *args):
+-        self.send(feature, event, *args)
++        self.launchEvent(&quot;happyboom&quot;, &quot;event&quot;, (self._io,), feature, event, args)
+ 
+-    def send(self, feature, event, *args):
+-        &quot;&quot;&quot; Sends a string to the network server.
+-        @param str: String to send.
+-        @type str: C{str}
+-        &quot;&quot;&quot;
+-        data = self.presentation.protocol.createMsg(feature, event, *args)
+-        self.launchEvent(&quot;happyboom&quot;, &quot;event&quot;, (self._io,), data)
+-#        data = self.presentation.sendMsg(data)
+-#        self._io.send(Packet(data))
+-        
+     def start(self):
+         &quot;&quot;&quot; Starts the client : connection to the server, etc. &quot;&quot;&quot;
+         # Try to connect to server
+@@ -93,7 +85,7 @@
+         &quot;&quot;&quot; Handler called on network connection. &quot;&quot;&quot;
+         if self.verbose:
+             log.info(&quot;[HAPPYBOOM] Connected to server, send presentation connection().&quot;)
+-        self.launchEvent(&quot;happyboom&quot;, &quot;connection&quot;, self._io, self.presentation.protocol.version.encode(&quot;ascii&quot;), &quot;&quot;)
++        self.launchEvent(&quot;happyboom&quot;, &quot;connection&quot;, self._io)
+         
+     def onConnectionFails(self):
+         &quot;&quot;&quot; Handler called when network connection fails. &quot;&quot;&quot;
+@@ -110,17 +102,6 @@
+         log.warning(&quot;[HAPPYBOOM] Lost connection with server.&quot;)
+         self.launchEvent(&quot;happyboom&quot;, &quot;stop&quot;)
+         
+-    def processPacket(self, new_packet):
+-        &quot;&quot;&quot; Processes incomming network packets (converts and launches local event).
+-        @param new_packet: incomming network packet.
+-        @type new_packet: C{net.io.packet.Packet}
+-        &quot;&quot;&quot;
+-        event_type, arg = self.str2evt(new_packet.data)
+-        if event_type != None: 
+-            if self.debug:
+-                log.info(&quot;Received message: type=%s arg=%s&quot; %(event_type, arg))
+-            self.launchEvent(event_type, arg)
+-            
+ class Gateway(EventLauncher, EventListener):
+     def __init__(self, protocol, args):
+         EventLauncher.__init__(self)
+@@ -128,16 +109,40 @@
+         self.protocol = protocol
+         self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;connection&quot;, self.processConnection)
+         self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;disconnection&quot;, self.processDisconnection)
+-        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;create_item&quot;, self.processCreate)
+-#        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;destroy_item&quot;, self.processXX)
++        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;create_item&quot;, self.processCreateItem)
++        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;destroy_item&quot;, self.processDestroyItem)
+         self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;recv_event&quot;, self.processEvent)
+         self.registerEvent(&quot;happyboom&quot;)
+         self.verbose = args.get(&quot;verbose&quot;, False)
+         self.debug = args.get(&quot;debug&quot;, False)
+-        self.features = []
++        self.features = {}
++        for feat in args.get(&quot;features&quot;, ()):
++            self.features[feat] = None
+         self.items = {}
+-        #self.gamepath = None
+-        self.module = __import__(&quot;client/items&quot;)
++        itemPath = args[&quot;item_path&quot;]
++        dirs = itemPath.split(os.path.sep)
++        if dirs[-1] == &quot;&quot;:
++            dirs = dirs[:-1]
++        packagePath = None
++        try:
++            for d in dirs:
++                #print &quot;imp.find_module(%s, %s)&quot; %(repr(modName), repr(modDir))
++                f, fname, desc = imp.find_module(d, packagePath)
++                self.module = imp.load_module(d, f, fname, desc)
++                packagePath = self.module.__path__
++        except:
++            raise Exception(&quot;[HAPPYBOOM] Invalid item path : %s&quot; %itemPath)
++        import types
++        for attr in self.module.__dict__:
++            if type(self.module.__dict__[attr]) == types.ClassType:
++                itemClass = self.module.__dict__[attr]
++                if hasattr(itemClass, &quot;feature&quot;):
++                    feat = getattr(itemClass, &quot;feature&quot;)
++                    if feat != None:
++                        if feat in self.features:
++                            raise Exception(&quot;[HAPPYBOOM] Duplicated feature %s in %s and %s classes&quot; %(feat, itemClass.__name__, self.features[feat].__name__))
++                        self.features[feat] = itemClass
++                    print &quot;FEATURE : %s !!!!!!!!!!!!!!!!!!!!!!!&quot; %feat
+         
+     def processConnection(self, ioclient, version, signature):
+         self.launchEvent(&quot;happyboom&quot;, &quot;signature&quot;, ioclient, signature)
+@@ -150,56 +155,27 @@
+                 pass
+         self.launchEvent(&quot;happyboom&quot;, &quot;features&quot;, ioclient, features)
+         
+-    def processDisconnection(self, reason):
++    def processDisconnection(self, ioclient, reason):
+         self.launchEvent(&quot;happyboom&quot;, &quot;stop&quot;, reason)
+     
+-    def processCreateItem(self, feature, id):
+-        assert feature in self.features, &quot;Unexpected feature&quot;
+-        classname = self.getClassnameByFeature(feature)
+-        assert hasattr(self.module, classname), &quot;Item class not found : %s&quot; %classname
+-        itemclass = getattr(self.module, classname)
+-        item = itemclass(id)
+-        self.items[id] = item
+-        self.launchEvent(feature, &quot;new&quot;, id)
++    def processCreateItem(self, ioclient, feature, id):
++        assert feature in self.features, &quot;Unexpected feature : %s&quot; %feature
++        itemClass = self.features[feature]
++        if itemClass != None:
++            item = itemClass(id)
++            self.items[id] = item
++            self.launchEvent(feature, &quot;new&quot;, id)
+     
+-    def processDestroyItem(self, id):
++    def processDestroyItem(self, ioclient, id):
+         assert id in self.items, &quot;Unknown item identifier %s&quot; %id
+         self.launchEvent(feature, &quot;delete&quot;, id)
+         del self.items[id]
+         
+-    def processEvent(self, ioclient, feature, event, *args):
+-        self.launchEvent(feature, event, *args)
+-
+-    def getClassnameByFeature(self, feature):
+-        classname = &quot;&quot;
+-        prefix = True
+-        space = True
+-        for i in range(len(feature)):
+-            if feature[i] not in string.ascii_letters:
+-                if prefix:
+-                    classname = classname + feature[i]
+-                space = True
+-            else:
+-                prefix = False
+-                if space:
+-                    classname = classname + feature[i].upper()
+-                else:
+-                    classname = classname + feature[i]
+-        return classname
+-
+-#    def evt_happyboom_gamepath(self, path):
+-#        self.gamepath = path
+-        
+-    def processCreate(self, ioclient, type, id):
+-        try:
+-            type = self.protocol.getFeatureById(type)
+-            type = type.name
+-        except ProtocolException, err:
+-            log.error(err)
+-            return
+-        self.launchEvent(&quot;happyboom&quot;, &quot;doCreateItem&quot;, type, id)
+-
+-    def processEvent(self, ioclient, feature, event, *args):       
++    def processEvent(self, ioclient, feature, event, args):
+         if self.debug:
+             log.info(&quot;New event: %s.%s%s&quot; % (feature, event, args))
++        assert feature in self.features, &quot;Unexpected feature&quot;
+         self.launchEvent(feature, event, *args)
++
++#    def evt_happyboom_gamepath(self, path):
++#        self.gamepath = path
+\ No newline at end of file
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000101.html">[Happyboom-svn] r194 - happyboom/trunk/server
+</A></li>
+	<LI>Next message: <A HREF="000103.html">[Happyboom-svn] r196 - in boomboom: . curses_client curses_client/items
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#102">[ date ]</a>
+              <a href="thread.html#102">[ thread ]</a>
+              <a href="subject.html#102">[ subject ]</a>
+              <a href="author.html#102">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

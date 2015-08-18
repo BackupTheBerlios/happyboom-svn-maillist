@@ -1,0 +1,173 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r339 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r339%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200512160641.jBG6f0OL005432%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000244.html">
+   <LINK REL="Next"  HREF="000246.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r339 - in haypo/hachoir: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r339%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200512160641.jBG6f0OL005432%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r339 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Fri Dec 16 07:41:00 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000244.html">[Happyboom-svn] r338 - in haypo/hachoir: . plugins ui
+</A></li>
+        <LI>Next message: <A HREF="000246.html">[Happyboom-svn] r341 - in haypo/hachoir: . fallback plugins ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#245">[ date ]</a>
+              <a href="thread.html#245">[ thread ]</a>
+              <a href="subject.html#245">[ subject ]</a>
+              <a href="author.html#245">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-16 07:40:33 +0100 (Fri, 16 Dec 2005)
+New Revision: 339
+
+Modified:
+   haypo/hachoir/filter.py
+   haypo/hachoir/plugins/ext2.py
+Log:
+Update description when a filter is loaded from OnlyFiltersFilter
+
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-12-16 06:29:25 UTC (rev 338)
++++ haypo/hachoir/filter.py	2005-12-16 06:40:33 UTC (rev 339)
+@@ -29,9 +29,6 @@
+     def setAddr(self, addr): self._addr = addr
+     def getParent(self): return self._parent
+     def getStream(self): return self._stream
+-    def setChunkCounter(self, root, start):
+-        assert root not in self._chunks_counter
+-        self._chunks_counter[root] = start
+ 
+     def getPath(self):
+         &quot;&quot;&quot;
+@@ -118,8 +115,9 @@
+         if id not in self._chunks_dict:
+             return None
+         if id not in self._chunks_cache:
+-            chunk = self._chunks_dict[id]
+-            self._chunks_cache[id] = FormatChunk(chunk[0], chunk[1], self._stream, chunk[2], chunk[3], self)
++            info = self._chunks_dict[id]
++            chunk = FormatChunk(info[0], info[1], self._stream, info[2], info[3], self)
++            self._chunks_cache[id] = chunk 
+         return self._chunks_cache[id]
+ 
+     def __getitem__(self, id):
+@@ -137,9 +135,9 @@
+     def purgeCache(self):
+         self._chunks_cache = {}
+ 
+-    def readSizedChild(self, id, size, filter_class, *args): 
++    def readSizedChild(self, id, size, description, filter_class, *args): 
+         id = self.getUniqChunkId(id)
+-        filter_info = (id, size, self._stream.tell(), filter_class, args)
++        filter_info = (id, size, self._stream.tell(), description, filter_class, args)
+         self._chunks_dict[id] = filter_info
+         self._chunks.append( filter_info )
+         self._stream.seek(size, 1)
+@@ -148,10 +146,14 @@
+     def display(self):
+         ui.window.enableParentButton(self.getParent() != None)
+         ui.window.clear_table()
+-        for chunk in self._chunks:
+-            format = chunk[3].__name__
+-            desc = &quot;xxx&quot;
+-            ui.window.add_table(None, chunk[2], chunk[1], format, chunk[0], desc, &quot;(...)&quot;)
++        for info in self._chunks:
++            format = info[4].__name__
++            if info[0] in self._chunks_cache:
++                c = self._chunks_cache[info[0]]
++                desc = c.description
++            else:
++                desc = info[3] 
++            ui.window.add_table(None, info[2], info[1], format, info[0], desc, &quot;(...)&quot;)
+  
+     def getSize(self): return self._size
+ 
+@@ -163,11 +165,10 @@
+ 
+             addr = info[2]
+             self._stream.seek(addr)
+-            filter = info[3] (self._stream, self, *info[4])
++            filter = info[4] (self._stream, self, *info[5])
+             filter.setId(info[0])
+             chunk = FilterChunk(info[0], filter, self, addr)
+-#            filter.updateParent(chunk)
+-#            chunk.postProcess()
++            filter.updateParent(chunk)
+             self._stream.seek(addr + info[1])
+             
+             self._chunks_cache[id] = chunk 
+
+Modified: haypo/hachoir/plugins/ext2.py
+===================================================================
+--- haypo/hachoir/plugins/ext2.py	2005-12-16 06:29:25 UTC (rev 338)
++++ haypo/hachoir/plugins/ext2.py	2005-12-16 06:40:33 UTC (rev 339)
+@@ -303,13 +303,11 @@
+         self.inodes = {}
+         self.start = start
+         chunk_size = parent.superblock[&quot;inode_size&quot;]
+-        for index in range(0,count):
+-            self.readSizedChild(&quot;inode[]&quot;, chunk_size, Inode, index)
++        for index in range(self.start+1, self.start+1+count):
++            self.readSizedChild(&quot;inode[]&quot;, chunk_size, &quot;Inode %s&quot; % index, Inode, index)
+ 
+     def __getitem__(self, index):
+-        print &quot;Read inode %s&quot; % index
+         index = index - self.start - 1
+-        print &quot;&gt;Read inode %s&quot; % index
+         return self.getChunk(&quot;inode[%u]&quot; % index).getFilter()
+ 
+ #class Directory(Filter):
+@@ -357,7 +355,6 @@
+             self.read(&quot;raw[]&quot;, &quot;%us&quot; % size, &quot;Raw&quot;)
+ 
+     def readDirectory(self, inode):
+-        print &quot;Read.&quot;
+         stream = self.getStream()
+         block_index = 0
+         while True:
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000244.html">[Happyboom-svn] r338 - in haypo/hachoir: . plugins ui
+</A></li>
+	<LI>Next message: <A HREF="000246.html">[Happyboom-svn] r341 - in haypo/hachoir: . fallback plugins ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#245">[ date ]</a>
+              <a href="thread.html#245">[ thread ]</a>
+              <a href="subject.html#245">[ subject ]</a>
+              <a href="author.html#245">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

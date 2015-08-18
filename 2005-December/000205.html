@@ -1,0 +1,151 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r299 - in haypo/greycstoration_gimp: . src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r299%20-%20in%20haypo/greycstoration_gimp%3A%20.%20src&In-Reply-To=%3C200512051754.jB5HsX3L021556%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000204.html">
+   <LINK REL="Next"  HREF="000206.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r299 - in haypo/greycstoration_gimp: . src</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r299%20-%20in%20haypo/greycstoration_gimp%3A%20.%20src&In-Reply-To=%3C200512051754.jB5HsX3L021556%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r299 - in haypo/greycstoration_gimp: . src">haypo at berlios.de
+       </A><BR>
+    <I>Mon Dec  5 18:54:33 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000204.html">[Happyboom-svn] r298 - in haypo/greycstoration_gimp: . po
+</A></li>
+        <LI>Next message: <A HREF="000206.html">[Happyboom-svn] r300 - in haypo: . greycstoration_gimp greycstoration_gimp/po
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#205">[ date ]</a>
+              <a href="thread.html#205">[ thread ]</a>
+              <a href="subject.html#205">[ subject ]</a>
+              <a href="author.html#205">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-05 18:54:32 +0100 (Mon, 05 Dec 2005)
+New Revision: 299
+
+Modified:
+   haypo/greycstoration_gimp/INSTALL
+   haypo/greycstoration_gimp/Makefile.am
+   haypo/greycstoration_gimp/configure.in
+   haypo/greycstoration_gimp/src/Makefile.am
+Log:
+Last fixes (from Thomas) for autotoolification :-)
+
+
+Modified: haypo/greycstoration_gimp/INSTALL
+===================================================================
+--- haypo/greycstoration_gimp/INSTALL	2005-12-05 17:14:38 UTC (rev 298)
++++ haypo/greycstoration_gimp/INSTALL	2005-12-05 17:54:32 UTC (rev 299)
+@@ -8,14 +8,27 @@
+ - GTK 2.x (version 2.6 or greater?) and development headers of GTK+
+   <A HREF="http://www.gtk.org/">http://www.gtk.org/</A>
+ 
++The plugin is only tested on Linux, but Michael Schumacher
++prepared Win32 binaries.
++
+ Instructions to compile
+ =======================
+ 
+-./autogen.sh
+-make
+-make install
++  ./configure  [see --help for options]
++  make
++  make install
+ 
+-That's all :-)
++Last step (&quot;make install&quot;) should be run by the root user. If you are not the
++administrator on your station, you can still install the plugin in your home 
++directory (&quot;$HOME/.gimp-2.2/plug-ins/&quot;):
++  gimptool --install-bin src/greycstoration
+ 
+-The plugin is only tested on Linux, but Michael Schumacher
+-prepared Win32 binaries.
++Instruction to compile SVN sources
++==================================
++
++Prior to running the above described commands, you must create the &quot;configure&quot;
++script by running this command:
++  ./autogen.sh
++
++This requires that you have installed some recent enough versions of GNU 
++autotools (tested with autoconf-1.9.6 and automake-2.59).
+
+Modified: haypo/greycstoration_gimp/Makefile.am
+===================================================================
+--- haypo/greycstoration_gimp/Makefile.am	2005-12-05 17:14:38 UTC (rev 298)
++++ haypo/greycstoration_gimp/Makefile.am	2005-12-05 17:54:32 UTC (rev 299)
+@@ -1,4 +1,4 @@
+-AUTOMAKE_OPTIONS = foreign
++AUTOMAKE_OPTIONS = foreign dist-bzip2
+ 
+ SUBDIRS = po src
+ 
+
+Modified: haypo/greycstoration_gimp/configure.in
+===================================================================
+--- haypo/greycstoration_gimp/configure.in	2005-12-05 17:14:38 UTC (rev 298)
++++ haypo/greycstoration_gimp/configure.in	2005-12-05 17:54:32 UTC (rev 299)
+@@ -4,7 +4,7 @@
+ 
+ m4_define([plugin_major_version], [0])
+ m4_define([plugin_minor_version], [1])
+-m4_define([plugin_micro_version], [2])
++m4_define([plugin_micro_version], [3])
+ m4_define([plugin_version],
+           [plugin_major_version.plugin_minor_version.plugin_micro_version])
+ 
+
+Modified: haypo/greycstoration_gimp/src/Makefile.am
+===================================================================
+--- haypo/greycstoration_gimp/src/Makefile.am	2005-12-05 17:14:38 UTC (rev 298)
++++ haypo/greycstoration_gimp/src/Makefile.am	2005-12-05 17:54:32 UTC (rev 299)
+@@ -11,7 +11,6 @@
+ 	greycstoration.cpp \
+ 	image.h \
+ 	image.cpp \
+-	main.h \
+ 	main.cpp
+ 
+ AM_CPPFLAGS = \
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000204.html">[Happyboom-svn] r298 - in haypo/greycstoration_gimp: . po
+</A></li>
+	<LI>Next message: <A HREF="000206.html">[Happyboom-svn] r300 - in haypo: . greycstoration_gimp greycstoration_gimp/po
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#205">[ date ]</a>
+              <a href="thread.html#205">[ thread ]</a>
+              <a href="subject.html#205">[ subject ]</a>
+              <a href="author.html#205">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

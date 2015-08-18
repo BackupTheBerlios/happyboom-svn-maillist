@@ -1,0 +1,380 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r307 - haypo
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r307%20-%20haypo&In-Reply-To=%3C200512062118.jB6LIYO0027978%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000212.html">
+   <LINK REL="Next"  HREF="000214.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r307 - haypo</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r307%20-%20haypo&In-Reply-To=%3C200512062118.jB6LIYO0027978%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r307 - haypo">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec  6 22:18:34 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000212.html">[Happyboom-svn] r306 - haypo
+</A></li>
+        <LI>Next message: <A HREF="000214.html">[Happyboom-svn] r308 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#213">[ date ]</a>
+              <a href="thread.html#213">[ thread ]</a>
+              <a href="subject.html#213">[ subject ]</a>
+              <a href="author.html#213">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-06 22:18:33 +0100 (Tue, 06 Dec 2005)
+New Revision: 307
+
+Modified:
+   haypo/tachatte.py
+Log:
+Tachatte has new features:
+- &quot;--syntax=1&quot;: encode syntax
+- &quot;--random&quot;: shuffle thesaurus
+- &quot;--eat-spaces&quot;: eat spaces
+
+Output is wrapped to 79 characters width (if eat spaces if enabled).
+
+Fix: generateWord checks that new word doesn't exist in thesaurus nor in
+new word thesaurus.
+
+
+Modified: haypo/tachatte.py
+===================================================================
+--- haypo/tachatte.py	2005-12-06 04:47:06 UTC (rev 306)
++++ haypo/tachatte.py	2005-12-06 21:18:33 UTC (rev 307)
+@@ -41,9 +41,12 @@
+         # Options
+         self.encode_number = True
+         self.encode_string = True
++        self.encode_syntax = False 
+         self.mode = &quot;words&quot;
+         self.eat_comments = False 
+-        self.sort_thesaurus = True  # most used names are shorter
++        self.eat_spaces = False 
++        self.sort_thesaurus = False # most used names are shorter
++        self.random_thesaurus = False  # most used names are shorter
+         self.obscure = \
+             [&quot;tachatte&quot;, &quot;zob&quot;, &quot;couille&quot;, &quot;merde&quot;,
+              &quot;poil&quot;, &quot;grossepute&quot;, &quot;putain&quot;, &quot;encule&quot;,
+@@ -55,25 +58,44 @@
+         self.word = None
+         self.thesaurus={}
+         self.exclude = [&quot;if&quot;, &quot;else&quot;, &quot;return&quot;, &quot;for&quot;, &quot;while&quot;, &quot;do&quot;]
++        self.exclude = []
++        self.syntax1 = re.compile(r&quot;[][{}();,.*=&amp;|:?+!&lt;&gt;-]&quot;)
++        self.syntax2 = re.compile(r&quot;(?:[*/+-=|!]=|\+\+|--|&amp;&amp;|\&lt;\&lt;|\&gt;\&gt;|\|\||-\&gt;)&quot;)
++        self.syntax3 = re.compile(r&quot;(?:(?:\&lt;\&lt;|\&gt;\&gt;)=|\.\.\.)&quot;)
+         self.file = None
+         self.regex_c_include = re.compile(&quot;^# *include&quot;)
+         self.c_include = &quot;&quot;
+         self.start_word = &quot;_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ&quot;
+         self.content = []
+ 
+-    def getContent(self):
++    def getContent(self, width=79):
+         text = &quot;&quot;
++        line = &quot;&quot;
++        tmp_text = &quot;&quot;
++        if not self.eat_spaces:
++            width = None
+         for item in self.content:
+             if isinstance(item, Word):
+-                text = text + item.new
++                str_item = item.new
+             else:
+-                text = text + item
++                str_item = item
++#       TODO: Fix code to allow wrap       
++            if width != None:
++                if width &lt;= len(line + str_item):
++                    text = text + line + &quot;\n&quot;
++                    line = &quot;&quot;
++            line = line + str_item
++        text = text + line            
++        if self.eat_spaces:
++            text = text.strip()+&quot;\n&quot;
+         return text                
+ 
+     def getHeaders(self):
+         content = self.c_include
+-        for word in self.thesaurus:
+-            item = self.thesaurus[word]
++        values = self.thesaurus.values()
++        if self.random_thesaurus:
++            random.shuffle(values)
++        for item in values:
+             if item.need_define:
+                 content = content + &quot;#define %s %s\n&quot; % (item.new, item.old)
+         return content
+@@ -108,16 +130,27 @@
+             self.unput(str)
+ 
+     def generateWord(self, word, new_thesaurus):
+-        if self.mode in (&quot;moo&quot;, &quot;tachatte&quot;):
+-            return self.generateWordUniq(new_thesaurus)
+-        elif self.mode == &quot;shit&quot;:
+-            return self.generateWordRepeat(new_thesaurus)
+-        elif self.mode == &quot;letter&quot;:
+-            return self.generateWordLetter(new_thesaurus)
+-        else:
+-            return self.generateWordRandom(new_thesaurus)
++        last = None
++        tries = 1
++        while tries &lt; 100:
++            if self.mode in (&quot;moo&quot;, &quot;tachatte&quot;):
++                word = self.generateWordUniq()
++            elif self.mode == &quot;shit&quot;:
++                word = self.generateWordRepeat()
++            elif self.mode == &quot;letter&quot;:
++                word = self.generateWordLetter()
++            else:
++                word = self.generateWordRandom()
++            if word not in self.thesaurus \
++            and word not in new_thesaurus:
++                return word
++            if word == last:
++                break
++            last = word
++            tries = tries + 1
++        raise Exception(&quot;No more shit!&quot;)
+ 
+-    def generateWordRepeat(self, new_thesaurus):
++    def generateWordRepeat(self):
+         if 1000 &lt;= self.uniq:
+             raise Exception(&quot;Too much shit! (more than %u words)&quot; % 1000)
+         start_up, start_low, repeat, end = self.word_generator
+@@ -128,22 +161,21 @@
+         self.uniq = self.uniq + 1
+         return word
+ 
+-    def generateWordUniq(self, new_thesaurus):
+-        up, down = self.word_generator
+-        if (1 &lt;&lt; len(up)) &lt;= self.uniq:
+-            raise Exception(&quot;No more shit! (more than %u words)&quot; % (1 &lt;&lt; len(up)))
++    def generateWordUniq(self):
++        base = len(self.word_generator)
++        length = len(self.word_generator[0])
++        max = base ** length 
++        if max &lt;= self.uniq:
++            raise Exception(&quot;No more shit! (more than %u words)&quot; % max)
+         word = &quot;&quot;
+         index = self.uniq
+-        for i in range(0,len(up)):
+-            if (index &amp; 1 == 1):
+-                word = word + up[i]
+-            else:
+-                word = word + down[i]
+-            index = index/2
++        for i in range(0,length):
++            word = word + self.word_generator[index % base][i]
++            index = index / base
+         self.uniq = self.uniq + 1
+         return word
+ 
+-    def generateWordLetter(self, new_thesaurus):
++    def generateWordLetter(self):
+         up, down = self.word_generator
+         if (1 &lt;&lt; len(up)) &lt;= self.uniq:
+             raise Exception(&quot;No more shit! (more than %u words)&quot; % (1 &lt;&lt; len(up)))
+@@ -159,24 +191,36 @@
+             index = index / 26
+         return word[::-1] 
+ 
+-    def generateWordRandom(self, new_thesaurus):
+-        tries = 0
+-        while tries &lt; 100:
+-            tries = tries + 1
+-            index = random.randint(0, len(self.obscure)-1)
+-            obscure = self.obscure[index]
+-            new = &quot;&quot;
+-            for c in obscure:
+-                if 70 &lt; random.randint(0,100):
+-                    # Take 30% of upper case
+-                    new = new + string.upper(c)
+-                else:
+-                    new = new + c
+-            if new not in self.thesaurus \
+-            and new not in new_thesaurus:
+-                return new
+-        raise Exception(&quot;No more shit!&quot;)
++    def generateWordRandom(self):
++        index = random.randint(0, len(self.obscure)-1)
++        obscure = self.obscure[index]
++        new = &quot;&quot;
++        for c in obscure:
++            if 70 &lt; random.randint(0,100):
++                # Take 30% of upper case
++                new = new + string.upper(c)
++            else:
++                new = new + c
++        return new                
+         
++    def last_is_new_line(self):
++        if len(self.content) == 0:
++            return None
++        last = self.content[-1]
++        if isinstance(last, Word):
++            return False
++        else:
++            return last[-1] in &quot;\r\n&quot;
++
++    def last_is_space(self):
++        if len(self.content) == 0:
++            return None
++        last = self.content[-1]
++        if isinstance(last, Word):
++            return False
++        else:
++            return last[-1] in string.whitespace
++
+     def unput(self, str):
+         self.content.append(str)
+ 
+@@ -198,9 +242,16 @@
+                 self.unputWord(self.word)
+             self.word = None
+ 
+-    def process(self, file):
++    def init(self):
++        if self.mode == &quot;letter&quot; and not self.random_thesaurus:
++            self.sort_thesaurus = True 
++        if self.sort_thesaurus:
++            self.random_thesaurus = False
+         if self.encode_number:
+             self.start_word = self.start_word + &quot;0123456789&quot;
++
++    def process(self, file):
++        self.init()
+         self.file = file
+         while True:
+             c = self.file.read(1)
+@@ -224,6 +275,24 @@
+                         self.c_include = self.c_include + macro 
+                     else:
+                         self.unput(macro)
++                elif self.encode_syntax and self.syntax1.match(c) != None:
++                    d = self.file.read(1)
++                    e = self.file.read(1)
++                    cd = c+d
++                    cde = cd+e
++                    if not self.last_is_space():
++                        self.unput(&quot; &quot;)
++                    if len(cde) == 3 and self.syntax3.match(c+d+e) != None:
++                        self.unputWord(c+d+e)
++                        self.unput(&quot; &quot;)
++                    elif len(cd) == 2 and self.syntax2.match(c+d) != None:
++                        self.unputWord(c+d)
++                        self.unput(&quot; &quot;)
++                        self.file.seek(-len(e), 1)
++                    else:
++                        self.unputWord(c)
++                        self.unput(&quot; &quot;)
++                        self.file.seek(-len(d+e), 1)
+                 elif c in (&quot;'&quot;, &quot;\&quot;&quot;):
+                     self.readString(c)
+                 elif c==&quot;/&quot;:
+@@ -238,7 +307,14 @@
+                         self.unput(c)
+                         self.file.seek(-1, 1)
+                 else:
+-                    self.unput(c)
++                    if self.eat_spaces:
++                        if c in string.whitespace:
++                            if not self.last_is_space():
++                                self.unput(&quot; &quot;)
++                        else:
++                            self.unput(c)
++                    else:
++                        self.unput(c)
+         self.processEOL()
+         self.generateThesaurus()
+ 
+@@ -258,6 +334,9 @@
+ 
+         if self.sort_thesaurus:
+             values = sortThesaurus(self.thesaurus)
++        elif self.random_thesaurus:
++            values = self.thesaurus.values()
++            random.shuffle(values)
+         else:
+             values = self.thesaurus.values()
+         new_words = {}
+@@ -274,7 +353,10 @@
+     print &quot;\t--help            : Print this help&quot;
+     print &quot;\t--version         : Print the software version&quot;
+     print &quot;\t--mode=MODE       : Mode (words, moo, tachatte, letter or shit)&quot;
++    print &quot;\t--random          : Shuffle thesaurus (default: off)&quot;
+     print &quot;\t--eat-comments    : Eat comments (default: off)&quot;
++    print &quot;\t--eat-spaces      : Eat white spaces (default: off)&quot;
++    print &quot;\t--syntax=ENABLE   : Encode syntax? (default: off)&quot;
+     print &quot;\t--number=ENABLE   : Encode numbers? (default: on)&quot;
+     print &quot;\t--string=ENABLE   : Encode numbers? (default: on)&quot;
+     print
+@@ -295,8 +377,8 @@
+     try:
+         short = &quot;&quot;
+         long = [&quot;help&quot;, &quot;version&quot;, \
+-            &quot;mode=&quot;, &quot;eat-comments&quot;,
+-            &quot;number=&quot;, &quot;string=&quot;]
++            &quot;mode=&quot;, &quot;eat-spaces&quot;, &quot;eat-comments&quot;, &quot;random&quot;,
++            &quot;number=&quot;, &quot;string=&quot;, &quot;syntax=&quot;]
+         opts, args = getopt.getopt(sys.argv[1:], short, long)
+     except getopt.GetoptError:
+         usage()
+@@ -311,10 +393,16 @@
+             if a not in (&quot;words&quot;, &quot;tachatte&quot;, &quot;moo&quot;, &quot;shit&quot;, &quot;letter&quot;):
+                 usage()
+             tachatte.mode = a
++        elif o == &quot;--eat-spaces&quot;:
++            tachatte.eat_spaces = True
+         elif o == &quot;--eat-comments&quot;:
+             tachatte.eat_comments = True
+         elif o == &quot;--number&quot;:
+             tachatte.encode_number = arg2bool(a)
++        elif o == &quot;--syntax&quot;:
++            tachatte.encode_syntax = arg2bool(a)
++        elif o == &quot;--random&quot;:
++            tachatte.random_thesaurus = True
+         elif o == &quot;--string&quot;:
+             tachatte.encode_string = arg2bool(a)
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000212.html">[Happyboom-svn] r306 - haypo
+</A></li>
+	<LI>Next message: <A HREF="000214.html">[Happyboom-svn] r308 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#213">[ date ]</a>
+              <a href="thread.html#213">[ thread ]</a>
+              <a href="subject.html#213">[ subject ]</a>
+              <a href="author.html#213">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

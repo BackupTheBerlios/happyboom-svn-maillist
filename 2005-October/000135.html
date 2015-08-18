@@ -1,0 +1,98 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r228 - haypo/hachoir
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-October/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r228%20-%20haypo/hachoir&In-Reply-To=%3C200510290317.j9T3HChA021826%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000134.html">
+   <LINK REL="Next"  HREF="000136.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r228 - haypo/hachoir</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r228%20-%20haypo/hachoir&In-Reply-To=%3C200510290317.j9T3HChA021826%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r228 - haypo/hachoir">haypo at berlios.de
+       </A><BR>
+    <I>Sat Oct 29 05:17:12 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000134.html">[Happyboom-svn] r227 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000136.html">[Happyboom-svn] r229 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#135">[ date ]</a>
+              <a href="thread.html#135">[ thread ]</a>
+              <a href="subject.html#135">[ subject ]</a>
+              <a href="author.html#135">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-10-29 05:17:09 +0200 (Sat, 29 Oct 2005)
+New Revision: 228
+
+Modified:
+   haypo/hachoir/filter.py
+Log:
+Last (?) fix to children size.
+
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-10-29 03:12:01 UTC (rev 227)
++++ haypo/hachoir/filter.py	2005-10-29 03:17:09 UTC (rev 228)
+@@ -34,8 +34,7 @@
+         self.__last_child_stream_pos = None 
+ 
+     def closeChild(self, text):
+-        self.__updateChild(self.__last_child_stream_pos, self.table_item)
+-        self.__updateChild(self.__child_stream_pos, self.table_parent)
++        self.__updateChild(self.__child_stream_pos, self.table_item)
+         if display_filter_actions != self.depth: return
+         size = self.stream.tell() - self.__child_stream_pos
+         sys.stdout.write(&quot;%s&lt;%s (%u bytes)&gt;\n&quot; % (self.indent, text, size))
+@@ -43,9 +42,10 @@
+         self.__last_child_stream_pos = None
+ 
+     def __updateChild(self, pos, table):
+-        if pos == None or table == None: return
++        if pos == None or table == None: return False
+         size = self.stream.tell() - pos
+         hmi.hmi.set_table_value(table, 1, size) 
++        return True
+ 
+     def updateChildTitle(self, text):
+         hmi.hmi.set_table_value(self.table_item, 4, text) 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000134.html">[Happyboom-svn] r227 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000136.html">[Happyboom-svn] r229 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#135">[ date ]</a>
+              <a href="thread.html#135">[ thread ]</a>
+              <a href="subject.html#135">[ subject ]</a>
+              <a href="author.html#135">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

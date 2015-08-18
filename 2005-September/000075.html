@@ -1,0 +1,275 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r168 - in happyboom/trunk: common server
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r168%20-%20in%20happyboom/trunk%3A%20common%20server&In-Reply-To=%3C200509152124.j8FLO2qX002442%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000074.html">
+   <LINK REL="Next"  HREF="000076.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r168 - in happyboom/trunk: common server</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r168%20-%20in%20happyboom/trunk%3A%20common%20server&In-Reply-To=%3C200509152124.j8FLO2qX002442%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r168 - in happyboom/trunk: common server">haypo at berlios.de
+       </A><BR>
+    <I>Thu Sep 15 23:24:02 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000074.html">[Happyboom-svn] r167 - happyboom/trunk/common
+</A></li>
+        <LI>Next message: <A HREF="000076.html">[Happyboom-svn] r169 - happyboom/trunk/common
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#75">[ date ]</a>
+              <a href="thread.html#75">[ thread ]</a>
+              <a href="subject.html#75">[ subject ]</a>
+              <a href="author.html#75">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-15 23:24:01 +0200 (Thu, 15 Sep 2005)
+New Revision: 168
+
+Modified:
+   happyboom/trunk/common/event.py
+   happyboom/trunk/common/generic_event.py
+   happyboom/trunk/common/presentation.py
+   happyboom/trunk/server/agent.py
+   happyboom/trunk/server/client_manager.py
+   happyboom/trunk/server/gateway.py
+Log:
+Fixe les vilains bugs a Damien (bouuuuuuuuuh).
+
+
+Modified: happyboom/trunk/common/event.py
+===================================================================
+--- happyboom/trunk/common/event.py	2005-09-15 20:35:10 UTC (rev 167)
++++ happyboom/trunk/common/event.py	2005-09-15 21:24:01 UTC (rev 168)
+@@ -13,21 +13,22 @@
+     def __init__(self, prefix=&quot;evt&quot;, suffix=&quot;&quot;, default=&quot;eventPerformed&quot;, silent=False):
+         &quot;&quot;&quot; EventListener constructor.
+         &quot;&quot;&quot;
+-        evt.EventListener.__init__(self, prefix, suffix, __eventPerformed, silent)
++        evt.EventListener.__init__(self, prefix, suffix, &quot;happyboomEventPerformed&quot;, silent)
+         self.hb_default = default
+         
+     def getEventName(self, feature, event):
+         return &quot;%s_%s&quot; %(feature, event)
+         
+-    def __eventPerformed(self, event):
+-        if issubclass(event, Event):
++    def happyboomEventPerformed(self, event):
++        if issubclass(event.__class__, Event):
+             # Try to call event-specific handle method
+             fctname = self.pattern %(self.getEventName(event.type, event.event))
+             if hasattr(self, fctname):
+                 function = getattr(self, fctname)
+                 if callable(function):
+-                    function(event)
++                    function(*event.content)
+                     return
++
+         # Try to call default handle method
+         if hasattr(self, self.hb_default):
+             function = getattr(self, self.hb_default)
+@@ -35,8 +36,8 @@
+                 function(event)
+                 return
+         # No handle method found, raise error ?
+-        if not obj.silent:
+-            raise UnhandledEventError(&quot;%s has no method to handle %s&quot; %(obj, event))
++        if not self.event_silent:
++            raise evt.UnhandledEventError(&quot;%s has no method to handle %s&quot; %(self, event))
+ 
+ class EventLauncher(evt.EventLauncher):
+     &quot;&quot;&quot; Happyboom generic class for launching events.
+@@ -65,4 +66,4 @@
+         @rtype: C{str}
+         &quot;&quot;&quot;
+         return &quot;&lt;event.Event feature=%s event=%s source=%s content=%s&gt;&quot; %(self.type, self.event, self.source, self.content)
+-    
+\ No newline at end of file
++    
+
+Modified: happyboom/trunk/common/generic_event.py
+===================================================================
+--- happyboom/trunk/common/generic_event.py	2005-09-15 20:35:10 UTC (rev 167)
++++ happyboom/trunk/common/generic_event.py	2005-09-15 21:24:01 UTC (rev 168)
+@@ -62,7 +62,7 @@
+                         function(event)
+                         continue
+                 # No handle method found, raise error ?
+-                if not obj.silent:
++                if not obj.event_silent:
+                     raise UnhandledEventError(&quot;%s has no method to handle %s&quot; %(obj, event))
+         else:
+             print(&quot;Pas de event.type %s&quot; % event.type)
+@@ -103,7 +103,7 @@
+         self.manager = EventManager.instance
+         self.pattern = prefix + &quot;%s&quot; + suffix
+         self.default = default
+-        self.silent = silent
++        self.event_silent = silent
+         
+     def registerEvent(self, event_type):
+         &quot;&quot;&quot; Registers itself to a new event.
+
+Modified: happyboom/trunk/common/presentation.py
+===================================================================
+--- happyboom/trunk/common/presentation.py	2005-09-15 20:35:10 UTC (rev 167)
++++ happyboom/trunk/common/presentation.py	2005-09-15 21:24:01 UTC (rev 168)
+@@ -1,5 +1,5 @@
+ from happyboom.common.packer import packUtf8, packBin
+-from happyboom.common.simple_event import EventListener
++from happyboom.common.event import EventListener
+ from happyboom.common.log import log
+ from happyboom.common.packer import unpack, unpackBin, unpackUtf8
+ from happyboom.net.io.packet import Packet
+@@ -20,7 +20,7 @@
+     EVENT         = 0x6
+     
+     def __init__(self, protocol, is_server):
+-        EventListener.__init__(self)
++        EventListener.__init__(self, &quot;evt_&quot;, silent=True)
+         self.protocol = protocol
+         self.items = {}
+         self.gateway = None
+@@ -32,6 +32,7 @@
+             self.CREATE: self.unpackCreateItem,
+             self.DESTROY: self.unpackDestroyItem,
+             self.EVENT: self.unpackEvent}
++        self.registerEvent(&quot;happyboom&quot;)
+ 
+         # Event (IO_Client client, str version, str signature)
+         self._on_client_connection = None
+@@ -50,7 +51,7 @@
+ 
+         # Event (IO_Client client, int id)
+         self._on_destroy_item = None
+-        
++
+     def processPacket(self, packet):
+         &quot;&quot;&quot; Processes incomming network packets (converts and launches local event).
+         @param packet: incomming network packet.
+@@ -88,6 +89,11 @@
+             self._on_features(ioclient, features)
+         return data
+ 
++    def evt_happyboom_register(self, event, handler):
++        import re
++        if hasattr(self, event) and re.compile(&quot;^_on_&quot;).search(event):
++            self.setattr(event, handler, handler)
++    
+     def evt_happyboom_closeConnection(self, ioclient, reason):
+         &quot;&quot;&quot;
+         Close client connection.
+
+Modified: happyboom/trunk/server/agent.py
+===================================================================
+--- happyboom/trunk/server/agent.py	2005-09-15 20:35:10 UTC (rev 167)
++++ happyboom/trunk/server/agent.py	2005-09-15 21:24:01 UTC (rev 168)
+@@ -1,11 +1,13 @@
+ from pysma import ActionAgent, ActionMessage as Message
+ from happyboom.common.log import log
++from happyboom.common.event import EventLauncher
+ 
+-class Agent(ActionAgent):
++class Agent(ActionAgent, EventLauncher):
+     &quot;&quot;&quot;
+     SMA agent in HappyBoom.
+     &quot;&quot;&quot;
+     def __init__(self, type, gateway, **args):
++        EventLauncher.__init__(self)
+         ActionAgent.__init__(self, prefix=&quot;msg_&quot;)
+         self._gateway = gateway
+         self.type = type
+
+Modified: happyboom/trunk/server/client_manager.py
+===================================================================
+--- happyboom/trunk/server/client_manager.py	2005-09-15 20:35:10 UTC (rev 167)
++++ happyboom/trunk/server/client_manager.py	2005-09-15 21:24:01 UTC (rev 168)
+@@ -3,7 +3,7 @@
+ from happyboom.common.log import log
+ from happyboom.common.thread import getBacktrace
+ from happyboom.server.client import Client
+-from happyboom.common.simple_event import EventLauncher
++from happyboom.common.event import EventLauncher
+ import thread, time
+ 
+ class ClientManager(EventLauncher, object):
+
+Modified: happyboom/trunk/server/gateway.py
+===================================================================
+--- happyboom/trunk/server/gateway.py	2005-09-15 20:35:10 UTC (rev 167)
++++ happyboom/trunk/server/gateway.py	2005-09-15 21:24:01 UTC (rev 168)
+@@ -3,12 +3,12 @@
+ from happyboom.net.io import Packet
+ from happyboom.common.log import log
+ from pysma import Kernel, DummyScheduler
+-from happyboom.common.simple_event import EventListener
++from happyboom.common.event import EventListener
+ import struct
+ 
+ class Gateway(Agent, EventListener):
+     def __init__(self, protocol, presentation, client_manager, arg):
+-        EventListener.__init__(self)
++        EventListener.__init__(self, &quot;evt_&quot;, silent=True)
+         Agent.__init__(self, self, &quot;gateway&quot;)
+         self.__protocol = protocol
+         self.client_manager = client_manager
+@@ -28,6 +28,9 @@
+         self.client_manager.server = server
+     server = property(None, __setServer)
+ 
++#    def eventPerformed(self, event):
++#        print &quot;gzzz&quot;, event
++
+     def evt_happyboom_network(self, feature, event, *args):
+         self.sendMsg(feature, event, *args)
+         
+@@ -42,8 +45,9 @@
+ 
+     def process(self):
+         # Stop server if the scheduler is dead
+-        if not self.__scheduler.alive:
+-            self.__server.stop()
++#       TODO: Waiting for last PySMA version...        
++#        if not self.__scheduler.alive:
++#            self.__server.stop()
+         self.client_manager.process()
+ 
+     def sendText(self, txt, client=None):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000074.html">[Happyboom-svn] r167 - happyboom/trunk/common
+</A></li>
+	<LI>Next message: <A HREF="000076.html">[Happyboom-svn] r169 - happyboom/trunk/common
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#75">[ date ]</a>
+              <a href="thread.html#75">[ thread ]</a>
+              <a href="subject.html#75">[ subject ]</a>
+              <a href="author.html#75">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,316 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r338 - in haypo/hachoir: . plugins ui
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r338%20-%20in%20haypo/hachoir%3A%20.%20plugins%20ui&In-Reply-To=%3C200512160630.jBG6UNYU032519%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000243.html">
+   <LINK REL="Next"  HREF="000245.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r338 - in haypo/hachoir: . plugins ui</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r338%20-%20in%20haypo/hachoir%3A%20.%20plugins%20ui&In-Reply-To=%3C200512160630.jBG6UNYU032519%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r338 - in haypo/hachoir: . plugins ui">haypo at berlios.de
+       </A><BR>
+    <I>Fri Dec 16 07:30:23 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000243.html">[Happyboom-svn] r337 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000245.html">[Happyboom-svn] r339 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#244">[ date ]</a>
+              <a href="thread.html#244">[ thread ]</a>
+              <a href="subject.html#244">[ subject ]</a>
+              <a href="author.html#244">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-16 07:29:25 +0100 (Fri, 16 Dec 2005)
+New Revision: 338
+
+Modified:
+   haypo/hachoir/error.py
+   haypo/hachoir/filter.py
+   haypo/hachoir/plugins/ext2.py
+   haypo/hachoir/ui/ui_window.py
+Log:
+- Create OnlyFiltersFilter which read filter on demand.
+- Add missing parent argument to gtk MessageDialog
+
+
+Modified: haypo/hachoir/error.py
+===================================================================
+--- haypo/hachoir/error.py	2005-12-16 05:44:25 UTC (rev 337)
++++ haypo/hachoir/error.py	2005-12-16 06:29:25 UTC (rev 338)
+@@ -7,6 +7,7 @@
+     if ui.ui.ui != None:
+         import gtk
+         dlg = gtk.MessageDialog( \
++            parent=ui.ui.ui.window,
+             type=gtk.MESSAGE_WARNING,
+             buttons=gtk.BUTTONS_OK,
+             message_format=message)
+@@ -18,6 +19,7 @@
+     if ui.ui.ui != None:
+         import gtk
+         dlg = gtk.MessageDialog( \
++            parent=ui.ui.ui.window,
+             type=gtk.MESSAGE_ERROR,
+             buttons=gtk.BUTTONS_OK,
+             message_format=message)
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-12-16 05:44:25 UTC (rev 337)
++++ haypo/hachoir/filter.py	2005-12-16 06:29:25 UTC (rev 338)
+@@ -20,6 +20,7 @@
+         self._chunks_counter = {}
+         self._chunks_dict = {}
+ 
++    def updateParent(self, chunk): pass
+     def getId(self): return self._id
+     def setId(self, id): self._id = id
+     def getDescription(self): return self._description
+@@ -28,6 +29,9 @@
+     def setAddr(self, addr): self._addr = addr
+     def getParent(self): return self._parent
+     def getStream(self): return self._stream
++    def setChunkCounter(self, root, start):
++        assert root not in self._chunks_counter
++        self._chunks_counter[root] = start
+ 
+     def getPath(self):
+         &quot;&quot;&quot;
+@@ -76,7 +80,7 @@
+     def getChunk(self, chunk_id): assert False
+     def display(self): assert False
+ 
+-class OnlyFormatFilter(BasicFilter):
++class OnlyFormatChunksFilter(BasicFilter):
+     def __init__(self, id, description, stream, parent):
+         BasicFilter.__init__(self, id, description, stream, parent, stream.tell())
+         self._chunks = []
+@@ -122,6 +126,57 @@
+         assert id in self._chunks_dict
+         return self.getChunk(id).value
+ 
++class OnlyFiltersFilter(BasicFilter):
++    def __init__(self, id, description, stream, parent):
++        BasicFilter.__init__(self, id, description, stream, parent, stream.tell())
++        self._chunks = []
++        self._chunks_dict = {}
++        self._chunks_cache = {}
++        self._size = 0
++
++    def purgeCache(self):
++        self._chunks_cache = {}
++
++    def readSizedChild(self, id, size, filter_class, *args): 
++        id = self.getUniqChunkId(id)
++        filter_info = (id, size, self._stream.tell(), filter_class, args)
++        self._chunks_dict[id] = filter_info
++        self._chunks.append( filter_info )
++        self._stream.seek(size, 1)
++        self._size = self._size + size
++
++    def display(self):
++        ui.window.enableParentButton(self.getParent() != None)
++        ui.window.clear_table()
++        for chunk in self._chunks:
++            format = chunk[3].__name__
++            desc = &quot;xxx&quot;
++            ui.window.add_table(None, chunk[2], chunk[1], format, chunk[0], desc, &quot;(...)&quot;)
++ 
++    def getSize(self): return self._size
++
++    def getChunk(self, id):
++        if id not in self._chunks_dict:
++            return None
++        if id not in self._chunks_cache:
++            info = self._chunks_dict[id]
++
++            addr = info[2]
++            self._stream.seek(addr)
++            filter = info[3] (self._stream, self, *info[4])
++            filter.setId(info[0])
++            chunk = FilterChunk(info[0], filter, self, addr)
++#            filter.updateParent(chunk)
++#            chunk.postProcess()
++            self._stream.seek(addr + info[1])
++            
++            self._chunks_cache[id] = chunk 
++        return self._chunks_cache[id]
++
++    def __getitem__(self, id):
++        assert id in self._chunks_dict
++        return self.getChunk(id).value
++
+ class Filter(BasicFilter):
+     regex_chunk_uniq_id = re.compile(&quot;^(.*?)([0-9]+)$&quot;)
+ 
+
+Modified: haypo/hachoir/plugins/ext2.py
+===================================================================
+--- haypo/hachoir/plugins/ext2.py	2005-12-16 05:44:25 UTC (rev 337)
++++ haypo/hachoir/plugins/ext2.py	2005-12-16 06:29:25 UTC (rev 338)
+@@ -9,7 +9,7 @@
+ &quot;&quot;&quot;
+ 
+ from datetime import datetime
+-from filter import Filter, OnlyFormatFilter
++from filter import Filter, OnlyFormatChunksFilter, OnlyFiltersFilter
+ from plugin import registerPlugin
+ from tools import humanDuration, getUnixRWX 
+ 
+@@ -48,7 +48,7 @@
+         type = chunk.value
+         return DirectoryEntry.file_type.get(type, &quot;Unknow (%02X)&quot; % type)
+ 
+-class Inode(OnlyFormatFilter):
++class Inode(OnlyFormatChunksFilter):
+     name = {
+         1: &quot;list of bad blocks&quot;,
+         2: &quot;Root directory&quot;,
+@@ -60,7 +60,7 @@
+     }
+     
+     def __init__(self, stream, parent, index):
+-        OnlyFormatFilter.__init__(self, &quot;inode&quot;, &quot;EXT2 inode&quot;, stream, parent)
++        OnlyFormatChunksFilter.__init__(self, &quot;inode&quot;, &quot;EXT2 inode&quot;, stream, parent)
+         self.index = index
+         self.read(&quot;mode&quot;, &quot;&lt;H&quot;, &quot;Mode&quot;, post=self.postMode)
+         self.read(&quot;uid&quot;, &quot;&lt;H&quot;, &quot;User ID&quot;)
+@@ -297,17 +297,20 @@
+     def __getitem__(self, index):
+         return self.items[index]
+ 
+-class InodeTable(Filter):
++class InodeTable(OnlyFiltersFilter):
+     def __init__(self, stream, parent, start, count):
+-        Filter.__init__(self, &quot;ino_table&quot;, &quot;EXT2 inode table&quot;, stream, parent)
++        OnlyFiltersFilter.__init__(self, &quot;ino_table&quot;, &quot;EXT2 inode table&quot;, stream, parent)
+         self.inodes = {}
+-        for index in range(start,start+count):
+-            inode = self.readChild(&quot;inode[]&quot;, Inode, index).getFilter()
+-            self.inodes[index] = inode
+-            inode.purgeCache()
++        self.start = start
++        chunk_size = parent.superblock[&quot;inode_size&quot;]
++        for index in range(0,count):
++            self.readSizedChild(&quot;inode[]&quot;, chunk_size, Inode, index)
+ 
+     def __getitem__(self, index):
+-        return self.inodes[index]
++        print &quot;Read inode %s&quot; % index
++        index = index - self.start - 1
++        print &quot;&gt;Read inode %s&quot; % index
++        return self.getChunk(&quot;inode[%u]&quot; % index).getFilter()
+ 
+ #class Directory(Filter):
+ #    def __init__(self, stream, parent):
+@@ -338,7 +341,7 @@
+         count = 32768
+         self.readChild(&quot;inode_bitmap[]&quot;, InodeBitmap, count / 8, 1)
+ 
+-        inode_table0 = self.readChild(&quot;inode_table[]&quot;, InodeTable, 1, 1000).getFilter()
++        inode_table0 = self.readChild(&quot;inode_table[]&quot;, InodeTable, 0, 1000).getFilter()
+ 
+         root = inode_table0[2]
+ 
+@@ -354,6 +357,7 @@
+             self.read(&quot;raw[]&quot;, &quot;%us&quot; % size, &quot;Raw&quot;)
+ 
+     def readDirectory(self, inode):
++        print &quot;Read.&quot;
+         stream = self.getStream()
+         block_index = 0
+         while True:
+
+Modified: haypo/hachoir/ui/ui_window.py
+===================================================================
+--- haypo/hachoir/ui/ui_window.py	2005-12-16 05:44:25 UTC (rev 337)
++++ haypo/hachoir/ui/ui_window.py	2005-12-16 06:29:25 UTC (rev 338)
+@@ -82,6 +82,7 @@
+ 
+         chooser = gtk.FileChooserDialog( \
+             title=&quot;Write chunk data to ...&quot;,
++            parent=self.window,
+             action=gtk.FILE_CHOOSER_ACTION_SAVE,
+             buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_SAVE,gtk.RESPONSE_OK))
+         if chooser.run() == gtk.RESPONSE_OK:
+@@ -199,6 +200,7 @@
+     def on_toolbutton_close(self, widget):
+         dlg = gtk.MessageDialog( \
+             type=gtk.MESSAGE_QUESTION,
++            parent=self.window,
+             buttons=gtk.BUTTONS_YES_NO,
+             message_format=&quot;Are you sure that you want to close the file?&quot;)
+         dlg.set_default_response(gtk.RESPONSE_NO)            
+@@ -216,6 +218,7 @@
+     def on_open_activate(self, widget):
+         chooser = gtk.FileChooserDialog( \
+             title=&quot;Choose file to split&quot;,
++            parent=self.window,
+             action=gtk.FILE_CHOOSER_ACTION_OPEN,
+             buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
+         if chooser.run() == gtk.RESPONSE_OK:
+@@ -226,6 +229,7 @@
+     def on_toolbutton_open(self, widget):
+         chooser = gtk.FileChooserDialog( \
+             title=&quot;Choose filter&quot;,
++            parent=self.window,
+             action=gtk.FILE_CHOOSER_ACTION_OPEN,
+             buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
+         if chooser.run() == gtk.RESPONSE_OK:
+@@ -236,6 +240,7 @@
+     def on_toolbutton_export(self, widget):
+         chooser = gtk.FileChooserDialog( \
+             title=&quot;Export current filter to python script ...&quot;,
++            parent=self.window,
+             action=gtk.FILE_CHOOSER_ACTION_SAVE,
+             buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_SAVE,gtk.RESPONSE_OK))
+         if chooser.run() == gtk.RESPONSE_OK:
+@@ -246,6 +251,7 @@
+     def on_toolbutton_save(self, widget):
+         chooser = gtk.FileChooserDialog( \
+             title=&quot;Save XML filter into ...&quot;,
++            parent=self.window,
+             action=gtk.FILE_CHOOSER_ACTION_SAVE,
+             buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_SAVE,gtk.RESPONSE_OK))
+         if chooser.run() == gtk.RESPONSE_OK:
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000243.html">[Happyboom-svn] r337 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000245.html">[Happyboom-svn] r339 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#244">[ date ]</a>
+              <a href="thread.html#244">[ thread ]</a>
+              <a href="subject.html#244">[ subject ]</a>
+              <a href="author.html#244">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

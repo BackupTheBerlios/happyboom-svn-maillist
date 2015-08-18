@@ -1,0 +1,649 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r407 - haypo/hachoir/trunk
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r407%20-%20haypo/hachoir/trunk&In-Reply-To=%3C200601200344.k0K3i1hq005689%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000310.html">
+   <LINK REL="Next"  HREF="000312.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r407 - haypo/hachoir/trunk</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r407%20-%20haypo/hachoir/trunk&In-Reply-To=%3C200601200344.k0K3i1hq005689%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r407 - haypo/hachoir/trunk">haypo at berlios.de
+       </A><BR>
+    <I>Fri Jan 20 04:44:01 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000310.html">[Happyboom-svn] r406 - in haypo/hachoir/trunk: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000312.html">[Happyboom-svn] r408 - haypo/poilu/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#311">[ date ]</a>
+              <a href="thread.html#311">[ thread ]</a>
+              <a href="subject.html#311">[ subject ]</a>
+              <a href="author.html#311">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-20 04:43:57 +0100 (Fri, 20 Jan 2006)
+New Revision: 407
+
+Modified:
+   haypo/hachoir/trunk/filter.py
+   haypo/hachoir/trunk/hachoir.py
+   haypo/hachoir/trunk/reverse.py
+Log:
+Clean up code using pylint
+
+
+Modified: haypo/hachoir/trunk/filter.py
+===================================================================
+--- haypo/hachoir/trunk/filter.py	2006-01-20 02:48:56 UTC (rev 406)
++++ haypo/hachoir/trunk/filter.py	2006-01-20 03:43:57 UTC (rev 407)
+@@ -2,19 +2,18 @@
+ Base class for all splitter filters.
+ &quot;&quot;&quot;
+ 
+-import struct, re, sys, string, types
++import re
+ import config
+ import ui.ui as ui
+-from chunk import Chunk, FormatChunk, FilterChunk, StringChunk, BitsChunk
++from chunk import FormatChunk, FilterChunk, BitsChunk
+ from error import error
+-from format import getFormatSize, splitFormat
+ from cache import Cache
+ 
+ class BasicFilter(object):
+     regex_chunk_uniq_id = re.compile(&quot;^(.*?)([0-9]+)$&quot;)
+ 
+-    def __init__(self, id, description, stream, parent, addr, endian):
+-        self._id = id
++    def __init__(self, identifier, description, stream, parent, addr, endian):
++        self._id = identifier
+         self._description = description
+         self._stream = stream
+         self._parent = parent
+@@ -28,23 +27,34 @@
+     def getStaticSize(stream, args):
+         return None
+ 
+-    def updateParent(self, chunk): pass
+-    def getId(self): return self._id
+-    def setId(self, id):
+-        if self._id == id:
++    def updateParent(self, chunk):
++        pass
++    def getId(self):
++        return self._id
++    def setId(self, identifier):
++        if self._id == identifier:
+             return
+-        self._id = id
++        self._id = identifier
+         if self.filter_chunk != None:
+-            self.filter_chunk.id = id
+-    def getDescription(self): return self._description
+-    def setDescription(self, description): self._description = description
+-    def getAddr(self): return self._addr
+-    def getParent(self): return self._parent
+-    def getStream(self): return self._stream
+-    def updateChunkId(self, old_id, new_id): pass
+-    def updateChunkDescription(self, id, desc): pass
+-    def updateChunkDisplay(self, id): pass
+-    def __len__(self): return len(self._chunks_dict)
++            self.filter_chunk.id = identifier
++    def getDescription(self):
++        return self._description
++    def setDescription(self, description):
++        self._description = description
++    def getAddr(self):
++        return self._addr
++    def getParent(self):
++        return self._parent
++    def getStream(self):
++        return self._stream
++    def updateChunkId(self, old_id, new_id):
++        pass
++    def updateChunkDescription(self, identifier, desc):
++        pass
++    def updateChunkDisplay(self, identifier):
++        pass
++    def __len__(self):
++        return len(self._chunks_dict)
+ 
+     def getPath(self):
+         &quot;&quot;&quot;
+@@ -54,7 +64,8 @@
+         text = &quot;&quot;
+         current = self
+         while current != None:
+-            if text != &quot;&quot;: text = &quot;/&quot; + text
++            if text != &quot;&quot;:
++                text = &quot;/&quot; + text
+             text = current.getId() + text
+             current = current.getParent()
+         return &quot;/&quot;+text
+@@ -66,24 +77,24 @@
+             self._chunks_counter[root] = index
+         return self._chunks_counter[root]
+ 
+-    def getUniqChunkId(self, id):
++    def getUniqChunkId(self, identifier):
+         # No collision
+-        if id not in self._chunks_dict and id[-2:] != &quot;[]&quot;:
+-            return id
++        if identifier not in self._chunks_dict and identifier[-2:] != &quot;[]&quot;:
++            return identifier
+ 
+         # Pattern like &quot;block[]&quot;
+-        if id[-2:] == &quot;[]&quot;:
+-            root = id[:-2]
++        if identifier[-2:] == &quot;[]&quot;:
++            root = identifier[:-2]
+             start = 0
+             pattern = &quot;%s[%u]&quot;
+         else:
+-            # Manage id collision
+-            m = BasicFilter.regex_chunk_uniq_id.match(id)
++            # Manage identifier collision
++            m = BasicFilter.regex_chunk_uniq_id.match(identifier)
+             if m != None:
+                 root = m.group(1)
+                 start = int(m.group(2)) + 1
+             else:
+-                root = id
++                root = identifier
+                 start = 2
+             pattern = &quot;%s%u&quot;
+         if root in self._chunks_counter:
+@@ -92,27 +103,34 @@
+             self._chunks_counter[root] = start 
+         return pattern % (root, self._chunks_counter[root])
+         
+-    def hasChunk(self, id):
+-        return id in self._chunks_dict
++    def hasChunk(self, identifier):
++        return identifier in self._chunks_dict
+ 
+-    def _getEndian(self): return self._endian
++    def _getEndian(self):
++        return self._endian
+     endian = property(_getEndian)
+ 
+-    def addPadding(self, id=&quot;end&quot;, description=&quot;Raw end&quot;):
++    def addPadding(self, identifier=&quot;end&quot;, description=&quot;Raw end&quot;):
+         size = self._stream.getRemainSize()
+         if 0 &lt; size:
+-            self.read(id, description, (FormatChunk, &quot;string[%u]&quot; % size))
++            self.read(identifier, description, \
++                (FormatChunk, &quot;string[%u]&quot; % size))
+ 
+     # --- Pure virtual methods -----------
+-    def getSize(self): todoWriteMethod(self, &quot;getSize&quot;) 
+-    def __getitem__(self, chunk_id): todoWriteMethod(self, &quot;__getitem__&quot;) 
+-    def getChunk(self, chunk_id): todoWriteMethod(self, &quot;getChunk&quot;)
+-    def display(self): todoWriteMethod(self, &quot;display&quot;)
++    def getSize(self):
++        todoWriteMethod(self, &quot;getSize&quot;) 
++    def __getitem__(self, chunk_id):
++        todoWriteMethod(self, &quot;__getitem__&quot;) 
++    def getChunk(self, chunk_id):
++        todoWriteMethod(self, &quot;getChunk&quot;)
++    def display(self):
++        todoWriteMethod(self, &quot;display&quot;)
+ 
+ class OnDemandFilter(BasicFilter, Cache):
+-    def __init__(self, id, description, stream, parent, endian=None):
+-        BasicFilter.__init__(self, id, description, stream, parent, stream.tell(), endian)
+-        Cache.__init__(self, &quot;Filter %s&quot; % id)
++    def __init__(self, identifier, description, stream, parent, endian=None):
++        BasicFilter.__init__(self, identifier, description, stream, parent, \
++            stream.tell(), endian)
++        Cache.__init__(self, &quot;Filter %s&quot; % identifier)
+         self._size = 0
+         self._chunks = []
+         self._chunks_cache = {}
+@@ -141,31 +159,31 @@
+         # Update display
+         self.updateChunkDisplay(new_id)
+ 
+-    def updateChunkDisplay(self, id):
++    def updateChunkDisplay(self, identifier):
+         if ui.ui == None:
+             return
+-        pos = self._chunks.index(id)
++        pos = self._chunks.index(identifier)
+         assert pos != -1
+-        info = self.displayChunkInfo(id)
++        info = self.displayChunkInfo(identifier)
+         ui.window.update_table(self, pos, *info)
+ 
+-    def updateChunkDescription(self, id, desc):
+-        pos = self._chunks.index(id)
++    def updateChunkDescription(self, identifier, desc):
++        pos = self._chunks.index(identifier)
+         assert pos != -1
+-        self._chunks_dict[id][1] = desc
+-        self.updateChunkDisplay(id)
++        self._chunks_dict[identifier][1] = desc
++        self.updateChunkDisplay(identifier)
+ 
+     def purgeCache(self):
+         if len(self._chunks_cache) != 0 and config.verbose:
+             print &quot;Purge cache: destroy %s chunks&quot; % len(self._chunks_cache)
+         self._chunks_cache = {}
+         
+-    def read(self, id, description, info, optionnal={}): 
+-        self._read(id, description, info, optionnal, False)
++    def read(self, identifier, description, info, optionnal={}): 
++        self._read(identifier, description, info, optionnal, False)
+ 
+-    def _read(self, id, description, info, optionnal, instanciate):
++    def _read(self, identifier, description, info, optionnal, instanciate):
+         chunk_class = info[0]
+-        id = self.getUniqChunkId(id)
++        identifier = self.getUniqChunkId(identifier)
+         addr = self._stream.tell()
+         if issubclass(chunk_class, BasicFilter):
+             filter_stream = optionnal.get(&quot;stream&quot;, self._stream)
+@@ -177,21 +195,22 @@
+             if instanciate or size == None:
+                 filter = chunk_class(filter_stream, self, *args)
+                 description = filter.getDescription()
+-                filter.setId(id)
+-                chunk = FilterChunk(id, filter, self, addr)
++                filter.setId(identifier)
++                chunk = FilterChunk(identifier, filter, self, addr)
+                 size = filter.getSize()
+                 if config.verbose:
+-                    print &quot;%s: Instanciate filter %s&quot; % (self.getPath(), id)
++                    print &quot;%s: Instanciate filter %s&quot; % \
++                        (self.getPath(), identifier)
+             else:
+                 chunk = None
+ 
+-            chunk_info = [id, description, addr, size, \
++            chunk_info = [identifier, description, addr, size, \
+                     (chunk_class, filter_stream, filter_addr, args), None, {}]
+-            self._chunks_dict[id] = chunk_info
+-            self._chunks.append(id)
++            self._chunks_dict[identifier] = chunk_info
++            self._chunks.append(identifier)
+             if chunk != None:
+                 filter.updateParent(chunk)
+-                self._chunks_cache[id] = chunk
++                self._chunks_cache[identifier] = chunk
+             self._size = self._size + size
+             self._stream.seek(addr + size)
+         else:
+@@ -202,7 +221,9 @@
+                 args = info[1:]
+             else:
+                 args = [ i for i in info[1:] ]
+-            instance_info = [info[0], id, description, self._stream]+args+[self]
++            instance_info  = [info[0], identifier, description, self._stream]
++            instance_info += args
++            instance_info += [self]
+ 
+             if not instanciate:
+                 size = chunk_class.getStaticSize(self._stream, info[1:])
+@@ -215,32 +236,33 @@
+                 seek = False
+                 chunk = info[0] (*instance_info[1:], **optionnal)
+                 size = chunk.size
+-                id = chunk.id
+-                self._chunks_cache[id] = chunk
+-            chunk_info = [id, description, addr, size, instance_info, post, optionnal]
+-            self._chunks_dict[id] = chunk_info
+-            self._chunks.append(id)
++                identifier = chunk.id
++                self._chunks_cache[identifier] = chunk
++            chunk_info = [identifier, description, addr, size, \
++                instance_info, post, optionnal]
++            self._chunks_dict[identifier] = chunk_info
++            self._chunks.append(identifier)
+             self._size = self._size + size
+         if instanciate:
+             return chunk
+         else:
+-            return id
++            return identifier
+ 
+-    def doRead(self, id, description, info, optionnal={}):
+-        chunk = self._read(id, description, info, optionnal, True)
++    def doRead(self, identifier, description, info, optionnal={}):
++        chunk = self._read(identifier, description, info, optionnal, True)
+         if isinstance(chunk, FilterChunk):
+             return chunk.getFilter()
+         else:
+             return chunk
+ 
+-    def displayChunkInfo(self, id):
+-        info = self._chunks_dict[id]
++    def displayChunkInfo(self, identifier):
++        info = self._chunks_dict[identifier]
+         chunk_class = info[4][0]
+         if issubclass(chunk_class, BasicFilter):
+             display = &quot;(...)&quot;
+             format = chunk_class.__name__
+         else:
+-            chunk = self.getChunk(id)
++            chunk = self.getChunk(identifier)
+             display = chunk.getDisplayData()
+             format = chunk.getSmallFormat()
+         addr = info[2]
+@@ -250,25 +272,26 @@
+     def display(self):
+         ui.window.enableParentButton(self.getParent() != None)
+         ui.window.clear_table()
+-        for id in self._chunks:
+-            info = self.displayChunkInfo(id)
+-            if self._chunks_dict[id][4][0] == BitsChunk:
+-                self.getChunk(id).uiDisplay(ui.window)
++        for identifier in self._chunks:
++            info = self.displayChunkInfo(identifier)
++            if self._chunks_dict[identifier][4][0] == BitsChunk:
++                self.getChunk(identifier).uiDisplay(ui.window)
+             else:
+                 ui.window.add_table(*info)
+  
+     def getSize(self): return self._size
+ 
+-    def _createInstance(self, id):
+-        description = self._chunks_dict[id][1]
+-        addr = self._chunks_dict[id][2]
+-        size = self._chunks_dict[id][3]
+-        desc = self._chunks_dict[id][4]
+-        post = self._chunks_dict[id][5]
+-        chunks_kw = self._chunks_dict[id][6]
++    def _createInstance(self, identifier):
++        description = self._chunks_dict[identifier][1]
++        addr = self._chunks_dict[identifier][2]
++        size = self._chunks_dict[identifier][3]
++        desc = self._chunks_dict[identifier][4]
++        post = self._chunks_dict[identifier][5]
++        chunks_kw = self._chunks_dict[identifier][6]
+         oldpos = self._stream.tell()
+         if config.verbose:
+-            print &quot;%s: Instanciate %s (of type %s)&quot; % (self.getPath(), id, desc[0].__name__)
++            print &quot;%s: Instanciate %s (of type %s)&quot; % \
++                (self.getPath(), identifier, desc[0].__name__)
+         if not issubclass(desc[0], BasicFilter):
+             # Chunk
+             chunk_class = desc[0]
+@@ -286,39 +309,40 @@
+                 self._stream.seek(addr)
+             try:
+                 filter = desc[0] (filter_stream, self, *desc[3])
+-                filter.setId(id)
+-                chunk = FilterChunk(id, filter, self, addr)
++                filter.setId(identifier)
++                chunk = FilterChunk(identifier, filter, self, addr)
+                 if filter.getDescription() != desc[1]:
+-                    self.updateChunkDescription(id, filter.getDescription())
++                    self.updateChunkDescription(identifier, filter.getDescription())
+                 filter.updateParent(chunk)
+             except Exception, msg:
+-                error(&quot;Error when loading filter %s: %s&quot; % (id, msg))
++                error(&quot;Error when loading filter %s: %s&quot; % (identifier, msg))
+                 if filter_stream != self._stream:
+                     filter_stream.seek(desc[2])
+                 else:
+                     self._stream.seek(addr)
+                 if isinstance(size, int) or isinstance(size, long):
+-                    self._chunks_dict[id][4] = (FormatChunk, id, description, filter_stream, &quot;string[%u]&quot; % size, self)
+-                    self._chunks_dict[id][5] = None
+-                    self._chunks_dict[id][6] = {}
+-                    self.updateChunkDisplay(id)
+-                    return self._createInstance(id)
++                    self._chunks_dict[identifier][4] = (FormatChunk, identifier, description, \
++                        filter_stream, &quot;string[%u]&quot; % size, self)
++                    self._chunks_dict[identifier][5] = None
++                    self._chunks_dict[identifier][6] = {}
++                    self.updateChunkDisplay(identifier)
++                    return self._createInstance(identifier)
+         self._stream.seek(oldpos)
+         return chunk
+ 
+-    def getChunk(self, id):
+-        if id not in self._chunks_dict:
++    def getChunk(self, identifier):
++        if identifier not in self._chunks_dict:
+             return None
+-        if id not in self._chunks_cache:
+-            chunk = self._createInstance(id) 
++        if identifier not in self._chunks_cache:
++            chunk = self._createInstance(identifier) 
+             self._chunks_cache[chunk.id] = chunk 
+             return chunk
+         else:
+-            return self._chunks_cache[id]
++            return self._chunks_cache[identifier]
+ 
+-    def __getitem__(self, id):
+-        assert id in self._chunks_dict
+-        chunk = self.getChunk(id)
++    def __getitem__(self, identifier):
++        assert identifier in self._chunks_dict
++        chunk = self.getChunk(identifier)
+         if isinstance(chunk.__class__, FilterChunk):
+             return chunk.getFilter()
+         else:
+
+Modified: haypo/hachoir/trunk/hachoir.py
+===================================================================
+--- haypo/hachoir/trunk/hachoir.py	2006-01-20 02:48:56 UTC (rev 406)
++++ haypo/hachoir/trunk/hachoir.py	2006-01-20 03:43:57 UTC (rev 407)
+@@ -7,7 +7,7 @@
+ Author: Victor Stinner
+ &quot;&quot;&quot;
+ 
+-import sys, os, re, traceback
++import sys, os, re
+ import config
+ from program import PROGRAM, VERSION, WEBSITE
+ from log import log
+@@ -15,56 +15,67 @@
+ from hachoir_class import Hachoir
+ import ui.ui as ui
+ 
+-def usage(defval):
++def usage():
+     print &quot;%s version %s&quot; % (PROGRAM, VERSION)
+     print &quot;%s\n&quot; % WEBSITE
+     print &quot;Usage: %s [options] file&quot; % (sys.argv[0])
+     print &quot;&quot;
+     print &quot;Options:&quot;
+-    print &quot;\t--script file.py  : Load python script after loading file (if any specified)&quot;
+-    print &quot;\t--no-ui           : Don't load user interface&quot;
+-    print &quot;\t--use-profiler    : Use profiler&quot;
+-    print &quot;\t--version         : Show the program version&quot;
+-    print &quot;\t--verbose         : Activate verbose mode&quot;
+-    print &quot;\t--help            : Show this help&quot;
+-    print &quot;\t--debug           : Enable debug mode (eg. display backtrace)&quot;
++    options = ( \
++        (&quot;script file.py&quot;, (
++            &quot;Load python script after loading file&quot;,
++            &quot;(if any specified)&quot;)),
++        (&quot;no-ui&quot;, &quot;Don't load user interface&quot;),
++        (&quot;use-profiler&quot;, &quot;Use profiler&quot;),
++        (&quot;version&quot;, &quot;Show the program version&quot;),
++        (&quot;verbose&quot;, &quot;Activate verbose mode&quot;),
++        (&quot;help&quot;, &quot;Show this help&quot;),
++        (&quot;debug&quot;, &quot;Enable debug mode (eg. display backtrace)&quot;)
++    )
++    width = max([len(option[0]) for option in options])
++    for opt in options:
++        if isinstance(opt[1], tuple):
++            print &quot;   --%s : %s&quot; % (opt[0].ljust(width), opt[1][0])
++            for line in opt[1][1:]:
++                print &quot;   %s%s&quot; % (&quot; &quot; * (width+5), line)
++        else:
++            print &quot;   --%s : %s&quot; % (opt[0].ljust(width), opt[1])
+ 
+ def parseArgs(val):
+     import getopt
+-    def_val = val.copy()
+-    
+     try:
+-        short = &quot;&quot;
+-        long = [&quot;verbose&quot;, &quot;help&quot;, &quot;version&quot;, &quot;script=&quot;, &quot;no-ui&quot;, &quot;debug&quot;, &quot;use-profiler&quot;]
+-        opts, args = getopt.getopt(sys.argv[1:], short, long)
++        allowed = ( \
++            &quot;verbose&quot;, &quot;help&quot;, &quot;version&quot;, &quot;debug&quot;,
++            &quot;script=&quot;, &quot;no-ui&quot;, &quot;use-profiler&quot;)
++        opts, args = getopt.getopt(sys.argv[1:], &quot;&quot;, allowed)
+     except getopt.GetoptError:
+-        usage(def_val)
++        usage()
+         sys.exit(2)
+    
+     if 1 &lt; len(args):
+-        usage(def_val)
++        usage()
+         sys.exit(2)
+     if len(args) == 1:
+         filename = args[0]
+     else:
+         filename = None
+         
+-    for o, a in opts:
+-        if o == &quot;--help&quot;:
+-            usage(def_val)
++    for option, value in opts:
++        if option == &quot;--help&quot;:
++            usage()
+             sys.exit()
+-        elif o == &quot;--version&quot;:
++        elif option == &quot;--version&quot;:
+             print &quot;%s version %s&quot; % (PROGRAM, VERSION)
+             sys.exit()
+-        elif o == &quot;--no-ui&quot;:
++        elif option == &quot;--no-ui&quot;:
+             val[&quot;load_ui&quot;] = False
+-        elif o == &quot;--script&quot;:
+-            val[&quot;script&quot;] = a
+-        elif o == &quot;--verbose&quot;:
++        elif option == &quot;--script&quot;:
++            val[&quot;script&quot;] = value
++        elif option == &quot;--verbose&quot;:
+             config.verbose = True
+-        elif o == &quot;--debug&quot;:
++        elif option == &quot;--debug&quot;:
+             config.debug = True
+-        elif o == &quot;--use-profiler&quot;:
++        elif option == &quot;--use-profiler&quot;:
+             val[&quot;use_profiler&quot;] = True
+     return (val, filename,)
+ 
+@@ -77,17 +88,16 @@
+             print &quot;Fatal error: you need Python 2.4 or greater!&quot;
+             sys.exit(1)
+     
+-        import imp
+         plugins_dir = os.path.join(os.path.dirname(__file__), &quot;plugins&quot;)
+         plugins_files = os.listdir(plugins_dir)
+-        file_py = re.compile(&quot;^([a-z0-9_]+)\.py$&quot;)
++        match_module_name = re.compile(&quot;^([a-z0-9_]+)\.py$&quot;)
+         modules = []
+         for file in plugins_files:
+-            m = file_py.match(file)
+-            if file != &quot;__init__.py&quot; and m != None:
+-                module = &quot;plugins.&quot;+m.group(1)
++            module_name = match_module_name.match(file)
++            if file != &quot;__init__.py&quot; and module_name != None:
++                module = &quot;plugins.&quot; + module_name.group(1)
+                 __import__(module)
+-                modules.append(m.group(1))
++                modules.append(module_name.group(1))
+         log.info(&quot;Loaded: %u plugings (%s)&quot; % (len(modules), &quot;, &quot;.join(modules)))
+ 
+         opt = {
+@@ -124,9 +134,14 @@
+                 str_filename = &quot;\&quot;%s\&quot;&quot; % filename
+             else:
+                 str_filename = &quot;None&quot;
+-            profile.run('global hachoir; hachoir.run(%s)' % str_filename, stat_filename)
+-            #pstats.Stats(stat_filename).sort_stats('cumulative').print_stats()
+-            pstats.Stats(stat_filename).sort_stats('time').print_stats()
++            code = 'global hachoir; hachoir.run(%s)' % str_filename
++            profile.run(code, stat_filename)
++            if False:
++                sort_by = 'cumulative'
++            else:
++                sort_by = 'time'
++            stats = pstats.Stats(stat_filename).sort_stats(sort_by)
++            stats.print_stats()
+             os.unlink(stat_filename)
+         else:
+             hachoir.run(filename)
+@@ -135,6 +150,7 @@
+         pass
+     except Exception, err:
+         error(&quot;Python Exception: %s&quot; % err)
+-	sys.exit(1)
++    sys.exit(1)
+ 
+-if __name__==&quot;__main__&quot;: main()    
++if __name__ == &quot;__main__&quot;:
++    main()
+
+Modified: haypo/hachoir/trunk/reverse.py
+===================================================================
+--- haypo/hachoir/trunk/reverse.py	2006-01-20 02:48:56 UTC (rev 406)
++++ haypo/hachoir/trunk/reverse.py	2006-01-20 03:43:57 UTC (rev 407)
+@@ -26,7 +26,7 @@
+         for i in raw:
+             count[i] = count[i] + 1
+     length = stream.getSize()
+-    for i in range(0,256):
++    for i in range(0, 256):
+         i = chr(i)
+         if count[i] != 0:
+             p.append( float(count[i]) / length )
+@@ -231,7 +231,7 @@
+         &quot;&quot;&quot;
+         # Config
+         max_header_size = 64 
+-        chunk_size_deltas = IntValues((-20,20))
++        chunk_size_deltas = IntValues((-20, 20))
+ 
+         # Find possible header sizes
+         range = IntValues((0, max_header_size))
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000310.html">[Happyboom-svn] r406 - in haypo/hachoir/trunk: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000312.html">[Happyboom-svn] r408 - haypo/poilu/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#311">[ date ]</a>
+              <a href="thread.html#311">[ thread ]</a>
+              <a href="subject.html#311">[ subject ]</a>
+              <a href="author.html#311">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,416 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r246 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r246%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511020426.jA24QVwc017844%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000152.html">
+   <LINK REL="Next"  HREF="000154.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r246 - in haypo/hachoir: . plugins</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r246%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511020426.jA24QVwc017844%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r246 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Wed Nov  2 05:26:31 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000152.html">[Happyboom-svn] r245 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000154.html">[Happyboom-svn] r247 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#153">[ date ]</a>
+              <a href="thread.html#153">[ thread ]</a>
+              <a href="subject.html#153">[ subject ]</a>
+              <a href="author.html#153">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-02 05:26:28 +0100 (Wed, 02 Nov 2005)
+New Revision: 246
+
+Modified:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/default.py
+   haypo/hachoir/filter.py
+   haypo/hachoir/hachoir_class.py
+   haypo/hachoir/plugins/gif.py
+   haypo/hachoir/tools.py
+   haypo/hachoir/ui_window.py
+   haypo/hachoir/user_filter.py
+Log:
+postProcess() is call just after reading a chunk, manage user filter
+differently to avoid problem of filter cloning, add padding when loading
+new file or user filter and end of file is not reached.
+
+
+Modified: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-11-02 03:21:07 UTC (rev 245)
++++ haypo/hachoir/chunk.py	2005-11-02 04:26:28 UTC (rev 246)
+@@ -65,9 +65,6 @@
+         self._filter = filter
+         self._filter.filter_chunk = self
+     
+-    def postProcess(self):        
+-        self._filter.postProcess()
+-
+     def getFormat(self):
+         return self._filter.getId()
+ 
+@@ -219,7 +216,7 @@
+         
+         # Check new size
+         size = struct.calcsize(self.getRealFormat(format))
+-        if self._stream.getLastPos() &lt; self.addr + size:
++        if self._stream.getLastPos() &lt; (self.addr + size - 1):
+             raise Exception(&quot;Can't set chunk %s to format \&quot;%s\&quot;: size too big!&quot; % (self.id, format))
+ 
+         # Update format
+@@ -242,7 +239,7 @@
+             if method == &quot;split&quot; and diff_size &lt; 0:
+                 self._parent.addRawChunk(self, old_id, -diff_size, old_description)
+             else:
+-                self._parent.rescan(self, diff_size, new_id=old_id, new_description=old_description)
++                self._parent.rescan(self, diff_size, new_id=old_id, new_description=old_description, truncate=True)
+         self._parent.updateFormatChunk(self)
+    
+     def getValue(self, max_size=None):
+
+Modified: haypo/hachoir/default.py
+===================================================================
+--- haypo/hachoir/default.py	2005-11-02 03:21:07 UTC (rev 245)
++++ haypo/hachoir/default.py	2005-11-02 04:26:28 UTC (rev 246)
+@@ -6,4 +6,4 @@
+ class DefaultFilter(Filter):
+     def __init__(self, stream):
+         Filter.__init__(self, &quot;default&quot;, &quot;Default filter&quot;, stream, None)
+-        self.read(&quot;data&quot;, &quot;!{@end@}s&quot;, &quot;Data&quot;, True)
++        self.read(&quot;data&quot;, &quot;!{@end@}s&quot;, &quot;Data&quot;, truncate=True)
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-11-02 03:21:07 UTC (rev 245)
++++ haypo/hachoir/filter.py	2005-11-02 04:26:28 UTC (rev 246)
+@@ -57,7 +57,7 @@
+         self._deleteChunk(pos)
+         # Delete last chunk of a sub filter? It true, truncate the sub filter
+         truncate = (self.getParent() != None and pos == len(self._chunks))
+-        self.rescanFromPos(pos, -chunk_size, truncate_filter=truncate)
++        self.rescanFromPos(pos, -chunk_size, truncate=truncate)
+         self.redisplay()
+ 
+     def getChunks(self):
+@@ -100,12 +100,12 @@
+         chunk = FormatChunk(id, description, self.getStream(), addr, &quot;!%ss&quot; % size, self)
+         self._appendChunk(chunk, can_truncate=True, position=chunk_pos)
+ 
+-    def rescan(self, from_chunk, diff_size, new_id=None, new_description=None):
++    def rescan(self, from_chunk, diff_size, new_id=None, new_description=None, truncate=False):
+         if from_chunk != None:
+             start = self._chunks.index(from_chunk)+1
+         else:
+             start = 0
+-        self.rescanFromPos(start, diff_size, new_id, new_description)
++        self.rescanFromPos(start, diff_size, new_id, new_description, truncate)
+             
+     def _rescanUpdateSize(self, diff_size, new_id=None, new_description=None):
+         # Only process diff_size &lt; 0
+@@ -167,7 +167,7 @@
+                 self._deleteChunk(iter)
+                 iter = iter - 1
+ 
+-    def rescanFromPos(self, start, diff_size, new_id=None, new_description=None, truncate_filter=False):
++    def rescanFromPos(self, start, diff_size, new_id=None, new_description=None, truncate=False):
+         assert 0&lt;=start and start &lt;= len(self._chunks)
+         if 0&lt;start:
+             prev_chunk = self._chunks[start-1]
+@@ -180,7 +180,7 @@
+         diff_size = diff_size + (self.getSize() - old_size)
+ 
+         # Update last chunk size if needed
+-        if not truncate_filter:
++        if not truncate:
+             self._rescanUpdateSize(diff_size, new_id, new_description)
+             diff_size = 0
+                
+@@ -261,7 +261,7 @@
+ 
+     def updateFormatChunk(self, chunk):
+         if chunk.id == None: return
+-        data = chunk.getValue()
++        data = chunk.getValue(40)
+         setattr(self, chunk.id, data)       
+ 
+     def _appendChunk(self, chunk, can_truncate=False, position=None):
+@@ -296,23 +296,29 @@
+ 
+     def readChild(self, id, filter_class, description, *args): 
+         filter = filter_class(self._stream, self, *args)
+-        self.addFilter(id, filter)
++        chunk = self.addFilter(id, filter)
++        chunk.postProcess()
++        return chunk
+     
+     def addFilter(self, id, filter): 
+         chunk = FilterChunk(id, filter, self)
+         self._appendChunk(chunk)
+         filter.updateParent(chunk)
+         self._stream.seek(chunk.addr + chunk.size)
++        return chunk
+ 
+     def readArray(self, id, entry_class, description, end_func): 
+         filter = ArrayFilter(id, description, self._stream, self, entry_class, end_func)
+-        self.addFilter(id, filter)
++        chunk = self.addFilter(id, filter)
++        chunk.postProcess()
++        return chunk
+     
+     def readString(self, id, format, description):
+         &quot;&quot;&quot; Returns chunk &quot;&quot;&quot;
+         chunk = StringChunk(id, description, self._stream, format, self)
+         self._appendChunk(chunk)
+         self._stream.seek(chunk.addr + chunk.size)
++        chunk.postProcess()
+         return chunk
+     
+     def read(self, id, format, description, post=None, truncate=False):
+@@ -321,12 +327,9 @@
+         self._appendChunk(chunk, can_truncate=truncate)
+         self._stream.seek(chunk.addr + chunk.size)
+         chunk.post_process = post
++        chunk.postProcess()
+         return chunk
+ 
+-    def postProcess(self):
+-        for chunk in self._chunks:
+-            chunk.postProcess()
+-
+     def __str__(self):
+         return &quot;Filter(%s) &lt;id=%s, description=%s&gt;&quot; % \
+             (self.__class__, self.getId(), self.getDescription())
+@@ -399,7 +402,10 @@
+ 
+         for chunk in self._array:
+             chunk.getFilter().updateParent(chunk)
+-#        self._stream.seek(self.getAddr() + self.getSize())
++        if 1&lt;nb:
++            self.setDescription( &quot;%s (%s items)&quot; % (self.getDescription(), nb))
++        else:
++            self.setDescription( &quot;%s (%s item)&quot; % (self.getDescription(), nb))
+ 
+     def getArray(self):
+         return self._array
+
+Modified: haypo/hachoir/hachoir_class.py
+===================================================================
+--- haypo/hachoir/hachoir_class.py	2005-11-02 03:21:07 UTC (rev 245)
++++ haypo/hachoir/hachoir_class.py	2005-11-02 04:26:28 UTC (rev 246)
+@@ -2,7 +2,7 @@
+ from plugin import getPlugin
+ from chunk import FilterChunk
+ from default import DefaultFilter, displayDefault
+-from user_filter import UserFilterDescriptor, UserFilter
++from user_filter import UserFilterDescriptor, loadUserFilter
+ from error import error
+ 
+ class Hachoir:
+@@ -30,15 +30,21 @@
+             self.filter.display()
+ 
+     def loadUser(self, filename):
+-        old_filter = self.filter
+-        old_size = old_filter.getSize()
+-        user = UserFilterDescriptor(xml_file=filename)
+-        stream = self.filter.getStream()
+-        parent = self.filter.getParent()
+-        stream.seek(self.filter.getAddr())
+-        self.filter = UserFilter(user, stream, parent)
++        try:
++            old_filter = self.filter
++            old_size = old_filter.getSize()
++            user = UserFilterDescriptor(xml_file=filename)
++            stream = self.filter.getStream()
++            parent = self.filter.getParent()
++            stream.seek(self.filter.getAddr())
++            new_filter = loadUserFilter(user, stream, parent)
++        except Exception, err:
++            error(&quot;Error while loading user XML filter \&quot;%s\&quot;:\n%s&quot; % (filename, err))
++            return
++        self.filter = new_filter           
+         if parent == None:
+             self.main_filter = self.filter
++            self._addPadding()
+         else:
+             chunk = old_filter.filter_chunk
+             chunk.setFilter(self.filter)
+@@ -55,6 +61,17 @@
+         my = UserFilterDescriptor(filter=self.filter)
+         my.exportPython(filename)
+         
++    def _addPadding(self):
++        size = self.filter.getSize()
++        diff_size = (size - self.filter.getStream().getSize())
++        if diff_size &lt; 0:
++            chunks = self.filter.getChunks()
++            if len(chunks) != 0:
++                last_chunk = chunks[-1]
++            else:
++                last_chunk = None
++            self.filter.addRawChunk(last_chunk, &quot;end&quot;, &quot;{@end@}&quot;, &quot;&quot;)
++
+     def load(self, filename):
+         try:
+             stream = FileStream(filename)
+@@ -72,22 +89,13 @@
+         # Split 
+         try:
+             filter = split_func(stream)
+-            filter.postProcess()
+-            size = filter.getSize()
+-            diff_size = (size - stream.getSize())
+-            if diff_size &lt; 0:
+-                chunks = filter.getChunks()
+-                if len(chunks) != 0:
+-                    last_chunk = chunks[-1]
+-                else:
+-                    last_chunk = None
+-                filter.addRawChunk(last_chunk, &quot;end&quot;, &quot;{@end@}&quot;, &quot;&quot;)
+         except Exception, msg:
+             error(&quot;Exception while processing file %s with filter %s:\n%s&quot; \
+                 % (filename, plugin_name, msg))
+             raise
+             return
+         self.main_filter = self.filter = filter
++        self._addPadding()
+         self.filter.display()
+ 
+         # Display
+
+Modified: haypo/hachoir/plugins/gif.py
+===================================================================
+--- haypo/hachoir/plugins/gif.py	2005-11-02 03:21:07 UTC (rev 245)
++++ haypo/hachoir/plugins/gif.py	2005-11-02 04:26:28 UTC (rev 246)
+@@ -91,7 +91,7 @@
+         self.read(&quot;height&quot;, &quot;&lt;H&quot;, &quot;Height&quot;)
+ 
+         # TODO: Fix this
+-        self.read(&quot;flags&quot;, &quot;&lt;B&quot;, &quot;Flags&quot;, post=processFlags)
++        self.read(&quot;flags&quot;, &quot;&lt;B&quot;, &quot;Flags&quot;, post=self.processFlags)
+         # -- End of TODO
+         
+         self.read(&quot;background&quot;, &quot;&lt;B&quot;, &quot;Background color&quot;)
+
+Modified: haypo/hachoir/tools.py
+===================================================================
+--- haypo/hachoir/tools.py	2005-11-02 03:21:07 UTC (rev 245)
++++ haypo/hachoir/tools.py	2005-11-02 04:26:28 UTC (rev 246)
+@@ -23,6 +23,9 @@
+     return &quot;\&quot;%s\&quot;&quot; % display
+ 
+ def getBacktrace():
+-    bt = traceback.format_exception( \
+-        sys.exc_type, sys.exc_value, sys.exc_traceback)
+-    return &quot;&quot;.join(bt)
++    try:
++        bt = traceback.format_exception( \
++            sys.exc_type, sys.exc_value, sys.exc_traceback)
++        return &quot;&quot;.join(bt)
++    except:
++        return &quot;Error while trying to get backtrace&quot;
+
+Modified: haypo/hachoir/ui_window.py
+===================================================================
+--- haypo/hachoir/ui_window.py	2005-11-02 03:21:07 UTC (rev 245)
++++ haypo/hachoir/ui_window.py	2005-11-02 04:26:28 UTC (rev 246)
+@@ -79,7 +79,7 @@
+         self.ui.on_row_click(row[3])
+ 
+     def build_table(self):
+-        self.table_store = gtk.TreeStore(str, str, int, str, str, str)
++        self.table_store = gtk.TreeStore(int, str, int, str, str, str)
+         self.table.set_model(self.table_store)
+         self.table.connect(&quot;row-activated&quot;, self.onTableClicked)
+         self.treeview_add_column(self.table, &quot;Address&quot;, 0)
+@@ -146,7 +146,7 @@
+ 
+     def on_toolbutton_save(self, widget):
+         chooser = gtk.FileChooserDialog( \
+-            title=&quot;Save filter into ...&quot;,
++            title=&quot;Save XML filter into ...&quot;,
+             action=gtk.FILE_CHOOSER_ACTION_SAVE,
+             buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_SAVE,gtk.RESPONSE_OK))
+         if chooser.run() == gtk.RESPONSE_OK:
+
+Modified: haypo/hachoir/user_filter.py
+===================================================================
+--- haypo/hachoir/user_filter.py	2005-11-02 03:21:07 UTC (rev 245)
++++ haypo/hachoir/user_filter.py	2005-11-02 04:26:28 UTC (rev 246)
+@@ -20,19 +20,19 @@
+         self.sub = sub
+         self.sub_format = sub_format
+ 
+-class UserFilter(Filter):
+-    def __init__(self, desc, stream, parent):
+-        Filter.__init__(self, desc.id, desc.description, stream, parent)
+-        for chunk in desc.chunks:
+-            if chunk.format == &quot;sub&quot;:
+-                modules = chunk.sub_format.split('.')
+-                chunk_class = modules[-1]
+-                module = &quot;.&quot;.join(modules[:-1])
+-                mod = __import__(module, globals(), locals(), [chunk_class])
+-                chunk_class = getattr(mod, chunk_class)
+-                self.readChild(chunk.id, chunk_class, chunk.description)
+-            else:
+-                self.read(chunk.id, chunk.format, chunk.description)
++def loadUserFilter(desc, stream, parent):
++    filter = Filter(desc.id, desc.description, stream, parent)
++    for chunk in desc.chunks:
++        if chunk.format == &quot;sub&quot;:
++            modules = chunk.sub_format.split('.')
++            chunk_class = modules[-1]
++            module = &quot;.&quot;.join(modules[:-1])
++            mod = __import__(module, globals(), locals(), [chunk_class])
++            chunk_class = getattr(mod, chunk_class)
++            filter.readChild(chunk.id, chunk_class, chunk.description)
++        else:
++            filter.read(chunk.id, chunk.format, chunk.description)
++    return filter            
+ 
+ class UserFilterDescriptor:
+     def __init__(self, filter=None, xml_file=None):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000152.html">[Happyboom-svn] r245 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000154.html">[Happyboom-svn] r247 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#153">[ date ]</a>
+              <a href="thread.html#153">[ thread ]</a>
+              <a href="subject.html#153">[ subject ]</a>
+              <a href="author.html#153">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

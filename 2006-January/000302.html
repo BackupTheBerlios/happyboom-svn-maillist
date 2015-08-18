@@ -1,0 +1,102 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r398 - haypo/hachoir/trunk/stream
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r398%20-%20haypo/hachoir/trunk/stream&In-Reply-To=%3C200601062013.k06KD60h028027%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000301.html">
+   <LINK REL="Next"  HREF="000303.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r398 - haypo/hachoir/trunk/stream</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r398%20-%20haypo/hachoir/trunk/stream&In-Reply-To=%3C200601062013.k06KD60h028027%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r398 - haypo/hachoir/trunk/stream">haypo at berlios.de
+       </A><BR>
+    <I>Fri Jan  6 21:13:06 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000301.html">[Happyboom-svn] r397 - haypo/hachoir/trunk/plugins
+</A></li>
+        <LI>Next message: <A HREF="000303.html">[Happyboom-svn] r399 - in haypo/hachoir/trunk: . ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#302">[ date ]</a>
+              <a href="thread.html#302">[ thread ]</a>
+              <a href="subject.html#302">[ subject ]</a>
+              <a href="author.html#302">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-06 21:13:05 +0100 (Fri, 06 Jan 2006)
+New Revision: 398
+
+Modified:
+   haypo/hachoir/trunk/stream/file.py
+   haypo/hachoir/trunk/stream/stream.py
+Log:
+Fix small bug in streams: truncate read() size in FileStream and LimitedStream
+if needed.
+
+
+Modified: haypo/hachoir/trunk/stream/file.py
+===================================================================
+--- haypo/hachoir/trunk/stream/file.py	2006-01-06 00:07:53 UTC (rev 397)
++++ haypo/hachoir/trunk/stream/file.py	2006-01-06 20:13:05 UTC (rev 398)
+@@ -96,6 +96,8 @@
+         
+     def read(self, size, seek=True):
+         if self._cache != None:
++            if self._size &lt; self._seed + size:
++                size = self._size - self._seed
+             data = self._cache.read(self._seed, size)
+         else:
+             self._file.seek(self._seed) ; data = self._file.read(size)
+
+Modified: haypo/hachoir/trunk/stream/stream.py
+===================================================================
+--- haypo/hachoir/trunk/stream/stream.py	2006-01-06 00:07:53 UTC (rev 397)
++++ haypo/hachoir/trunk/stream/stream.py	2006-01-06 20:13:05 UTC (rev 398)
+@@ -168,6 +168,9 @@
+     def read(self, size, seek=True):
+         &quot;&quot;&quot; Works like Posix read (can returns less than size bytes. &quot;&quot;&quot;
+         self._stream.seek(self._seed)
++        max = self._end - self._seed
++        if max&lt;size:
++            size = max
+         data = self._stream.read(size, seek)
+         if seek:
+             self._seed += len(data)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000301.html">[Happyboom-svn] r397 - haypo/hachoir/trunk/plugins
+</A></li>
+	<LI>Next message: <A HREF="000303.html">[Happyboom-svn] r399 - in haypo/hachoir/trunk: . ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#302">[ date ]</a>
+              <a href="thread.html#302">[ thread ]</a>
+              <a href="subject.html#302">[ subject ]</a>
+              <a href="author.html#302">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,288 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r430 - in haypo/hachoir: . branches/hachoir-yield/libhachoir/stream
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r430%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield/libhachoir/stream&In-Reply-To=%3C200603040027.k240R9tC000223%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000343.html">
+   <LINK REL="Next"  HREF="000333.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r430 - in haypo/hachoir: . branches/hachoir-yield/libhachoir/stream</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r430%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield/libhachoir/stream&In-Reply-To=%3C200603040027.k240R9tC000223%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r430 - in haypo/hachoir: . branches/hachoir-yield/libhachoir/stream">haypo at berlios.de
+       </A><BR>
+    <I>Sat Mar  4 01:27:09 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000343.html">[Happyboom-svn] r429 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/fallback branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser branches/hachoir-yield/libhachoir/parser/file_system branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream
+</A></li>
+        <LI>Next message: <A HREF="000333.html">[Happyboom-svn] r431 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#332">[ date ]</a>
+              <a href="thread.html#332">[ thread ]</a>
+              <a href="subject.html#332">[ subject ]</a>
+              <a href="author.html#332">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-04 01:26:57 +0100 (Sat, 04 Mar 2006)
+New Revision: 430
+
+Removed:
+   haypo/hachoir/branches/hachoir-yield/libhachoir/stream/error.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/stream/file.py
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/libhachoir/stream/__init__.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/stream/stream.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r24 at haypopc</A>:  haypo | 2006-03-03 19:59:01 +0100
+ Rename FileStream to Stream
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:23
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:24
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/stream/__init__.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/stream/__init__.py	2006-03-04 00:26:40 UTC (rev 429)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/stream/__init__.py	2006-03-04 00:26:57 UTC (rev 430)
+@@ -1 +1 @@
+-from stream import Stream
++from stream import Stream, StreamError
+
+Deleted: haypo/hachoir/branches/hachoir-yield/libhachoir/stream/error.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/stream/error.py	2006-03-04 00:26:40 UTC (rev 429)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/stream/error.py	2006-03-04 00:26:57 UTC (rev 430)
+@@ -1,3 +0,0 @@
+-class StreamError(Exception):
+-    def __init__(self, msg):
+-        Exception.__init__(self, msg)
+
+Deleted: haypo/hachoir/branches/hachoir-yield/libhachoir/stream/file.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/stream/file.py	2006-03-04 00:26:40 UTC (rev 429)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/stream/file.py	2006-03-04 00:26:57 UTC (rev 430)
+@@ -1,89 +0,0 @@
+-import os
+-from error import StreamError
+-from stream import Stream
+-#from config import config
+-
+-def getFileSize(stream):
+-    &quot;&quot;&quot; Get file size in bits &quot;&quot;&quot;
+-    oldpos = stream.tell()
+-    stream.seek(0,2)
+-    size = stream.tell() * 8
+-    stream.seek(oldpos)
+-    return size
+-
+-class FileStream(Stream):
+-    def __init__(self, file, size, filename=None, copy=None):
+-        Stream.__init__(self, filename)
+-        self._file = file 
+-        if copy != None:
+-            self._size = copy._size
+-        else:
+-            self._size = size
+-            self._file.seek(0)
+-            if self._size == 0:
+-                raise Exception(&quot;Error: file %s is empty!&quot; % filename)
+-        
+-    def _getSize(self):
+-        &quot;&quot;&quot; Size of the stream in bits &quot;&quot;&quot;
+-        return self._size
+-    size = property(_getSize)
+-
+-    def getBits(self, address, nbits, big_endian=False):
+-        data = self._getRawBits(address, nbits)        
+-        if (address % 8) != 0 or (nbits % 8) != 0:
+-            mask = (1 &lt;&lt; nbits) - 1
+-            shift = address &amp; 7 
+-        else:
+-            shift = 0
+-            mask = None
+-        value = 0
+-        if not big_endian:
+-            if shift != 0:
+-                byte = ord(data[0])
+-                value += (byte &gt;&gt; shift)
+-                data = data[1:]
+-                shift = nbits-shift
+-            else:
+-                shift = nbits-8
+-                if shift &lt; 0:
+-                    shift += 8
+-            for character in data:
+-                byte = ord(character)
+-                value += (byte &lt;&lt; shift) 
+-                shift -= 8
+-        else:
+-            if shift != 0:
+-                byte = ord(data[0])
+-                value += (byte &gt;&gt; shift)
+-                data = data[1:]
+-            for character in data:
+-                byte = ord(character)
+-                value += (byte &lt;&lt; shift) 
+-                shift += 8
+-        if mask != None:
+-            value = value &amp; mask
+-        return value
+-
+-    def getBytes(self, address, nbytes):
+-        if address % 8 != 0:
+-            data = self._getRawBits(address, nbytes*8)
+-            nbits = address % 8
+-            shift1 = nbits
+-            shift2 = 8 - nbits
+-            mask = (1 &lt;&lt; nbits) - 1
+-            newdata = &quot;&quot;
+-            for i in range(0, len(data)-1):
+-                byte1 = ord(data[i])
+-                byte2 = ord(data[i+1])
+-                new = chr((byte1 &gt;&gt; shift1) + ((byte2 &amp; mask) &lt;&lt; shift2))
+-                newdata += new 
+-            data = newdata
+-        else:
+-            data = self._getRawBits(address, nbytes*8)
+-        return data
+-    
+-    def _getRawBits(self, address, nbits):
+-        nbytes = (nbits + (address &amp; 7) + 7) / 8
+-        self.seek(address / 8)
+-        return self.getN(nbytes)
+-
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/stream/stream.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/stream/stream.py	2006-03-04 00:26:40 UTC (rev 429)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/stream/stream.py	2006-03-04 00:26:57 UTC (rev 430)
+@@ -1 +1,86 @@
++def getFileSize(stream):
++    &quot;&quot;&quot; Get file size in bits &quot;&quot;&quot;
++    oldpos = stream.tell()
++    stream.seek(0,2)
++    size = stream.tell() * 8
++    stream.seek(oldpos)
++    return size
+ 
++class StreamError(Exception):
++    pass
++
++class Stream:
++    def __init__(self, input, size, filename=None, copy=None):
++        Stream.__init__(self, filename)
++        self._input = input 
++        self.filename = filename
++        if copy == None:
++            if self._size == 0:
++                raise StreamError(&quot;Error: input size is nul (filename='%s')!&quot; % filename)
++            self._size = size
++        else:
++            self._size = copy._size
++        
++    def _getSize(self):
++        return self._size
++    size = property(_getSize, doc=&quot;Size of the stream in bits&quot;)
++
++    def getBits(self, address, nbits, big_endian=False):
++        data = self._getRawBits(address, nbits)        
++        if (address % 8) != 0 or (nbits % 8) != 0:
++            mask = (1 &lt;&lt; nbits) - 1
++            shift = address &amp; 7 
++        else:
++            shift = 0
++            mask = None
++        value = 0
++        if not big_endian:
++            if shift != 0:
++                byte = ord(data[0])
++                value += (byte &gt;&gt; shift)
++                data = data[1:]
++                shift = nbits-shift
++            else:
++                shift = nbits-8
++                if shift &lt; 0:
++                    shift += 8
++            for character in data:
++                byte = ord(character)
++                value += (byte &lt;&lt; shift) 
++                shift -= 8
++        else:
++            if shift != 0:
++                byte = ord(data[0])
++                value += (byte &gt;&gt; shift)
++                data = data[1:]
++            for character in data:
++                byte = ord(character)
++                value += (byte &lt;&lt; shift) 
++                shift += 8
++        if mask != None:
++            value = value &amp; mask
++        return value
++
++    def getBytes(self, address, nbytes):
++        if address % 8 != 0:
++            data = self._getRawBits(address, nbytes*8)
++            nbits = address % 8
++            shift1 = nbits
++            shift2 = 8 - nbits
++            mask = (1 &lt;&lt; nbits) - 1
++            newdata = &quot;&quot;
++            for i in range(0, len(data)-1):
++                byte1 = ord(data[i])
++                byte2 = ord(data[i+1])
++                new = chr((byte1 &gt;&gt; shift1) + ((byte2 &amp; mask) &lt;&lt; shift2))
++                newdata += new 
++            data = newdata
++        else:
++            data = self._getRawBits(address, nbytes*8)
++        return data
++    
++    def _getRawBits(self, address, nbits):
++        nbytes = (nbits + (address &amp; 7) + 7) / 8
++        self.seek(address / 8)
++        return self.getN(nbytes)
++
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000343.html">[Happyboom-svn] r429 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/fallback branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser branches/hachoir-yield/libhachoir/parser/file_system branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream
+</A></li>
+	<LI>Next message: <A HREF="000333.html">[Happyboom-svn] r431 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#332">[ date ]</a>
+              <a href="thread.html#332">[ thread ]</a>
+              <a href="subject.html#332">[ subject ]</a>
+              <a href="author.html#332">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

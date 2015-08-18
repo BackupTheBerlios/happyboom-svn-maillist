@@ -1,0 +1,183 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r96 - in happyboom/trunk: . boomboom
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-August/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r96%20-%20in%20happyboom/trunk%3A%20.%20boomboom&In-Reply-To=%3C200508050947.j759l4vS007095%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000003.html">
+   <LINK REL="Next"  HREF="000005.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r96 - in happyboom/trunk: . boomboom</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r96%20-%20in%20happyboom/trunk%3A%20.%20boomboom&In-Reply-To=%3C200508050947.j759l4vS007095%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r96 - in happyboom/trunk: . boomboom">dboucard at berlios.de
+       </A><BR>
+    <I>Fri Aug  5 11:47:04 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000003.html">[Happyboom-svn] r95 - in happyboom/trunk: . boomboom boomboom/server boomboom/server/agents
+</A></li>
+        <LI>Next message: <A HREF="000005.html">[Happyboom-svn] r98 - in happyboom/trunk/boomboom: . client
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4">[ date ]</a>
+              <a href="thread.html#4">[ thread ]</a>
+              <a href="subject.html#4">[ subject ]</a>
+              <a href="author.html#4">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-08-05 11:47:04 +0200 (Fri, 05 Aug 2005)
+New Revision: 96
+
+Modified:
+   happyboom/trunk/ChangeLog
+   happyboom/trunk/README
+   happyboom/trunk/TODO
+   happyboom/trunk/boomboom/makedoc
+Log:
+information files update
+
+
+Modified: happyboom/trunk/ChangeLog
+===================================================================
+--- happyboom/trunk/ChangeLog	2005-08-05 09:18:23 UTC (rev 95)
++++ happyboom/trunk/ChangeLog	2005-08-05 09:47:04 UTC (rev 96)
+@@ -1,3 +1,14 @@
++2005-08-05
++	o Rewrite of the BoomBoom server (based on multi-agent-system)
++	o The server requires the PySMA library (see README)
++
++2005-08-03
++	o Rewrite of the BoomBoom client (based on event-system)
++	o The BoomBoom client source code is documented with Epydoc
++
++2005-08-02
++	o The 'net' package is documented with Epydoc
++
+ 2005-04-28
+ 	o Fix network client : use buffer to keep unfinished lines, and support
+ 	  wrong host name error
+
+Modified: happyboom/trunk/README
+===================================================================
+--- happyboom/trunk/README	2005-08-05 09:18:23 UTC (rev 95)
++++ happyboom/trunk/README	2005-08-05 09:47:04 UTC (rev 96)
+@@ -2,11 +2,26 @@
+ ========
+ 
+ BoomBoom is a rewrite of old game &quot;Gorilla&quot; (a Quick Basic game written
+-by Microsoft). It's just a test for the HappyBoom kernel. To play, first run
++by Microsoft). It's just a test for the HappyBoom kernel.
++
++  Requirements
++  ------------
++- Python : version 2.3 or earlier (tested until 2.4.1)
++--&gt; <A HREF="http://python.org/download/">http://python.org/download/</A>
++
++- pygame : version 1.6 or earlier (just tested 1.6)
++--&gt; <A HREF="http://www.pygame.org/download.shtml">http://www.pygame.org/download.shtml</A>
++
++- pysma : version 0.3 (tested until 0.3)
++--&gt; <A HREF="https://developer.berlios.de/project/showfiles.php?group_id=3535">https://developer.berlios.de/project/showfiles.php?group_id=3535</A>
++
++  How to play
++  -----------
++To play, launch a term, go to the boomboom subdirectory and run
+ a server :
+   python boomboom_server.py
+   
+-And then a client :
++Next, launch another term, go to the boomboom subdirectory again and run a client :
+   python boomboom_client.py &lt;yourname&gt;
+ 
+ You can play it over Internet by giving a host name to client :
+@@ -14,11 +29,11 @@
+ 
+    Controls
+    --------
+-   
+-- Left/Right : Change force
+-- Up/Down    : Change angle
+-- Space      : Shoot
++- Left/Right : Changes strength
++- Up/Down    : Changes angle
++- Space      : Shoots
+ 
++
+ HappyBoom
+ =========
+ 
+@@ -26,6 +41,7 @@
+ - inputs, server &amp; &quot;view&quot; are well separated
+ - it uses multi-agents system
+ 
++
+ Console
+ =======
+ 
+@@ -33,4 +49,12 @@
+ it should be compatible with new games. It can be used to display server stats
+ for example :
+   python console_view.py --stats
++  
++  
++Documentation
++=============
+ 
++You can generate the API documentation of some package (presently 'boomboom'
++and 'net'). To do that, you must install Epydoc (version 2.1 or earlier, just
++tested 2.1) and run the 'makedoc' shell script in the concerned directory,
++or read the Epydoc manpage.
+
+Modified: happyboom/trunk/TODO
+===================================================================
+--- happyboom/trunk/TODO	2005-08-05 09:18:23 UTC (rev 95)
++++ happyboom/trunk/TODO	2005-08-05 09:47:04 UTC (rev 96)
+@@ -1,3 +1,4 @@
++# -*- coding: UTF-8 -*-
+ TODO LIST
+ =========
+ o Improve network security
+
+Modified: happyboom/trunk/boomboom/makedoc
+===================================================================
+--- happyboom/trunk/boomboom/makedoc	2005-08-05 09:18:23 UTC (rev 95)
++++ happyboom/trunk/boomboom/makedoc	2005-08-05 09:47:04 UTC (rev 96)
+@@ -1 +1 @@
+-epydoc -o doc/api -n &quot;BoomBoom Client 0.2&quot; --private-css blue client common/
++epydoc $* -o doc/api -n &quot;BoomBoom 0.2&quot; --private-css blue client common net server
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000003.html">[Happyboom-svn] r95 - in happyboom/trunk: . boomboom boomboom/server boomboom/server/agents
+</A></li>
+	<LI>Next message: <A HREF="000005.html">[Happyboom-svn] r98 - in happyboom/trunk/boomboom: . client
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4">[ date ]</a>
+              <a href="thread.html#4">[ thread ]</a>
+              <a href="subject.html#4">[ subject ]</a>
+              <a href="author.html#4">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

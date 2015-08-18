@@ -1,0 +1,538 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r382 - in haypo/hachoir/trunk: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r382%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200601020048.k020mt2S021335%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000283.html">
+   <LINK REL="Next"  HREF="000285.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r382 - in haypo/hachoir/trunk: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r382%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200601020048.k020mt2S021335%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r382 - in haypo/hachoir/trunk: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Mon Jan  2 01:48:55 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000283.html">[Happyboom-svn] r381 - in haypo/hachoir/trunk: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000285.html">[Happyboom-svn] r383 - in haypo/hachoir/trunk: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#284">[ date ]</a>
+              <a href="thread.html#284">[ thread ]</a>
+              <a href="subject.html#284">[ subject ]</a>
+              <a href="author.html#284">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-02 01:48:42 +0100 (Mon, 02 Jan 2006)
+New Revision: 382
+
+Modified:
+   haypo/hachoir/trunk/chunk.py
+   haypo/hachoir/trunk/plugins/worms2.py
+   haypo/hachoir/trunk/reverse.py
+Log:
+- Worms2 plugin: Fix Sprite mysterious header count
+- Worms2 plugin: Fix Font character count
+- Add &quot;Fixed&quot; StringChunk format (size is given by optionnal argument)
+- Small bugfixes in Reverse
+
+
+Modified: haypo/hachoir/trunk/chunk.py
+===================================================================
+--- haypo/hachoir/trunk/chunk.py	2006-01-01 19:31:30 UTC (rev 381)
++++ haypo/hachoir/trunk/chunk.py	2006-01-02 00:48:42 UTC (rev 382)
+@@ -146,10 +146,11 @@
+         &quot;AutoLine&quot;: &quot;line&quot;,
+         &quot;Pascal16&quot;: &quot;pascal16&quot;,
+         &quot;Pascal32&quot;: &quot;pascal32&quot;,
+-        &quot;WindowsLine&quot;: &quot;windows line&quot;
++        &quot;WindowsLine&quot;: &quot;windows line&quot;,
++        &quot;Fixed&quot;: &quot;fixed&quot;
+     }
+ 
+-    def __init__(self, id, description, stream, str_type, parent, strip=None, charset=&quot;ascii&quot;):
++    def __init__(self, id, description, stream, str_type, parent, strip=None, charset=&quot;ascii&quot;, size=None):
+         &quot;&quot;&quot;
+         Strip: if strip=None, call read text.strip()
+                if strip is a string, call read text.strip(self.strip)
+@@ -158,7 +159,7 @@
+         Chunk.__init__(self, id, description, stream, stream.tell(), 0, parent)
+         self._str_type = str_type
+         self.eol = None
+-        self._findSize()
++        self._findSize(size)
+         self.strip = strip
+         self.charset = charset
+ 
+@@ -168,9 +169,13 @@
+             self.charset)
+     getSmallFormat = getFormat
+ 
+-    def _findSize(self):
++    def _findSize(self, size):
+         self._stream.seek(self.addr)
+-        if self._str_type == &quot;Pascal16&quot;:
++        if self._str_type == &quot;Fixed&quot;:
++            self.length = size 
++            self._size = size
++            self.eol = &quot;&quot;
++        elif self._str_type == &quot;Pascal16&quot;:
+             self.length = self._stream.getFormat(&quot;!uint16&quot;)
+             self._size = 2 + self.length
+             self.eol = &quot;&quot;
+
+Modified: haypo/hachoir/trunk/plugins/worms2.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/worms2.py	2006-01-01 19:31:30 UTC (rev 381)
++++ haypo/hachoir/trunk/plugins/worms2.py	2006-01-02 00:48:42 UTC (rev 382)
+@@ -25,6 +25,15 @@
+         size = (self.width-self.x) * (self.height-self.y)
+         self.read(&quot;data&quot;, &quot;Image content&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+ 
++    def getStaticSize(stream, args):
++        oldpos = stream.tell()
++        x, y = stream.getFormat(&quot;&lt;uint16&quot;), stream.getFormat(&quot;&lt;uint16&quot;)
++        w, h = stream.getFormat(&quot;&lt;uint16&quot;), stream.getFormat(&quot;&lt;uint16&quot;)
++        size = 2*4 + (w-x) * (h-y)
++        stream.seek(oldpos)
++        return size
++    getStaticSize = staticmethod(getStaticSize)
++
+     def updateParent(self, chunk):
+         chunk.description = &quot;Image data: %ux%u pixels at (%u,%u)&quot; \
+             % (self.width, self.height, self.x, self.y)
+@@ -44,9 +53,23 @@
+         chunk.description = &quot;Image: %ux%u pixels&quot; % \
+             (self[&quot;width&quot;], self[&quot;height&quot;])
+ 
+-class SpriteItem(OnDemandFilter):
++class MysteriousHeader(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;sprite_item&quot;, &quot;Sprite item&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;a&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;b&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;c&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;d&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;e&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;f&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        
++    def updateParent(self, chunk):            
++        chunk.description = &quot;Mysterious: d=%s f=%s a=%s b=%s c=%s e=%s&quot; % \
++            (self[&quot;d&quot;],self[&quot;f&quot;],self[&quot;a&quot;],self[&quot;b&quot;],self[&quot;c&quot;],self[&quot;e&quot;])
++
++class SpriteFrame(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;frame&quot;, &quot;Sprite frame&quot;, stream, parent, &quot;&lt;&quot;)
+         self.read(&quot;a&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
+         self.read(&quot;b&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;c&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
+@@ -56,7 +79,7 @@
+         self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
+ 
+     def updateParent(self, chunk):            
+-        chunk.description = &quot;Sprite item: %ux%u pixels at (%u,%u)&quot; % \
++        chunk.description = &quot;Frame: %ux%u pixels at (%u,%u)&quot; % \
+             (self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;x&quot;], self[&quot;y&quot;])
+ 
+ class Sprite(OnDemandFilter):
+@@ -66,75 +89,85 @@
+         self.read(&quot;palette&quot;, &quot;Palette&quot;, (Palette, 81))
+         self.read(&quot;header116&quot;, &quot;Header 116&quot;, (FormatChunk, &quot;uint8&quot;))
+         assert self[&quot;header116&quot;] == 116 
+-        self.read(&quot;type&quot;, &quot;Type?&quot;, (FormatChunk, &quot;uint8&quot;))
+-        self.read(&quot;zero[]&quot;, &quot;???&quot;, (FormatChunk, &quot;string[9]&quot;))
+-        self.read(&quot;flags_a&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;), {&quot;post&quot;: binary})
+-        self.read(&quot;zero[]&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
+-        flags_b = self.doRead(&quot;flags_b&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;), {&quot;post&quot;: binary}).value
+-        import re
+-        self.n = 0
+-        if flags_b != 0:
+-            self.n = 1
+-            if re.match(&quot;^Batrope&quot;, name) != None:
+-                self.n = 3
+-            elif re.match(&quot;^Homing&quot;, name) != None:
+-                self.n = 2
+-            elif re.match(&quot;^Sheep&quot;, name) != None:
+-                self.n = 5
+-            elif re.match(&quot;^Network&quot;, name) != None:
+-                self.n = 18
+-        size = self.n * 12
+-        if size != 0:
+-            self.read(&quot;zero[]&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+-        self.x = self.doRead(&quot;x[]&quot;, &quot;Offset X&quot;, (FormatChunk, &quot;uint16&quot;)).value
+-        self.y = self.doRead(&quot;y[]&quot;, &quot;Offset Y&quot;, (FormatChunk, &quot;uint16&quot;)).value
+-        self.width = self.doRead(&quot;width[]&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;)).value
+-        self.height = self.doRead(&quot;height[]&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;)).value
+-        self.count = self.doRead(&quot;count&quot;, &quot;Item count&quot;, (FormatChunk, &quot;uint16&quot;)).value
+-#        for i in range(0, self.count):
+-#            self.read(&quot;item[]&quot;, &quot;Item&quot;, (SpriteItem,))
++
++        if False:
++            self.read(&quot;n&quot;, &quot;Type?&quot;, (FormatChunk, &quot;uint8&quot;))
++            self.read(&quot;zero[]&quot;, &quot;???&quot;, (FormatChunk, &quot;string[9]&quot;))
++            self.read(&quot;flags_a&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;), {&quot;post&quot;: binary})
++            self.read(&quot;zero[]&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++            flags_b = self.doRead(&quot;flags_b&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;), {&quot;post&quot;: binary}).value
++            for i in range(0, self[&quot;n&quot;]-1):
++                self.read(&quot;mysterious[]&quot;, &quot;Mysterious header&quot;, (MysteriousHeader,))
++        else:
++            self.read(&quot;n&quot;, &quot;Type?&quot;, (FormatChunk, &quot;uint16&quot;))
++            self.read(&quot;m&quot;, &quot;Type?&quot;, (FormatChunk, &quot;uint16&quot;))
++            for i in range(0, self[&quot;n&quot;]):
++                self.read(&quot;mysterious[]&quot;, &quot;Mysterious header&quot;, (MysteriousHeader,))
++            
++        self.read(&quot;x&quot;, &quot;Offset X&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;y&quot;, &quot;Offset Y&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;count&quot;, &quot;Frame count&quot;, (FormatChunk, &quot;uint16&quot;))
++        for i in range(0, self[&quot;count&quot;]):
++            self.read(&quot;item[]&quot;, &quot;Frame&quot;, (SpriteFrame,))
+         if False:            
+-            real_width = self.width - self.x
+-            real_height = self.height - self.y
++            real_width = self[&quot;width&quot;] - self[&quot;x&quot;]
++            real_height = self[&quot;height&quot;] - self[&quot;y&quot;]
+             size = real_width * real_height
+             if size &lt;= (stream.getLastPos() - stream.tell()):
+                 self.read(&quot;image_data[]&quot;, &quot;Data (%ux%u pixels)&quot; % (real_width, real_height), (FormatChunk, &quot;string[%u]&quot; % size))
+-        elif False:                
+-            size = stream.getLastPos() - stream.tell()
+-            self.read(&quot;raw&quot;, &quot;Raw data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+         self.addPadding()
+ 
+     def updateParent(self, chunk):            
+-        if self.count is not None:
+-            chunk.description = &quot;Animation: n=%u, %ux%u pixels, %u frame(s)&quot; % \
+-                (self.n, self.width, self.height, self.count)
+-        else:                
+-            chunk.description = &quot;Sprite: %ux%u pixels&quot; % \
+-                (self.width, self.height)
++        chunk.description = &quot;Animation: %ux%u pixels, %u mysterious, %u frame(s)&quot; % \
++            (self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;n&quot;], self[&quot;count&quot;])
+ 
+ class Font(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;font&quot;, &quot;Font&quot;, stream, parent, &quot;&lt;&quot;)
+         self.read(&quot;palette&quot;, &quot;Palette&quot;, (Palette, 81))
+ 
+-        size = 261 
+-        # TODO: Decode header
+-        self.read(&quot;header&quot;, &quot;Header !?&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        self.read(&quot;header116&quot;, &quot;Header 116&quot;, (FormatChunk, &quot;uint8&quot;))
+ 
+-        self.nb_characters = 0
+-#        while 2*4 &lt; (stream.getLastPos() - stream.tell() + 1):
+-        for i in range(0, 160):
+-            id = self.read(&quot;image[]&quot;, &quot;Image&quot;, (ImageData,))
+-            if self.nb_characters == 0:
+-                image = self[id]
+-                self.width = image.width
+-                self.height = image.height
+-            self.nb_characters += 1
++        #--- Ugly header ---
++        size = 32+2-1
++        self.read(&quot;zero[]&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        size = 32 
++        self.read(&quot;charset&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        size = 25+2-1 
++        self.read(&quot;iter&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        size = 6 
++        self.read(&quot;charset2&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        size = 6
++        self.read(&quot;iter2&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        size = 24
++        self.read(&quot;charset3&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        size = 32
++        self.read(&quot;zero&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        self.read(&quot;a&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;b&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;c&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        size = 27
++        self.read(&quot;zero&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        size = 64 
++        self.read(&quot;charset4&quot;, &quot;???&quot;, (StringChunk, &quot;Fixed&quot;), {&quot;size&quot;: size, &quot;charset&quot;: &quot;iso-8859-1&quot;})
++        self.read(&quot;d&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++
++        # Read images
++        self.read(&quot;nb_char&quot;, &quot;Number of characters&quot;, (FormatChunk, &quot;uint16&quot;))
++        for i in range(0, self[&quot;nb_char&quot;]):
++            self.read(&quot;image[]&quot;, &quot;Image&quot;, (ImageData,))
++
++        # Get image size
++        image = self[&quot;image[0]&quot;]
++        self.width = image.width
++        self.height = image.height
+         self.addPadding()
+ 
+     def updateParent(self, chunk):
+         chunk.description = &quot;Font: %ux%u pixels, %u characters&quot; \
+-            % (self.width, self.height, self.nb_characters)
++            % (self.width, self.height, self[&quot;nb_char&quot;])
+ 
+ class Resource(OnDemandFilter):
+     name = {
+
+Modified: haypo/hachoir/trunk/reverse.py
+===================================================================
+--- haypo/hachoir/trunk/reverse.py	2006-01-01 19:31:30 UTC (rev 381)
++++ haypo/hachoir/trunk/reverse.py	2006-01-02 00:48:42 UTC (rev 382)
+@@ -2,7 +2,7 @@
+ from plugins.worms2 import Worms2_Dir_File
+ from plugins.gzip import GzipFile
+ from format import getFormatSize
+-from bits import countBits
++from bits import countBits, long2bin, str2hex
+ import sys
+ 
+ class IntValues:
+@@ -13,6 +13,9 @@
+         if data != None:
+             self.set(data)
+ 
++    def __hash__(self):
++        return hash(self.items)
++
+     def hasValue(self, value):
+         return self._in(self.items, value)
+         
+@@ -141,22 +144,33 @@
+     def __init__(self, id):
+         self.id = id    
+         self.values = {}
++        self.values_list = {}
+         self.streams = {}
+ 
+     def getStreamsByValue(self, value):
+-        return self.streams.get(value, [])
++        return self.streams.get(hash(value), [])
+ 
+     def getValueByStream(self, stream, default=None):
+         return self.values.get(stream, default)
+ 
++    def getBitSize(self):
++        values = self.getValues()
++        max_value = max([ value.max for value in values])
++        min_value = min([ value.min for value in values])
++        return max(countBits(max_value), countBits(min_value))
++
+     def getValues(self):
+-        return self.streams.keys()
++        return self.values_list.values()
+ 
+     def addValue(self, stream, value):
++        if not isinstance(value, IntValues):
++            value = IntValues(value)
+         self.values[stream] = value
+-        if value not in self.streams:
+-            self.streams[value] = []
+-        self.streams[value].append(stream)
++        if hash(value) not in self.streams:
++            self.streams[hash(value)] = []
++        self.streams[hash(value)].append(stream)
++        if hash(value) not in self.values_list:
++            self.values_list[hash(value)] = value
+ 
+ class Reverse:
+     def __init__(self):
+@@ -292,19 +306,21 @@
+                     read = int( stream.getFormat(format, False) )
+                     if value.hasValue(read):
+                         ok.add(addr)
++                        break
+         return ok                    
+ 
+     def findField(self, id, data_range):
+         field = self.fields[id]
+         ok = data_range
+-        max_values = map(lambda x: x.max, field.getValues())
+-        min_values = map(lambda x: x.min, field.getValues())
+-        size_bits = max(countBits(max(max_values)), countBits(min(min_values)))
+-        print size_bits
++        size_bits = field.getBitSize()
++        print &quot;Find integer field \&quot;%s\&quot; (at least %u bits long) ...&quot; % (id, size_bits)
++        i = 1
+         for stream in self.streams:
++            print &quot;  find in stream %u/%u ...&quot; % (i, len(self.streams))
+             value = field.getValueByStream(stream)
+             addr = self.findInteger(stream, value, data_range, size_bits)
+             ok = ok.intersection(addr)
++            i += 1
+         return ok            
+ 
+     def addSource(self, stream, fields={}):
+@@ -315,33 +331,12 @@
+                 self.fields[id] = Field(id)
+             self.fields[id].addValue(stream, fields[id])
+ 
+-def main():
+-    name = '/home/haypo/worms/Gfx.dir'
+-    f = open(name, 'r')
+-    input = FileStream(f, name)
+-    root = Worms2_Dir_File(input, None)
+-    res = root[&quot;resources&quot;]
+-    reverse = Reverse()
+-#    sprite_range = IntValues( [(0,13), 67, 72] )
+-    sprite_range = IntValues( (0,72) )
+-    for i in sprite_range.values():
+-        sprite = res[&quot;res[%u]&quot; % i][&quot;data&quot;]
+-        stream = sprite.getStream().createSub(start=sprite.getAddr(), size=sprite.getSize())
+-#        assert sprite.n &lt; 5
+-        reverse.addSource(stream, {&quot;n&quot;: sprite.n})
+-    header = IntValues( (243, 258) )
+-    print &quot;Find field in range %s&quot; % header
+-#    reverse.displayData(header)        
+-#     reverse.displayConstant(header)
+-    addr = reverse.findField(&quot;n&quot;, header)
+-    print &quot;Address of field n: %s\n(or in %s)&quot; % (addr[0], addr[1])
+-
+ def loadGZ(filename):
+     f = open(filename, 'r')
+     input = FileStream(f, filename)
+     return GzipFile(input, None) 
+ 
+-def main():
++def gzip_size():
+     reverse = Reverse()
+     for filename in sys.argv[1:]:
+         g = loadGZ(filename)
+@@ -355,5 +350,100 @@
+     addr = reverse.findField(&quot;size&quot;, header)
+     print &quot;Address of field n: %s&quot; % addr 
+ 
++def int16Bits(value):
++    v = []
++    for i in range(0,16):
++        mask = 1 &lt;&lt; i
++        if (value &amp; mask) == mask:
++            v.append(1)
++        else:
++            v.append(0)  
++    return v
++
++def guessBits(d):    
++    for n in d:
++        val = d[n]
++        data = val[0]
++        print &quot;====== n=%u, data set=%u items&quot; % (n, len(val))
++        if 1&lt;len(val):
++            for i in range(0, 11):
++                cst = True
++                for bits in val[1:]:
++                    if bits[i] != data[i]:
++                        cst = False
++                        break
++                if cst:
++                    print &quot;bit %u: const=%s&quot; % (i, data[i])
++        else:
++            print &quot;(not enough data)&quot;
++   
++def worms2_sprite(res):    
++    #sprite_range = IntValues( (0,73) )
++    #sprite_range = IntValues( (0,100) )
++    sprite_range = IntValues( (0,100) )
++    d = {}
++    for i in sprite_range.values():
++        sprite = res[&quot;res[%u]&quot; % i][&quot;data&quot;]
++        flags = sprite[&quot;flags_b&quot;]
++        w,h = sprite[&quot;width[0]&quot;],sprite[&quot;height[0]&quot;]
++        if w &lt; 10 or 1000&lt;w or h&lt;10 or 1000&lt;h:
++            print &quot;res[%u] errone&quot; % i
++        else:
++            n = sprite.n
++            stream = sprite.getStream()
++            stream.seek(81*3+1) ; m = stream.getFormat(&quot;uint8&quot;)-1
++            #stream.seek(258) ;  data = stream.getN(14)
++            stream.seek(81*3) ;  data = stream.getN(272-243)
++            if n not in d:
++                d[n] = []
++#            d[n].append( (sprite[&quot;type&quot;],int16Bits(flags),sprite[&quot;width[0]&quot;],sprite[&quot;height[0]&quot;],i) )
++            d[n].append( (i, m, data) )
++#    guessBits(d)        
++#    return
++        
++    for n in d:
++        print &quot;======== %s =========&quot; % n
++        for data in d[n]:
++            print &quot;% 3s] n=% 2s m=% 2s %s&quot; % (data[0], n, data[1], str2hex(data[2]))
++#            xxx = &quot;&quot;.join(map(str,bits[1]))
++#            print &quot;%s] %s (%ux%u), id=res[%u]&quot; % (bits[0], xxx, bits[2], bits[3], bits[4])
++
++def worms2_n(res):
++    reverse = Reverse()
++    sprite_range = IntValues( (0,72) )
++    for i in sprite_range.values():
++        sprite = res[&quot;res[%u]&quot; % i][&quot;data&quot;]
++        #stream = sprite.getStream().createSub(start=sprite.getAddr(), size=sprite.getSize())
++        reverse.addSource(stream, {&quot;n&quot;: sprite.n})
++    header = IntValues( (243, 258) )
++    print &quot;Find field in range %s&quot; % header
++#    reverse.displayData(header)        
++#     reverse.displayConstant(header)
++    addr = reverse.findField(&quot;n&quot;, header)
++    print &quot;Address of field n: %s\n(or in %s)&quot; % (addr[0], addr[1])
++
++def worms2_font(res):
++    reverse = Reverse()
++    sprite_range = IntValues( (713,739) )
++    for i in sprite_range.values():
++        font = res[&quot;res[%u]&quot; % i][&quot;data&quot;]
++        reverse.addSource(font.getStream(), {&quot;nb&quot;: font[&quot;nb_char&quot;]})
++    header = IntValues( (0, 600) )
++    print &quot;Find field in range %s&quot; % header
++#    reverse.displayData(header)        
++#     reverse.displayConstant(header)
++    addr = reverse.findField(&quot;nb&quot;, header)
++    print &quot;Address of field n: %s&quot; % (addr)
++#    print &quot;Address of field n: %s\n(or in %s)&quot; % (addr[0], addr[1])
++
++def worms2():
++    f = open('/home/haypo/worms/Gfx.dir', 'r')
++    input = FileStream(f, None)
++    res = Worms2_Dir_File(input, None)[&quot;resources&quot;]
++#    worms2_sprite(res)
++#    worms2_n(res)
++    worms2_font(res)
++ 
+ if __name__==&quot;__main__&quot;:
+-    main()
++    worms2()
++#    gzip_size()
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000283.html">[Happyboom-svn] r381 - in haypo/hachoir/trunk: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000285.html">[Happyboom-svn] r383 - in haypo/hachoir/trunk: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#284">[ date ]</a>
+              <a href="thread.html#284">[ thread ]</a>
+              <a href="subject.html#284">[ subject ]</a>
+              <a href="author.html#284">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

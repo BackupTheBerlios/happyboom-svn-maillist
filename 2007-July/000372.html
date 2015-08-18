@@ -1,0 +1,92 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r468 - haypo/lamer
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2007-July/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r468%20-%20haypo/lamer&In-Reply-To=%3C200707031735.l63HZ4BA030527%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r468 - haypo/lamer</H1>
+    <B>haypo at mail.berlios.de</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r468%20-%20haypo/lamer&In-Reply-To=%3C200707031735.l63HZ4BA030527%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r468 - haypo/lamer">haypo at mail.berlios.de
+       </A><BR>
+    <I>Tue Jul  3 19:35:04 CEST 2007</I>
+    <P><UL>
+        
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#372">[ date ]</a>
+              <a href="thread.html#372">[ thread ]</a>
+              <a href="subject.html#372">[ subject ]</a>
+              <a href="author.html#372">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2007-07-03 19:35:02 +0200 (Tue, 03 Jul 2007)
+New Revision: 468
+
+Modified:
+   haypo/lamer/mod_gajim.py
+Log:
+Gajim: read port and ssl config
+
+
+Modified: haypo/lamer/mod_gajim.py
+===================================================================
+--- haypo/lamer/mod_gajim.py	2007-06-27 17:07:14 UTC (rev 467)
++++ haypo/lamer/mod_gajim.py	2007-07-03 17:35:02 UTC (rev 468)
+@@ -9,7 +9,7 @@
+     def _extract(self):
+         accounts = {}
+         for line in self.readText(&quot;~/.gajim/config&quot;):
+-            match = re.match(&quot;^accounts\.([a-z0-9.-]+)\.([a-z0-9-]+) = (.*)$&quot;, line)
++            match = re.match(&quot;^accounts\.([a-z0-9.-]+)\.([a-z0-9_-]+) = (.*)$&quot;, line)
+             if match:
+                 account = match.group(1)
+                 key = match.group(2)
+@@ -23,6 +23,10 @@
+     def displayAccount(self, data):
+         try:
+             message = 'Account &quot;%s@%s&quot;' % (data[&quot;name&quot;], data[&quot;hostname&quot;])
++            if &quot;custom_port&quot; in data:
++                message += ' port %s' % data[&quot;custom_port&quot;]
++            if &quot;usessl&quot; in data:
++                message += ' (SSL)'
+             if &quot;password&quot; in data:
+                 message += ' with password &quot;%s&quot;' % data[&quot;password&quot;]
+             elif self.skip_no_password:
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#372">[ date ]</a>
+              <a href="thread.html#372">[ thread ]</a>
+              <a href="subject.html#372">[ subject ]</a>
+              <a href="author.html#372">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

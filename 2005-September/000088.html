@@ -1,0 +1,339 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r181 - in happyboom/trunk/net: io io_tcp io_udp
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r181%20-%20in%20happyboom/trunk/net%3A%20io%20io_tcp%20io_udp&In-Reply-To=%3C200509160440.j8G4ehfL015115%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000087.html">
+   <LINK REL="Next"  HREF="000089.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r181 - in happyboom/trunk/net: io io_tcp io_udp</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r181%20-%20in%20happyboom/trunk/net%3A%20io%20io_tcp%20io_udp&In-Reply-To=%3C200509160440.j8G4ehfL015115%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r181 - in happyboom/trunk/net: io io_tcp io_udp">haypo at berlios.de
+       </A><BR>
+    <I>Fri Sep 16 06:40:43 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000087.html">[Happyboom-svn] r180 - happyboom/trunk/client
+</A></li>
+        <LI>Next message: <A HREF="000089.html">[Happyboom-svn] r182 - in happyboom/trunk: client common server
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#88">[ date ]</a>
+              <a href="thread.html#88">[ thread ]</a>
+              <a href="subject.html#88">[ subject ]</a>
+              <a href="author.html#88">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-16 06:40:17 +0200 (Fri, 16 Sep 2005)
+New Revision: 181
+
+Modified:
+   happyboom/trunk/net/io/base_io.py
+   happyboom/trunk/net/io_tcp/__init__.py
+   happyboom/trunk/net/io_tcp/tcp.py
+   happyboom/trunk/net/io_tcp/tcp_client.py
+   happyboom/trunk/net/io_udp/udp.py
+Log:
+Affiche les importations de module et corrige la defintions des noms
+pour BaseIO, IO_TCP et IO_UDP.
+
+
+Modified: happyboom/trunk/net/io/base_io.py
+===================================================================
+--- happyboom/trunk/net/io/base_io.py	2005-09-15 23:29:36 UTC (rev 180)
++++ happyboom/trunk/net/io/base_io.py	2005-09-16 04:40:17 UTC (rev 181)
+@@ -1,13 +1,13 @@
+ #!/usr/bin/python
+ # -*- coding: ISO-8859-1 -*-
+ 
++from happyboom.net.io.packet import Packet
++from happyboom.net.io.io_client import IO_Client
+ import time
+ import threading
+ import socket
+ import traceback
+ import struct
+-from packet import Packet
+-from io_client import IO_Client
+ 
+ class BaseIO(object):
+     &quot;&quot;&quot;
+@@ -29,8 +29,8 @@
+     @type on_client_disconnect: C{function(L{IO_Client})}
+     @ivar on_new_packet: Event called when a new packet is received.
+     @type on_new_packet: C{function(L{Packet})}
+-    @ivar __name: The IO name.
+-    @type __name: C{str}
++    @ivar _name: The IO name.
++    @type _name: C{str}
+     @ivar _running: Is the thread running ?
+     @type _running: C{bool}
+     &quot;&quot;&quot;
+@@ -56,7 +56,7 @@
+         self.on_send = None               # (data)
+         self.on_receive = None            # (data)
+ 
+-        self.__name = None
++        self._name = None
+ 
+     def connect(self, host, port):
+         &quot;&quot;&quot; Connect to host:port.
+@@ -65,8 +65,8 @@
+         @parameter port: Network port number.
+         @type port: C{int}
+         &quot;&quot;&quot;
+-        if self.__name==None:
+-            self.__name = &quot;%s:%u&quot; % (host, port)
++        if self._name==None:
++            self._name = &quot;%s:%u&quot; % (host, port)
+         self._running = True
+ 
+     def disconnect(self):
+@@ -106,23 +106,23 @@
+         self.disconnect()
+ 
+     def __str__(self):
+-        return self.__name
++        return self.name
+     
+     def isRunning(self): return self._running
+ 
+     #--- Private functions ------------------------------------------------------
+ 
+-    def __getName(self):
+-        if self.__name == None: return &quot;no name&quot;
+-        return self.__name
++    def _getName(self):
++        if self._name == None: return &quot;no name&quot;
++        return self._name
+     
+-    def __setName(self, name):
+-        self.__name = name
++    def _setName(self, name):
++        self._name = name
+ 
+     def __getReady(self):
+         return self._is_ready
+ 
+     #--- Properties -------------------------------------------------------------
+ 
+-    name = property(__getName, __setName, doc=&quot;The IO name.&quot;)
++    name = property(_getName, _setName, doc=&quot;The IO name.&quot;)
+     is_ready = property(__getReady, doc=&quot;Tells if the IO is ready to use.&quot;);
+
+Modified: happyboom/trunk/net/io_tcp/__init__.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/__init__.py	2005-09-15 23:29:36 UTC (rev 180)
++++ happyboom/trunk/net/io_tcp/__init__.py	2005-09-16 04:40:17 UTC (rev 181)
+@@ -1 +0,0 @@
+-from tcp import IO_TCP
+
+Modified: happyboom/trunk/net/io_tcp/tcp.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/tcp.py	2005-09-15 23:29:36 UTC (rev 180)
++++ happyboom/trunk/net/io_tcp/tcp.py	2005-09-16 04:40:17 UTC (rev 181)
+@@ -1,17 +1,17 @@
+ #!/usr/bin/python
+ # -*- coding: ISO-8859-1 -*-
+ 
++from happyboom.net.io_tcp.tcp_client import TCP_Client
++from happyboom.net.io.packet import Packet
++from happyboom.net.io.base_io import BaseIO
++from server_waiter import NetworkServerWaiter
++from happyboom.common.log import log
++from happyboom.common.thread import getBacktrace
+ import time
+ import thread
+ import socket
+ import traceback
+ import struct
+-from tcp_client import TCP_Client
+-from happyboom.net.io.packet import Packet
+-from happyboom.net.io.base_io import BaseIO
+-from server_waiter import NetworkServerWaiter
+-from happyboom.common.log import log
+-from happyboom.common.thread import getBacktrace
+ 
+ class IO_TCP(BaseIO):
+     &quot;&quot;&quot;
+@@ -76,8 +76,8 @@
+             self.__clients[client.addr] = client
+             self.__clients_sema.release()
+ 
++        BaseIO.connect(self, host, port)
+         if self.on_connect != None: self.on_connect()
+-        BaseIO.connect(self, host, port)
+         self._is_ready = True
+ 
+     def disconnect(self):
+@@ -160,21 +160,21 @@
+     #--- Private functions ------------------------------------------------------
+ 
+     def __getPort(self):
++        if self.__addr==None: return &quot;(no port)&quot;
+         return self.__addr[1]
+ 
+     def __getHost(self):
++        if self.__addr==None: return &quot;(no hostname)&quot;
+         if self.__addr[0]=='': return &quot;localhost&quot;
+         return self.__addr[0]
+ 
+     def __getAddr(self): return self.__addr
+ 
+-    def __getName(self):
+-        if self.__name != None: return self.__name
+-        return self.host
++    def _getName(self):
++        if self._name != None: return self._name
++        if self.__addr != None: return self.host
++        return &quot;(no name)&quot;
+         
+-    def __setName(self, name):
+-        self.__name = name    
+-
+     def __getClients(self):
+         self.__clients_sema.acquire()
+         clients = self.__clients.copy()
+@@ -203,7 +203,7 @@
+         
+     #--- Properties -------------------------------------------------------------
+ 
+-    name = property(__getName, __setName)
++    name = property(_getName, BaseIO._setName)
+     addr = property(__getAddr)
+     port = property(__getPort)
+     host = property(__getHost)
+
+Modified: happyboom/trunk/net/io_tcp/tcp_client.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/tcp_client.py	2005-09-15 23:29:36 UTC (rev 180)
++++ happyboom/trunk/net/io_tcp/tcp_client.py	2005-09-16 04:40:17 UTC (rev 181)
+@@ -1,8 +1,8 @@
+-from net import io
++from happyboom.net.io.io_client import IO_Client
+ from happyboom.common.log import log
+ import socket
+ 
+-class TCP_Client(io.IO_Client):
++class TCP_Client(IO_Client):
+     &quot;&quot;&quot; An TCP client.
+     @ivar __socket: The TCP socket
+     @type __socket: C{socket}
+@@ -12,7 +12,7 @@
+     @type on_receive: C{function}
+     &quot;&quot;&quot;
+     def __init__(self, io_tcp, addr, name=None, socket=None):
+-        io.IO_Client.__init__(self, io_tcp, addr, name)
++        IO_Client.__init__(self, io_tcp, addr, name)
+         self.__socket = socket 
+         self.on_send = None
+         self.on_receive = None
+@@ -65,7 +65,7 @@
+     def disconnect(self):
+         &quot;&quot;&quot; Disconned the client : close the socket. &quot;&quot;&quot;
+         self.__socket.close()
+-        io.IO_Client.disconnect(self)
++        IO_Client.disconnect(self)
+ 
+     def __processRecvData(self, data):
+         # If no data, connection is lost
+
+Modified: happyboom/trunk/net/io_udp/udp.py
+===================================================================
+--- happyboom/trunk/net/io_udp/udp.py	2005-09-15 23:29:36 UTC (rev 180)
++++ happyboom/trunk/net/io_udp/udp.py	2005-09-16 04:40:17 UTC (rev 181)
+@@ -5,12 +5,12 @@
+ import socket
+ import traceback
+ import struct
+-from net import io
++from net.io.base_io import BaseIO
+ from udp_client import UDP_Client
+ from happyboom.common.log import log
+ from happyboom.common.thread import getBacktrace
+ 
+-class IO_UDP(io.BaseIO):
++class IO_UDP(BaseIO):
+     &quot;&quot;&quot; IO for UDP transport.
+     @ivar packet_timeout: Try to send a packet until this timeout.
+     @type packet_timeout: C{float}
+@@ -38,7 +38,7 @@
+     
+     def __init__(self, is_server=False):
+         &quot;&quot;&quot; Constructor. &quot;&quot;&quot;
+-        io.BaseIO.__init__(self)
++        BaseIO.__init__(self)
+         self.packet_timeout = 1.000
+         self.thread_sleep = 0.010
+ 
+@@ -84,7 +84,7 @@
+         if not self.__is_server:
+             self.send( io.Packet(&quot;I'm here&quot;) )
+         
+-        io.BaseIO.connect(self, host, port)
++        BaseIO.connect(self, host, port)
+ 
+         # Call user event if needed
+         if self.on_connect != None: self.on_connect()
+@@ -340,13 +340,10 @@
+ 
+     def __getAddr(self): return self.__addr
+ 
+-    def __getName(self):
+-        if self.__name != None: return self.__name
++    def _getName(self):
++        if self._name != None: return self._name
+         return self.host
+         
+-    def __setName(self, name):
+-        self.__name = name    
+-
+     def __getClients(self):
+         self.__clients_sema.acquire()
+         clients = self.__clients.copy()
+@@ -358,7 +355,7 @@
+         
+     #--- Properties -------------------------------------------------------------
+ 
+-    name = property(__getName, __setName, doc=&quot;The IO name&quot;)
++    name = property(_getName, BaseIO._setName, doc=&quot;The IO name&quot;)
+     addr = property(__getAddr, doc=&quot;The IO addresse (host, port).&quot;)
+     port = property(__getPort, doc=&quot;The network port number.&quot;)
+     host = property(__getHost, doc=&quot;The network hostname.&quot;)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000087.html">[Happyboom-svn] r180 - happyboom/trunk/client
+</A></li>
+	<LI>Next message: <A HREF="000089.html">[Happyboom-svn] r182 - in happyboom/trunk: client common server
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#88">[ date ]</a>
+              <a href="thread.html#88">[ thread ]</a>
+              <a href="subject.html#88">[ subject ]</a>
+              <a href="author.html#88">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

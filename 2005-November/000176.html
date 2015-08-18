@@ -1,0 +1,1275 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r271 - in haypo/hachoir: . plugins stream ui
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r271%20-%20in%20haypo/hachoir%3A%20.%20plugins%20stream%20ui&In-Reply-To=%3C200511270611.jAR6BNOU023968%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000175.html">
+   <LINK REL="Next"  HREF="000177.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r271 - in haypo/hachoir: . plugins stream ui</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r271%20-%20in%20haypo/hachoir%3A%20.%20plugins%20stream%20ui&In-Reply-To=%3C200511270611.jAR6BNOU023968%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r271 - in haypo/hachoir: . plugins stream ui">haypo at berlios.de
+       </A><BR>
+    <I>Sun Nov 27 07:11:23 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000175.html">[Happyboom-svn] r270 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000177.html">[Happyboom-svn] r272 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#176">[ date ]</a>
+              <a href="thread.html#176">[ thread ]</a>
+              <a href="subject.html#176">[ subject ]</a>
+              <a href="author.html#176">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-27 07:11:13 +0100 (Sun, 27 Nov 2005)
+New Revision: 271
+
+Added:
+   haypo/hachoir/config.py
+   haypo/hachoir/stream/base_64.py
+Modified:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/filter.py
+   haypo/hachoir/plugin.py
+   haypo/hachoir/plugins/bzip2.py
+   haypo/hachoir/plugins/email.py
+   haypo/hachoir/plugins/exe.py
+   haypo/hachoir/plugins/gif.py
+   haypo/hachoir/plugins/gzip.py
+   haypo/hachoir/plugins/jpeg.py
+   haypo/hachoir/plugins/png.py
+   haypo/hachoir/plugins/zip.py
+   haypo/hachoir/stream/file.py
+   haypo/hachoir/stream/stream.py
+   haypo/hachoir/ui/ui_window.py
+Log:
+Big change in filter: now attributes have to be read like self[&quot;key&quot;] and
+not self.key. The big advantage is that we now use &quot;read on demand&quot;, better
+than &quot;read always&quot;. So &quot;can_truncate&quot; argument disapears because no more
+needed.
+
+It's now possible to read email attachment ;-) Also write stream for
+base64 data.
+
+Add parent address for FilterChunk chunks, so it's correctly displayed.
+
+String chunk don't read data on creation, but on demand, and use a cache.
+
+UI : Auto size columns.
+
+
+Modified: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-11-27 02:07:19 UTC (rev 270)
++++ haypo/hachoir/chunk.py	2005-11-27 06:11:13 UTC (rev 271)
+@@ -1,6 +1,5 @@
+-import struct
+-import re
+-import types
++import struct, re, types
++from config import config
+ from format import checkFormat, splitFormat
+ from error import warning, error
+ from tools import convertDataToPrintableString
+@@ -67,8 +66,11 @@
+     value = property(getValue)
+     
+ class FilterChunk(Chunk):
+-    def __init__(self, id, filter, parent):
+-        Chunk.__init__(self, id, filter.getDescription(), filter.getStream(), filter.getAddr(), filter.getSize(), parent)
++    def __init__(self, id, filter, parent, parent_addr):
++        Chunk.__init__(self, id, \
++            filter.getDescription(), filter.getStream(), filter.getAddr(), \
++            filter.getSize(), parent)
++        self.parent_addr = parent_addr
+         self._filter = filter
+         self._filter.filter_chunk = self
+     
+@@ -105,11 +107,17 @@
+         return self._filter
+ 
+ class StringChunk(Chunk):
++    cache_hit = 0
++
+     def __init__(self, id, description, stream, str_type, parent):
+         assert str_type in (&quot;C&quot;, &quot;UnixLine&quot;, &quot;WindowsLine&quot;, &quot;MacLine&quot;, &quot;AutoLine&quot;)
+         Chunk.__init__(self, id, description, stream, stream.tell(), 0, parent)
+         self._str_type = str_type
+-        self._read()
++        self.eol = None
++        self._findSize()
++        self._cache_addr = None
++        self._cache_max_size = None
++        self._cache_value = None
+ 
+     def getFormat(self):
+         names = {
+@@ -122,43 +130,62 @@
+         assert self._str_type in names
+         return names[self._str_type]
+ 
+-    def _read(self):
++    def _findSize(self):
+         self._stream.seek(self.addr)
++        if self._str_type == &quot;AutoLine&quot;:
++            self._size = self._stream.searchLength(re.compile(&quot;[\n\r]&quot;), True)
++            assert self._size != -1
++            self._stream.seek(self.addr + self._size-1)
++            self.eol = self._stream.getN(1)
++            if self.eol == &quot;\r&quot; and self._stream.read(1) == &quot;\n&quot;:
++                self.eol = &quot;\r\n&quot;
++            self.length = self._size - len(self.eol)
++            return
++
+         if self._str_type == &quot;UnixLine&quot;:
+-            self._size = self._stream.searchLength(&quot;\n&quot;, True)
+-            len_eol = 1
++            self.eol = &quot;\n&quot;
+         elif self._str_type == &quot;WindowsLine&quot;:
+-            self._size = self._stream.searchLength(&quot;\r\n&quot;, True)
+-            len_eol = 2
++            self.eol = &quot;\r\n&quot;
+         elif self._str_type == &quot;MacLine&quot;:
+-            self._size = self._stream.searchLength(&quot;\r&quot;, True)
+-        elif self._str_type == &quot;AutoLine&quot;:
+-            self._size = self._stream.searchLength(re.compile(&quot;[\n\r]&quot;), True)
+-            len_eol = 1
+-            if self._size != -1:
+-                self._stream.seek(self.addr + self._size-1)
+-                if self._stream.getN(1) == &quot;\r&quot; and self._stream.read(1) == &quot;\n&quot;:
+-                    len_eol = 2
++            self.eol = &quot;\r&quot;
+         else: 
+-            self._size = self._stream.searchLength(&quot;\0&quot;, True)
+-            len_eol = 1
++            self.eol = &quot;\0&quot;
++        self._size = self._stream.searchLength(self.eol, True)
+         assert self._size != -1
++        self.length = self._size - len(self.eol)
++        self._stream.seek(self.addr + self._size)
++        
++    def _read(self, max_size):
++        if self._cache_addr==self.addr and self._cache_max_size==max_size:
++            StringChunk.cache_hit = StringChunk.cache_hit + 1
++            return self._cache_value
++        self._cache_addr = self.addr
++        self._cache_max_size = max_size
++
+         self._stream.seek(self.addr)
+-        self.str = self._stream.getN(self._size - len_eol)
++        size = self._size - len(self.eol)
++        if max_size != None and max_size&lt;size:
++            text = self._stream.getN(max_size)+&quot;(...)&quot;
++        else:
++            text = self._stream.getN(size)
++        self._stream.seek(self.addr + self._size)
++        self._cache_value = text
++        return text
+ 
+     def update(self):
+         Chunk.update(self)
+-        self._read()
++        self._findSize()
+ 
+     def getValue(self, max_size=None):
+-        return self.str
++        return self._read(None)
+     value = property(getValue)
+ 
+     def getDisplayData(self):
+         if self.display != None:
+             return self.display
+         else:
+-            return convertDataToPrintableString(self.str)
++            text = self._read(config[&quot;max_string_length&quot;])
++            return convertDataToPrintableString(text)
+         
+ class FormatChunkCache:
+     def __init__(self, chunk):
+@@ -233,7 +260,7 @@
+         if id == &quot;@end@&quot;:
+             size = self._stream.getLastPos() - self.addr
+         else:
+-            size = getattr(self._parent, id)
++            size = self._parent[id]
+         return str(size)
+     
+     def convertToStringSize(self, size):
+
+Added: haypo/hachoir/config.py
+===================================================================
+--- haypo/hachoir/config.py	2005-11-27 02:07:19 UTC (rev 270)
++++ haypo/hachoir/config.py	2005-11-27 06:11:13 UTC (rev 271)
+@@ -0,0 +1,3 @@
++config = { \
++    &quot;max_string_length&quot;: 30
++}    
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-11-27 02:07:19 UTC (rev 270)
++++ haypo/hachoir/filter.py	2005-11-27 06:11:13 UTC (rev 271)
+@@ -2,10 +2,8 @@
+ Base class for all splitter filters.
+ &quot;&quot;&quot;
+ 
+-import struct
+-import re, sys
+-import string
+-import types
++import struct, re, sys, string, types
++from config import config
+ import ui.ui as ui
+ from chunk import Chunk, FormatChunk, FilterChunk, StringChunk
+ from format import splitFormat    
+@@ -27,6 +25,9 @@
+         self._chunks_dict = {}
+         self._addr = self._stream.tell()
+ 
++    def __getitem__(self, chunk_id):
++        return self.getChunk(chunk_id).getValue()
++
+     def clone(self):
+         if self.__class__ == Filter:
+             return None
+@@ -238,7 +239,11 @@
+ 
+     def displayChunk(self, chunk):
+         type = chunk.getFormat()
+-        ui.window.add_table(None, chunk.addr, chunk.size, type, chunk.id, chunk.description, chunk.getDisplayData())
++        if isinstance(chunk, FilterChunk):
++            addr = chunk.parent_addr
++        else:
++            addr = chunk.addr
++        ui.window.add_table(None, addr, chunk.size, type, chunk.id, chunk.description, chunk.getDisplayData())
+ 
+     def redisplay(self):  
+         self.display()
+@@ -291,7 +296,7 @@
+ 
+     def updateFormatChunk(self, chunk):
+         if chunk.id == None: return
+-        data = chunk.getValue(40)
++        data = chunk.getValue(config[&quot;max_string_length&quot;])
+         setattr(self, chunk.id, data)       
+ 
+     def _appendChunk(self, chunk, can_truncate=False, position=None):
+@@ -315,13 +320,6 @@
+             if id not in self._chunks_dict:
+                 self._chunks_dict[id] = array 
+         else:
+-            if hasattr(self, id):
+-                raise Exception(&quot;Chunk identifier \&quot;%s\&quot; already exist!&quot; % id)
+-            if can_truncate:
+-                data = chunk.getValue(40)
+-            else:
+-                data = chunk.getValue()
+-            setattr(self, id, data)
+             self._chunks_dict[id] = chunk
+ 
+     def readLimitedChild(self, id, size, filter_class, *args):
+@@ -334,17 +332,17 @@
+     def readStreamChild(self, id, stream, filter_class, *args): 
+         oldpos = self._stream.tell()
+         filter = filter_class(stream, self, *args)
+-        chunk = self.addFilter(id, filter)
++        filter.setId(id)
++        chunk = self.addFilter(id, filter, oldpos)
+         chunk.postProcess()
+         self._stream.seek(chunk.addr + chunk.size)
+         return chunk
+         
+     def readChild(self, id, filter_class, *args): 
+-        chunk = self.readStreamChild(id, self._stream, filter_class, *args)
+-        return chunk
++        return self.readStreamChild(id, self._stream, filter_class, *args)
+     
+-    def addFilter(self, id, filter): 
+-        chunk = FilterChunk(id, filter, self)
++    def addFilter(self, id, filter, addr): 
++        chunk = FilterChunk(id, filter, self, addr)
+         self._appendChunk(chunk)
+         filter.updateParent(chunk)
+ #        self._stream.seek(chunk.addr + chunk.size)
+@@ -353,10 +351,10 @@
+     def readArray(self, id, entry_class, description, end_func): 
+         &quot;&quot;&quot;
+         end_func: def isEnd(stream, array, last_filter)
+-
+         &quot;&quot;&quot;
++        addr = self._stream.tell()
+         filter = ArrayFilter(id, description, self._stream, self, entry_class, end_func)
+-        chunk = self.addFilter(id, filter)
++        chunk = self.addFilter(id, filter, addr)
+         chunk.postProcess()
+         return chunk
+     
+@@ -415,7 +413,7 @@
+         filter._appendChunk(chunk, can_truncate=True)
+         
+         # Create new chunk and add it into self 
+-        new_chunk = FilterChunk(chunk.id, filter, self)
++        new_chunk = FilterChunk(chunk.id, filter, self, chunk.addr)
+         pos = self._chunks.index(chunk)
+         self._chunks[pos] = new_chunk
+         self._chunks_dict[chunk.id] = new_chunk
+@@ -440,10 +438,11 @@
+         nb = 0
+         last_filter = None
+         while not self._end_func(self._stream, self._array, last_filter):
+-            filter = self._entry_class(self._stream, self)
+             chunk_id = &quot;%s[%u]&quot; % (self.getId(), nb)
++            addr = self._stream.tell()
++            filter = self._entry_class(self._stream, self)
+             nb = nb + 1
+-            chunk = FilterChunk(chunk_id, filter, self)
++            chunk = FilterChunk(chunk_id, filter, self, addr)
+             self._array.append( chunk )
+             self._appendChunk(chunk)
+             last_filter = filter
+
+Modified: haypo/hachoir/plugin.py
+===================================================================
+--- haypo/hachoir/plugin.py	2005-11-27 02:07:19 UTC (rev 270)
++++ haypo/hachoir/plugin.py	2005-11-27 06:11:13 UTC (rev 271)
+@@ -12,7 +12,7 @@
+     stream.seek(oldpos)
+     return plugin
+ 
+-def getPluginByMime(mimes):
++def getPluginByMime(mimes, default=DefaultFilter):
+     global hachoir_plugins
+     plugins = []
+     for mime in mimes:
+@@ -20,16 +20,16 @@
+         if mime in hachoir_plugins:
+             plugins = plugins + hachoir_plugins[mime]
+     if len(plugins)==0:
+-        plugins = (DefaultFilter,)
++        plugins = (default,)
+     if 1&lt;len(plugins):
+         warning(&quot;More than one plugin have same MIME...&quot;)
+     return plugins[0]
+     
+-def getPluginByBuffer(buffer, filename):
++def getPluginByBuffer(buffer, filename, default=DefaultFilter):
+     mime = getBufferMime(buffer, filename)
+-    return getPluginByMime(mime)
++    return getPluginByMime(mime, default)
+ 
+-def getPluginByStream(stream, filename):
++def getPluginByStream(stream, filename, default=DefaultFilter):
+     oldpos = stream.tell()
+     stream.seek(0)
+     size = stream.getSize()
+@@ -38,17 +38,20 @@
+     data = stream.getN(size)
+     stream.seek(oldpos)
+     mime = getBufferMime(data, filename)
+-    return getPluginByMime(mime)
++    return getPluginByMime(mime, default)
+ 
+-def getPluginByFile(filename, realname=None):
++def getPluginByFile(filename, realname=None, default=DefaultFilter):
+     mime = getFileMime(filename, realname)
+-    return getPluginByMime(mime)
++    return getPluginByMime(mime, default)
+     
+-def registerPlugin(filter_class, mime):
++def registerPlugin(filter_class, mimes):
+     global hachoir_plugins
+-    if mime in hachoir_plugins:
+-        hachoir_plugins[mime].append(filter_class)
+-    else:
+-        hachoir_plugins[mime] = [filter_class]
++    if isinstance(mimes, str):
++        mimes = [mimes]
++    for mime in mimes:
++        if mime in hachoir_plugins:
++            hachoir_plugins[mime].append(filter_class)
++        else:
++            hachoir_plugins[mime] = [filter_class]
+ 
+ hachoir_plugins = {} 
+
+Modified: haypo/hachoir/plugins/bzip2.py
+===================================================================
+--- haypo/hachoir/plugins/bzip2.py	2005-11-27 02:07:19 UTC (rev 270)
++++ haypo/hachoir/plugins/bzip2.py	2005-11-27 06:11:13 UTC (rev 271)
+@@ -11,28 +11,26 @@
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;bz2_file&quot;, &quot;Bzip2 archive file&quot;, stream, parent)
+         self.read(&quot;id&quot;, &quot;3s&quot;, &quot;Identifier (BZh)&quot;)
+-        assert self.id == &quot;BZh&quot;
++        assert self[&quot;id&quot;] == &quot;BZh&quot;
+         self.read(&quot;blocksize&quot;, &quot;c&quot;, &quot;Block size&quot;)
+-        assert &quot;1&quot; &lt;= self.blocksize and self.blocksize &lt;= &quot;9&quot;
++        assert &quot;1&quot; &lt;= self[&quot;blocksize&quot;] and self[&quot;blocksize&quot;] &lt;= &quot;9&quot;
+         # Size of memory needed to decompress (on classic mode, not &quot;small&quot; mode)
+-        size = (ord(self.blocksize) - ord(&quot;0&quot;)) * 100
++        size = (ord(self[&quot;blocksize&quot;]) - ord(&quot;0&quot;)) * 100
+         self.getChunk(&quot;blocksize&quot;).description = &quot;Block size (will need %u KB of memory)&quot; % size
+         self.read(&quot;blockheader&quot;, &quot;B&quot;, &quot;Block header&quot;)
+-        assert self.blockheader in (0x17, 0x31)
+-        if self.blockheader == 0x17:
++        assert self[&quot;blockheader&quot;] in (0x17, 0x31)
++        if self[&quot;blockheader&quot;] == 0x17:
+             self.readA()
+         else: # blockheader = 0x31 (&quot;1&quot;)
+             self.readB()
+         dataio = BunzipStream(stream)
+         plugin = guessPlugin(dataio, None)
+-        print &quot;Plugin = &quot;, plugin
+-        #self.readStreamChild(&quot;data&quot;, dataio, plugin)
+         size = stream.getSize()-stream.tell()
+         self.readChild(&quot;data&quot;, DeflateFilter, dataio, size, plugin)
+ 
+     def readB(self):
+         self.read(&quot;id2&quot;, &quot;5s&quot;, &quot;Identifier 2 (AY&amp;SY)&quot;)
+-        assert self.id2 == &quot;AY&amp;SY&quot;
++        assert self[&quot;id2&quot;] == &quot;AY&amp;SY&quot;
+         self.read(&quot;crc&quot;, &quot;&lt;L&quot;, &quot;CRC32&quot;)
+         
+     def readA(self):
+
+Modified: haypo/hachoir/plugins/email.py
+===================================================================
+--- haypo/hachoir/plugins/email.py	2005-11-27 02:07:19 UTC (rev 270)
++++ haypo/hachoir/plugins/email.py	2005-11-27 06:11:13 UTC (rev 271)
+@@ -4,10 +4,12 @@
+ Author: Victor Stinner
+ &quot;&quot;&quot;
+ 
+-from filter import Filter
+-from plugin import registerPlugin
++from filter import Filter, DeflateFilter
++from plugin import registerPlugin, getPluginByMime
+ from error import warning
+ from mime import splitMimes
++from error import warning
++from stream.base_64 import Base64Stream
+ import re
+ 
+ class EmailHeader(Filter):
+@@ -22,8 +24,8 @@
+         while True:
+             id = &quot;header[%u]&quot; % linenb
+             chunk = self.readString(id, &quot;AutoLine&quot;, &quot;Header line&quot;)
++            if chunk.length == 0: return
+             line = chunk.value
+-            if len(line) == 0: return
+ 
+             m = regex_new.match(line)
+             if m != None:
+@@ -35,7 +37,7 @@
+                     assert last_key != None
+                     self._appendHeader(last_key, last_index, m.group(1))
+                 else:
+-                    warning(&quot;Can't parse line %u: %s&quot; % (linenb, line))
++                    warning(&quot;Can't parse email header: %s&quot; % line)
+ 
+             linenb = linenb + 1
+ 
+@@ -61,58 +63,96 @@
+     def __init__(self, stream, parent=None):
+         Filter.__init__(self, &quot;email_part&quot;, &quot;Email part&quot;, stream, parent)
+         self.readChild(&quot;header&quot;, EmailHeader)
++        readEmailContent(self, stream.createSub(), True)
++
++class EmailBody(Filter):
++    def __init__(self, stream, parent=None, in_multipart=True):
++        Filter.__init__(self, &quot;email_body&quot;, &quot;Email body&quot;, stream, parent)
+         linenb = 1 
+-        nb_empty_line = 0
++        empty_line = 0
+         while not stream.eof():
+-            id = &quot;header[%u]&quot; % linenb
+-            chunk = self.readString(id, &quot;AutoLine&quot;, &quot;Header line&quot;)
++            id = &quot;body[%u]&quot; % linenb
++            chunk = self.readString(id, &quot;AutoLine&quot;, &quot;Body text&quot;)
++            if not in_multipart:
++                if chunk.length == 0:
++                    empty_line = empty_line + 1
++                    if empty_line == 2:
++                        break
++                else:
++                    empty_line = 0
+             linenb = linenb + 1
+ 
+-class EmailFilter(Filter):
+-    def __init__(self, stream, parent=None):
+-        Filter.__init__(self, &quot;email&quot;, &quot;Email parser&quot;, stream, parent)
++def readEmailContent(self, stream, in_multipart):
++    mime = getEmailMime(self)
++    if re.match(&quot;^multipart/&quot;, mime[0]) != None:
++        readMultipartEmail(self, stream, mime[1][&quot;boundary&quot;])
++    else:
++        plugin = getPluginByMime((mime,), EmailBody)
++#        plugin = EmailBody
++        encoding = self[&quot;header&quot;][&quot;Content-Transfer-Encoding&quot;]
++        assert len(encoding) == 1
++        if encoding[0] == &quot;base64&quot;:
++            assert in_multipart
++            size = stream.getSize() - stream.tell()
++            data = stream.getN(size, False)
++            substream = Base64Stream(data)
++            self.readChild(&quot;body&quot;, DeflateFilter, substream, size, plugin) 
++        else:
++            substream = stream
++#            self.readStreamChild(&quot;body&quot;, io, plugin)
++#            self.read(&quot;body&quot;, &quot;%us&quot; % (stream.getSize() - stream.tell()), &quot;Body&quot;)
++            chunk = self.readStreamChild(&quot;body&quot;, substream, plugin)
++
++def readMultipartEmail(self, stream, boundary):
++    assert boundary[0] == '&quot;' and boundary[-1] == '&quot;'
++    boundary = &quot;--&quot; + boundary[1:-1]
++    end_boundary = boundary + &quot;--&quot;
++    count = 1
++    while True:
++        id = &quot;multipart_space[%u]&quot; % count
++        chunk = self.readString(id, &quot;AutoLine&quot;, &quot;Space before first email parts&quot;)
++        value = chunk.value
++        if value == boundary:
++            break
++        count = count + 1
++
++    part = 1
++    boundary_index = 1
++    while True:
++        start = stream.tell()
++        size = stream.searchLength(boundary, False)
++        sub = stream.createSub(start, size)
++        self.readStreamChild(&quot;part[%u]&quot; % part, sub, EmailPart)
++        stream.seek(start+size)
++        chunk = self.readString(&quot;boundary[%u]&quot; % boundary_index, &quot;AutoLine&quot;, &quot;Boundary&quot;)
++        part = part + 1
++        boundary_index = boundary_index + 1
++        if chunk.value == boundary+&quot;--&quot;:
++            break
++
++def getEmailMime(self):
++    content_type = self[&quot;header&quot;][&quot;Content-Type&quot;]
++    assert len(content_type) == 1
++    mimes = splitMimes(content_type[0])
++    assert len(mimes) == 1
++    return mimes[0]
++
++class Email(Filter):
++    def __init__(self, stream, parent, in_multipart=True):
++        Filter.__init__(self, &quot;email&quot;, &quot;Email&quot;, stream, parent)
+         self.readString(&quot;id&quot;, &quot;AutoLine&quot;, &quot;Email identifier&quot;)
+         self.readChild(&quot;header&quot;, EmailHeader)
+-        mime = self.getMime()
+-        if mime[0] == &quot;multipart/mixed&quot;:
+-            self.readMultipart(mime[1][&quot;boundary&quot;])
+-        else:
+-            # TODO :-)
+-            pass
++        readEmailContent(self, stream.createSub(), in_multipart)
+ 
+-    def readMultipart(self, boundary):
+-        assert boundary[0] == '&quot;' and boundary[-1] == '&quot;'
+-        boundary = &quot;--&quot; + boundary[1:-1]
+-        end_boundary = boundary + &quot;--&quot;
+-        count = 1
+-        while True:
+-            id = &quot;multipart_space[%u]&quot; % count
+-            chunk = self.readString(id, &quot;AutoLine&quot;, &quot;Space before first email parts&quot;)
+-            value = chunk.value
+-            if value == boundary:
++class EmailFilter(Filter):
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;email&quot;, &quot;Email maildir parser&quot;, stream, parent)
++        cpt = 1
++        while not stream.eof():
++            chunk = self.readChild(&quot;email[%u]&quot; % cpt, Email, False)
++            end = stream.read(4, seek=False)
++            if len(end.strip()) == 0:
+                 break
+-            count = count + 1
++            cpt = cpt + 1
+ 
+-        part = 1
+-        boundary_index = 1
+-        stream = self.getStream()
+-        while True:
+-            start = stream.tell()
+-            size = stream.searchLength(boundary, False)
+-            sub = stream.createSub(start, size)
+-            self.readStreamChild(&quot;part[%u]&quot; % part, sub, EmailPart)
+-            stream.seek(start+size)
+-            chunk = self.readString(&quot;boundary[%u]&quot; % boundary_index, &quot;AutoLine&quot;, &quot;Boundary&quot;)
+-            part = part + 1
+-            boundary_index = boundary_index + 1
+-            if chunk.value == boundary+&quot;--&quot;:
+-                break
+-    
+-    def getMime(self):
+-        content_type = self.header[&quot;Content-Type&quot;]
+-        assert len(content_type) == 1
+-        mimes = splitMimes(content_type[0])
+-        assert len(mimes) == 1
+-        return mimes[0]
+-
+-registerPlugin(EmailFilter, &quot;text/x-mail&quot;)
++registerPlugin(EmailFilter, [&quot;message/rfc822&quot;, &quot;text/x-mail&quot;])
+
+Modified: haypo/hachoir/plugins/exe.py
+===================================================================
+--- haypo/hachoir/plugins/exe.py	2005-11-27 02:07:19 UTC (rev 270)
++++ haypo/hachoir/plugins/exe.py	2005-11-27 06:11:13 UTC (rev 271)
+@@ -9,41 +9,6 @@
+ from filter import Filter
+ from plugin import registerPlugin
+ 
+-def displayPE(pe):
+-    print &quot;[ PE HEADER ]&quot;
+-    print &quot;Architecture: %s&quot; % pe.getCpuType()
+-            
+-def displayPE_Section(section):
+-    print &quot;-&gt; Section %- 8s: size=%u, rva=%08X&quot; % \
+-        (section.name, section.size, section.rva)
+-
+-def displayPE_Resource(res):
+-    print &quot;Resource: id=%u&quot; % \
+-        (res.id)
+-        
+-def displayPE_ResourceDirectory(res):
+-    print &quot;Resources: nb_entries = %u + %s&quot; % \
+-        (res.named_entries, res.indexed_entries)
+-    for item in res.items:
+-        displayPE_Resource(item)
+-
+-def displayMS_Dos(exe):        
+-    print &quot;[ MS-DOS HEADER ]&quot;
+-    print &quot;Init. SS:SP: %04X:%04X&quot; % \
+-        (exe.init_ss_sp &amp; 0xFFFF,
+-         exe.init_ss_sp &gt;&gt; 16 &amp; 0xFFFF)
+-
+-def displayExe(exe):
+-    displayMS_Dos(exe.ms_dos)
+-    if exe.pe:
+-#        displayPE(exe.pe)
+-        for section in exe.pe_sections:
+-            section = section.getFilter()
+-            displayPE_Section(section)
+-#        for res in exe.pe_resources:
+-#            res = res.getFilter()
+-#            displayPE_ResourceDirectory(res)
+-            
+ class PE_ResourceData(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;pe_rsrc_data&quot;, &quot;PE resource data&quot;, stream, parent)
+@@ -51,13 +16,13 @@
+         self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Size&quot;)
+         self.read(&quot;page_code&quot;, &quot;&lt;L&quot;, &quot;Page code (language)&quot;)
+         self.read(&quot;language&quot;, &quot;&lt;l&quot;, &quot;Page code (language)&quot;)
+-        self.language = -self.language
++#        self.language = -self[&quot;language&quot;]
+         self.read(&quot;reserved&quot;, &quot;!L&quot;, &quot;Reserverd&quot;)
+ 
+         oldpos = stream.tell()
+         
+         #stream.seek(XXX + self.offset - self.offset_res_section)
+-        stream.seek(self.offset)
++        stream.seek(self[&quot;offset&quot;])
+         stream.seek(oldpos)
+ 
+ class PE_ResourceEntry(Filter):
+@@ -80,13 +45,14 @@
+         self.readArray(&quot;item&quot;, PE_ResourceEntry, &quot;PE resource entry&quot;, self.checkEndOfRes)
+     
+     def checkEndOfRes(self, stream, array, dir):
+-        return len(array) == (self.named_entries + self.indexed_entries)
++        return len(array) == (self[&quot;named_entries&quot;] + self[&quot;indexed_entries&quot;])
+ 
+ class PE_Section(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;pe_section&quot;, &quot;PE section&quot;, stream, parent)
+         self.read(&quot;name&quot;, &quot;8s&quot;, &quot;Name&quot;)
+-        self.name = self.name.strip(&quot; \0&quot;)
++        # TODO: use chunk post proces
++        self.name = self[&quot;name&quot;].strip(&quot; \0&quot;)
+         self.read(&quot;rva&quot;, &quot;&lt;L&quot;, &quot;RVA&quot;)
+         self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Size&quot;)
+         self.read(&quot;file_size&quot;, &quot;&lt;L&quot;, &quot;File size&quot;)
+@@ -107,7 +73,7 @@
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;pe_opt_hdr&quot;, &quot;PE optionnal header&quot;, stream, parent)
+         self.read(&quot;header&quot;, &quot;&lt;H&quot;, &quot;Header&quot;)
+-        assert self.header == 0x010B
++        assert self[&quot;header&quot;] == 0x010B
+         self.read(&quot;linker_maj_ver&quot;, &quot;B&quot;, &quot;Linker major version&quot;)
+         self.read(&quot;linker_min_ver&quot;, &quot;B&quot;, &quot;Linker minor version&quot;)
+         self.read(&quot;code_size&quot;, &quot;&lt;L&quot;, &quot;Code size (bytes)&quot;)
+@@ -137,7 +103,7 @@
+         self.read(&quot;common_heap_size&quot;, &quot;&lt;L&quot;, &quot;Common heap size&quot;)
+         self.read(&quot;loader_options&quot;, &quot;&lt;L&quot;, &quot;Loader options&quot;)
+         self.read(&quot;nb_directories&quot;, &quot;&lt;L&quot;, &quot;Number of directories (16)&quot;)
+-        assert self.nb_directories == 16
++        assert self[&quot;nb_directories&quot;] == 16
+         self.readArray(&quot;directories&quot;, PE_Directory, &quot;PE directories&quot;, self.checkEndOfDir)
+ 
+     def checkEndOfDir(self, stream, array, dir):
+@@ -147,7 +113,7 @@
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;pe_header&quot;, &quot;PE header&quot;, stream, parent)
+         self.read(&quot;header&quot;, &quot;4s&quot;, &quot;File header&quot;)
+-        assert self.header == &quot;PE\0\0&quot;
++        assert self[&quot;header&quot;] == &quot;PE\0\0&quot;
+         self.read(&quot;cpu_type&quot;, &quot;&lt;H&quot;, &quot;CPU type&quot;)
+         self.read(&quot;nb_sections&quot;, &quot;&lt;H&quot;, &quot;Number of sections&quot;)
+         self.read(&quot;creation_date&quot;, &quot;&lt;L&quot;, &quot;Creation date&quot;)
+@@ -167,23 +133,23 @@
+             0x0168: &quot;R10000 (MIPS), little endian&quot;,
+             0x0184: &quot;DEC Alpha AXP&quot;,
+             0x01F0: &quot;IBM Power PC, little endian&quot;}
+-        return cpu_name.get(self.cpu_type, &quot;unknow&quot;)
++        return cpu_name.get(self[&quot;cpu_type&quot;], &quot;unknow&quot;)
+ 
+ class MS_Dos(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;msdos_header&quot;, &quot;MS-Dos executable header&quot;, stream, parent)
+         self.read(&quot;header&quot;, &quot;2s&quot;, &quot;File header&quot;)
+-        assert self.header == &quot;MZ&quot;
++        assert self[&quot;header&quot;] == &quot;MZ&quot;
+         self.read(&quot;filesize_mod_512&quot;, &quot;&gt;H&quot;, &quot;Filesize mod 512&quot;)
+         self.read(&quot;filesize_div_512&quot;, &quot;&gt;H&quot;, &quot;Filesize div 512&quot;)
+-        self.filesize = self.filesize_div_512 * 512 + self.filesize_mod_512
++        self.filesize = self[&quot;filesize_div_512&quot;] * 512 + self[&quot;filesize_mod_512&quot;]
+         self.read(&quot;reloc_entries&quot;, &quot;&gt;H&quot;, &quot;Number of relocation entries&quot;)
+         self.read(&quot;code_offset&quot;, &quot;&lt;H&quot;, &quot;Offset to the code in the file (div 16)&quot;)
+-        self.code_offset = self.code_offset * 16
++        self.code_offset = self[&quot;code_offset&quot;] * 16
+         self.read(&quot;needed_memory&quot;, &quot;&gt;H&quot;, &quot;Memory needed to run (div 16)&quot;)
+-        self.needed_memory = self.needed_memory * 16
++        self.needed_memory = self[&quot;needed_memory&quot;] * 16
+         self.read(&quot;max_memory&quot;, &quot;&gt;H&quot;, &quot;Maximum memory needed to run (div 16)&quot;)
+-        self.max_memory = self.max_memory * 16
++        self.max_memory = self[&quot;max_memory&quot;] * 16
+         self.read(&quot;init_ss_sp&quot;, &quot;&gt;L&quot;, &quot;Initial value of SP:SS registers.&quot;)
+         self.read(&quot;checksum&quot;, &quot;&gt;H&quot;, &quot;Checksum&quot;)
+         self.read(&quot;init_cs_ip&quot;, &quot;&gt;L&quot;, &quot;Initial value of CS:IP registers.&quot;)
+@@ -201,17 +167,18 @@
+ 
+         self.readChild(&quot;ms_dos&quot;, MS_Dos)
+ 
+-        if self.ms_dos.reloc_offset == 0x40:
+-            stream.seek(self.ms_dos.pe_offset, 0)
++        if self[&quot;ms_dos&quot;][&quot;reloc_offset&quot;] == 0x40:
++            stream.seek(self[&quot;ms_dos&quot;][&quot;pe_offset&quot;], 0)
+ 
+             self.readChild(&quot;pe&quot;, PE_Filter)
++            self.pe = self[&quot;pe&quot;]
+             self.readChild(&quot;pe_opt&quot;, PE_OptionnalHeader)
+             self.readArray(&quot;pe_sections&quot;, PE_Section, &quot;PE sections&quot;, self.checkEndOfSections)
+ 
+             # TODO: Fix this ...
+             
+             offset_res_section = None
+-            for section in self.pe_sections:
++            for section in self[&quot;pe_sections&quot;]:
+                 section = section.getFilter()
+                 if section.name == &quot;.rsrc&quot;:
+                     offset_res_section = section.file_offset
+@@ -224,6 +191,6 @@
+             self.pe = None
+ 
+     def checkEndOfSections(self, stream, array, section):
+-        return len(array) == self.pe.nb_sections
++        return len(array) == self[&quot;pe&quot;][&quot;nb_sections&quot;]
+ 
+ registerPlugin(ExeFile, &quot;application/x-dosexec&quot;)
+
+Modified: haypo/hachoir/plugins/gif.py
+===================================================================
+--- haypo/hachoir/plugins/gif.py	2005-11-27 02:07:19 UTC (rev 270)
++++ haypo/hachoir/plugins/gif.py	2005-11-27 06:11:13 UTC (rev 271)
+@@ -26,21 +26,16 @@
+ 
+         # TODO: Fix this ...
+         self.read(&quot;flags&quot;, &quot;&lt;H&quot;, &quot;Flags&quot;)
+-        self.global_map = ((self.flags &amp; 0x80) == 0x80)
+-        self.interlaced = ((self.flags &amp; 0x40) == 0x40)
+-        self.bits_per_pixel = 1 + (self.flags &amp; 0x07)
++        self.global_map = ((self[&quot;flags&quot;] &amp; 0x80) == 0x80)
++        self.interlaced = ((self[&quot;flags&quot;] &amp; 0x40) == 0x40)
++        self.bits_per_pixel = 1 + (self[&quot;flags&quot;] &amp; 0x07)
+         if not self.global_map:
+             self.readChild(&quot;local_map&quot;, GifColorMap)
++            self.local_map = self[&quot;local_map&quot;]
+         else:
+             self.local_map = None
+         # -- End of TODO
+ 
+-    def __str__(self):
+-        return &quot;Gif image &lt;position=(%u,%u), size=%ux%u, bits/pixel=%u&gt;&quot; % \
+-            (self.left, self.top,
+-             self.width, self.height,
+-             self.bits_per_pixel)
+-     
+ class GifColorMap(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;gif_colormap&quot;, &quot;GIF color map&quot;, stream, parent)
+@@ -55,9 +50,6 @@
+     def checkEndOfMap(self, stream, array, color):
+         return len(array) == self._nb_colors 
+ 
+-    def __str__(self):
+-        return &quot;Gif colormap &lt;colors=%u&gt;&quot; % (len(self.color))
+-        
+ class GifExtensionChunk(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;gif_ext_data&quot;, &quot;GIF extension data&quot;, stream, parent)
+@@ -72,7 +64,7 @@
+ 
+     def checkEnd(self, stream, array, chunk):
+         if chunk == None: return False
+-        return chunk.size == 0 
++        return chunk[&quot;size&quot;] == 0 
+         
+ class GifScreenDescriptor(Filter):
+     def __init__(self, stream, parent):
+@@ -103,11 +95,12 @@
+         Filter.__init__(self, &quot;gif_file&quot;, &quot;GIF picture file&quot;, stream, parent)
+         # Header
+         self.read(&quot;header&quot;, &quot;6s&quot;, &quot;File header&quot;)
+-        assert (self.header == &quot;GIF87a&quot;) or (self.header == &quot;GIF89a&quot;)
++        assert (self[&quot;header&quot;] == &quot;GIF87a&quot;) or (self[&quot;header&quot;] == &quot;GIF89a&quot;)
+         
+         self.readChild(&quot;screen&quot;, GifScreenDescriptor)
+-        if self.screen.global_map:
++        if self[&quot;screen&quot;].global_map:
+             self.readChild(&quot;color_map&quot;, GifColorMap)
++            self.color_map = self[&quot;color_map&quot;]
+         else:
+             self.color_map = None
+             
+@@ -120,6 +113,7 @@
+             elif code == &quot;,&quot;:
+                 self.readChild(&quot;images[]&quot;, GifImage)
+                 # TODO: Write GifImage code :-)
++                self.readImage(stream)
+                 warning(&quot;GIF FILTER CAN NOT READ IMAGE CONTENT YET, SO ABORT READING!&quot;)
+                 return
+             elif code == &quot;;&quot;:
+@@ -128,4 +122,8 @@
+             else:
+                 raise Exception(&quot;Wrong GIF image separator: ASCII %02X.&quot; % ord(code))
+ 
++    def readImage(self, stream):              
++        size = stream.getSize() - stream.tell()
++        self.read(&quot;data&quot;, &quot;%us&quot; % size, &quot;Image data&quot;)
++
+ registerPlugin(GifFile, &quot;image/gif&quot;)
+
+Modified: haypo/hachoir/plugins/gzip.py
+===================================================================
+--- haypo/hachoir/plugins/gzip.py	2005-11-27 02:07:19 UTC (rev 270)
++++ haypo/hachoir/plugins/gzip.py	2005-11-27 06:11:13 UTC (rev 271)
+@@ -38,29 +38,29 @@
+     def __init__(self, stream, parent=None):
+         Filter.__init__(self, &quot;gzip_file&quot;, &quot;GZIP archive file&quot;, stream, parent)
+         self.read(&quot;id&quot;, &quot;!2B&quot;, &quot;Identifier (31,139)&quot;)
+-        assert self.id == (31, 139)
++        assert self[&quot;id&quot;] == (31, 139)
+         self.read(&quot;comp_method&quot;, &quot;!B&quot;, &quot;Compression method&quot;, post=self.getCompressionMethod)
+         self.read(&quot;flags&quot;, &quot;!B&quot;, &quot;Flags&quot;, post=self.getFlags)
+         self.read(&quot;mtime&quot;, &quot;&lt;1L&quot;, &quot;Modification time&quot;, post=self.getMTime)
+         self.read(&quot;extra&quot;, &quot;!B&quot;, &quot;Extra flags&quot;)
+         self.read(&quot;os&quot;, &quot;!B&quot;, &quot;OS&quot;, post=self.getOS)
+ 
+-        if self.extra &amp; 4 == 4:
++        if self[&quot;extra&quot;] &amp; 4 == 4:
+             self.read(&quot;extra_length&quot;, &quot;&lt;2H&quot;, &quot;Extra length&quot;)
+             self.read(&quot;extra&quot;, &quot;!{extra_length}s&quot;, &quot;Extra&quot;)
+-        if self.flags &amp; 8 == 8:
++        if self[&quot;flags&quot;] &amp; 8 == 8:
+             self.readString(&quot;filename&quot;, &quot;C&quot;, &quot;Filename&quot;)
+-        if self.flags &amp; 16 == 16:
++        if self[&quot;flags&quot;] &amp; 16 == 16:
+             self.readString(&quot;comment&quot;, &quot;C&quot;, &quot;Comment&quot;)
+-        if self.flags &amp; 2 == 2:
+-            self.readString(&quot;crc16&quot;, &quot;!H&quot;, &quot;CRC16&quot;)
++        if self[&quot;flags&quot;] &amp; 2 == 2:
++            self.read(&quot;crc16&quot;, &quot;!H&quot;, &quot;CRC16&quot;)
+ 
+         oldpos = stream.tell()
+         size = stream.getSize() - oldpos - 8
+         try:
+             gz_stream = GunzipStream(stream)
+             if hasattr(self, &quot;filename&quot;):
+-                plugin = getPluginByStream(gz_stream, self.filename)
++                plugin = getPluginByStream(gz_stream, self[&quot;filename&quot;])
+             else:
+                 plugin = getPluginByStream(gz_stream, None)
+ 
+
+Modified: haypo/hachoir/plugins/jpeg.py
+===================================================================
+--- haypo/hachoir/plugins/jpeg.py	2005-11-27 02:07:19 UTC (rev 270)
++++ haypo/hachoir/plugins/jpeg.py	2005-11-27 06:11:13 UTC (rev 271)
+@@ -11,33 +11,34 @@
+ class JpegChunkApp0(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;jpeg_chunk&quot;, &quot;JPEG chunk App0&quot;, stream, parent)
+-        self.read(&quot;jfif&quot;, &quot;!5s&quot;, &quot;JFIF string&quot;)
+-        self.read(&quot;ver_maj&quot;, &quot;!B&quot;, &quot;Major version&quot;)
+-        self.read(&quot;ver_min&quot;, &quot;!B&quot;, &quot;Minor version&quot;)
+-        self.read(&quot;units&quot;, &quot;!1B&quot;, &quot;Units (=0)&quot;)
+-        if self.units == 0:
++        self.read(&quot;size&quot;, &quot;!H&quot;, &quot;Size&quot;)
++        self.read(&quot;jfif&quot;, &quot;5s&quot;, &quot;JFIF string&quot;)
++        self.read(&quot;ver_maj&quot;, &quot;B&quot;, &quot;Major version&quot;)
++        self.read(&quot;ver_min&quot;, &quot;B&quot;, &quot;Minor version&quot;)
++        self.read(&quot;units&quot;, &quot;B&quot;, &quot;Units (=0)&quot;)
++        if self[&quot;units&quot;] == 0:
+             self.read(&quot;aspect_x&quot;, &quot;!H&quot;, &quot;Aspect ratio (X)&quot;)
+             self.read(&quot;aspect_y&quot;, &quot;!H&quot;, &quot;Aspect ratio (Y)&quot;)
+         else:
+             self.read(&quot;x_density&quot;, &quot;!H&quot;, &quot;X density&quot;)
+             self.read(&quot;y_density&quot;, &quot;!H&quot;, &quot;Y density&quot;)
+-        self.read(&quot;thumb_w&quot;, &quot;!B&quot;, &quot;Thumbnail width&quot;)
+-        self.read(&quot;thumb_h&quot;, &quot;!1B&quot;, &quot;Thumbnail height&quot;)
+-        thumb = self.thumb_w * self.thumb_h
++        self.read(&quot;thumb_w&quot;, &quot;B&quot;, &quot;Thumbnail width&quot;)
++        self.read(&quot;thumb_h&quot;, &quot;B&quot;, &quot;Thumbnail height&quot;)
++        thumb = self[&quot;thumb_w&quot;] * self[&quot;thumb_h&quot;]
+         if thumb != 0:
+-            self.read(&quot;thumb_data&quot;, &quot;!%us&quot; % size, &quot;Thumbnail data&quot;, truncate=True)
++            self.read(&quot;thumb_data&quot;, &quot;%us&quot; % size, &quot;Thumbnail data&quot;, truncate=True)
++        assert self[&quot;size&quot;] == self.getSize()
+ 
+ class JpegChunk(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;jpeg_chunk&quot;, &quot;JPEG chunk&quot;, stream, parent)
+-        self.read(&quot;header&quot;, &quot;!2B&quot;, &quot;Header&quot;, post=self.getChunkType)
+-        assert self.header[0] == (0xFF)
+-        self.read(&quot;size&quot;, &quot;!H&quot;, &quot;Size&quot;)
+-        if self.header[1] == 0xE0:
+-            chunk = self.readChild(&quot;app0&quot;, JpegChunkApp0)
+-            assert chunk.size == (self.size - 2)
++        chunk = self.read(&quot;header&quot;, &quot;!2B&quot;, &quot;Header&quot;, post=self.getChunkType)
++        assert self[&quot;header&quot;][0] == 0xFF
++        if self[&quot;header&quot;][1] == 0xE0:
++            self.readChild(&quot;app0&quot;, JpegChunkApp0)
+         else:
+-            self.read(&quot;data&quot;, &quot;!%us&quot; % (self.size - 2), &quot;Data&quot;)
++            self.read(&quot;size&quot;, &quot;!H&quot;, &quot;Size&quot;)
++            self.read(&quot;data&quot;, &quot;!%us&quot; % (self[&quot;size&quot;] - 2), &quot;Data&quot;)
+ 
+     def getChunkType(self, chunk):
+         types = {
+@@ -62,13 +63,13 @@
+ 
+ class JpegFile(Filter):
+     def checkEndOfChunks(self, stream, array, chunk):
+-        if chunk != None and chunk.header[1] == 0xDA: return True
++        if chunk != None and chunk[&quot;header&quot;][1] == 0xDA: return True
+         return stream.eof()
+ 
+     def __init__(self, stream, parent=None):
+         Filter.__init__(self, &quot;jpeg_file&quot;, &quot;JPEG file&quot;, stream, parent)
+         self.read(&quot;header&quot;, &quot;!2B&quot;, &quot;Header \&quot;start of image\&quot; (0xFF, 0xD8)&quot;)
+-        assert self.header == (0xFF, 0xD8)
++        assert self[&quot;header&quot;] == (0xFF, 0xD8)
+         self.readArray(&quot;chunk&quot;, JpegChunk, &quot;Chunks&quot;, self.checkEndOfChunks)
+         self.read(&quot;data&quot;, &quot;!{@end@}s&quot;, &quot;JPEG data&quot;)
+         
+
+Modified: haypo/hachoir/plugins/png.py
+===================================================================
+--- haypo/hachoir/plugins/png.py	2005-11-27 02:07:19 UTC (rev 270)
++++ haypo/hachoir/plugins/png.py	2005-11-27 06:11:13 UTC (rev 271)
+@@ -8,14 +8,6 @@
+ from filter import Filter
+ from plugin import registerPlugin
+ 
+-def displayPng(png):
+-    for chunk in png.chunks:
+-        chunk = chunk.getFilter()
+-        if hasattr(chunk, &quot;chunk_data&quot;):
+-            print chunk.chunk_data
+-        else:
+-            print &quot;(unknow chunk type \&quot;%s\&quot;)&quot; % chunk.type
+-
+ class PngHeader(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;png_header&quot;, &quot;PNG header&quot;, stream, parent)
+@@ -29,8 +21,8 @@
+ 
+     def __str__(self):
+         return &quot;PNG header &lt;size=%ux%u, depth=%u bits/pixel&gt;&quot; % \
+-            (self.width, self.height,
+-             self.bit_depth)
++            (self[&quot;width&quot;], self[&quot;height&quot;],
++             self[&quot;bit_depth&quot;])
+ 
+ class PngPhysical(Filter):
+     def __init__(self, stream, parent):
+@@ -40,12 +32,12 @@
+         self.read(&quot;unit_type&quot;, &quot;!B&quot;, &quot;Unit type&quot;)
+ 
+     def __str__(self):
+-        if self.unit_type==&quot;0&quot;:
++        if self[&quot;unit_type&quot;] == 0:
+             unit = &quot;unknow&quot;
+         else:
+             unit = &quot;meter&quot;
+         return &quot;PNG physical chunk &lt;pixel per unit=(%u,%u), unit=%s&gt;&quot; % \
+-            (self.pixel_per_unit_x, self.pixel_per_unit_y, unit)
++            (self[&quot;pixel_per_unit_x&quot;], self[&quot;pixel_per_unit_y&quot;], unit)
+ 
+ class PngGamma(Filter):
+     def __init__(self, stream, parent):
+@@ -56,7 +48,7 @@
+         return float(chunk.value) / 10000
+ 
+     def __str__(self):
+-        return &quot;PNG gamma &lt;gamma=%0.2f&gt;&quot; % (self.gamma)
++        return &quot;PNG gamma &lt;gamma=%0.2f&gt;&quot; % (self[&quot;gamma&quot;])
+ 
+ class PngText(Filter):
+     def __init__(self, stream, parent):
+@@ -67,7 +59,7 @@
+ 
+     def __str__(self):
+         return &quot;PNG text &lt;keyword=\&quot;%s\&quot;, text=\&quot;%s\&quot;&gt;&quot; % \
+-            (self.keyword, self.text)
++            (self[&quot;keyword&quot;], self[&quot;text&quot;])
+ 
+ class PngTime(Filter):
+     def __init__(self, stream, parent):
+@@ -81,8 +73,8 @@
+ 
+     def __str__(self):
+         return &quot;PNG time chunk &lt;%04u-%02u-%02u %02u:%02u:%02u&gt;&quot; % \
+-            (self.year, self.month, self.day,
+-             self.hour, self.minute, self.second)
++            (self[&quot;year&quot;], self[&quot;month&quot;], self[&quot;day&quot;],
++             self[&quot;hour&quot;], self[&quot;minute&quot;], self[&quot;second&quot;])
+ 
+ class PngFile(Filter):
+     &quot;&quot;&quot;
+@@ -92,7 +84,7 @@
+     def __init__(self, stream, parent=None):
+         Filter.__init__(self, &quot;png_file&quot;, &quot;PNG file&quot;, stream, parent)
+         self.read(&quot;header&quot;, &quot;!8s&quot;, &quot;File header&quot;)
+-        assert self.header == &quot;\x89\x50\x4E\x47\x0D\x0A\x1A\x0A&quot;
++        assert self[&quot;header&quot;] == &quot;\x89\x50\x4E\x47\x0D\x0A\x1A\x0A&quot;
+         self.readArray(&quot;chunks&quot;, PngChunk, &quot;Png chunks&quot;, self.checkEndOfChunks)
+ 
+     def checkEndOfChunks(self, stream, array, png_chunk):
+@@ -110,20 +102,21 @@
+             &quot;gAMA&quot;: PngGamma,
+             &quot;tEXt&quot;: PngText
+         }
+-        if self.type in self.chunk_splitter:
++        if self[&quot;type&quot;] in self.chunk_splitter:
+             oldpos = self._stream.tell()
+-            child_filter = self.chunk_splitter[self.type]
+-            self.readLimitedChild(&quot;chunk_data&quot;, self.size, child_filter)
+-            assert oldpos + self.size == self._stream.tell()
++            child_filter = self.chunk_splitter[self[&quot;type&quot;]]
++            sub = stream.createSub(stream.tell(), self[&quot;size&quot;])
++            self.readStreamChild(&quot;chunk_data&quot;, sub, child_filter)
++            stream.seek(oldpos + self[&quot;size&quot;])
+         else:
+             self.read(&quot;data&quot;, &quot;!{size}s&quot;, &quot;Chunk data&quot;)
+         self.read(&quot;crc32&quot;, &quot;!L&quot;, &quot;Chunk CRC32&quot;)
+ 
+     def updateParent(self, chunk):
+-        self.description = &quot;PNG chunk (type %s)&quot; % self.type
+-        chunk.description = &quot;PNG chunk (type %s)&quot; % self.type
++        self.description = &quot;PNG chunk (type %s)&quot; % self[&quot;type&quot;]
++        chunk.description = &quot;PNG chunk (type %s)&quot; % self[&quot;type&quot;]
+ 
+     def __str__(self):
+-        return &quot;PngChunk &lt;size=%u, type=%s&gt;&quot; % (self.size, self.type)
++        return &quot;PngChunk &lt;size=%u, type=%s&gt;&quot; % (self[&quot;size&quot;], self[&quot;type&quot;])
+ 
+ registerPlugin(PngFile, &quot;image/png&quot;)
+
+Modified: haypo/hachoir/plugins/zip.py
+===================================================================
+--- haypo/hachoir/plugins/zip.py	2005-11-27 02:07:19 UTC (rev 270)
++++ haypo/hachoir/plugins/zip.py	2005-11-27 06:11:13 UTC (rev 271)
+@@ -9,18 +9,6 @@
+ from plugin import registerPlugin
+ import sys
+ 
+-def displayZip(zip):    
+-    print &quot;[ Zip archive ]&quot;
+-    for file in zip.files:
+-        file = file.getFilter()
+-        sys.stdout.write (&quot;* File %s (size=%0.1f KB&quot; %
+-            (file.filename, file.uncompressed_size / 1024))
+-        if file.uncompressed_size != 0:
+-            sys.stdout.write (&quot; - %0.1f%%&quot; % \
+-                (100 - file.compressed_size * 100 / file.uncompressed_size))
+-        sys.stdout.write (&quot;)\n&quot;)
+-    print &quot;[ End of the zip archive ]&quot;
+-
+ class ZipCentralDirectory(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;zip_central_dir&quot;, &quot;ZIP central directory&quot;, stream, parent)
+@@ -85,7 +73,7 @@
+         self.read(&quot;filename&quot;, &quot;&lt;{filename_length}s&quot;, &quot;Filename&quot;)
+         self.read(&quot;extra&quot;, &quot;&lt;{extra_length}s&quot;, &quot;Extra&quot;)
+         self.read(&quot;compressed_data&quot;, &quot;&lt;{compressed_size}s&quot;, &quot;Compressed data&quot;, truncate=True)
+-        if (self.flags &amp; 4) == 4:
++        if (self[&quot;flags&quot;] &amp; 4) == 4:
+             self.read(&quot;file_crc32&quot;, &quot;&lt;L&quot;, &quot;Checksum (CRC32)&quot;)
+             self.read(&quot;file_compressed_size&quot;, &quot;&lt;L&quot;, &quot;Compressed size (bytes)&quot;)
+             self.read(&quot;file_uncompressed_size&quot;, &quot;&lt;L&quot;, &quot;Uncompressed size (bytes)&quot;)
+
+Added: haypo/hachoir/stream/base_64.py
+===================================================================
+--- haypo/hachoir/stream/base_64.py	2005-11-27 02:07:19 UTC (rev 270)
++++ haypo/hachoir/stream/base_64.py	2005-11-27 06:11:13 UTC (rev 271)
+@@ -0,0 +1,14 @@
++from base64 import decodestring
++from cStringIO import StringIO
++from file import FileStream
++
++def Base64Stream(lines):
++    data = &quot;&quot;
++    for line in lines:
++        data = data + line.strip()
++    data = &quot;&quot;.join(data)
++    data = decodestring(data)
++    io = StringIO(data)
++    io = FileStream(io, None)
++    io.seek(0)
++    return io
+
+Modified: haypo/hachoir/stream/file.py
+===================================================================
+--- haypo/hachoir/stream/file.py	2005-11-27 02:07:19 UTC (rev 270)
++++ haypo/hachoir/stream/file.py	2005-11-27 06:11:13 UTC (rev 271)
+@@ -13,8 +13,11 @@
+         self.__size = self.__file.tell()
+         self.__file.seek(0,0) # Seel to beginning
+         
+-    def read(self, size):        
+-        return self.__file.read(size)
++    def read(self, size, seek=True):
++        data = self.__file.read(size)
++        if seek==False:
++            self.seek(-len(data), 1)
++        return data            
+ 
+     def clone(self):
+         return FileStream(self.__file, self.filename)
+
+Modified: haypo/hachoir/stream/stream.py
+===================================================================
+--- haypo/hachoir/stream/stream.py	2005-11-27 02:07:19 UTC (rev 270)
++++ haypo/hachoir/stream/stream.py	2005-11-27 06:11:13 UTC (rev 271)
+@@ -20,7 +20,7 @@
+     def tell(self):
+         return 0
+     
+-    def read(self, size):
++    def read(self, size, seek=True):
+         &quot;&quot;&quot; Works like Posix read (can returns less than size bytes. &quot;&quot;&quot;
+         return None
+     
+@@ -37,7 +37,11 @@
+     def eof(self):
+         return self.getLastPos() &lt;= self.tell() 
+ 
+-    def createSub(self, start, size):
++    def createSub(self, start=None, size=None):
++        if start==None:
++            start = self.tell()
++        if size == None:
++            size = self.getSize()-start
+         return SubStream(self, start, size, self.filename)
+ 
+     def createLimited(self, start, size):
+@@ -136,6 +140,10 @@
+             size_max = self._end-self.tell()
+         assert 0&lt;=size_max  and size_max&lt;=self._size
+         return self._stream.search(str, size_max)
++        
++    def read(self, size, seek=True):
++        &quot;&quot;&quot; Works like Posix read (can returns less than size bytes. &quot;&quot;&quot;
++        return self._stream.read(size, seek)
+ 
+     def getN(self, size, seek=True):
+         if self._start+self._size&lt;self._stream.tell()+size:
+@@ -171,7 +179,11 @@
+         if pos != -1:
+             pos = pos - self._start
+         return pos
+-
++        
++    def read(self, size, seek=True):
++        &quot;&quot;&quot; Works like Posix read (can returns less than size bytes. &quot;&quot;&quot;
++        return self._stream.read(size, seek)
++ 
+     def seek(self, pos, where=0):
+         if where==2:
+             pos = pos - self._start
+
+Modified: haypo/hachoir/ui/ui_window.py
+===================================================================
+--- haypo/hachoir/ui/ui_window.py	2005-11-27 02:07:19 UTC (rev 270)
++++ haypo/hachoir/ui/ui_window.py	2005-11-27 06:11:13 UTC (rev 271)
+@@ -58,6 +58,7 @@
+ 
+     def clear_table(self):
+         self.table_store.clear()
++        self.table.columns_autosize()
+ 
+     def set_table_value(self, iter, column, value):
+         row = self.table_store[iter]
+@@ -89,6 +90,7 @@
+         self.treeview_add_column(self.table, &quot;Description&quot;, 5)
+         self.table.set_reorderable(True)
+         self.treeselection = self.table.get_selection()
++        self.table.columns_autosize()
+ 
+     def treeview_add_column(self, treeview, name, num):
+         col = gtk.TreeViewColumn(name)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000175.html">[Happyboom-svn] r270 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000177.html">[Happyboom-svn] r272 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#176">[ date ]</a>
+              <a href="thread.html#176">[ thread ]</a>
+              <a href="subject.html#176">[ subject ]</a>
+              <a href="author.html#176">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

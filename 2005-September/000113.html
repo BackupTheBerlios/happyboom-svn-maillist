@@ -1,0 +1,119 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r206 - in happyboom/trunk: client common
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r206%20-%20in%20happyboom/trunk%3A%20client%20common&In-Reply-To=%3C200509191343.j8JDhx0f019300%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000112.html">
+   <LINK REL="Next"  HREF="000114.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r206 - in happyboom/trunk: client common</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r206%20-%20in%20happyboom/trunk%3A%20client%20common&In-Reply-To=%3C200509191343.j8JDhx0f019300%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r206 - in happyboom/trunk: client common">haypo at berlios.de
+       </A><BR>
+    <I>Mon Sep 19 15:43:59 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000112.html">[Happyboom-svn] r205 - boomboom/client
+</A></li>
+        <LI>Next message: <A HREF="000114.html">[Happyboom-svn] r207 - in happyboom/trunk: client net/io_tcp
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#113">[ date ]</a>
+              <a href="thread.html#113">[ thread ]</a>
+              <a href="subject.html#113">[ subject ]</a>
+              <a href="author.html#113">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-19 15:43:59 +0200 (Mon, 19 Sep 2005)
+New Revision: 206
+
+Modified:
+   happyboom/trunk/client/base_client.py
+   happyboom/trunk/common/log.py
+Log:
+Fix log class (error display [err!] prefix), and client catchs more ProtocolException.
+
+
+Modified: happyboom/trunk/client/base_client.py
+===================================================================
+--- happyboom/trunk/client/base_client.py	2005-09-18 10:50:19 UTC (rev 205)
++++ happyboom/trunk/client/base_client.py	2005-09-19 13:43:59 UTC (rev 206)
+@@ -44,7 +44,10 @@
+         self.stop()
+ 
+     def evt_happyboom_network(self, feature, event, *args):
+-        self.launchEvent(&quot;happyboom&quot;, &quot;event&quot;, (self._io,), feature, event, args)
++        try:
++            self.launchEvent(&quot;happyboom&quot;, &quot;event&quot;, (self._io,), feature, event, args)
++        except ProtocolException, msg:
++            log.error(&quot;Protocol error: %s&quot; % msg)
+ 
+     def start(self):
+         &quot;&quot;&quot; Starts the client : connection to the server, etc. &quot;&quot;&quot;
+@@ -150,7 +153,8 @@
+             try:
+                 feature = self.protocol.getFeature(name)
+                 features = features + &quot;%c&quot; % feature.id
+-            except ProtocolException:
++            except ProtocolException, msg:
++                log.warning(&quot;Protocol exception: %s&quot; % msg)
+                 pass
+         self.launchEvent(&quot;happyboom&quot;, &quot;features&quot;, ioclient, features)
+         
+@@ -177,4 +181,4 @@
+         self.launchEvent(feature, event, *args)
+ 
+ #    def evt_happyboom_gamepath(self, path):
+-#        self.gamepath = path
+\ No newline at end of file
++#        self.gamepath = path
+
+Modified: happyboom/trunk/common/log.py
+===================================================================
+--- happyboom/trunk/common/log.py	2005-09-18 10:50:19 UTC (rev 205)
++++ happyboom/trunk/common/log.py	2005-09-19 13:43:59 UTC (rev 206)
+@@ -88,6 +88,6 @@
+         New error message.
+         @type str: C{str}
+         &quot;&quot;&quot;
+-        self.new_message(Log.LOG_WARN, str)
++        self.new_message(Log.LOG_ERROR, str)
+ 
+ log = Log()        
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000112.html">[Happyboom-svn] r205 - boomboom/client
+</A></li>
+	<LI>Next message: <A HREF="000114.html">[Happyboom-svn] r207 - in happyboom/trunk: client net/io_tcp
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#113">[ date ]</a>
+              <a href="thread.html#113">[ thread ]</a>
+              <a href="subject.html#113">[ subject ]</a>
+              <a href="author.html#113">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

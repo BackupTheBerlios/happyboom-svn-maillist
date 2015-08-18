@@ -1,0 +1,769 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r347 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r347%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200512220410.jBM4Ap2T024364%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000251.html">
+   <LINK REL="Next"  HREF="000253.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r347 - in haypo/hachoir: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r347%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200512220410.jBM4Ap2T024364%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r347 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Thu Dec 22 05:10:51 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000251.html">[Happyboom-svn] r346 - in haypo/hachoir: plugins ui
+</A></li>
+        <LI>Next message: <A HREF="000253.html">[Happyboom-svn] r348 - in haypo/hachoir: . plugins stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#252">[ date ]</a>
+              <a href="thread.html#252">[ thread ]</a>
+              <a href="subject.html#252">[ subject ]</a>
+              <a href="author.html#252">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-22 05:10:35 +0100 (Thu, 22 Dec 2005)
+New Revision: 347
+
+Modified:
+   haypo/hachoir/filter.py
+   haypo/hachoir/plugins/3ds.py
+   haypo/hachoir/plugins/avi.py
+   haypo/hachoir/plugins/ext2.py
+   haypo/hachoir/plugins/jpeg.py
+Log:
+- Rename class OnlyFormatsChunkFilter to OnDemandFilter ... better name,
+  I think :-)
+- AVI plugin use OnDemandFilter
+- AVI plugin use better chunk name and chunk description
+- Remove useless filters AVI_ChunkAudio, AVI_ChunkPalette, etc. in AVI plugin
+  and use better chunk description (type + smart size)
+
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-12-22 03:00:58 UTC (rev 346)
++++ haypo/hachoir/filter.py	2005-12-22 04:10:35 UTC (rev 347)
+@@ -78,6 +78,9 @@
+         else:
+             self._chunks_counter[root] = start 
+         return pattern % (root, self._chunks_counter[root])
++        
++    def hasChunk(self, id):
++        return id in self._chunks_dict
+ 
+     # --- Pure virtual methods -----------
+     def getSize(self): assert False
+@@ -85,12 +88,11 @@
+     def getChunk(self, chunk_id): assert False
+     def display(self): assert False
+ 
+-class OnlyFormatChunksFilter(BasicFilter):
++class OnDemandFilter(BasicFilter):
+     def __init__(self, id, description, stream, parent):
+         BasicFilter.__init__(self, id, description, stream, parent, stream.tell())
+         self._size = 0
+         self._chunks = []
+-        self._chunks_dict = {}
+         self._chunks_cache = {}
+     
+     def updateChunkDescription(self, id, desc):
+@@ -119,6 +121,9 @@
+     def readStreamChild(self, id, description, filter_stream, filter_class, *args): 
+         return self._readStreamChild(id, description, filter_stream, None, filter_class, *args)
+ 
++    def readSizedStreamChild(self, id, description, size, filter_stream, filter_class, *args): 
++        return self._readStreamChild(id, description, filter_stream, size, filter_class, *args)
++
+     def _readStreamChild(self, id, description, filter_stream, size, filter_class, *args): 
+         id = self.getUniqChunkId(id)
+         addr = self._stream.tell()
+@@ -244,60 +249,6 @@
+         else:
+             return chunk.value
+ 
+-class OnlyFiltersFilter(BasicFilter):
+-    def __init__(self, id, description, stream, parent):
+-        BasicFilter.__init__(self, id, description, stream, parent, stream.tell())
+-        self._chunks = []
+-        self._chunks_dict = {}
+-        self._chunks_cache = {}
+-        self._size = 0
+-
+-    def purgeCache(self):
+-        self._chunks_cache = {}
+-
+-    def readSizedChild(self, id, size, description, filter_class, *args): 
+-        id = self.getUniqChunkId(id)
+-        filter_info = (id, size, self._stream.tell(), description, filter_class, args)
+-        self._chunks_dict[id] = filter_info
+-        self._chunks.append( filter_info )
+-        self._stream.seek(size, 1)
+-        self._size = self._size + size
+-
+-    def display(self):
+-        ui.window.enableParentButton(self.getParent() != None)
+-        ui.window.clear_table()
+-        for info in self._chunks:
+-            format = info[4].__name__
+-            if info[0] in self._chunks_cache:
+-                chunk = self._chunks_cache[info[0]]
+-                desc = chunk.description
+-            else:
+-                desc = info[3] 
+-            ui.window.add_table(None, info[2], info[1], format, info[0], desc, &quot;(...)&quot;)
+- 
+-    def getSize(self): return self._size
+-
+-    def getChunk(self, id):
+-        if id not in self._chunks_dict:
+-            return None
+-        if id not in self._chunks_cache:
+-            info = self._chunks_dict[id]
+-
+-            addr = info[2]
+-            self._stream.seek(addr)
+-            filter = info[4] (self._stream, self, *info[5])
+-            filter.setId(info[0])
+-            chunk = FilterChunk(info[0], filter, self, addr)
+-            filter.updateParent(chunk)
+-            self._stream.seek(addr + info[1])
+-            
+-            self._chunks_cache[id] = chunk 
+-        return self._chunks_cache[id]
+-
+-    def __getitem__(self, id):
+-        assert id in self._chunks_dict
+-        return self.getChunk(id).value
+-
+ class Filter(BasicFilter):
+     regex_chunk_uniq_id = re.compile(&quot;^(.*?)([0-9]+)$&quot;)
+ 
+
+Modified: haypo/hachoir/plugins/3ds.py
+===================================================================
+--- haypo/hachoir/plugins/3ds.py	2005-12-22 03:00:58 UTC (rev 346)
++++ haypo/hachoir/plugins/3ds.py	2005-12-22 04:10:35 UTC (rev 347)
+@@ -3,7 +3,7 @@
+ Author: Victor Stinner
+ &quot;&quot;&quot;
+ 
+-from filter import Filter, OnlyFormatChunksFilter
++from filter import Filter, OnDemandFilter
+ from plugin import registerPlugin
+ 
+ def readTextureFilename(filter, stream, last_pos):
+@@ -63,7 +63,7 @@
+     while stream.tell() &lt; last_pos:
+         filter.readChild(&quot;chunk[]&quot;, &quot;Chunk&quot;, Filter_3DS_Chunk)
+ 
+-class Filter_3DS_Chunk(OnlyFormatChunksFilter):
++class Filter_3DS_Chunk(OnDemandFilter):
+     # List of chunk type name
+     type_name = {
+         0x0011: &quot;Color&quot;,
+@@ -125,7 +125,7 @@
+     }
+     
+     def __init__(self, stream, parent):
+-        OnlyFormatChunksFilter.__init__(self, &quot;3ds_chunk&quot;, &quot;3DS chunk&quot;, stream, parent)
++        OnDemandFilter.__init__(self, &quot;3ds_chunk&quot;, &quot;3DS chunk&quot;, stream, parent)
+         chunk = self.doRead(&quot;type&quot;, &quot;&lt;H&quot;, &quot;Chunk type&quot;, post=self.toHex)
+         chunk.description = &quot;Chunk type (%s)&quot; % self.getType()
+         self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Chunk size&quot;)
+
+Modified: haypo/hachoir/plugins/avi.py
+===================================================================
+--- haypo/hachoir/plugins/avi.py	2005-12-22 03:00:58 UTC (rev 346)
++++ haypo/hachoir/plugins/avi.py	2005-12-22 04:10:35 UTC (rev 347)
+@@ -6,176 +6,229 @@
+ Author: Victor Stinner
+ &quot;&quot;&quot;
+ 
+-from filter import Filter
++from filter import Filter, OnDemandFilter
+ from plugin import registerPlugin
++from tools import humanFilesize
+ 
+-class AVI_ChunkFrame(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;avi_chunk&quot;, &quot;Video frame&quot;, stream, parent)
+-        size = stream.getSize()
+-        self.read(&quot;raw&quot;, &quot;%us&quot; % size, &quot;Video frame&quot;)
++class MovieChunk(OnDemandFilter):
++    twocc_description = {
++        &quot;db&quot;: &quot;Uncompressed video frame&quot;,
++        &quot;dc&quot;: &quot;Compressed video frame&quot;,
++        &quot;wb&quot;: &quot;Audio data&quot;,
++        &quot;pc&quot;: &quot;Palette change&quot;
++    }
+ 
+-class AVI_ChunkAudio(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;avi_chunk&quot;, &quot;Audio data&quot;, stream, parent)
+-        size = stream.getSize()
+-        self.read(&quot;raw&quot;, &quot;%us&quot; % size, &quot;Audio data&quot;)
++        OnDemandFilter.__init__(self, &quot;movie_chunk&quot;, &quot;Movie chunk&quot;, stream, parent)
++        self.read(&quot;fourcc&quot;, &quot;4s&quot;, &quot;Stream chunk four character code&quot;)
++        size = self.doRead(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Size&quot;).value
++        if size == 0:
++            self.type = &quot;(empty)&quot;
++            return
++        fourcc = self[&quot;fourcc&quot;]
++        twocc = fourcc[2:4]
++        if twocc in MovieChunk.twocc_description:
++            desc = MovieChunk.twocc_description[twocc]
++        elif fourcc == &quot;JUNK&quot;:
++            desc = &quot;Junk&quot;
++        else:
++            desc = &quot;Raw data&quot;
++        self.read(&quot;data&quot;, &quot;%us&quot; % size, desc)
++        self.type = desc
++        if size &amp; 1:
++            self.read(&quot;padding&quot;, &quot;%us&quot; % 1, &quot;Padding&quot;)
+ 
+-class AVI_ChunkPalette(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;avi_chunk&quot;, &quot;Palette change&quot;, stream, parent)
+-        size = stream.getSize()
+-        self.read(&quot;raw&quot;, &quot;%us&quot; % size, &quot;Palette change&quot;)
++    def updateParent(self, chunk):
++        desc = &quot;Movie chunk: %s&quot; % self.type
++        size = self[&quot;size&quot;]
++        if size != 0:
++            desc = desc + &quot; (%s)&quot; % humanFilesize(size)
++        chunk.description = desc 
+ 
+-class AVI_ChunkMovi(Filter):
+-    handler = {
+-        &quot;db&quot;: AVI_ChunkFrame, # Uncompressed
+-        &quot;dc&quot;: AVI_ChunkFrame, # Compressed
+-        &quot;wb&quot;: AVI_ChunkAudio,
+-        &quot;pc&quot;: AVI_ChunkPalette,
+-    }
++class MovieStream(OnDemandFilter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;avi_chunk&quot;, &quot;AVI movi chunk&quot;, stream, parent)
++        OnDemandFilter.__init__(self, &quot;movie_str&quot;, &quot;Movie stream&quot;, stream, parent)
++        print &quot; ********* PARSE STREAM ************&quot;
+         size = stream.getSize()
+         end = stream.tell() + size
+ 
++        self.chunk_count = 0
++        start = stream.tell()
+         while 8 &lt;= end - stream.tell():
+-            tag = self.read(&quot;fourcc[]&quot;, &quot;4s&quot;, &quot;Stream chunk four character code&quot;).value
+-            size = self.read(&quot;ssize[]&quot;, &quot;&lt;L&quot;, &quot;String size&quot;).value
+-            if size == 0:
+-                continue
+-            twocc = tag[2:4]
+-            if tag == &quot;JUNK&quot;:
+-                self.read(&quot;data[]&quot;, &quot;%us&quot; % size, &quot;Junk data&quot;)
+-            elif twocc in AVI_ChunkMovi.handler:
+-                sub = stream.createSub(size=size)
+-                self.readStreamChild(&quot;data[]&quot;, sub, AVI_ChunkMovi.handler[twocc])
+-            else:
+-                self.read(&quot;data[]&quot;, &quot;%us&quot; % size, &quot;data&quot;)
+-            if size &amp; 1:
+-                self.read(&quot;padding[]&quot;, &quot;%us&quot; % 1, &quot;Padding&quot;)
++            #&#160;Little hack to read chunk size
++            stream.seek(4, 1)
++            chunk_size = stream.getFormat(&quot;&lt;L&quot;, False)[0]
++            stream.seek(-4, 1)
++            chunk_size = 8 + chunk_size + chunk_size % 2
++            # End of little hack :-)
++            self.readSizedChild(&quot;chunk[]&quot;, &quot;Movie chunk&quot;, chunk_size, MovieChunk)
++            self.chunk_count += 1
++            if self.chunk_count % 1000 == 0:
++                print &quot;Parse stream: %u %%&quot; % ((stream.tell() - start) * 100 / size)
+         size = end - stream.tell()
+         if size &gt; 0:
+-            self.read(&quot;raw&quot;, &quot;%us&quot; % size, &quot;Raw data&quot;)
++            self.read(&quot;end&quot;, &quot;%us&quot; % size, &quot;Raw data&quot;)
+ 
+-class AVI_ChunkList(Filter):
++    def updateParent(self, chunk):
++        chunk.description = &quot;Movie stream: %u chunks&quot; % self.chunk_count
++
++class Header(Filter):
++    def __init__(self, stream, parent, stream_type):
++        Filter.__init__(self, &quot;header&quot;, &quot;Header&quot;, stream, parent)
++        tag = self.read(&quot;tag&quot;, &quot;4s&quot;, &quot;Tag&quot;).value
++        size = self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Size&quot;).value
++        self.type = &quot;Unknow&quot;
++        if tag == &quot;strh&quot; and size &gt;= 56:
++            # Stream header
++            self.type = &quot;Stream header&quot;
++            hend = stream.tell() + size
++            self.read(&quot;type_fourcc&quot;, &quot;4s&quot;, &quot;Stream type four character code&quot;)
++            self.read(&quot;fourcc&quot;, &quot;4s&quot;, &quot;Stream four character code&quot;)
++            self.read(&quot;flags&quot;, &quot;&lt;L&quot;, &quot;Stream flags&quot;)
++            self.read(&quot;priority&quot;, &quot;&lt;H&quot;, &quot;Stream priority&quot;)
++            self.read(&quot;langage&quot;, &quot;2s&quot;, &quot;Stream language&quot;)
++            self.read(&quot;init_frames&quot;, &quot;&lt;L&quot;, &quot;InitialFrames&quot;)
++            self.read(&quot;scale&quot;, &quot;&lt;L&quot;, &quot;Time scale&quot;)
++            self.read(&quot;rate&quot;, &quot;&lt;L&quot;, &quot;Divide by scale to give frame rate&quot;)
++            self.read(&quot;start&quot;, &quot;&lt;L&quot;, &quot;Stream start time (unit: rate/scale)&quot;)
++            self.read(&quot;length&quot;, &quot;&lt;L&quot;, &quot;Stream length (unit: rate/scale)&quot;)
++            self.read(&quot;buf_size&quot;, &quot;&lt;L&quot;, &quot;Suggested buffer size&quot;)
++            self.read(&quot;quality&quot;, &quot;&lt;L&quot;, &quot;Stream quality&quot;)
++            self.read(&quot;sample_size&quot;, &quot;&lt;L&quot;, &quot;Size of samples&quot;)
++            self.read(&quot;left&quot;, &quot;&lt;H&quot;, &quot;Destination rectangle (left)&quot;)
++            self.read(&quot;top&quot;, &quot;&lt;H&quot;, &quot;Destination rectangle (top)&quot;)
++            self.read(&quot;right&quot;, &quot;&lt;H&quot;, &quot;Destination rectangle (right)&quot;)
++            self.read(&quot;bottom&quot;, &quot;&lt;H&quot;, &quot;Destination rectangle (bottom)&quot;)
++            diff = hend-stream.tell()
++            if 0 &lt; diff:
++                self.read(&quot;h_extra&quot;, &quot;%us&quot; % diff, &quot;Extra junk&quot;)
++            assert stream.tell() == hend
++        elif tag == &quot;strf&quot; and stream_type == &quot;vids&quot; and size == 40:
++            # Video header
++            self.type = &quot;Video header&quot;
++            self.read(&quot;v_size&quot;, &quot;&lt;L&quot;, &quot;Video format: Size&quot;)                    
++            self.read(&quot;v_width&quot;, &quot;&lt;L&quot;, &quot;Video format: Width&quot;)                    
++            self.read(&quot;v_height&quot;, &quot;&lt;L&quot;, &quot;Video format: Height&quot;)                    
++            self.read(&quot;v_panes&quot;, &quot;&lt;H&quot;, &quot;Video format: Panes&quot;)                    
++            self.read(&quot;v_depth&quot;, &quot;&lt;H&quot;, &quot;Video format: Depth&quot;)                    
++            self.read(&quot;v_tag1&quot;, &quot;&lt;L&quot;, &quot;Video format: Tag1&quot;)                    
++            self.read(&quot;v_img_size&quot;, &quot;&lt;L&quot;, &quot;Video format: Image size&quot;)                    
++            self.read(&quot;v_xpels_meter&quot;, &quot;&lt;L&quot;, &quot;Video format: XPelsPerMeter&quot;)
++            self.read(&quot;v_ypels_meter&quot;, &quot;&lt;L&quot;, &quot;Video format: YPelsPerMeter&quot;)
++            self.read(&quot;v_clr_used&quot;, &quot;&lt;L&quot;, &quot;Video format: ClrUsed&quot;)
++            self.read(&quot;v_clr_importand&quot;, &quot;&lt;L&quot;, &quot;Video format: ClrImportant&quot;)
++        elif tag == &quot;strf&quot; and stream_type == &quot;auds&quot;:
++            # Audio (wav) header
++            self.type = &quot;Audio header&quot;
++            aend = stream.tell() + size
++            self.read(&quot;a_id&quot;, &quot;&lt;H&quot;, &quot;Audio format: Codec id&quot;)                    
++            a_chan = self.read(&quot;a_channel&quot;, &quot;&lt;H&quot;, &quot;Audio format: Channels&quot;).value
++            self.read(&quot;a_sample_rate&quot;, &quot;&lt;L&quot;, &quot;Audio format: Sample rate&quot;)                    
++            self.read(&quot;a_bit_rate&quot;, &quot;&lt;L&quot;, &quot;Audio format: Bit rate&quot;)
++            self.read(&quot;a_block_align&quot;, &quot;&lt;H&quot;, &quot;Audio format: Block align&quot;)
++            if size &gt;= 16:
++                self.read(&quot;a_bits_per_sample&quot;, &quot;&lt;H&quot;, &quot;Audio format: Bits per sample&quot;)
++            if size &gt;= 18:
++                self.read(&quot;ext_size&quot;, &quot;&lt;H&quot;, &quot;Audio format: Size of extra information&quot;)
++            if a_chan &gt; 2 and size &gt;= 28:
++                self.read(&quot;reserved&quot;, &quot;&lt;H&quot;, &quot;Audio format: &quot;)
++                self.read(&quot;channel_mask&quot;, &quot;&lt;L&quot;, &quot;Audio format: channels placement bitmask&quot;)
++                self.read(&quot;subformat&quot;, &quot;&lt;L&quot;, &quot;Audio format: Subformat id&quot;)
++            diff = aend-stream.tell()
++            if 0 &lt; diff:
++                self.read(&quot;a_extra&quot;, &quot;%us&quot; % diff, &quot;Audio format: Extra&quot;)
++            assert stream.tell() == aend
++        elif tag == &quot;strn&quot;:
++            # Stream description
++            self.read(&quot;desc&quot;, &quot;%us&quot; % size, &quot;Stream description&quot;)
++        else:
++            if tag == &quot;JUNK&quot;:
++                self.type = &quot;Junk&quot;
++            self.read(&quot;svalue[]&quot;, &quot;%us&quot; % size, &quot;String value&quot;)
++
++    def updateParent(self, chunk):
++        chunk.description = &quot;Header: %s&quot; % self.type
++
++class ChunkList(OnDemandFilter):
+     handler = {
+-        &quot;movi&quot;: AVI_ChunkMovi,
++        &quot;movi&quot;: MovieStream 
+     }
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;avi_chunk&quot;, &quot;AVI chunk&quot;, stream, parent)
+-        tag = self.read(&quot;tag&quot;, &quot;4s&quot;, &quot;Tag&quot;).value
++        OnDemandFilter.__init__(self, &quot;avi_chunk&quot;, &quot;AVI chunk&quot;, stream, parent)
++        self.type = &quot;Unknow&quot;
++        tag = self.doRead(&quot;tag&quot;, &quot;4s&quot;, &quot;Tag&quot;).value
+         size = stream.getSize()-4
+         end = stream.tell() + size
+-        if tag in AVI_ChunkList.handler:
++        if tag in ChunkList.handler:
++            # Handler
+             sub = stream.createSub(size=size)
+-            self.readStreamChild(&quot;data&quot;, sub, AVI_ChunkList.handler[tag])
++            self.readSizedStreamChild(&quot;data&quot;, &quot;Chunk data&quot;, size, sub, ChunkList.handler[tag])
+         elif tag in (&quot;hdrl&quot;, &quot;INFO&quot;):
++            #&#160;(Headers) Chunks
++            self.type = &quot;List of chunks&quot;
+             while 8 &lt; end - stream.tell():
+-                chunk = self.readChild(&quot;chunk[]&quot;, AVI_Chunk)            
+-                padding = chunk.size % 2
++                size = self.doReadChild(&quot;chunk[]&quot;, &quot;Chunk&quot;, Chunk).size
++                padding = size % 2
+                 if padding != 0:
+                     self.read(&quot;padding[]&quot;, &quot;%us&quot; % padding, &quot;Padding&quot;)
+         elif tag == &quot;strl&quot;:
+-            stype = None
++            # Headers
++            self.type = &quot;Headers&quot;
++            stream_type = None
+             while 8 &lt;= end - stream.tell():
+-                stag = self.read(&quot;stag[]&quot;, &quot;4s&quot;, &quot;String tag&quot;).value
+-                size = self.read(&quot;ssize[]&quot;, &quot;&lt;L&quot;, &quot;String size&quot;).value
+-                if stag == &quot;strh&quot; and size &gt;= 56:
+-                    # Stream header
+-                    hend = stream.tell() + size
+-                    stype = self.read(&quot;type_fourcc&quot;, &quot;4s&quot;, &quot;Stream type four character code&quot;).value
+-                    self.read(&quot;fourcc&quot;, &quot;4s&quot;, &quot;Stream four character code&quot;)
+-                    self.read(&quot;flags&quot;, &quot;&lt;L&quot;, &quot;Stream flags&quot;)
+-                    self.read(&quot;priority&quot;, &quot;&lt;H&quot;, &quot;Stream priority&quot;)
+-                    self.read(&quot;langage&quot;, &quot;2s&quot;, &quot;Stream language&quot;)
+-                    self.read(&quot;init_frames&quot;, &quot;&lt;L&quot;, &quot;InitialFrames&quot;)
+-                    self.read(&quot;scale&quot;, &quot;&lt;L&quot;, &quot;Time scale&quot;)
+-                    self.read(&quot;rate&quot;, &quot;&lt;L&quot;, &quot;Divide by scale to give frame rate&quot;)
+-                    self.read(&quot;start&quot;, &quot;&lt;L&quot;, &quot;Stream start time (unit: rate/scale)&quot;)
+-                    self.read(&quot;length&quot;, &quot;&lt;L&quot;, &quot;Stream length (unit: rate/scale)&quot;)
+-                    self.read(&quot;buf_size&quot;, &quot;&lt;L&quot;, &quot;Suggested buffer size&quot;)
+-                    self.read(&quot;quality&quot;, &quot;&lt;L&quot;, &quot;Stream quality&quot;)
+-                    self.read(&quot;sample_size&quot;, &quot;&lt;L&quot;, &quot;Size of samples&quot;)
+-                    self.read(&quot;left&quot;, &quot;&lt;H&quot;, &quot;Destination rectangle (left)&quot;)
+-                    self.read(&quot;top&quot;, &quot;&lt;H&quot;, &quot;Destination rectangle (top)&quot;)
+-                    self.read(&quot;right&quot;, &quot;&lt;H&quot;, &quot;Destination rectangle (right)&quot;)
+-                    self.read(&quot;bottom&quot;, &quot;&lt;H&quot;, &quot;Destination rectangle (bottom)&quot;)
+-                    diff = hend-stream.tell()
+-                    if 0 &lt; diff:
+-                        self.read(&quot;h_extra&quot;, &quot;%us&quot; % diff, &quot;Extra junk&quot;)
+-                    assert stream.tell() == hend
+-                elif stag == &quot;strf&quot; and stype == &quot;vids&quot; and size == 40:
+-                    # Video header
+-                    self.read(&quot;v_size&quot;, &quot;&lt;L&quot;, &quot;Video format: Size&quot;)                    
+-                    self.read(&quot;v_width&quot;, &quot;&lt;L&quot;, &quot;Video format: Width&quot;)                    
+-                    self.read(&quot;v_height&quot;, &quot;&lt;L&quot;, &quot;Video format: Height&quot;)                    
+-                    self.read(&quot;v_panes&quot;, &quot;&lt;H&quot;, &quot;Video format: Panes&quot;)                    
+-                    self.read(&quot;v_depth&quot;, &quot;&lt;H&quot;, &quot;Video format: Depth&quot;)                    
+-                    self.read(&quot;v_tag1&quot;, &quot;&lt;L&quot;, &quot;Video format: Tag1&quot;)                    
+-                    self.read(&quot;v_img_size&quot;, &quot;&lt;L&quot;, &quot;Video format: Image size&quot;)                    
+-                    self.read(&quot;v_xpels_meter&quot;, &quot;&lt;L&quot;, &quot;Video format: XPelsPerMeter&quot;)
+-                    self.read(&quot;v_ypels_meter&quot;, &quot;&lt;L&quot;, &quot;Video format: YPelsPerMeter&quot;)
+-                    self.read(&quot;v_clr_used&quot;, &quot;&lt;L&quot;, &quot;Video format: ClrUsed&quot;)
+-                    self.read(&quot;v_clr_importand&quot;, &quot;&lt;L&quot;, &quot;Video format: ClrImportant&quot;)
+-                elif stag == &quot;strf&quot; and stype == &quot;auds&quot;:
+-                    # Audio (wav) header
+-                    aend = stream.tell() + size
+-                    self.read(&quot;a_id&quot;, &quot;&lt;H&quot;, &quot;Audio format: Codec id&quot;)                    
+-                    a_chan = self.read(&quot;a_channel&quot;, &quot;&lt;H&quot;, &quot;Audio format: Channels&quot;).value
+-                    self.read(&quot;a_sample_rate&quot;, &quot;&lt;L&quot;, &quot;Audio format: Sample rate&quot;)                    
+-                    self.read(&quot;a_bit_rate&quot;, &quot;&lt;L&quot;, &quot;Audio format: Bit rate&quot;)
+-                    self.read(&quot;a_block_align&quot;, &quot;&lt;H&quot;, &quot;Audio format: Block align&quot;)
+-                    if size &gt;= 16:
+-                        self.read(&quot;a_bits_per_sample&quot;, &quot;&lt;H&quot;, &quot;Audio format: Bits per sample&quot;)
+-                    if size &gt;= 18:
+-                        self.read(&quot;ext_size&quot;, &quot;&lt;H&quot;, &quot;Audio format: Size of extra information&quot;)
+-                    if a_chan &gt; 2 and size &gt;= 28:
+-                        self.read(&quot;reserved&quot;, &quot;&lt;H&quot;, &quot;Audio format: &quot;)
+-                        self.read(&quot;channel_mask&quot;, &quot;&lt;L&quot;, &quot;Audio format: channels placement bitmask&quot;)
+-                        self.read(&quot;subformat&quot;, &quot;&lt;L&quot;, &quot;Audio format: Subformat id&quot;)
+-                    diff = aend-stream.tell()
+-                    if 0 &lt; diff:
+-                        self.read(&quot;a_extra&quot;, &quot;%us&quot; % diff, &quot;Audio format: Extra&quot;)
+-                    assert stream.tell() == aend
+-                elif stag == &quot;strn&quot;:
+-                    # Stream description
+-                    self.read(&quot;desc&quot;, &quot;%us&quot; % size, &quot;Stream description&quot;)
+-                else:
+-                    self.read(&quot;svalue[]&quot;, &quot;%us&quot; % size, &quot;String value&quot;)
++                header = self.doReadChild(&quot;header[]&quot;, &quot;Header&quot;, Header, stream_type).getFilter()
++                if header.hasChunk(&quot;type_fourcc&quot;):
++                    stream_type = header[&quot;type_fourcc&quot;]
+         else:
++            #&#160;Raw data
+             self.read(&quot;raw&quot;, &quot;%us&quot; % size, &quot;Raw data&quot;)
+         padding = end - stream.tell()
+         if padding != 0:
+             self.read(&quot;padding[]&quot;, &quot;%us&quot; % padding, &quot;Padding&quot;)
+         assert stream.tell() == end
+ 
+-class AVI_ChunkString(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;avi_chunk&quot;, &quot;AVI chunk&quot;, stream, parent)
++    def updateParent(self, chunk):
++        chunk.description = &quot;Chunk list: %s&quot; % self.type
+ 
+-class AVI_Chunk(Filter):
++class Chunk(OnDemandFilter):
+     handler = {
+-        &quot;LIST&quot;: AVI_ChunkList
++        &quot;LIST&quot;: ChunkList
+     }
++
++    tag_name = {
++        &quot;hdrl&quot;: &quot;headers&quot;,
++        &quot;movi&quot;: &quot;movie&quot;,
++        &quot;idx1&quot;: &quot;index&quot;
++    }
++
++    tag_description = {
++        &quot;hdrl&quot;: &quot;Headers&quot;,
++        &quot;movi&quot;: &quot;Movie stream&quot;,
++        &quot;idx1&quot;: &quot;Stream index&quot;
++    }
++
+     def __init__(self, stream, parent=None):
+-        Filter.__init__(self, &quot;avi_chunk&quot;, &quot;AVI chunk&quot;, stream, parent)
+-        tag = self.read(&quot;tag&quot;, &quot;4s&quot;, &quot;Tag&quot;).value
+-        size = self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Size&quot;).value
+-        if tag in AVI_Chunk.handler:
++        OnDemandFilter.__init__(self, &quot;avi_chunk&quot;, &quot;AVI chunk&quot;, stream, parent)
++        tag = self.doRead(&quot;tag&quot;, &quot;4s&quot;, &quot;Tag&quot;).value
++        size = self.doRead(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Size&quot;).value
++        if tag in Chunk.handler:
+             end = stream.tell() + size
+             sub = stream.createSub(size=size)
+-            self.readStreamChild(&quot;data&quot;, sub, AVI_Chunk.handler[tag])
++            self.readSizedStreamChild(&quot;data&quot;, &quot;Data&quot;, size, sub, Chunk.handler[tag])
+             assert stream.tell() == end
+         else:
+             self.read(&quot;content&quot;, &quot;%us&quot; % size, &quot;Raw data content&quot;)
+ 
+     def updateParent(self, parent):
+-        type = self[&quot;tag&quot;]
+-        if type == &quot;LIST&quot;:
+-            tag2 = self[&quot;data&quot;][&quot;tag&quot;]
+-            type = type + &quot; (%s)&quot; % tag2      
+-        desc = &quot;Chunk %s&quot; % type
++        tag = self[&quot;tag&quot;]
++        if tag == &quot;LIST&quot;:
++            tag = self[&quot;data&quot;][&quot;tag&quot;]
++            type = &quot;LIST (%s)&quot; % Chunk.tag_description.get(tag, tag)
++        else:
++            type = Chunk.tag_description.get(tag, tag)
++        if tag in Chunk.tag_name:
++            parent.id = Chunk.tag_name[tag]
++        desc = &quot;Chunk: %s&quot; % type
+         self.setDescription(desc)
+         parent.description = desc
+ 
+@@ -188,6 +241,6 @@
+         self.read(&quot;avi&quot;, &quot;4s&quot;, &quot;\&quot;AVI \&quot; string&quot;)
+         assert self[&quot;avi&quot;] == &quot;AVI &quot;
+         while not stream.eof():
+-            self.readChild(&quot;chunk[]&quot;, AVI_Chunk)
++            self.readChild(&quot;chunk[]&quot;, Chunk)
+ 
+ registerPlugin(AVI_File, &quot;video/x-msvideo&quot;)
+
+Modified: haypo/hachoir/plugins/ext2.py
+===================================================================
+--- haypo/hachoir/plugins/ext2.py	2005-12-22 03:00:58 UTC (rev 346)
++++ haypo/hachoir/plugins/ext2.py	2005-12-22 04:10:35 UTC (rev 347)
+@@ -9,11 +9,11 @@
+ &quot;&quot;&quot;
+ 
+ from datetime import datetime
+-from filter import Filter, OnlyFormatChunksFilter, OnlyFiltersFilter
++from filter import Filter, OnDemandFilter
+ from plugin import registerPlugin
+ from tools import humanDuration, getUnixRWX, humanFilesize
+ 
+-class DirectoryEntry(OnlyFormatChunksFilter):
++class DirectoryEntry(OnDemandFilter):
+     file_type = {
+         1: &quot;Regular&quot;,
+         2: &quot;Directory&quot;,
+@@ -25,7 +25,7 @@
+         8: &quot;Max&quot;
+     }
+     def __init__(self, stream, parent):
+-        OnlyFormatChunksFilter.__init__(self, &quot;dir&quot;, &quot;EXT2 directory entry&quot;, stream, parent)
++        OnDemandFilter.__init__(self, &quot;dir&quot;, &quot;EXT2 directory entry&quot;, stream, parent)
+         self.read(&quot;inode&quot;, &quot;&lt;L&quot;, &quot;Inode&quot;)
+         self.read(&quot;rec_len&quot;, &quot;&lt;H&quot;, &quot;Record length&quot;)
+         name_length = self.doRead(&quot;name_len&quot;, &quot;B&quot;, &quot;Name length&quot;).value
+@@ -48,7 +48,7 @@
+         type = chunk.value
+         return DirectoryEntry.file_type.get(type, &quot;Unknow (%02X)&quot; % type)
+ 
+-class Inode(OnlyFormatChunksFilter):
++class Inode(OnDemandFilter):
+     name = {
+         1: &quot;list of bad blocks&quot;,
+         2: &quot;Root directory&quot;,
+@@ -60,7 +60,7 @@
+     }
+     
+     def __init__(self, stream, parent, index):
+-        OnlyFormatChunksFilter.__init__(self, &quot;inode&quot;, &quot;EXT2 inode&quot;, stream, parent)
++        OnDemandFilter.__init__(self, &quot;inode&quot;, &quot;EXT2 inode&quot;, stream, parent)
+         self.index = index
+         self.read(&quot;mode&quot;, &quot;&lt;H&quot;, &quot;Mode&quot;, post=self.postMode)
+         self.read(&quot;uid&quot;, &quot;&lt;H&quot;, &quot;User ID&quot;)
+@@ -144,9 +144,9 @@
+         else:
+             return &quot;(empty)&quot;
+ 
+-class Bitmap(OnlyFormatChunksFilter):
++class Bitmap(OnDemandFilter):
+     def __init__(self, stream, parent, description, count, start):
+-        OnlyFormatChunksFilter.__init__(self, &quot;bitmap&quot;, &quot;%s: %s items&quot; % (description, count), stream, parent)
++        OnDemandFilter.__init__(self, &quot;bitmap&quot;, &quot;%s: %s items&quot; % (description, count), stream, parent)
+         self.start = start
+         size = count / 8
+         self.read(&quot;block_bitmap&quot;, &quot;%us&quot; % size, &quot;Bitmap&quot;)
+@@ -166,9 +166,9 @@
+ BlockBitmap = Bitmap
+ InodeBitmap = Bitmap
+ 
+-class GroupDescriptor(OnlyFormatChunksFilter):
++class GroupDescriptor(OnDemandFilter):
+     def __init__(self, stream, parent, index):
+-        OnlyFormatChunksFilter.__init__(self, &quot;group&quot;, &quot;Group descriptor&quot;, stream, parent)
++        OnDemandFilter.__init__(self, &quot;group&quot;, &quot;Group descriptor&quot;, stream, parent)
+         self.index = index
+         self.read(&quot;block_bitmap&quot;, &quot;&lt;L&quot;, &quot;Points to the blocks bitmap block&quot;)
+         self.read(&quot;inode_bitmap&quot;, &quot;&lt;L&quot;, &quot;Points to the inodes bitmap block&quot;)
+@@ -187,7 +187,7 @@
+         chunk.description = &quot;Group descriptor: blocks %s-%s&quot; % (start, end)
+     
+ 
+-class SuperBlock(OnlyFormatChunksFilter):
++class SuperBlock(OnDemandFilter):
+     error_handling = {
+         1: &quot;Continue&quot;
+     }
+@@ -207,7 +207,7 @@
+     }
+     
+     def __init__(self, stream, parent):
+-        OnlyFormatChunksFilter.__init__(self, &quot;super_block&quot;, &quot;Super block&quot;, stream, parent)
++        OnDemandFilter.__init__(self, &quot;super_block&quot;, &quot;Super block&quot;, stream, parent)
+         self.read(&quot;inodes_count&quot;, &quot;&lt;L&quot;, &quot;Inodes count&quot;)
+         self.read(&quot;blocks_count&quot;, &quot;&lt;L&quot;, &quot;Blocks count&quot;)
+         self.read(&quot;r_blocks_count&quot;, &quot;&lt;L&quot;, &quot;Reserved blocks count&quot;)
+@@ -296,9 +296,9 @@
+     def getTime(self, chunk):
+         return datetime.fromtimestamp(chunk.value)
+ 
+-class GroupDescriptors(OnlyFormatChunksFilter):
++class GroupDescriptors(OnDemandFilter):
+     def __init__(self, stream, parent, count, start):
+-        OnlyFormatChunksFilter.__init__(self, &quot;groups&quot;, &quot;Group descriptors: %s items&quot; % count, stream, parent)
++        OnDemandFilter.__init__(self, &quot;groups&quot;, &quot;Group descriptors: %s items&quot; % count, stream, parent)
+         self.start = start
+         for i in range(0, count):
+             self.readSizedChild(&quot;group[]&quot;, &quot;Group&quot;, 32, GroupDescriptor, i)
+@@ -306,9 +306,9 @@
+     def getGroup(self, index):
+         return self[&quot;group[%s]&quot; % (self.start + index)]
+ 
+-class InodeTable(OnlyFormatChunksFilter):
++class InodeTable(OnDemandFilter):
+     def __init__(self, stream, parent, start, count):
+-        OnlyFormatChunksFilter.__init__(self, &quot;ino_table&quot;, &quot;Inode table: %s inodes&quot; % count, stream, parent)
++        OnDemandFilter.__init__(self, &quot;ino_table&quot;, &quot;Inode table: %s inodes&quot; % count, stream, parent)
+         self.start = start
+         chunk_size = parent.getParent().superblock[&quot;inode_size&quot;]
+         for index in range(self.start, self.start+count):
+@@ -325,9 +325,9 @@
+     stream.seek(oldpos)
+     return is_super
+ 
+-class Group(OnlyFormatChunksFilter):
++class Group(OnDemandFilter):
+     def __init__(self, stream, parent, index):
+-        OnlyFormatChunksFilter.__init__(self, &quot;group&quot;, &quot;Group %u&quot; % index, stream, parent)
++        OnDemandFilter.__init__(self, &quot;group&quot;, &quot;Group %u&quot; % index, stream, parent)
+         self.index = index
+         group = parent[&quot;group_desc&quot;].getGroup(index)
+         superblock = parent.superblock
+@@ -376,9 +376,9 @@
+             self.read(&quot;raw[]&quot;, &quot;%us&quot; % size, &quot;Raw&quot;)
+ 
+ 
+-class EXT2_FS(OnlyFormatChunksFilter):
++class EXT2_FS(OnDemandFilter):
+     def __init__(self, stream, parent):
+-        OnlyFormatChunksFilter.__init__(self, &quot;ext2&quot;, &quot;EXT2 file system&quot;, stream, parent)
++        OnDemandFilter.__init__(self, &quot;ext2&quot;, &quot;EXT2 file system&quot;, stream, parent)
+         
+         # Read superblock
+         self.seek(1024) 
+
+Modified: haypo/hachoir/plugins/jpeg.py
+===================================================================
+--- haypo/hachoir/plugins/jpeg.py	2005-12-22 03:00:58 UTC (rev 346)
++++ haypo/hachoir/plugins/jpeg.py	2005-12-22 04:10:35 UTC (rev 347)
+@@ -5,13 +5,13 @@
+ Default filter
+ &quot;&quot;&quot;
+ 
+-from filter import Filter, OnlyFormatChunksFilter
++from filter import Filter, OnDemandFilter
+ from plugin import registerPlugin
+ from exif import ExifFilter
+ 
+-class JpegChunkApp0(OnlyFormatChunksFilter):
++class JpegChunkApp0(OnDemandFilter):
+     def __init__(self, stream, parent):
+-        OnlyFormatChunksFilter.__init__(self, &quot;jpeg_chunk&quot;, &quot;JPEG chunk App0&quot;, stream, parent)
++        OnDemandFilter.__init__(self, &quot;jpeg_chunk&quot;, &quot;JPEG chunk App0&quot;, stream, parent)
+         self.read(&quot;jfif&quot;, &quot;5s&quot;, &quot;JFIF string&quot;)
+         self.read(&quot;ver_maj&quot;, &quot;B&quot;, &quot;Major version&quot;)
+         self.read(&quot;ver_min&quot;, &quot;B&quot;, &quot;Minor version&quot;)
+@@ -28,7 +28,7 @@
+         if thumb != 0:
+             self.read(&quot;thumb_data&quot;, &quot;%us&quot; % size, &quot;Thumbnail data&quot;)
+ 
+-class JpegChunk(OnlyFormatChunksFilter):
++class JpegChunk(OnDemandFilter):
+     type_name = {
+         0xC0: &quot;Start Of Frame 0 (SOF0)&quot;,
+         0xC3: &quot;Define Huffman Table (DHT)&quot;,
+@@ -48,7 +48,7 @@
+     }
+ 
+     def __init__(self, stream, parent):
+-        OnlyFormatChunksFilter.__init__(self, &quot;jpeg_chunk&quot;, &quot;JPEG chunk&quot;, stream, parent)
++        OnDemandFilter.__init__(self, &quot;jpeg_chunk&quot;, &quot;JPEG chunk&quot;, stream, parent)
+         self.read(&quot;header&quot;, &quot;B&quot;, &quot;Header&quot;)
+         assert self[&quot;header&quot;] == 0xFF
+         self.read(&quot;type&quot;, &quot;B&quot;, &quot;Type&quot;, post=self.postType)
+@@ -72,9 +72,9 @@
+         type = chunk.value
+         return JpegChunk.type_name.get(type, &quot;Unknow type (%02X)&quot; % type)
+ 
+-class JpegFile(OnlyFormatChunksFilter):
++class JpegFile(OnDemandFilter):
+     def __init__(self, stream, parent=None):
+-        OnlyFormatChunksFilter.__init__(self, &quot;jpeg_file&quot;, &quot;JPEG file&quot;, stream, parent)
++        OnDemandFilter.__init__(self, &quot;jpeg_file&quot;, &quot;JPEG file&quot;, stream, parent)
+         self.read(&quot;header&quot;, &quot;2s&quot;, &quot;Header \&quot;start of image\&quot; (0xFF xD8)&quot;)
+         assert self[&quot;header&quot;] == &quot;\xFF\xD8&quot;
+         while not stream.eof():
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000251.html">[Happyboom-svn] r346 - in haypo/hachoir: plugins ui
+</A></li>
+	<LI>Next message: <A HREF="000253.html">[Happyboom-svn] r348 - in haypo/hachoir: . plugins stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#252">[ date ]</a>
+              <a href="thread.html#252">[ thread ]</a>
+              <a href="subject.html#252">[ subject ]</a>
+              <a href="author.html#252">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

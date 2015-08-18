@@ -1,0 +1,294 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r309 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r309%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200512101526.jBAFQPUt001251%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000214.html">
+   <LINK REL="Next"  HREF="000216.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r309 - in haypo/hachoir: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r309%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200512101526.jBAFQPUt001251%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r309 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Sat Dec 10 16:26:25 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000214.html">[Happyboom-svn] r308 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000216.html">[Happyboom-svn] r310 - in haypo/hachoir: . plugins stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#215">[ date ]</a>
+              <a href="thread.html#215">[ thread ]</a>
+              <a href="subject.html#215">[ subject ]</a>
+              <a href="author.html#215">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-10 16:26:24 +0100 (Sat, 10 Dec 2005)
+New Revision: 309
+
+Modified:
+   haypo/hachoir/config.py
+   haypo/hachoir/plugins/3ds.py
+Log:
+Fix 3DS plugin
+
+
+Modified: haypo/hachoir/config.py
+===================================================================
+--- haypo/hachoir/config.py	2005-12-10 14:42:52 UTC (rev 308)
++++ haypo/hachoir/config.py	2005-12-10 15:26:24 UTC (rev 309)
+@@ -1,3 +1,3 @@
+-max_string_length = 30
++max_string_length = 14
+ max_hexa_length = 4096 
+ max_ascii_length = 4096 
+
+Modified: haypo/hachoir/plugins/3ds.py
+===================================================================
+--- haypo/hachoir/plugins/3ds.py	2005-12-10 14:42:52 UTC (rev 308)
++++ haypo/hachoir/plugins/3ds.py	2005-12-10 15:26:24 UTC (rev 309)
+@@ -9,17 +9,17 @@
+ def readTextureFilename(filter, stream):
+     filter.readString(&quot;filename&quot;, &quot;C&quot;, &quot;Texture filename&quot;)
+ 
+-def readVersion(filter, stream):
++def readVersion(filter, stream, last_pos):
+     filter.read(&quot;version&quot;, &quot;&lt;L&quot;, &quot;Version&quot;)
+ 
+-def readMaterial(filter, stream):
++def readMaterialName(filter, stream, last_pos):
+     filter.readString(&quot;name&quot;, &quot;C&quot;, &quot;Material name&quot;)
+-    while not stream.eof():
+-        filter.readChild(&quot;chunk[]&quot;, Filter_3DS_Chunk)
++#    while not stream.eof():
++#        filter.readChild(&quot;chunk[]&quot;, Filter_3DS_Chunk)
+ 
+-def readObject(filter, stream):
+-    filter.readString(&quot;name&quot;, &quot;C&quot;, &quot;Object name&quot;)
+-    while not stream.eof():
++def readObject(filter, stream, last_pos):
++    chunk = filter.readString(&quot;name&quot;, &quot;C&quot;, &quot;Object name&quot;)
++    while stream.tell() &lt; last_pos:
+         filter.readChild(&quot;chunk[]&quot;, Filter_3DS_Chunk)
+ 
+ class Filter_3DS_MapUV(Filter):
+@@ -43,49 +43,92 @@
+         self.read(&quot;c&quot;, &quot;&lt;H&quot;, &quot;Vertex C&quot;)
+         self.read(&quot;flags&quot;, &quot;&lt;H&quot;, &quot;Flags&quot;)
+     
+-def readMapList(filter, stream):
++def readMapList(filter, stream, last_pos):
+     filter.read(&quot;count&quot;, &quot;&lt;H&quot;, &quot;Map count&quot;)
+-    while not stream.eof():
++    for i in range(0, filter[&quot;count&quot;]):
+         filter.readChild(&quot;map[]&quot;, Filter_3DS_MapUV)
+ 
+-def readColor(filter, stream):
++def readColor(filter, stream, last_pos):
+     filter.read(&quot;red&quot;, &quot;B&quot;, &quot;Red componant&quot;)
+     filter.read(&quot;green&quot;, &quot;B&quot;, &quot;Green componant&quot;)
+     filter.read(&quot;blue&quot;, &quot;B&quot;, &quot;Blue componant&quot;)
+ 
+-def readVertexList(filter, stream):
++def readVertexList(filter, stream, last_pos):
+     filter.read(&quot;count&quot;, &quot;&lt;H&quot;, &quot;Vertex count&quot;)
+-    while not stream.eof():
++    for i in range(0, filter[&quot;count&quot;]):
+         filter.readChild(&quot;vertex[]&quot;, Filter_3DS_Vertex)
+     
+-def readPolygonList(filter, stream):
++def readPolygonList(filter, stream, last_pos):
+     filter.read(&quot;count&quot;, &quot;&lt;H&quot;, &quot;Vertex count&quot;)
+-    while not stream.eof():
++    for i in range(0, filter[&quot;count&quot;]):
+         filter.readChild(&quot;polygon[]&quot;, Filter_3DS_Polygon)
+ 
+ class Filter_3DS_Chunk(Filter):
++    # List of chunk type name
++    type_name = {
++        0x0011: &quot;Color&quot;,
++        0x4D4D: &quot;Main chunk&quot;,
++        0x0002: &quot;File version&quot;,
++        0x3D3D: &quot;Materials and objects&quot;,
++        0x4000: &quot;Object&quot;,
++        0x4100: &quot;Mesh (triangular)&quot;,
++        0x4110: &quot;Vertices list&quot;,
++        0x4120: &quot;Polygon (faces) list&quot;,
++        0x4140: &quot;Map UV list&quot;,
++        0x4130: &quot;Object material&quot;,
++        0xAFFF: &quot;New material&quot;,
++        0xA000: &quot;Material name&quot;,
++        0xA010: &quot;Material ambiant&quot;,
++        0xA020: &quot;Material diffuse&quot;,
++        0xA030: &quot;Texture specular&quot;,
++        0xA200: &quot;Texture&quot;,
++        0xA300: &quot;Texture filename&quot;,
++
++        # Key frames
++        0xB000: &quot;Keyframes&quot;,
++        0xB002: &quot;Object node tag&quot;,
++        0xB006: &quot;Light target node tag&quot;,
++        0xB007: &quot;Spot light node tag&quot;,
++        0xB00A: &quot;Keyframes header&quot;,
++        0xB009: &quot;Keyframe current time&quot;,
++        0xB030: &quot;Node identifier&quot;,
++        0xB010: &quot;Node header&quot;,
++        0x7001: &quot;Viewport layout&quot;
++    }
++
++    chunk_id_by_type = {
++        0x4d4d: &quot;main&quot;,
++        0x0002: &quot;version&quot;,
++        0x3d3d: &quot;obj_mat&quot;,
++        0xb000: &quot;keyframes&quot;,
++        0xafff: &quot;material&quot;,
++        0x4000: &quot;object&quot;
++    }
++
+     # List of chunks which contains other chunks
+     sub_chunks = \
+         (0x4D4D, 0x4100, 0x3D3D, 0xAFFF, 0xA200,
+          0xB002, 0xB006, 0xB007,
+          0xA010, 0xA030, 0xA020, 0xB000)
++
++    # List of chunk type handlers
++    handlers = {
++        0xA000: readMaterialName,
++        0x4000: readObject,
++        0xA300: readTextureFilename,
++        0x0011: readColor,
++        0x0002: readVersion,
++# TODO: Uncomment these functions, it's too slow yet            
++#         0x4110: readVertexList,
++#         0x4120: readPolygonList,
++#         0x4140: readMapList
++    }
+     
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;3ds_chunk&quot;, &quot;3DS chunk&quot;, stream, parent)
+         chunk = self.read(&quot;type&quot;, &quot;&lt;H&quot;, &quot;Chunk type&quot;, post=self.toHex)
+         chunk.description = &quot;Chunk type (%s)&quot; % self.getType()
+         self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Chunk size&quot;)
+-        types = {
+-            0xA000: readMaterial,
+-#            0x4000: readObject,
+-            0xA300: readTextureFilename,
+-            0x0011: readColor,
+-            0x0002: readVersion,
+-# TODO: Uncomment these functions, it's too slow yet            
+-#            0x4110: readVertexList,
+-#            0x4120: readPolygonList,
+-#            0x4140: readMapList
+-        }
+         size = self[&quot;size&quot;] - 6
+         type = self[&quot;type&quot;] 
+         end = stream.tell() + size
+@@ -94,9 +137,10 @@
+                 self.readChild(&quot;chunk[]&quot;, Filter_3DS_Chunk)
+             assert stream.tell() == end 
+         else:
+-            if type in types: 
+-                substream = stream.createSub(size=size)
+-                types[type] (self, substream)
++            if type in Filter_3DS_Chunk.handlers: 
++                end = stream.tell() + size
++                Filter_3DS_Chunk.handlers[type] (self, stream, end)
++                assert stream.tell() == end
+             else:
+                 self.read(&quot;data&quot;, &quot;%us&quot; % size, &quot;Raw data&quot;)
+ 
+@@ -107,48 +151,21 @@
+         type = self.getType()
+         chunk.description = &quot;Chunk of type \&quot;%s\&quot;&quot; % type
+         self.setDescription(&quot;Chunk type (%s)&quot; % type)
+-        self.setId(&quot;chunk_%04x&quot; % self[&quot;type&quot;])
++        if self[&quot;type&quot;] in Filter_3DS_Chunk.chunk_id_by_type:
++            id = Filter_3DS_Chunk.chunk_id_by_type[self[&quot;type&quot;]]
++#            chunk.id = id
++            self.setId(id) 
++        else:
++            self.setId(&quot;chunk_%04x&quot; % self[&quot;type&quot;])
+ 
++
+     def toHex(self, chunk):
+         return &quot;%04X&quot; % chunk.value
+         
+     def getType(self):
+         type = self[&quot;type&quot;]
+-        know = {
+-            0x0011: &quot;Color&quot;,
+-            0x4D4D: &quot;Main chunk&quot;,
+-            0x0002: &quot;File version&quot;,
+-            0x3D3D: &quot;Materials and objects&quot;,
+-            0x4000: &quot;Object&quot;,
+-            0x4100: &quot;Mesh (triangular)&quot;,
+-            0x4110: &quot;Vertices list&quot;,
+-            0x4120: &quot;Polygon (faces) list&quot;,
+-            0x4140: &quot;Map UV list&quot;,
+-            0x4130: &quot;Object material&quot;,
+-            0xAFFF: &quot;New material&quot;,
+-            0xA000: &quot;New material (name)&quot;,
+-            0xA010: &quot;Material ambiant&quot;,
+-            0xA020: &quot;Material diffuse&quot;,
+-            0xA030: &quot;Texture specular&quot;,
+-            0xA200: &quot;Texture&quot;,
+-            0xA300: &quot;Texture filename&quot;,
++        return Filter_3DS_Chunk.type_name.get(type, &quot;%04X&quot; % type)
+ 
+-            # Key frames
+-            0xB000: &quot;Keyframes&quot;,
+-            0xB002: &quot;Object node tag&quot;,
+-            0xB006: &quot;Light target node tag&quot;,
+-            0xB007: &quot;Spot light node tag&quot;,
+-            0xB00A: &quot;Keyframes header&quot;,
+-            0xB009: &quot;Keyframe current time&quot;,
+-            0xB030: &quot;Node identifier&quot;,
+-            0xB010: &quot;Node header&quot;,
+-            0x7001: &quot;Viewport layout&quot;
+-        }
+-        if type in know:
+-            return know[type]
+-        else:
+-            return &quot;%04X&quot; % type 
+-
+ class Filter_3DS_File(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;3ds_file&quot;, &quot;3DS file&quot;, stream, parent)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000214.html">[Happyboom-svn] r308 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000216.html">[Happyboom-svn] r310 - in haypo/hachoir: . plugins stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#215">[ date ]</a>
+              <a href="thread.html#215">[ thread ]</a>
+              <a href="subject.html#215">[ subject ]</a>
+              <a href="author.html#215">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

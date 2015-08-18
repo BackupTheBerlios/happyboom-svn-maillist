@@ -1,0 +1,180 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r119 - in happyboom/trunk/happywarry: . locale locale/fr locale/fr/LC_MESSAGES
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r119%20-%20in%20happyboom/trunk/happywarry%3A%20.%20locale%20locale/fr%20locale/fr/LC_MESSAGES&In-Reply-To=%3C200509050002.j85024oL028611%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000025.html">
+   <LINK REL="Next"  HREF="000027.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r119 - in happyboom/trunk/happywarry: . locale locale/fr locale/fr/LC_MESSAGES</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r119%20-%20in%20happyboom/trunk/happywarry%3A%20.%20locale%20locale/fr%20locale/fr/LC_MESSAGES&In-Reply-To=%3C200509050002.j85024oL028611%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r119 - in happyboom/trunk/happywarry: . locale locale/fr locale/fr/LC_MESSAGES">haypo at berlios.de
+       </A><BR>
+    <I>Mon Sep  5 02:02:04 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000025.html">[Happyboom-svn] r118 - in happyboom/trunk: . common happywarry happywarry/server
+</A></li>
+        <LI>Next message: <A HREF="000027.html">[Happyboom-svn] r120 - happyboom/trunk/common
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26">[ date ]</a>
+              <a href="thread.html#26">[ thread ]</a>
+              <a href="subject.html#26">[ subject ]</a>
+              <a href="author.html#26">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-05 02:01:49 +0200 (Mon, 05 Sep 2005)
+New Revision: 119
+
+Added:
+   happyboom/trunk/happywarry/Makefile
+   happyboom/trunk/happywarry/locale/
+   happyboom/trunk/happywarry/locale/fr/
+   happyboom/trunk/happywarry/locale/fr/LC_MESSAGES/
+   happyboom/trunk/happywarry/locale/fr/LC_MESSAGES/happywarry.po
+Modified:
+   happyboom/trunk/happywarry/happywarry-server.py
+Log:
+Support gettext
+
+
+Added: happyboom/trunk/happywarry/Makefile
+===================================================================
+--- happyboom/trunk/happywarry/Makefile	2005-09-04 22:32:57 UTC (rev 118)
++++ happyboom/trunk/happywarry/Makefile	2005-09-05 00:01:49 UTC (rev 119)
+@@ -0,0 +1,18 @@
++.PHONY : clean mo
++POT_SOURCES=happywarry-server.py
++POT_OUT=messages.gzz
++what:
++	@echo &quot;Make what?&quot;
++	@echo &quot;o pot: Generate $(POT_OUT) file (gettext).&quot;
++	@echo &quot;o mo: Generate *.mo file (gettext).&quot;
++	@echo &quot;o clean: Remove generated and temporary files (eg. *.pyc)&quot;
++
++mo:
++	@$(foreach file,$(shell find -name &quot;*.po&quot;),echo &quot;Compile $(file)&quot; &amp;&amp; msgfmt -o $(patsubst %.po,%.mo,$(file)) $(file))
++	
++pot: $(POT_OUT)
++POT_OUT: $(POT_SOURCES)
++	pygettext -o $(POT_OUT) $(POT_SOURCES)
++
++clean:
++	rm -f $(shell find -name &quot;*.swp&quot; -o -name &quot;*~&quot; -o -name &quot;*.mo&quot; -o -name &quot;*.pyc&quot;)
+
+Modified: happyboom/trunk/happywarry/happywarry-server.py
+===================================================================
+--- happyboom/trunk/happywarry/happywarry-server.py	2005-09-04 22:32:57 UTC (rev 118)
++++ happyboom/trunk/happywarry/happywarry-server.py	2005-09-05 00:01:49 UTC (rev 119)
+@@ -2,27 +2,33 @@
+ # -*- coding: UTF-8 -*-
+ VERSION=&quot;0.0.0&quot;
+ PROGRAM=&quot;HappyWarry&quot;
++import gettext
+ 
+-
+ def main():
+     # Ajoute APIBoom au PYTHONPATH (&quot;../&quot; pour l'instant)
+     import sys, os
+-    sys.path.append(os.path.join(os.path.dirname(__file__), &quot;..&quot;))
++    apiboomdir = os.path.join(os.path.dirname(__file__), &quot;..&quot;)
++    sys.path.append(apiboomdir)
+ 
+-    # Cree le systeme de log
++    # Setup log
+     from common.log import log
+     log.setFilename(&quot;/home/haypo/.happywarry/server-log&quot;)
+ 
+-    # Instancie une serveur
++    # Setup gettext
++    localedir = os.path.join(os.path.dirname(__file__), &quot;./locale&quot;)
++    gettext.install('happywarry', localedir, unicode=1)
++
++    # Create the server 
+     from server.hw_server import HappyWarryServer
+     server = HappyWarryServer()    
+-
++   
++    # Run the server
+     try:
+-        log.info(&quot;Server started.&quot;)
++        log.info(_(&quot;Server started.&quot;))
+         server.run()
+     except KeyboardInterrupt:
+-        log.info(&quot;Program interrupted (CTRL+C).&quot;)
++        log.info(_(&quot;Program interrupted (CTRL+C).&quot;))
+     server.stop()
+-    log.info(&quot;Server quit.&quot;)
++    log.info(_(&quot;Server quit.&quot;))
+ 
+ if __name__==&quot;__main__&quot;: main()
+
+Added: happyboom/trunk/happywarry/locale/fr/LC_MESSAGES/happywarry.po
+===================================================================
+--- happyboom/trunk/happywarry/locale/fr/LC_MESSAGES/happywarry.po	2005-09-04 22:32:57 UTC (rev 118)
++++ happyboom/trunk/happywarry/locale/fr/LC_MESSAGES/happywarry.po	2005-09-05 00:01:49 UTC (rev 119)
+@@ -0,0 +1,26 @@
++msgid &quot;&quot;
++msgstr &quot;&quot;
++&quot;Project-Id-Version: HappyWarry\n&quot;
++&quot;POT-Creation-Date: \n&quot;
++&quot;PO-Revision-Date: 2005-09-05 01:56+0100\n&quot;
++&quot;Last-Translator: Victor STINNER &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">victor.stinner at haypocalc.com</A>&gt;\n&quot;
++&quot;Language-Team: Victor Stinner &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">victor.stinner at haypocalc.com</A>&gt;\n&quot;
++&quot;MIME-Version: 1.0\n&quot;
++&quot;Content-Type: text/plain; charset=utf-8\n&quot;
++&quot;Content-Transfer-Encoding: 8bit\n&quot;
++&quot;X-Poedit-Language: French\n&quot;
++&quot;X-Poedit-Country: FRANCE\n&quot;
++&quot;X-Poedit-SourceCharset: utf-8\n&quot;
++
++#: happywarry-server.py:27
++msgid &quot;Server started.&quot;
++msgstr &quot;Le serveur est lanc&#233;.&quot;
++
++#: happywarry-server.py:30
++msgid &quot;Program interrupted (CTRL+C).&quot;
++msgstr &quot;Programme interrompu (CTRL+C).&quot;
++
++#: happywarry-server.py:32
++msgid &quot;Server quit.&quot;
++msgstr &quot;Le serveur est arr&#234;t&#233;.&quot;
++
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000025.html">[Happyboom-svn] r118 - in happyboom/trunk: . common happywarry happywarry/server
+</A></li>
+	<LI>Next message: <A HREF="000027.html">[Happyboom-svn] r120 - happyboom/trunk/common
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#26">[ date ]</a>
+              <a href="thread.html#26">[ thread ]</a>
+              <a href="subject.html#26">[ subject ]</a>
+              <a href="author.html#26">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

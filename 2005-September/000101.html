@@ -1,0 +1,111 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r194 - happyboom/trunk/server
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r194%20-%20happyboom/trunk/server&In-Reply-To=%3C200509180556.j8I5uWeC028314%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000100.html">
+   <LINK REL="Next"  HREF="000102.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r194 - happyboom/trunk/server</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r194%20-%20happyboom/trunk/server&In-Reply-To=%3C200509180556.j8I5uWeC028314%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r194 - happyboom/trunk/server">dboucard at berlios.de
+       </A><BR>
+    <I>Sun Sep 18 07:56:32 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000100.html">[Happyboom-svn] r193 - happyboom/trunk/common
+</A></li>
+        <LI>Next message: <A HREF="000102.html">[Happyboom-svn] r195 - happyboom/trunk/client
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#101">[ date ]</a>
+              <a href="thread.html#101">[ thread ]</a>
+              <a href="subject.html#101">[ subject ]</a>
+              <a href="author.html#101">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-18 07:56:27 +0200 (Sun, 18 Sep 2005)
+New Revision: 194
+
+Modified:
+   happyboom/trunk/server/client_manager.py
+   happyboom/trunk/server/gateway.py
+Log:
+adaptation to previous common-part code cleaning
+
+
+Modified: happyboom/trunk/server/client_manager.py
+===================================================================
+--- happyboom/trunk/server/client_manager.py	2005-09-18 05:55:25 UTC (rev 193)
++++ happyboom/trunk/server/client_manager.py	2005-09-18 05:56:27 UTC (rev 194)
+@@ -49,7 +49,7 @@
+ 
+         # Register client to features
+         for feature in features:
+-            f = self.__protocol.getFeatureById(ord(feature))
++            f = self.__protocol[ord(feature)]
+             feature = f.name
+             if self.__verbose: log.info(&quot;Register feature %s for client %s&quot; % (feature, client))
+             if feature in self.__supported_features:
+
+Modified: happyboom/trunk/server/gateway.py
+===================================================================
+--- happyboom/trunk/server/gateway.py	2005-09-18 05:55:25 UTC (rev 193)
++++ happyboom/trunk/server/gateway.py	2005-09-18 05:56:27 UTC (rev 194)
+@@ -68,7 +68,7 @@
+         else:
+             self.sendNetMsg(&quot;chat&quot;, &quot;message&quot;, txt)
+ 
+-    def recvNetMsg(self, ioclient, feature, event, *args):
++    def recvNetMsg(self, ioclient, feature, event, args):
+         if self._verbose: log.info(&quot;Received: %s.%s%s&quot; % (feature, event, args))
+         message = Message(&quot;%s_%s&quot; % (feature, event), args)
+         self.sendBroadcastMessage(message, &quot;%s_listener&quot; % feature)
+@@ -80,9 +80,4 @@
+     def sendNetMsg(self, feature, event, *args):
+         clients = self.client_manager.supported_features.get(feature, ())
+         if len(clients)==0: return
+-        try:
+-            data = self.presentation.protocol.createMsg(feature, event, *args)
+-        except ProtocolException, err:
+-            log.error(err)
+-            return
+-        self.launchEvent(&quot;happyboom&quot;, &quot;event&quot;, clients, data);
++        self.launchEvent(&quot;happyboom&quot;, &quot;event&quot;, clients, feature, event, args);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000100.html">[Happyboom-svn] r193 - happyboom/trunk/common
+</A></li>
+	<LI>Next message: <A HREF="000102.html">[Happyboom-svn] r195 - happyboom/trunk/client
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#101">[ date ]</a>
+              <a href="thread.html#101">[ thread ]</a>
+              <a href="subject.html#101">[ subject ]</a>
+              <a href="author.html#101">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

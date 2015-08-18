@@ -1,0 +1,284 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r389 - in haypo/hachoir/trunk: . plugins stream
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r389%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins%20stream&In-Reply-To=%3C200601031633.k03GXD6H001518%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000290.html">
+   <LINK REL="Next"  HREF="000292.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r389 - in haypo/hachoir/trunk: . plugins stream</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r389%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins%20stream&In-Reply-To=%3C200601031633.k03GXD6H001518%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r389 - in haypo/hachoir/trunk: . plugins stream">haypo at berlios.de
+       </A><BR>
+    <I>Tue Jan  3 17:33:13 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000290.html">[Happyboom-svn] r388 - in haypo/hachoir/trunk: . plugins stream
+</A></li>
+        <LI>Next message: <A HREF="000292.html">[Happyboom-svn] r390 - haypo
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#291">[ date ]</a>
+              <a href="thread.html#291">[ thread ]</a>
+              <a href="subject.html#291">[ subject ]</a>
+              <a href="author.html#291">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-03 17:33:12 +0100 (Tue, 03 Jan 2006)
+New Revision: 389
+
+Modified:
+   haypo/hachoir/trunk/bits.py
+   haypo/hachoir/trunk/chunk.py
+   haypo/hachoir/trunk/filter.py
+   haypo/hachoir/trunk/plugins/elf.py
+   haypo/hachoir/trunk/plugins/png.py
+   haypo/hachoir/trunk/plugins/worms2.py
+   haypo/hachoir/trunk/stream/file.py
+Log:
+- Remove clone() methods in FileStream and Chunk
+- Worms2: Replace &quot;mysterious header&quot; with &quot;step&quot;
+- Worms2: Replace (a, b) with &quot;offset&quot; and c with &quot;step&quot; in SpriteFrame 
+- PNG: Fix Text handler
+- Filter: only replace filter when raw data when fails if size is an integer
+
+
+Modified: haypo/hachoir/trunk/bits.py
+===================================================================
+--- haypo/hachoir/trunk/bits.py	2006-01-03 04:02:25 UTC (rev 388)
++++ haypo/hachoir/trunk/bits.py	2006-01-03 16:33:12 UTC (rev 389)
+@@ -1,5 +1,5 @@
+ def str2hex(value):
+-    text = &quot;(hex) &quot;
++    text = &quot;&quot;
+     for character in value:
+         if text != &quot;&quot;:
+             text += &quot; &quot;
+
+Modified: haypo/hachoir/trunk/chunk.py
+===================================================================
+--- haypo/hachoir/trunk/chunk.py	2006-01-03 04:02:25 UTC (rev 388)
++++ haypo/hachoir/trunk/chunk.py	2006-01-03 16:33:12 UTC (rev 389)
+@@ -23,9 +23,6 @@
+         return None
+     getStaticSize = staticmethod(getStaticSize)
+ 
+-    def clone(self):
+-        raise Exception(&quot;%s doesn't implement clone() method!&quot; % self)
+-
+     def postProcess(self):        
+         if self.post_process != None:
+             self.display = self.post_process(self)
+@@ -275,11 +272,6 @@
+         self._size = getFormatSize(self._format)
+         self._value = {}
+        
+-    def clone(self, addr=None):
+-        if addr == None:
+-            addr = self._addr
+-        return FormatChunk(self.id, self.description, self._stream, addr, self._format, self._parent)
+-
+     def getFormat(self):
+         return self.__class__.__name__ + &quot; (%s)&quot; % self._format
+ 
+
+Modified: haypo/hachoir/trunk/filter.py
+===================================================================
+--- haypo/hachoir/trunk/filter.py	2006-01-03 04:02:25 UTC (rev 388)
++++ haypo/hachoir/trunk/filter.py	2006-01-03 16:33:12 UTC (rev 389)
+@@ -291,12 +291,12 @@
+                     filter_stream.seek(desc[2])
+                 else:
+                     self._stream.seek(addr)
+-                assert isinstance(size, int)
+-                self._chunks_dict[id][4] = (FormatChunk, id, description, filter_stream, &quot;string[%u]&quot; % size, self)
+-                self._chunks_dict[id][5] = None
+-                self._chunks_dict[id][6] = {}
+-                self.updateChunkDisplay(id)
+-                return self._createInstance(id)
++                if isinstance(size, int) or isinstance(size, long):
++                    self._chunks_dict[id][4] = (FormatChunk, id, description, filter_stream, &quot;string[%u]&quot; % size, self)
++                    self._chunks_dict[id][5] = None
++                    self._chunks_dict[id][6] = {}
++                    self.updateChunkDisplay(id)
++                    return self._createInstance(id)
+         self._stream.seek(oldpos)
+         return chunk
+ 
+
+Modified: haypo/hachoir/trunk/plugins/elf.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/elf.py	2006-01-03 04:02:25 UTC (rev 388)
++++ haypo/hachoir/trunk/plugins/elf.py	2006-01-03 16:33:12 UTC (rev 389)
+@@ -141,8 +141,7 @@
+ #            i = i + 1
+             
+         size = elf[&quot;shoff&quot;] - stream.tell()
+-        newstream = stream.clone()
+-        chunk = self.doRead(&quot;data&quot;, &quot;Data&quot;, (DeflateFilter, newstream, size, Sections, sections))
++        chunk = self.doRead(&quot;data&quot;, &quot;Data&quot;, (DeflateFilter, stream, size, Sections, sections))
+         chunk.description = &quot;Sections (use an evil hack to manage share same data on differents parts)&quot;
+         assert stream.tell() == elf[&quot;shoff&quot;]
+ 
+
+Modified: haypo/hachoir/trunk/plugins/png.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/png.py	2006-01-03 04:02:25 UTC (rev 388)
++++ haypo/hachoir/trunk/plugins/png.py	2006-01-03 16:33:12 UTC (rev 389)
+@@ -70,10 +70,14 @@
+ class Text(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;text&quot;, &quot;Text&quot;, stream, parent)
+-        chunk = self.read(&quot;keyword&quot;, &quot;Keyword&quot;, (StringChunk, &quot;C&quot;))
++        chunk = self.doRead(&quot;keyword&quot;, &quot;Keyword&quot;, (StringChunk, &quot;C&quot;))
+         lg = stream.getSize() - chunk.size
+         self.read(&quot;text&quot;, &quot;Text&quot;, (FormatChunk, &quot;string[%u]&quot; % lg))
+ 
++    def updateParent(self, chunk):
++        text = self.getChunk(&quot;text&quot;).getValue(40)
++        chunk.description = &quot;Text: \&quot;%s\&quot;&quot; % text        
++
+ class Time(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;time&quot;, &quot;Time&quot;, stream, parent, &quot;!&quot;)
+@@ -134,9 +138,9 @@
+         else:
+             type = &quot;Unknow (%s)&quot; % type
+         if self.data:            
+-            desc = &quot;[Chunk] %s&quot; % self.data.getDescription()
++            desc = self.data.getDescription()
+         else:
+-            desc = &quot;[Chunk] %s&quot; % type
++            desc = &quot;Chunk %s&quot; % type
+             type = self[&quot;type&quot;]
+             if type == &quot;IEND&quot;:
+                 desc += &quot;: end of file&quot;
+
+Modified: haypo/hachoir/trunk/plugins/worms2.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/worms2.py	2006-01-03 04:02:25 UTC (rev 388)
++++ haypo/hachoir/trunk/plugins/worms2.py	2006-01-03 16:33:12 UTC (rev 389)
+@@ -49,43 +49,47 @@
+         chunk.description = &quot;Image: %ux%u pixels&quot; % \
+             (self[&quot;width&quot;], self[&quot;height&quot;])
+ 
+-class MysteriousHeader(OnDemandFilter):
++class Step(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;sprite_item&quot;, &quot;Sprite item&quot;, stream, parent, &quot;&lt;&quot;)
+         self.read(&quot;a&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;b&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;c&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
+-        self.read(&quot;d&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;size&quot;, &quot;Size in byte&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;e&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
+-        self.read(&quot;f&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;f1&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;f2&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
+         
+     def updateParent(self, chunk):            
+-        chunk.description = &quot;Mysterious: d=%s f=%s a=%s b=%s c=%s e=%s&quot; % \
+-            (self[&quot;d&quot;],self[&quot;f&quot;],self[&quot;a&quot;],self[&quot;b&quot;],self[&quot;c&quot;],self[&quot;e&quot;])
++        chunk.description = &quot;Step: size=%s f1=%s f2=%s a=%s b=%s c=%s e=%s&quot; % \
++            (self[&quot;size&quot;],self[&quot;f1&quot;],self[&quot;f2&quot;],self[&quot;a&quot;],self[&quot;b&quot;],self[&quot;c&quot;],self[&quot;e&quot;])
+ 
+ class SpriteFrame(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;frame&quot;, &quot;Sprite frame&quot;, stream, parent, &quot;&lt;&quot;)
+-        self.read(&quot;a&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
+-        self.read(&quot;b&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
+-        self.read(&quot;c&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;offset&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;zero&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
++        assert self[&quot;zero&quot;] == 0
++        self.read(&quot;step&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
+         self.read(&quot;x&quot;, &quot;Offset X&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;y&quot;, &quot;Offset Y&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
+ 
+     def updateParent(self, chunk):            
+-        chunk.description = &quot;Frame: a=%s b=%s c=%s %ux%u pixels at (%u,%u)&quot; % \
+-            (self[&quot;a&quot;], self[&quot;b&quot;], self[&quot;c&quot;], self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;x&quot;], self[&quot;y&quot;])
++        w = self[&quot;width&quot;] - self[&quot;x&quot;]
++        h = self[&quot;height&quot;] - self[&quot;y&quot;]
++        chunk.description = &quot;Frame: %ux%u bytes - %ux%u pixels at (%u,%u) offset=%s step=%s&quot; % \
++            (w, h, self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;x&quot;], self[&quot;y&quot;], self[&quot;offset&quot;], self[&quot;step&quot;])
+ 
+ class Sprite(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;sprite&quot;, &quot;Sprite&quot;, stream, parent, &quot;&lt;&quot;)
+         name = parent.name
+-        self.read(&quot;n&quot;, &quot;Type?&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;nb_step&quot;, &quot;Number of steps&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;zero&quot;, &quot;Zero?&quot;, (FormatChunk, &quot;uint16&quot;))
+-        for i in range(0, self[&quot;n&quot;]):
+-            self.read(&quot;mysterious[]&quot;, &quot;Mysterious header&quot;, (MysteriousHeader,))
++        for i in range(0, self[&quot;nb_step&quot;]):
++            self.read(&quot;step[]&quot;, &quot;Step&quot;, (Step,))
+         self.read(&quot;x&quot;, &quot;Offset X&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;y&quot;, &quot;Offset Y&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;))
+@@ -102,8 +106,8 @@
+         self.addPadding()
+ 
+     def updateParent(self, chunk):            
+-        chunk.description = &quot;Animation: %ux%u pixels, %u mysterious, %u frame(s)&quot; % \
+-            (self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;n&quot;], self[&quot;count&quot;])
++        chunk.description = &quot;Animation: %ux%u pixels, %u step(s), %u frame(s)&quot; % \
++            (self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;nb_step&quot;], self[&quot;count&quot;])
+ 
+ class Font(OnDemandFilter):
+     def __init__(self, stream, parent):
+
+Modified: haypo/hachoir/trunk/stream/file.py
+===================================================================
+--- haypo/hachoir/trunk/stream/file.py	2006-01-03 04:02:25 UTC (rev 388)
++++ haypo/hachoir/trunk/stream/file.py	2006-01-03 16:33:12 UTC (rev 389)
+@@ -103,9 +103,6 @@
+             self._seed = self._seed + len(data)
+         return data            
+ 
+-    def clone(self):
+-        return FileStream(self._file, self.filename, copy=self)
+-
+     def seek(self, pos, where=0):
+         &quot;&quot;&quot; Read file seek document to understand where. &quot;&quot;&quot;
+         if where==0:
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000290.html">[Happyboom-svn] r388 - in haypo/hachoir/trunk: . plugins stream
+</A></li>
+	<LI>Next message: <A HREF="000292.html">[Happyboom-svn] r390 - haypo
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#291">[ date ]</a>
+              <a href="thread.html#291">[ thread ]</a>
+              <a href="subject.html#291">[ subject ]</a>
+              <a href="author.html#291">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

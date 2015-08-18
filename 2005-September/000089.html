@@ -1,0 +1,844 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r182 - in happyboom/trunk: client common server
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r182%20-%20in%20happyboom/trunk%3A%20client%20common%20server&In-Reply-To=%3C200509160441.j8G4foe6016240%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000088.html">
+   <LINK REL="Next"  HREF="000090.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r182 - in happyboom/trunk: client common server</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r182%20-%20in%20happyboom/trunk%3A%20client%20common%20server&In-Reply-To=%3C200509160441.j8G4foe6016240%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r182 - in happyboom/trunk: client common server">haypo at berlios.de
+       </A><BR>
+    <I>Fri Sep 16 06:41:50 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000088.html">[Happyboom-svn] r181 - in happyboom/trunk/net: io io_tcp io_udp
+</A></li>
+        <LI>Next message: <A HREF="000090.html">[Happyboom-svn] r183 - in boomboom: . client client/items server server/agents
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#89">[ date ]</a>
+              <a href="thread.html#89">[ thread ]</a>
+              <a href="subject.html#89">[ subject ]</a>
+              <a href="author.html#89">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-16 06:41:41 +0200 (Fri, 16 Sep 2005)
+New Revision: 182
+
+Added:
+   happyboom/trunk/client/__init__.py
+Modified:
+   happyboom/trunk/client/base_client.py
+   happyboom/trunk/common/event.py
+   happyboom/trunk/common/generic_event.py
+   happyboom/trunk/common/happyboom_protocol.py
+   happyboom/trunk/common/log.py
+   happyboom/trunk/common/packer.py
+   happyboom/trunk/common/presentation.py
+   happyboom/trunk/common/protocol.py
+   happyboom/trunk/server/agent.py
+   happyboom/trunk/server/client.py
+   happyboom/trunk/server/client_manager.py
+   happyboom/trunk/server/gateway.py
+Log:
+Correction de bugs, et modification du code pour prendre en compte
+la nouvelle architecture.
+
+
+Added: happyboom/trunk/client/__init__.py
+===================================================================
+
+Modified: happyboom/trunk/client/base_client.py
+===================================================================
+--- happyboom/trunk/client/base_client.py	2005-09-16 04:40:17 UTC (rev 181)
++++ happyboom/trunk/client/base_client.py	2005-09-16 04:41:41 UTC (rev 182)
+@@ -1,9 +1,26 @@
+-from net import io_udp
+-from common.happyboom_protocol import HappyboomProtocol
+-from common.event import EventLauncher, EventListener
++from happyboom.common.happyboom_protocol import HappyboomProtocol
++from happyboom.common.protocol import ProtocolException
++from happyboom.common.log import log
++from happyboom.common.event import EventLauncher, EventListener
++from happyboom.net.io.packet import Packet
++from happyboom.net.io_tcp.tcp import IO_TCP
+ import struct, string
++import thread
+ 
+ class Client(object, EventListener, EventLauncher):
++    &quot;&quot;&quot;
++    Base HappyBoom client.
++    @ivar __stopped: Stopped display client flag.
++    @type __stopped: C{bool}
++    @ivar __stoplock: Mutex for synchronizing __stopped.
++    @type __stoplock: C{thread.lock}
++    @ivar _io: Network input/output object using UDP protocole.
++    @type _io: C{net.io_udp.IO_UDP}
++    @ivar verbose: Verbose mode flag.
++    @type verbose: C{bool}
++    @ivar debug: Debug mode flag.
++    @type debug: C{bool}
++    &quot;&quot;&quot;
+     
+     def __init__(self, args):
+         EventLauncher.__init__(self)
+@@ -13,30 +30,38 @@
+         self.verbose = args.get(&quot;verbose&quot;, False)
+         self.debug = args.get(&quot;debug&quot;, False)
+         protocol = args.get(&quot;protocol&quot;, None)
+-        self.__io = io_udp.IO_UDP()
+-        self.__verbose = verbose
+-        self.__io.verbose = verbose
+-        self.__debug = debug
+-        self.__io.debug = debug
++        self._io = IO_TCP()
++        self._io.verbose = self.verbose
++        self._io.debug = self.debug
+         self.__stopped = False
+         self.__stoplock = thread.allocate_lock()
+         
+         self.signature = None
+-        self.presentation = common.HappyboomProtocol(protocol)
+-        self.gateway = Gateway()
++        self.presentation = HappyboomProtocol(protocol)
++        self.gateway = Gateway(protocol)
++
++    def send(self, feature, event, *args):
++        &quot;&quot;&quot; Sends a string to the network server.
++        @param str: String to send.
++        @type str: C{str}
++        &quot;&quot;&quot;
++        data = self.presentation.protocol.createMsg(feature, event, *args)
++        self.launchEvent(&quot;happyboom&quot;, &quot;event&quot;, (self._io,), data)
++#        data = self.presentation.sendMsg(data)
++#        self._io.send(Packet(data))
+         
+     def start(self):
+         &quot;&quot;&quot; Starts the client : connection to the server, etc. &quot;&quot;&quot;
+         # Try to connect to server
+-        if self.__verbose: print &quot;[HAPPYBOOM] Trying to connect to server %s:%u&quot; % (self.host, self.port)
+-        self.__io.on_connect = self.onConnect
+-        self.__io.on_connection_fails = self.onConnectionFails
+-        self.__io.on_disconnect = self.onDisconnect
+-        self.__io.on_new_packet = self.gateway.processPacket
+-        self.__io.on_lost_connection = self.onLostConnection
+-        self.__io.connect(self.host, self.port)
+-        if not self.__io.is_ready: return
+-        thread.start_new_thread(self.__io.run_thread, ())
++        if self.verbose: print &quot;[HAPPYBOOM] Trying to connect to server %s:%u&quot; % (self.host, self.port)
++        self._io.on_connect = self.onConnect
++        self._io.on_connection_fails = self.onConnectionFails
++        self._io.on_disconnect = self.onDisconnect
++        self._io.on_new_packet = self.presentation.processPacket
++        self._io.on_lost_connection = self.onLostConnection
++        self._io.connect(self.host, self.port)
++        if not self._io.is_ready: return
++        thread.start_new_thread(self._io.run_thread, ())
+         
+     def stop(self):
+         &quot;&quot;&quot; Stops the display client : disconnection from the server, etc. &quot;&quot;&quot;
+@@ -44,13 +69,13 @@
+         self.__stoplock.acquire()
+         if self.__stopped:
+             self.__stoplock.release()
+-            return
++            return False
+         self.__stopped = True
+         self.__stoplock.release()
+         
+-        self.send(&quot;quit&quot;)
+-        self.__io.stop()
+-        if self.__verbose: print &quot;[HAPPYBOOM] Stopped&quot;
++        self._io.stop()
++        if self.verbose: print &quot;[HAPPYBOOM] Stopped&quot;
++        return True
+         
+     def __isStopped(self):
+         self.__stoplock.acquire()
+@@ -61,7 +86,8 @@
+     
+     def onConnect(self):
+         &quot;&quot;&quot; Handler called on network connection. &quot;&quot;&quot;
+-        if self.__verbose: print &quot;[HAPPYBOOM] Connected to server&quot;
++        if self.verbose: print &quot;[HAPPYBOOM] Connected to server&quot;
++        self.launchEvent(&quot;happyboom&quot;, &quot;connection&quot;, self._io, self.presentation.protocol.version.encode(&quot;ascii&quot;), &quot;&quot;)
+         
+     def onConnectionFails(self):
+         &quot;&quot;&quot; Handler called when network connection fails. &quot;&quot;&quot;
+@@ -84,36 +110,35 @@
+         &quot;&quot;&quot;
+         event_type, arg = self.str2evt(new_packet.data)
+         if event_type != None: 
+-            if self.__debug: print &quot;Received message: type=%s arg=%s&quot; %(event_type, arg)
++            if self.debug: print &quot;Received message: type=%s arg=%s&quot; %(event_type, arg)
+             self.launchEvent(event_type, arg)
+             
+-    def send(self, str):
+-        &quot;&quot;&quot; Sends a string to the network server.
+-        @param str: String to send.
+-        @type str: C{str}
+-        &quot;&quot;&quot;
+-        p = io.Packet()
+-        p.writeStr(str)
+-        self.__io.send(p)
+-        
+ class Gateway(EventLauncher, EventListener):
+-    def __init__(self):
++    def __init__(self, protocol):
+         EventLauncher.__init__(self)
+         EventListener.__init__(self, &quot;evt_&quot;)
++        self.protocol = protocol
+         self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;connection&quot;, self.processConnection)
+         self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;disconnection&quot;, self.processDisconnection)
+-        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;create_item&quot;, self.processConnection)
+-        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;destroy_item&quot;, self.processConnection)
+-        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;recv_event&quot;, self.processConnection)
++        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;create_item&quot;, self.processCreate)
++#        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;destroy_item&quot;, self.processXX)
++        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;recv_event&quot;, self.processEvent)
+         self.registerEvent(&quot;happyboom&quot;)
+         self.features = []
+         self.items = {}
+         #self.gamepath = None
+-        self.module = __import__(&quot;items&quot;)
++        self.module = __import__(&quot;client/items&quot;)
+         
+-    def processConnection(self, version, signature):
+-        self.launchEvent(&quot;happyboom&quot;, &quot;signature&quot;, signature)
+-        self.launchEvent(&quot;happyboom&quot;, &quot;sendFeatures&quot;, self.features)
++    def processConnection(self, ioclient, version, signature):
++        self.launchEvent(&quot;happyboom&quot;, &quot;signature&quot;, ioclient, signature)
++        features = &quot;&quot;
++        for name in self.features:
++            try:
++                feature = self.protocol.getFeature(name)
++                features = features + &quot;%c&quot; % feature.id
++            except ProtocolException:
++                pass
++        self.launchEvent(&quot;happyboom&quot;, &quot;features&quot;, ioclient, features)
+         
+     def processDisconnection(self, reason):
+         self.launchEvent(&quot;happyboom&quot;, &quot;stop&quot;, reason)
+@@ -132,7 +157,7 @@
+         self.launchEvent(feature, &quot;delete&quot;, id)
+         del self.items[id]
+         
+-    def processEvent(self, feature, event, args):
++    def processEvent(self, ioclient, feature, event, *args):
+         self.launchEvent(feature, event, *args)
+ 
+     def getClassnameByFeature(self, feature):
+@@ -152,15 +177,18 @@
+                     classname = classname + feature[i]
+         return classname
+ 
+-    def evt_happyboom_features(self, feature):
+-        if feature not in self.features:
+-            self.features.append(feature)
+-            self.registerEvent(feature)
+-        
+ #    def evt_happyboom_gamepath(self, path):
+ #        self.gamepath = path
+         
+-    def eventPerformed(self, event):
+-        if self.type != &quot;happyboom&quot;:
+-            self.launchEvent(&quot;happyboom&quot;, &quot;send&quot;, *event.content)
+-            
+\ No newline at end of file
++    def processCreate(self, ioclient, type, id):
++        try:
++            type = self.protocol.getFeatureById(type)
++            type = type.name
++        except ProtocolException, err:
++            log.error(err)
++            return
++        self.launchEvent(&quot;happyboom&quot;, &quot;doCreateItem&quot;, type, id)
++
++    def processEvent(self, ioclient, feature, event, *args):       
++        log.info(&quot;New event: %s.%s%s&quot; % (feature, event, args))
++        self.launchEvent(feature, event, *args)
+
+Modified: happyboom/trunk/common/event.py
+===================================================================
+--- happyboom/trunk/common/event.py	2005-09-16 04:40:17 UTC (rev 181)
++++ happyboom/trunk/common/event.py	2005-09-16 04:41:41 UTC (rev 182)
+@@ -10,11 +10,11 @@
+ class EventListener(evt.EventListener):
+     &quot;&quot;&quot; Happyboom generic class for listening to events.
+     &quot;&quot;&quot;
+-    def __init__(self, prefix=&quot;evt&quot;, suffix=&quot;&quot;, default=&quot;eventPerformed&quot;, silent=True):
++    def __init__(self, prefix=&quot;evt_&quot;, suffix=&quot;&quot;, default=&quot;eventPerformed&quot;, silent=True):
+         &quot;&quot;&quot; EventListener constructor.
+         &quot;&quot;&quot;
+         evt.EventListener.__init__(self, prefix, suffix, &quot;happyboomEventPerformed&quot;, silent)
+-        self.hb_default = default
++        self.event_hb_default = default
+         
+     def getEventName(self, feature, event):
+         return &quot;%s_%s&quot; %(feature, event)
+@@ -22,7 +22,7 @@
+     def happyboomEventPerformed(self, event):
+         if issubclass(event.__class__, Event):
+             # Try to call event-specific handle method
+-            fctname = self.pattern %(self.getEventName(event.type, event.event))
++            fctname = self.event_pattern %(self.getEventName(event.type, event.event))
+             if hasattr(self, fctname):
+                 function = getattr(self, fctname)
+                 if callable(function):
+@@ -30,8 +30,8 @@
+                     return
+ 
+         # Try to call default handle method
+-        if hasattr(self, self.hb_default):
+-            function = getattr(self, self.hb_default)
++        if hasattr(self, self.event_hb_default):
++            function = getattr(self, self.event_hb_default)
+             if callable(function):
+                 function(event)
+                 return
+@@ -49,7 +49,8 @@
+     def launchEvent(self, feature, event, *args):
+         &quot;&quot;&quot; Launches a new event to the listeners.
+         &quot;&quot;&quot;
+-        self.manager.dispatchEvent(Event(feature, event, self, args))
++        e = Event(feature, event, self, args)
++        self.event_manager.dispatchEvent(e)
+ 
+ class Event(evt.Event):
+     &quot;&quot;&quot; Represents an happyboom event entity.
+@@ -67,3 +68,5 @@
+         &quot;&quot;&quot;
+         return &quot;&lt;event.Event feature=%s event=%s source=%s content=%s&gt;&quot; %(self.type, self.event, self.source, self.content)
+     
++    def getFeature(self): return feature
++    feature = property(getFeature)
+
+Modified: happyboom/trunk/common/generic_event.py
+===================================================================
+--- happyboom/trunk/common/generic_event.py	2005-09-16 04:40:17 UTC (rev 181)
++++ happyboom/trunk/common/generic_event.py	2005-09-16 04:41:41 UTC (rev 182)
+@@ -49,15 +49,15 @@
+         if event.type in self.listeners:
+             for obj in self.listeners[event.type]:
+                 # Try to call event-specific handle method
+-                fctname = obj.pattern %(event.type)
++                fctname = obj.event_pattern %(event.type)
+                 if hasattr(obj, fctname):
+                     function = getattr(obj, fctname)
+                     if callable(function):
+                         function(event)
+                         continue
+                 # Try to call default handle method
+-                if hasattr(obj, obj.default):
+-                    function = getattr(obj, obj.default)
++                if hasattr(obj, obj.event_default):
++                    function = getattr(obj, obj.event_default)
+                     if callable(function):
+                         function(event)
+                         continue
+@@ -80,12 +80,12 @@
+     If it does not exist, the default function is called as defined by the C{L{default}} parameter/attribute.
+     
+     If the event cannot be handled, a C{L{UnhandledEventError}} is raised, except if C{L{silent}} flag is C{True}.
+-    @ivar manager: The event manager instance.
+-    @type manager: C{L{EventManager}}
+-    @ivar pattern: Event-specific handler pattern.
+-    @type pattern: C{str}
+-    @ivar default: Default handler function name.
+-    @type default: C{str}
++    @ivar event_manager: The event manager instance.
++    @type event_manager: C{L{EventManager}}
++    @ivar event_pattern: Event-specific handler pattern.
++    @type event_pattern: C{str}
++    @ivar event_default: Default handler function name.
++    @type event_default: C{str}
+     @ivar silent: Silent flag. If C{False}, C{L{UnhandledEventError}} is raised if an event cannot be handled. If C{True}, do nothing, listener does not handle the event.
+     @type silent: C{str}
+     &quot;&quot;&quot;
+@@ -95,14 +95,14 @@
+         @type prefix: C{str}
+         @param suffix: Suffix for all event-specific handler function name.
+         @type suffix: C{str}
+-        @param default: Default handler function name.
+-        @type default: C{str}
+-        @param silent: Silent flag.
+-        @type silent: C{bool}
++        @param event_default: Default handler function name.
++        @type event_default: C{str}
++        @param event_silent: Silent flag.
++        @type event_silent: C{bool}
+         &quot;&quot;&quot;
+-        self.manager = EventManager.instance
+-        self.pattern = prefix + &quot;%s&quot; + suffix
+-        self.default = default
++        self.event_manager = EventManager.instance
++        self.event_pattern = prefix + &quot;%s&quot; + suffix
++        self.event_default = default
+         self.event_silent = silent
+         
+     def registerEvent(self, event_type):
+@@ -110,25 +110,25 @@
+         @param event_type: Type of the event to listen.
+         @type event_type: C{str}
+         &quot;&quot;&quot;
+-        self.manager.addListener(self, event_type)
++        self.event_manager.addListener(self, event_type)
+         
+     def unregisterEvent(self, event_type):
+         &quot;&quot;&quot; Unregisters itself from a event.
+         @param event_type: Type of the event which was listening.
+         @type event_type: C{str}
+         &quot;&quot;&quot;
+-        self.manager.removeListener(self, event_type)
++        self.event_manager.removeListener(self, event_type)
+ 
+ 
+ class EventLauncher:
+     &quot;&quot;&quot; Generic class for launching events.
+     It is just needed to herite from this class to launch easily events.
+-    @ivar manager: The event manager instance.
+-    @type manager: C{L{EventManager}}
++    @ivar event_manager: The event manager instance.
++    @type event_manager: C{L{EventManager}}
+     &quot;&quot;&quot;
+     def __init__(self):
+         &quot;&quot;&quot; EventLauncher constructor. &quot;&quot;&quot;
+-        self.manager = EventManager.instance
++        self.event_manager = EventManager.instance
+         
+         
+     def launchEvent(self, event_type, content=None):
+@@ -138,7 +138,7 @@
+         @param content: Content to attach with the event (Optional).
+         @type content: any
+         &quot;&quot;&quot;
+-        self.manager.dispatchEvent(Event(event_type, self, content))
++        self.event_manager.dispatchEvent(Event(event_type, self, content))
+     
+     
+ class Event:
+
+Modified: happyboom/trunk/common/happyboom_protocol.py
+===================================================================
+--- happyboom/trunk/common/happyboom_protocol.py	2005-09-16 04:40:17 UTC (rev 181)
++++ happyboom/trunk/common/happyboom_protocol.py	2005-09-16 04:41:41 UTC (rev 182)
+@@ -1,5 +1,6 @@
+ from presentation import Presentation
+ from happyboom.common.packer import unpack, unpackBin, unpackUtf8, unpackInt
++from happyboom.common.log import log
+ import struct
+ 
+ class HappyboomProtocol(Presentation):
+@@ -34,8 +35,10 @@
+         return data
+ 
+     def unpackCreateItem(self, ioclient, data):
+-        itemid,data = unpackInt(data)
+-        type,data = unpackBin(data)
++        fmt = &quot;!BI&quot;
++        i = struct.calcsize(fmt)
++        type, itemid = struct.unpack(fmt, data)
++        data = data[i:]
+         if self._on_create_item != None:
+             self._on_create_item(ioclient, type, itemid)
+         return data
+@@ -51,12 +54,9 @@
+         i = struct.calcsize(fmt)
+         feature_id, event_id = struct.unpack(fmt, data[:i])
+         data = data[i:]
+-
+         feature, event, args = unpack(data, feature_id, event_id, self.protocol)
+-        log.info(&quot;Received: %s.%s(%s)&quot; % (feature, event, args))
+-
+         if self._on_recv_event != None:
+-            self._on_recv_event(ioclient, feature, event, args)
++            self._on_recv_event(ioclient, feature, event, *args)
+         return &quot;&quot;
+ 
+     def unpackConnection(self, ioclient, data):
+
+Modified: happyboom/trunk/common/log.py
+===================================================================
+--- happyboom/trunk/common/log.py	2005-09-16 04:40:17 UTC (rev 181)
++++ happyboom/trunk/common/log.py	2005-09-16 04:41:41 UTC (rev 182)
+@@ -11,6 +11,7 @@
+     def __init__(self):
+         self.__buffer = {}
+         self.__file = None
++        self.on_new_message = None # (level, prefix, text)
+ 
+     def setFilename(self, filename):
+         &quot;&quot;&quot;
+@@ -38,7 +39,7 @@
+         @return: C{str}
+         &quot;&quot;&quot;
+         if level==Log.LOG_WARN: return &quot;[warn]&quot;
+-        if level==Log.LOG_ERROR: return &quot;[err] &quot;
++        if level==Log.LOG_ERROR: return &quot;[err!]&quot;
+         return &quot;[info]&quot;
+ 
+     def new_message(self, level, str):
+@@ -63,6 +64,8 @@
+             self.__file.write(u&quot;%s - %s %s\n&quot; \
+                 % (time.strftime(&quot;%Y-%M-%d %H:%M:%S&quot;),
+                    prefix, str))
++        if self.on_new_message:
++            self.on_new_message (level, prefix, str)
+ 
+     def info(self, str):
+         &quot;&quot;&quot;
+
+Modified: happyboom/trunk/common/packer.py
+===================================================================
+--- happyboom/trunk/common/packer.py	2005-09-16 04:40:17 UTC (rev 181)
++++ happyboom/trunk/common/packer.py	2005-09-16 04:41:41 UTC (rev 182)
+@@ -71,7 +71,7 @@
+ def unpackInt(data):
+     fmt = &quot;!i&quot;
+     i = struct.calcsize(fmt)
+-    value = struct.unpack(fmt, data[:i])
++    value, = struct.unpack(fmt, data[:i])
+     return value, data[i:]
+ 
+ def unpack(data, feature_id, event_id, protocol):
+@@ -86,6 +86,8 @@
+             arg, data = unpackInt(data)
+         elif type==&quot;bin&quot;:
+             arg, data = unpackBin(data)
++        elif type==&quot;utf8&quot;:
++            arg, data = unpackUtf8(data)
+         else:
+             raise PackerException(&quot;Wrong argument type: %s&quot; % type)
+         args.append(arg)
+
+Modified: happyboom/trunk/common/presentation.py
+===================================================================
+--- happyboom/trunk/common/presentation.py	2005-09-16 04:40:17 UTC (rev 181)
++++ happyboom/trunk/common/presentation.py	2005-09-16 04:41:41 UTC (rev 182)
+@@ -76,6 +76,10 @@
+         data = struct.pack(&quot;!B&quot;, self.FEATURES)
+         data = data + packBin(features)
+         ioclient.send( Packet(data) )
++        
++    def evt_happyboom_create(self, ioclient, feature, id):
++        data = struct.pack(&quot;!BBI&quot;, self.CREATE, feature, id)
++        ioclient.send( Packet(data) )
+        
+     def evt_happyboom_connection(self, ioclient, version, signature):
+         &quot;&quot;&quot;
+@@ -83,7 +87,7 @@
+         @type version ASCII string
+         @type signature string
+         &quot;&quot;&quot;
+-        
++       
+         data = struct.pack(&quot;!B&quot;, self.CONNECTION)
+         data = data + packBin(version)
+         data = data + packBin(signature)
+
+Modified: happyboom/trunk/common/protocol.py
+===================================================================
+--- happyboom/trunk/common/protocol.py	2005-09-16 04:40:17 UTC (rev 181)
++++ happyboom/trunk/common/protocol.py	2005-09-16 04:41:41 UTC (rev 182)
+@@ -11,7 +11,7 @@
+ 
+ class ProtocolEventParam:
+     def __init__(self, event, name, type):
+-        self.name = name
++        self.name = name.encode(&quot;ascii&quot;)
+         self.type = type
+         self.event = event
+ 
+@@ -20,7 +20,7 @@
+        
+ class ProtocolEvent:
+     def __init__(self, feature, name, id):
+-        self.name = name
++        self.name = name.encode(&quot;ascii&quot;)
+         self.id = id
+         self.feature = feature
+         self.__params_dict = {}
+@@ -53,7 +53,7 @@
+ class ProtocolFeature:
+     def __init__(self, protocol, name, id):
+         self.protocol = protocol
+-        self.name = name
++        self.name = name.encode(&quot;ascii&quot;)
+         self.id = id
+         self.__evtnames = {}
+         self.__evtids = {}
+@@ -111,7 +111,7 @@
+     version is ASCII 
+     &quot;&quot;&quot;
+     def __init__(self, name, version):
+-        self.name = name
++        self.name = name.encode(&quot;ascii&quot;)
+         self.version = version.encode(&quot;ascii&quot;)
+         self.__featnames = {}
+         self.__featids = {}
+@@ -122,13 +122,13 @@
+         types = e.getParamTypes()
+         if len(args) != len(types):
+             raise ProtocolException( \
+-                &quot;Wrong parameter count (%u) for the event %s.&quot; \
+-                % (len(args), e))
++                &quot;Wrong parameter count (%u) for the event %s.%s.&quot; \
++                % (len(args), f.name, e))
+         for i in range(len(args)):
+             if not checkType(types[i], args[i]):
+                 raise ProtocolException( \
+-                    &quot;Parameter %u of event %s should be of type %s (and not %s).&quot; \
+-                    % (i, f, types[i], type(args[i])))
++                    &quot;Parameter %u of event %s.%s should be of type %s (and not %s).&quot; \
++                    % (i, f.name, e, types[i], type(args[i])))
+         return pack(f.id, e.id, types, args)
+ 
+     def addFeature(self, name, id):
+
+Modified: happyboom/trunk/server/agent.py
+===================================================================
+--- happyboom/trunk/server/agent.py	2005-09-16 04:40:17 UTC (rev 181)
++++ happyboom/trunk/server/agent.py	2005-09-16 04:41:41 UTC (rev 182)
+@@ -1,19 +1,23 @@
+ from pysma import ActionAgent, ActionMessage as Message
+ from happyboom.common.log import log
+-from happyboom.common.event import EventLauncher
++from happyboom.common.event import EventLauncher, EventListener
+ 
+-class Agent(ActionAgent, EventLauncher):
++class Agent(ActionAgent, EventLauncher, EventListener):
+     &quot;&quot;&quot;
+     SMA agent in HappyBoom.
+     &quot;&quot;&quot;
+     def __init__(self, type, gateway, **args):
+         EventLauncher.__init__(self)
++        EventListener.__init__(self)
+         ActionAgent.__init__(self, prefix=&quot;msg_&quot;)
+         self._gateway = gateway
+         self.type = type
+         self.__debug = args.get(&quot;debug&quot;, False)
+         self.sendBroadcast = self.sendBroadcastMessage
+ 
++    def netCreateItem(self, client):
++        self.launchEvent(&quot;happyboom&quot;, &quot;netCreateItem&quot;, client, self)
++
+     def born(self):
+         self.requestRole(self.type)
+ 
+
+Modified: happyboom/trunk/server/client.py
+===================================================================
+--- happyboom/trunk/server/client.py	2005-09-16 04:40:17 UTC (rev 181)
++++ happyboom/trunk/server/client.py	2005-09-16 04:41:41 UTC (rev 182)
+@@ -7,29 +7,29 @@
+     &quot;&quot;&quot;
+ 
+     def __init__(self, io_client, gateway, client_manager):
+-        self.__io = io_client
++        self.io = io_client
+         self.__client_manager = client_manager
+         self.__gateway = gateway
+         self.signature = None
+ 
+     def __str__(self):
+-        return self.__io.__str__()
++        return self.io.__str__()
+ 
+     def disconnect(self, reason):
+-        self.launchEvent(&quot;happyboom&quot;, &quot;clientDisconnect&quot;, self.__io, reason)
++        self.launchEvent(&quot;happyboom&quot;, &quot;clientDisconnect&quot;, self.io, reason)
+ 
+     # Stop client: close socket.
+     def stop(self):
+-        self.__io.disconnect()
++        self.io.disconnect()
+ 
+     # Read a message from network stack
+     # Blocking function, returns None after timeout seconds (no data)
+     def read(self, timeout):
+-        return self.__client_manager.readClientAnswer(self.__io, timeout)
++        return self.__client_manager.readClientAnswer(self.io, timeout)
+ 
+     # Send a network packet the the client socket
+     def sendPacket(self, packet):
+-        self.__io.send(packet)
++        self.io.send(packet)
+ 
+     # Send a HappyBoom message to the client (see L{sendPacket})
+     def sendNetMsg(self, feature, event, *args):
+@@ -40,5 +40,5 @@
+             return
+         self.launchEvent(&quot;happyboom&quot;, &quot;event&quot;, (self,), data);
+ 
+-    def __getAddr(self): return self.__io.addr
++    def __getAddr(self): return self.io.addr
+     addr = property(__getAddr)
+
+Modified: happyboom/trunk/server/client_manager.py
+===================================================================
+--- happyboom/trunk/server/client_manager.py	2005-09-16 04:40:17 UTC (rev 181)
++++ happyboom/trunk/server/client_manager.py	2005-09-16 04:41:41 UTC (rev 182)
+@@ -1,4 +1,4 @@
+-from happyboom.net import io, io_udp, io_tcp, net_buffer
++from happyboom.net.io_tcp.tcp import IO_TCP
+ from happyboom.common.packer import unpackBin
+ from happyboom.common.log import log
+ from happyboom.common.thread import getBacktrace
+@@ -11,10 +11,9 @@
+         EventLauncher.__init__(self)
+         self.server = None 
+         self.__protocol = protocol
+-        self.__io = io_tcp.IO_TCP(is_server=True)
++        self.__io = IO_TCP(is_server=True)
+         self.__io.debug = arg.get(&quot;debug&quot;, False)
+         self.__io.verbose = arg.get(&quot;verbose&quot;, False)
+-        self.__buffer = net_buffer.NetBuffer()
+         self.__debug = arg.get(&quot;debug&quot;, False)
+         self.__verbose = arg.get(&quot;verbose&quot;, False)
+         self.max_clients = arg.get(&quot;max_clients&quot;, 2)
+@@ -49,7 +48,11 @@
+         self.__clients_lock.release() 
+ 
+         # Register client to features
++        print type(features)
+         for feature in features:
++            f = self.__protocol.getFeatureById(ord(feature))
++            feature = f.name
++            log.info(&quot;Register feature %s for client %s&quot; % (feature, client))
+             if feature in self.__supported_features:
+                 self.__supported_features[feature].append(ioclient)
+             else:
+@@ -61,9 +64,6 @@
+         self.launchEvent(&quot;happyboom&quot;, &quot;network&quot;, &quot;info&quot;, &quot;notice&quot;, txt)
+         self.launchEvent(&quot;happyboom&quot;, &quot;newClient&quot;, client)
+ 
+-    def recvClientPacket(self, packet):
+-        self.__buffer.append(packet.recv_from.addr, packet)
+-
+     def stop(self):
+         for client in self.__clients.values():
+             client.stop()
+@@ -84,11 +84,6 @@
+         self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;features&quot;, self.onClientFeatures)
+         thread.start_new_thread(self.run_io_thread, ())
+ 
+-    def readClientAnswer(self, client, timeout=1.000):
+-        answer = self.__buffer.readBlocking(client.addr, timeout)
+-        if answer==None: return None
+-        return answer.data
+-
+     def registerFeature(self, client, role):
+         if role in self.__supported_features:
+             if client not in self.__supported_features[role]:
+
+Modified: happyboom/trunk/server/gateway.py
+===================================================================
+--- happyboom/trunk/server/gateway.py	2005-09-16 04:40:17 UTC (rev 181)
++++ happyboom/trunk/server/gateway.py	2005-09-16 04:41:41 UTC (rev 182)
+@@ -8,7 +8,7 @@
+ 
+ class Gateway(Agent, EventListener):
+     def __init__(self, protocol, presentation, client_manager, arg):
+-        EventListener.__init__(self, &quot;evt_&quot;, silent=True)
++        EventListener.__init__(self, &quot;evt_&quot;)
+         Agent.__init__(self, self, &quot;gateway&quot;)
+         self.__protocol = protocol
+         self.client_manager = client_manager
+@@ -23,6 +23,9 @@
+         self.registerEvent(&quot;happyboom&quot;)
+         Kernel().addAgent(self.__scheduler)
+ 
++    def eventPerformed(self, event):
++        p = self.pattern % self.getEventName(event.type, event.event)
++
+     def __setServer(self, server):
+         self.__server = server
+         self.client_manager.server = server
+@@ -34,8 +37,19 @@
+     def evt_happyboom_network(self, feature, event, *args):
+         self.sendNetMsg(feature, event, *args)
+         
++    def evt_happyboom_netCreateItem(self, client, item):
++        try:
++            type = item.type
++            type = self.presentation.protocol.getFeature(type)
++            type = type.id
++        except ProtocolException, err:
++            log.error(err)
++            return
++        self.launchEvent(&quot;happyboom&quot;, &quot;create&quot;, client.io, type, item.id);
++        
+     def start(self):
+         Kernel.instance.addAgent(self)
++        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;recv_event&quot;, self.recvNetMsg)
+         
+     def stop(self):
+         self.sendNetMsg(&quot;game&quot;, &quot;stop&quot;)
+@@ -54,24 +68,19 @@
+         else:
+             self.sendNetMsg(&quot;chat&quot;, &quot;message&quot;, txt)
+ 
+-    def recvNetMsg(self, feature, event, *args):
++    def recvNetMsg(self, ioclient, feature, event, *args):
+         message = Message(&quot;%s_%s&quot; % (feature, event), args)
+         self.sendBroadcastMessage(message, &quot;%s_listener&quot; % feature)
+ 
+     def evt_happyboom_newClient(self, client):
+-        self.send(&quot;syncClient&quot;, client)
++        self.launchEvent(&quot;gateway&quot;, &quot;syncClient&quot;, client)
+ 
+     def sendNetMsg(self, feature, event, *args):
+         clients = self.client_manager.supported_features.get(feature, ())
+         if len(clients)==0: return
+         try:
+-            data = self.__protocol.createMsg(feature, event, *args)
++            data = self.presentation.protocol.createMsg(feature, event, *args)
+         except ProtocolException, err:
+             log.error(err)
+             return
+-        self.launchEvent(&quot;presentationProtocol&quot;, &quot;event&quot;, clients, data);
+-
+-    def __getProtocolVersion(self): return self.__protocol.version
+-    protocol_version = property(__getProtocolVersion)
+-
+-
++        self.launchEvent(&quot;happyboom&quot;, &quot;event&quot;, clients, data);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000088.html">[Happyboom-svn] r181 - in happyboom/trunk/net: io io_tcp io_udp
+</A></li>
+	<LI>Next message: <A HREF="000090.html">[Happyboom-svn] r183 - in boomboom: . client client/items server server/agents
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#89">[ date ]</a>
+              <a href="thread.html#89">[ thread ]</a>
+              <a href="subject.html#89">[ subject ]</a>
+              <a href="author.html#89">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

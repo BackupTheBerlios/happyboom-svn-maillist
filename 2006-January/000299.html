@@ -1,0 +1,218 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r395 - in haypo/hachoir/trunk: plugins ui
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r395%20-%20in%20haypo/hachoir/trunk%3A%20plugins%20ui&In-Reply-To=%3C200601052236.k05MahpS023920%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000296.html">
+   <LINK REL="Next"  HREF="000300.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r395 - in haypo/hachoir/trunk: plugins ui</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r395%20-%20in%20haypo/hachoir/trunk%3A%20plugins%20ui&In-Reply-To=%3C200601052236.k05MahpS023920%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r395 - in haypo/hachoir/trunk: plugins ui">haypo at berlios.de
+       </A><BR>
+    <I>Thu Jan  5 23:36:43 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000296.html">[Happyboom-svn] r394 - in haypo/hachoir/trunk: . plugins ui
+</A></li>
+        <LI>Next message: <A HREF="000300.html">[Happyboom-svn] r396 - in haypo/hachoir/trunk: . plugins stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#299">[ date ]</a>
+              <a href="thread.html#299">[ thread ]</a>
+              <a href="subject.html#299">[ subject ]</a>
+              <a href="author.html#299">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-05 23:36:42 +0100 (Thu, 05 Jan 2006)
+New Revision: 395
+
+Modified:
+   haypo/hachoir/trunk/plugins/ext2.py
+   haypo/hachoir/trunk/plugins/gif.py
+   haypo/hachoir/trunk/plugins/worms2.py
+   haypo/hachoir/trunk/ui/ui_window.py
+Log:
+- Worms2: fix empty line reader in INF
+- GIF: fix bits parsing and error handling
+- User interface: use boolean to enable or not sorting with long value instead of string value
+
+
+Modified: haypo/hachoir/trunk/plugins/ext2.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/ext2.py	2006-01-04 03:53:20 UTC (rev 394)
++++ haypo/hachoir/trunk/plugins/ext2.py	2006-01-05 22:36:42 UTC (rev 395)
+@@ -185,7 +185,6 @@
+         end = start + blocks_per_group 
+         chunk.description = &quot;Group descriptor: blocks %s-%s&quot; % (start, end)
+     
+-
+ class SuperBlock(OnDemandFilter):
+     error_handling = {
+         1: &quot;Continue&quot;
+@@ -352,7 +351,6 @@
+         if 0 &lt; size:
+             self.read(&quot;raw[]&quot;, &quot;Raw&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+ 
+-
+ class EXT2_FS(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;ext2&quot;, &quot;EXT2 file system&quot;, stream, parent)
+
+Modified: haypo/hachoir/trunk/plugins/gif.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/gif.py	2006-01-04 03:53:20 UTC (rev 394)
++++ haypo/hachoir/trunk/plugins/gif.py	2006-01-05 22:36:42 UTC (rev 395)
+@@ -7,7 +7,7 @@
+ from filter import OnDemandFilter
+ from plugin import registerPlugin
+ from chunk import FormatChunk, EnumChunk, BitsChunk, BitsStruct
+-from error import warning
++from error import warning, error
+ from generic.image import Palette
+ 
+ class Image(OnDemandFilter):
+@@ -19,11 +19,10 @@
+         self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
+ 
+         bits = (
+-            (1, &quot;local_color&quot;, &quot;Local color table&quot;),
+-            (1, &quot;interlace&quot;, &quot;Interlaced?&quot;),
+-            (1, &quot;sort&quot;, &quot;Sort&quot;),
+-            (2, &quot;reserved&quot;, &quot;Reserved&quot;),
+-            (3, &quot;size_local&quot;, &quot;Size of local color&quot;))
++            (3, &quot;bpp&quot;, &quot;Bits / pixel minus one&quot;),
++            (3, &quot;nul&quot;, &quot;Nul bits (0)&quot;),
++            (1, &quot;interlaced&quot;, &quot;Interlaced?&quot;),
++            (1, &quot;local_map&quot;, &quot;Use local color map?&quot;))
+         self.flags = self.doRead(&quot;flags&quot;, &quot;Flags&quot;, (BitsChunk, BitsStruct(bits)))
+ 
+         return
+@@ -59,10 +58,10 @@
+         self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
+ 
+         bits = (
+-            (1, &quot;global_map&quot;, &quot;Has global map?&quot;),
+             (3, &quot;bpp&quot;, &quot;Bits per pixel minus one&quot;),
++            (1, &quot;nul&quot;, &quot;Nul bit (0)&quot;),
+             (3, &quot;color_res&quot;, &quot;Color resolution minus one&quot;),
+-            (1, &quot;xxx&quot;, &quot;???&quot;))
++            (1, &quot;global_map&quot;, &quot;Has global map?&quot;))
+         self.flags = self.doRead(&quot;flags&quot;, &quot;Flags&quot;, (BitsChunk, BitsStruct(bits)))
+         self.bits_per_pixel = 1 + self.flags[&quot;bpp&quot;]
+ 
+@@ -106,9 +105,10 @@
+                 return
+             elif code == &quot;;&quot;:
+                 # GIF Terminator
+-                return
++                break
+             else:
+-                raise Exception(&quot;Wrong GIF image separator: ASCII %02X.&quot; % ord(code))
+-                
++                error(&quot;Wrong GIF image separator: ASCII %02X.&quot; % ord(code))
++                break
++        self.addPadding()                
+ 
+ registerPlugin(GifFile, &quot;image/gif&quot;)
+
+Modified: haypo/hachoir/trunk/plugins/worms2.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/worms2.py	2006-01-04 03:53:20 UTC (rev 394)
++++ haypo/hachoir/trunk/plugins/worms2.py	2006-01-05 22:36:42 UTC (rev 395)
+@@ -136,8 +136,8 @@
+             self.read(&quot;line[]&quot;, &quot;Line&quot;, (StringChunk, &quot;WindowsLine&quot;))
+         self.read(&quot;name&quot;, &quot;File name&quot;, (StringChunk, &quot;WindowsLine&quot;))
+         self.read(&quot;line[]&quot;, &quot;Line&quot;, (StringChunk, &quot;WindowsLine&quot;))
+-        self.read(&quot;empty_line[]&quot;, &quot;(empty line)&quot;, (StringChunk, &quot;WindowsLine&quot;))
+-        self.read(&quot;empty_line[]&quot;, &quot;(empty line)&quot;, (StringChunk, &quot;WindowsLine&quot;))
++        while stream.getN(2, False) == &quot;\r\n&quot;:
++            self.read(&quot;empty_line[]&quot;, &quot;(empty line)&quot;, (StringChunk, &quot;WindowsLine&quot;))
+         self.read(&quot;separator&quot;, &quot;Separator (26)&quot;, (FormatChunk, &quot;uint8&quot;))
+ 
+     def updateParent(self, chunk):
+
+Modified: haypo/hachoir/trunk/ui/ui_window.py
+===================================================================
+--- haypo/hachoir/trunk/ui/ui_window.py	2006-01-04 03:53:20 UTC (rev 394)
++++ haypo/hachoir/trunk/ui/ui_window.py	2006-01-05 22:36:42 UTC (rev 395)
+@@ -70,6 +70,7 @@
+ 
+         self.field_show_format = False 
+         self.row_chunk_id = None
++        self.sort_column_as_long = True
+         self.build_table()
+         
+     def onChunkCopy(self, event):
+@@ -136,7 +137,8 @@
+ 
+     def clear_table(self):
+         self.table_store.clear()
+-#        self.table_store.set_sort_column_id(-1, gtk.SORT_ASCENDING)
++        if self.sort_column_as_long:
++            self.table_store.set_sort_column_id(-1, gtk.SORT_ASCENDING)
+         self.table.columns_autosize()
+ 
+     def set_table_value(self, iter, column, value):
+@@ -202,18 +204,21 @@
+ 
+         i = 0
+         self.treeview_add_column(self.table, &quot;Address&quot;, i)
+-#        self.table_store.set_sort_func(0, self.cmpColumnsLong, i)
++        if self.sort_column_as_long:
++            self.table_store.set_sort_func(0, self.cmpColumnsLong, i)
+         i += 1
+         if self.field_show_format:
+             i = self.treeview_add_column(self.table, &quot;Format&quot;, i)
+         self.treeview_add_column(self.table, &quot;Size&quot;, i)
+-#        self.table_store.set_sort_func(i, self.cmpColumnsLong, i)
++        if self.sort_column_as_long:
++            self.table_store.set_sort_func(i, self.cmpColumnsLong, i)
+         i += 1
+         self.row_chunk_id = i
+         i = self.treeview_add_column(self.table, &quot;Name&quot;, i)
+         i = self.treeview_add_column(self.table, &quot;Value&quot;, i)
+         i = self.treeview_add_column(self.table, &quot;Description&quot;, i)
+-#        self.table_store.set_default_sort_func(self.cmpDefault)
++        if self.sort_column_as_long:
++            self.table_store.set_default_sort_func(self.cmpDefault)
+         self.table.columns_autosize()
+ 
+     def cmpDefault(self, model, a, b):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000296.html">[Happyboom-svn] r394 - in haypo/hachoir/trunk: . plugins ui
+</A></li>
+	<LI>Next message: <A HREF="000300.html">[Happyboom-svn] r396 - in haypo/hachoir/trunk: . plugins stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#299">[ date ]</a>
+              <a href="thread.html#299">[ thread ]</a>
+              <a href="subject.html#299">[ subject ]</a>
+              <a href="author.html#299">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

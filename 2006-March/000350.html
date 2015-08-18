@@ -1,0 +1,600 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r446 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/archive branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream branches/hachoir-yield/unit_test
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r446%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/libhachoir%20branches/hachoir-yield/libhachoir/field%20branches/hachoir-yield/libhachoir/parser/archive%20branches/hachoir-yield/libhachoir/parser/image%20branches/hachoir-yield/libhachoir/stream%20branches/hachoir-yield/unit_test&In-Reply-To=%3C200603122003.k2CK3ekB023081%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000349.html">
+   <LINK REL="Next"  HREF="000351.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r446 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/archive branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream branches/hachoir-yield/unit_test</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r446%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/libhachoir%20branches/hachoir-yield/libhachoir/field%20branches/hachoir-yield/libhachoir/parser/archive%20branches/hachoir-yield/libhachoir/parser/image%20branches/hachoir-yield/libhachoir/stream%20branches/hachoir-yield/unit_test&In-Reply-To=%3C200603122003.k2CK3ekB023081%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r446 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/archive branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream branches/hachoir-yield/unit_test">haypo at berlios.de
+       </A><BR>
+    <I>Sun Mar 12 21:03:40 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000349.html">[Happyboom-svn] r445 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser branches/hachoir-yield/libhachoir/parser/3d branches/hachoir-yield/libhachoir/parser/archive branches/hachoir-yield/libhachoir/parser/file_system branches/hachoir-yield/libhachoir/parser/image
+</A></li>
+        <LI>Next message: <A HREF="000351.html">[Happyboom-svn] r447 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#350">[ date ]</a>
+              <a href="thread.html#350">[ thread ]</a>
+              <a href="subject.html#350">[ subject ]</a>
+              <a href="author.html#350">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-12 21:03:26 +0100 (Sun, 12 Mar 2006)
+New Revision: 446
+
+Added:
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/character.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/float.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/archive/bzip2.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/archive/gzip.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/ico.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/stream/__init__.py
+   haypo/hachoir/branches/hachoir-yield/unit_test/output_stream.py
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/__init__.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/string_field.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/log.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/common.py
+   haypo/hachoir/branches/hachoir-yield/text_ui.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r60 at haypopc</A>:  haypo | 2006-03-07 00:51:51 +0100
+  * Create field classes: Character and Float
+  * Image parsers: import ICO file parser, RGBA color and PaletteRGBA
+  * Log class write output to stderr instead of stdout
+  * Import BZ2 and GZip file parser
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:59
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:60
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/__init__.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/__init__.py	2006-03-12 20:03:15 UTC (rev 445)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/__init__.py	2006-03-12 20:03:26 UTC (rev 446)
+@@ -1,5 +1,6 @@
+ from libhachoir.field.field import Field
+ from libhachoir.field.bit_field import Bits, Bit
++from libhachoir.field.character import Character
+ from libhachoir.field.integer import Integer, Enum 
+ from libhachoir.field.float import Float
+ from libhachoir.field.string_field import RawBytes, String
+
+Added: haypo/hachoir/branches/hachoir-yield/libhachoir/field/character.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/character.py	2006-03-12 20:03:15 UTC (rev 445)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/character.py	2006-03-12 20:03:26 UTC (rev 446)
+@@ -0,0 +1,15 @@
++from field import Field
++from bit_field import Bits
++
++class Character(Bits):
++    def __init__(self, parent, name, description=None):
++        Bits.__init__(self, parent, name, 8, description=description)
++
++    def _getValue(self):
++        if self._value == None:
++            byte = self.parent.stream.getBits(
++                self.absolute_address, 8, True) 
++            self._value = chr(byte)
++        return self._value
++    value = property(_getValue, Field._setValue)
++
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py	2006-03-12 20:03:15 UTC (rev 445)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py	2006-03-12 20:03:26 UTC (rev 446)
+@@ -2,6 +2,7 @@
+ from libhachoir.event_handler import EventHandler
+ from libhachoir.indexed_dict import IndexedDict
+ import libhachoir.config as config
++from libhachoir.stream import InputStream
+ 
+ class MissingField(KeyError):
+     pass
+@@ -65,6 +66,7 @@
+             self.stream = parent.stream
+         else:
+             self.stream = stream
++        assert isinstance(stream, InputStream)
+         self.fields = IndexedDict()
+         self._event_handler = None
+         self._field_generator = self.createFields()
+
+Added: haypo/hachoir/branches/hachoir-yield/libhachoir/field/float.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/float.py	2006-03-12 20:03:15 UTC (rev 445)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/float.py	2006-03-12 20:03:26 UTC (rev 446)
+@@ -0,0 +1,29 @@
++from libhachoir.field.field import Field
++from libhachoir.format import getFormatSize, getRealFormat
++import struct
++
++class Float(Field):
++    def __init__(self, parent, name, format, description=None):
++        assert issubclass(parent.__class__, Field)
++        assert format.endswith(&quot;float&quot;)
++        if format[0] not in &quot;!&lt;&gt;&quot;:
++            format = parent.endian + format
++        self.format = getRealFormat(format)
++        size = getFormatSize(format)*8
++        Field.__init__(self, parent, name, size=size, description=description)
++
++    def _getValue(self):
++        if self._value == None:
++            assert (self._size % 8) == 0
++            raw = self.parent.stream.getBytes(
++                self.absolute_address, self._size/8)
++            raw = struct.unpack(self.format, raw)
++            assert len(raw) == 1
++            self._value = raw[0]
++        return self._value
++    value = property(_getValue, Field._setValue)
++   
++    def _getDisplay(self):
++        return self.value
++    display = property(_getDisplay)
++
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/string_field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/string_field.py	2006-03-12 20:03:15 UTC (rev 445)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/string_field.py	2006-03-12 20:03:26 UTC (rev 446)
+@@ -5,6 +5,8 @@
+ class RawBytes(Field):
+     def __init__(self, parent, name, length, description=&quot;Raw data&quot;):
+         assert issubclass(parent.__class__, Field)
++        # arbitrary limit
++        assert length &lt; (1 &lt;&lt; 64)
+         Field.__init__(self, parent, name, size=length*8, description=description)
+         
+     def _getTruncated(self, address, length, max_bytes=20):
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/log.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/log.py	2006-03-12 20:03:15 UTC (rev 445)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/log.py	2006-03-12 20:03:26 UTC (rev 446)
+@@ -1,7 +1,7 @@
+ #!/usr/bin/env python
+ # -*- coding: UTF-8 -*-
+ 
+-import time
++import time, sys
+ 
+ class Log:
+     LOG_INFO   = 0
+@@ -61,7 +61,7 @@
+             self.__buffer[level].append(str)
+         prefix = self.getLevelPrefix(level)            
+         if self.use_print:
+-            print &quot;%s %s&quot; % (prefix, str)
++            sys.stderr.write(&quot;%s %s\n&quot; % (prefix, str))
+         if self.__file:
+             self.__file.write(u&quot;%s - %s %s\n&quot; \
+                 % (time.strftime(&quot;%Y-%M-%d %H:%M:%S&quot;),
+
+Added: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/archive/bzip2.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/parser/archive/bzip2.py	2006-03-12 20:03:15 UTC (rev 445)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/parser/archive/bzip2.py	2006-03-12 20:03:26 UTC (rev 446)
+@@ -0,0 +1,41 @@
++&quot;&quot;&quot;
++BZIP2 archive file
++
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from field import (FieldSet, ParserError, RawBytes, String, Character, Integer)
++from text_handler import hexadecimal
++
++class Bzip2_File(FieldSet):
++    mime_types = &quot;application/x-bzip2&quot;
++    endian = &quot;&lt;&quot;
++
++    def createFields(self):
++        yield String(self, &quot;id&quot;, &quot;string[3]&quot;, &quot;Identifier (BZh)&quot;)
++        assert self[&quot;id&quot;].value == &quot;BZh&quot;
++        yield Character(self, &quot;blocksize&quot;, &quot;Block size&quot;)
++        if not(&quot;1&quot; &lt;= self[&quot;blocksize&quot;].value &lt;= &quot;9&quot;):
++            raise ParserError(
++                &quot;Stream doesn't look like bzip2 archive (wrong blocksize)!&quot;)
++
++        # Size of memory needed to decompress (on classic mode, not &quot;small&quot; mode)
++        size = (ord(self[&quot;blocksize&quot;].value) - ord(&quot;0&quot;)) * 100
++        self[&quot;blocksize&quot;].description = &quot;Block size (will need %u KB of memory)&quot; % size
++        
++        yield Integer(self, &quot;blockheader&quot;, &quot;uint8&quot;, &quot;Block header&quot;)
++        if self[&quot;blockheader&quot;].value == 0x17:
++            yield String(self, &quot;id2&quot;, &quot;string[4]&quot;, &quot;Identifier2 (re8P)&quot;)
++            yield Integer(self, &quot;id3&quot;, &quot;uint8&quot;, &quot;Identifier3 (0x90)&quot;)
++        elif self[&quot;blockheader&quot;].value == 0x31:
++            yield String(self, &quot;id2&quot;, &quot;string[5]&quot;, &quot;Identifier 2 (AY&amp;SY)&quot;)
++            assert self[&quot;id2&quot;].value == &quot;AY&amp;SY&quot;
++        else:
++            raise ParserError(
++                &quot;Stream doesn't look like bzip2 archive (wrong blockheader)!&quot;)
++        yield Integer(self, &quot;crc32&quot;, &quot;uint32&quot;, &quot;CRC32&quot;, text_handler=hexadecimal)
++
++        size = self.stream.size - self.newFieldAskAddress()
++        assert (size % 8) == 0
++        yield RawBytes(self, &quot;content&quot;, size/8, &quot;Compressed data content&quot;)
++
+
+Added: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/archive/gzip.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/parser/archive/gzip.py	2006-03-12 20:03:15 UTC (rev 445)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/parser/archive/gzip.py	2006-03-12 20:03:26 UTC (rev 446)
+@@ -0,0 +1,84 @@
++&quot;&quot;&quot;
++GZIP archive parser.
++
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from field import (FieldSet, 
++    Integer, Enum, 
++    Bit, Bits,
++    RawBytes,  String)
++from error import error
++from text_handler import hexadecimal, humanFilesize, unixTimestamp
++import datetime
++   
++class GzipFile(FieldSet):
++    mime_types = &quot;application/x-gzip&quot;
++    os_name = {
++        0: &quot;FAT filesystem&quot;,
++        1: &quot;Amiga&quot;,
++        2: &quot;VMS (or OpenVMS)&quot;,
++        3: &quot;Unix&quot;,
++        4: &quot;VM/CMS&quot;,
++        5: &quot;Atari TOS&quot;,
++        6: &quot;HPFS filesystem (OS/2, NT)&quot;,
++        7: &quot;Macintosh&quot;,
++        8: &quot;Z-System&quot;,
++        9: &quot;CP/M&quot;,
++        10: &quot;TOPS-20&quot;,
++        11: &quot;NTFS filesystem (NT)&quot;,
++        12: &quot;QDOS&quot;,
++        13: &quot;Acorn RISCOS&quot;} 
++    endian = &quot;&lt;&quot;
++
++    def createFields(self):
++        # Gzip header
++        yield RawBytes(self, &quot;id&quot;, 2, &quot;GZip identifier&quot;)
++        assert self[&quot;id&quot;].value == &quot;\x1f\x8b&quot; 
++        yield Integer(self, &quot;compression&quot;, &quot;uint8&quot;, &quot;Compression method&quot;, text_handler=self.getCompressionMethod)
++        
++        # Flags
++        yield Bit(self, &quot;is_text&quot;, &quot;File content is probably ASCII text&quot;)
++        yield Bit(self, &quot;has_crc16&quot;, &quot;Header CRC16&quot;)
++        yield Bit(self, &quot;has_extra&quot;, &quot;Extra informations (variable size)&quot;)
++        yield Bit(self, &quot;has_filename&quot;, &quot;Contains filename?&quot;)
++        yield Bit(self, &quot;has_comment&quot;, &quot;Contains comment?&quot;)
++        yield Bits(self, &quot;unused1&quot;, 3, &quot;(unused bits)&quot;)
++        yield Integer(self, &quot;mtime&quot;, &quot;uint32&quot;, &quot;Modification time&quot;, text_handler=unixTimestamp)
++
++        # Extra flags
++        yield Bit(self, &quot;unused2&quot;, &quot;(unused bit)&quot;)
++        yield Bit(self, &quot;slowest&quot;, &quot;Compressor used maximum compression (slowest)&quot;)
++        yield Bit(self, &quot;fastest&quot;, &quot;Compressor used the fastest compression&quot;)
++        yield Bits(self, &quot;unused3&quot;, 5, &quot;(unused bits)&quot;)
++
++        yield Enum(self, &quot;os&quot;, &quot;uint8&quot;, GzipFile.os_name, &quot;Operating system&quot;)
++
++        # Optionnal fields
++        if self[&quot;has_extra&quot;].value:
++            yield Integer(self, &quot;extra_length&quot;, &quot;uint16&quot;, &quot;Extra length&quot;)
++            yield RawBytes(self, &quot;extra&quot;, self[&quot;extra_length&quot;].value, &quot;Extra&quot;)
++        if self[&quot;has_filename&quot;].value:
++            yield String(self, &quot;filename&quot;, &quot;C&quot;, &quot;Filename&quot;)
++        if self[&quot;has_comment&quot;].value:
++            yield String(self, &quot;comment&quot;, &quot;C&quot;, &quot;Comment&quot;)
++        if self[&quot;has_crc16&quot;].value:
++            yield Integer(self, &quot;hdr_crc16&quot;, &quot;uint16&quot;, &quot;CRC16 of the header&quot;, text_handler=hexadecimal)
++
++        # Read content           
++        size = self.stream.size - self.newFieldAskAddress() - 8*8
++        assert (size % 8) == 0
++        yield RawBytes(self, &quot;data&quot;, size/8, &quot;Compressed data&quot;)
++
++        # Footer
++        yield Integer(self, &quot;crc32&quot;, &quot;uint32&quot;, &quot;CRC32&quot;, text_handler=hexadecimal)
++        yield Integer(self, &quot;size&quot;, &quot;uint32&quot;, &quot;Uncompressed size&quot;, text_handler=humanFilesize)
++
++    def getCompressionMethod(self, chunk):
++        if chunk.value &lt; 8:
++            return &quot;reserved&quot;
++        elif chunk.value == 8:
++            return &quot;deflate&quot;
++        else:
++            return &quot;Unknow (%s)&quot; % val
++
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/common.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/common.py	2006-03-12 20:03:15 UTC (rev 445)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/common.py	2006-03-12 20:03:26 UTC (rev 446)
+@@ -6,6 +6,11 @@
+         0xFFFFFF: &quot;White&quot;
+     }
+     static_size = 3*8
++
++    def createFields(self):
++        yield Integer(self, &quot;red&quot;, &quot;uint8&quot;, &quot;Red&quot;)
++        yield Integer(self, &quot;green&quot;, &quot;uint8&quot;, &quot;Green&quot;)
++        yield Integer(self, &quot;blue&quot;, &quot;uint8&quot;, &quot;Blue&quot;)
+     
+     def _getDescription(self):
+         if self._description == None:
+@@ -18,10 +23,14 @@
+         return self._description
+     description = property(_getDescription, FieldSet._getDescription)
+ 
++class RGBA(RGB):
++    static_size = 4*8
++    
+     def createFields(self):
+         yield Integer(self, &quot;red&quot;, &quot;uint8&quot;, &quot;Red&quot;)
+         yield Integer(self, &quot;green&quot;, &quot;uint8&quot;, &quot;Green&quot;)
+         yield Integer(self, &quot;blue&quot;, &quot;uint8&quot;, &quot;Blue&quot;)
++        yield Integer(self, &quot;alpha&quot;, &quot;uint8&quot;, &quot;Alpha&quot;)
+ 
+ class Palette(FieldSet):
+     def __init__(self, parent, name, nb_colors, description=None):
+@@ -35,3 +44,17 @@
+         for i in range(0, self.nb_colors):
+             yield RGB(self, &quot;color[]&quot;, self.stream)
+ 
++class PaletteRGBA(FieldSet):
++    def __init__(self, parent, name, nb_colors, description=None):
++        self.nb_colors = nb_colors
++        print self.nb_colors
++        print RGBA.static_size
++        size = self.nb_colors * RGBA.static_size
++        if description == None:
++            description = &quot;Palette of %u RGBA colors&quot; % self.nb_colors
++        FieldSet.__init__(self, parent, name, parent.stream, size=size, description=description)
++
++    def createFields(self):
++        for i in range(0, self.nb_colors):
++            yield RGBA(self, &quot;color[]&quot;, self.stream)
++
+
+Added: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/ico.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/ico.py	2006-03-12 20:03:15 UTC (rev 445)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/ico.py	2006-03-12 20:03:26 UTC (rev 446)
+@@ -0,0 +1,119 @@
++&quot;&quot;&quot;
++ICO picture file format parser.
++
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from libhachoir.field import FieldSet, ParserError, Integer, Enum, RawBytes
++from libhachoir.parser.image.common import PaletteRGBA
++
++class BitmapInfoHeader(FieldSet):
++    &quot;&quot;&quot; Win32 BITMAPINFOHEADER structure from GDI &quot;&quot;&quot;
++
++    static_size = 40*8
++
++    compression_name = {
++        0: &quot;Uncompressed (RGB)&quot;,
++        1: &quot;RLE (8 bits)&quot;,
++        2: &quot;RLE (4 bits)&quot;,
++        3: &quot;Bitfields&quot;,
++        4: &quot;JPEG&quot;,
++        5: &quot;PNG&quot;
++    }
++    endian = &quot;&lt;&quot;
++    
++    def createFields(self):
++        yield Integer(self, &quot;hdr_size&quot;, &quot;uint32&quot;, &quot;Header size (in bytes) (=40)&quot;)
++        if self[&quot;hdr_size&quot;].value != 40:
++            yield ParserError( \
++                &quot;Bitmap information header looks uncorrect &quot;
++                &quot;(header size is %s instead of 40)&quot; \
++                % self[&quot;hdr_size&quot;].value)
++        yield Integer(self, &quot;width&quot;, &quot;uint32&quot;, &quot;Width&quot;)
++        yield Integer(self, &quot;height&quot;, &quot;uint32&quot;, &quot;Height&quot;)
++        yield Integer(self, &quot;nb_planes&quot;, &quot;uint16&quot;, &quot;Color planes&quot;)
++        assert self[&quot;nb_planes&quot;].value == 1
++        yield Integer(self, &quot;bpp&quot;, &quot;uint16&quot;, &quot;Bits/pixel&quot;)
++        yield Enum(self, &quot;compression&quot;, &quot;uint32&quot;, BitmapInfoHeader.compression_name, &quot;Compression&quot;)
++        yield Integer(self, &quot;size&quot;, &quot;uint32&quot;, &quot;Image size (in bytes)&quot;)
++        yield Integer(self, &quot;xres&quot;, &quot;uint32&quot;, &quot;X pixels per meter&quot;)
++        yield Integer(self, &quot;yres&quot;, &quot;uint32&quot;, &quot;Y pixels per meter&quot;)
++        yield Integer(self, &quot;color_used&quot;, &quot;uint32&quot;, &quot;Number of used colors&quot;)
++        yield Integer(self, &quot;color_important&quot;, &quot;uint32&quot;, &quot;Number of important colors&quot;)
++
++    def _getDescription(self):
++        if self._description == None:
++            self.description = &quot;Bitmap info header: %ux%u pixels, %u bits/pixel&quot; % \
++                (self[&quot;width&quot;].value, self[&quot;height&quot;].value,
++                 self[&quot;bpp&quot;].value)
++        return self._description
++    description = property(_getDescription, FieldSet._setDescription)
++
++class IconHeader(FieldSet):
++    endian = &quot;&lt;&quot;
++
++    def createFields(self):
++        yield Integer(self, &quot;width&quot;, &quot;uint8&quot;, &quot;Width&quot;)
++        yield Integer(self, &quot;height&quot;, &quot;uint8&quot;, &quot;Height&quot;)
++        yield Integer(self, &quot;nb_color&quot;, &quot;uint8&quot;, &quot;Number of colors&quot;)
++        yield Integer(self, &quot;reserved&quot;, &quot;uint8&quot;, &quot;(reserved)&quot;)
++        yield Integer(self, &quot;planes&quot;, &quot;uint16&quot;, &quot;Color planes (=1)&quot;)
++        if self[&quot;planes&quot;].value != 1:
++            raise ParserError( \
++                &quot;Stream doesn't looks like an icon header &quot;
++                &quot;(wrong plan count)!&quot;)
++        yield Integer(self, &quot;bpp&quot;, &quot;uint16&quot;, &quot;Bits per pixel&quot;)
++        yield Integer(self, &quot;size&quot;, &quot;uint32&quot;, &quot;Content size in bytes&quot;)
++        yield Integer(self, &quot;offset&quot;, &quot;uint32&quot;, &quot;Data offset&quot;)
++
++    def _getDescription(self):
++        if self._description == None:
++            self._description = &quot;Icon: %ux%u pixels, %u bits/pixel&quot; \
++                % (self[&quot;width&quot;].value, self[&quot;height&quot;].value, self[&quot;bpp&quot;].value)
++        return self._description
++    description = property(_getDescription, FieldSet._setDescription)
++
++class IconData(FieldSet):
++    def __init__(self, parent, name, header, description=&quot;Icon data&quot;):
++        FieldSet.__init__(self, parent, name, parent.stream, description=description)
++        self.header = header
++
++    def createFields(self):
++        yield BitmapInfoHeader(self, &quot;header&quot;, self.stream)
++        
++        # Read palette if needed
++        nb_color = self.header[&quot;nb_color&quot;].value
++        if self.header[&quot;bpp&quot;].value == 8:
++            nb_color = 256
++        if nb_color != 0:            
++            yield PaletteRGBA(self, &quot;palette&quot;, nb_color)
++
++        # Read pixels
++        size = self.header[&quot;size&quot;].value - self.newFieldAskAddress()/8
++        yield RawBytes(self, &quot;pixels&quot;, size, &quot;Image pixels&quot;)
++
++class IcoFile(FieldSet):
++    mime_types = &quot;image/x-ico&quot;
++    type_name = {
++        1: &quot;Icon&quot;,
++        2: &quot;Mouse cursor&quot;
++    }
++    endian = &quot;&lt;&quot;
++
++    def createFields(self):
++        yield Integer(self, &quot;id&quot;, &quot;uint16&quot;, &quot;Identifier (0x0000)&quot;)
++        if self[&quot;id&quot;].value != 0:
++            raise ParserError(
++                &quot;Stream doesn't look like an windows icon file &quot;
++                &quot;(wrong file identifier)&quot;)
++        yield Enum(self, &quot;type&quot;, &quot;uint16&quot;, IcoFile.type_name, &quot;Resource type&quot;)
++        yield Integer(self, &quot;nb_items&quot;, &quot;uint16&quot;, &quot;Number of items&quot;)
++        items = []
++        for i in range(0, self[&quot;nb_items&quot;].value):
++            item = IconHeader(self, &quot;icon_header[]&quot;, self.stream, &quot;Icon header %u&quot; % i)
++            yield item
++            items.append(item)
++        for header in items:
++            assert header[&quot;offset&quot;].value*8 == self.newFieldAskAddress()
++            yield IconData(self, &quot;icon_data[]&quot;, header)
++
+
+Added: haypo/hachoir/branches/hachoir-yield/libhachoir/stream/__init__.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/stream/__init__.py	2006-03-12 20:03:15 UTC (rev 445)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/stream/__init__.py	2006-03-12 20:03:26 UTC (rev 446)
+@@ -0,0 +1,5 @@
++from input import (
++        InputStreamError, FileInputStream, StringInputStream, InputStream)
++from output import (
++        FileOutputStream, StringOutputStream, OutputStream)
++
+
+Modified: haypo/hachoir/branches/hachoir-yield/text_ui.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-03-12 20:03:15 UTC (rev 445)
++++ haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-03-12 20:03:26 UTC (rev 446)
+@@ -1,5 +1,5 @@
+ def displayFieldSet(field_set, max_depth=2, depth=0, options={}):
+-    display_parent_addr = options.get(&quot;parent-addr&quot;, False)
++    display_parent_addr = options.get(&quot;parent-addr&quot;, True)
+     display_parent_size = options.get(&quot;parent-size&quot;, False)
+     display_parent_desc = options.get(&quot;parent-desc&quot;, True)
+     indent = &quot; &quot; * (3*depth)
+
+Added: haypo/hachoir/branches/hachoir-yield/unit_test/output_stream.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/unit_test/output_stream.py	2006-03-12 20:03:15 UTC (rev 445)
++++ haypo/hachoir/branches/hachoir-yield/unit_test/output_stream.py	2006-03-12 20:03:26 UTC (rev 446)
+@@ -0,0 +1,37 @@
++from libhachoir.stream import StringOutputStream
++from libhachoir.bits import str2bin
++
++def CONTENT(output):
++    output.paddingToByte()
++    string = output.string
++    string.seek(0)
++    return string.read()
++
++def test1():
++    output = StringOutputStream()
++    output.writeBit(True)
++    assert str2bin(CONTENT(output)) == &quot;10000000&quot;
++
++def test2():
++    output = StringOutputStream()
++    output.writeBit(False)
++    output.writeBits(8, 0xFF)
++    assert str2bin(CONTENT(output)) == &quot;01111111 10000000&quot;
++
++def test3():
++    output = StringOutputStream(big_endian=False)
++    output.writeBit(True)
++    assert str2bin(CONTENT(output)) == &quot;00000001&quot;
++
++def test4():
++    output = StringOutputStream(big_endian=False)
++    output.writeBit(False)
++    output.writeBits(8, 0xFF)
++    assert str2bin(CONTENT(output)) == &quot;11111110 00000001&quot;
++
++def runTests():
++    test1()
++    test2()
++    test3()
++    test4()
++
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000349.html">[Happyboom-svn] r445 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser branches/hachoir-yield/libhachoir/parser/3d branches/hachoir-yield/libhachoir/parser/archive branches/hachoir-yield/libhachoir/parser/file_system branches/hachoir-yield/libhachoir/parser/image
+</A></li>
+	<LI>Next message: <A HREF="000351.html">[Happyboom-svn] r447 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#350">[ date ]</a>
+              <a href="thread.html#350">[ thread ]</a>
+              <a href="subject.html#350">[ subject ]</a>
+              <a href="author.html#350">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

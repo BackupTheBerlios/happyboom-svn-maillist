@@ -1,0 +1,179 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r320 - haypo/hachoir/plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r320%20-%20haypo/hachoir/plugins&In-Reply-To=%3C200512121719.jBCHJI7b006996%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000225.html">
+   <LINK REL="Next"  HREF="000227.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r320 - haypo/hachoir/plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r320%20-%20haypo/hachoir/plugins&In-Reply-To=%3C200512121719.jBCHJI7b006996%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r320 - haypo/hachoir/plugins">haypo at berlios.de
+       </A><BR>
+    <I>Mon Dec 12 18:19:18 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000225.html">[Happyboom-svn] r319 - haypo/hachoir/plugins
+</A></li>
+        <LI>Next message: <A HREF="000227.html">[Happyboom-svn] r321 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#226">[ date ]</a>
+              <a href="thread.html#226">[ thread ]</a>
+              <a href="subject.html#226">[ subject ]</a>
+              <a href="author.html#226">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-12 18:19:17 +0100 (Mon, 12 Dec 2005)
+New Revision: 320
+
+Modified:
+   haypo/hachoir/plugins/xcf.py
+Log:
+Fix XCF chunk handlers: use Filter instead of readXXX functions.
+
+
+Modified: haypo/hachoir/plugins/xcf.py
+===================================================================
+--- haypo/hachoir/plugins/xcf.py	2005-12-12 16:05:21 UTC (rev 319)
++++ haypo/hachoir/plugins/xcf.py	2005-12-12 17:19:17 UTC (rev 320)
+@@ -11,32 +11,41 @@
+ from filter import Filter
+ from plugin import registerPlugin
+ 
+-def readCompression(filter, stream):
++class XcfCompression(Filter):
+     name = {
+         0: &quot;None&quot;,
+         1: &quot;RLE&quot;,
+         2: &quot;Zlib&quot;,
+         3: &quot;Fractal&quot;
+     }
+-    chunk = filter.read(&quot;compression&quot;, &quot;B&quot;, &quot;&quot;)
+-    type = name.get(chunk.value, &quot;Unknow (%s)&quot; % chunk.value)
+-    chunk.description = &quot;Compress type (%s)&quot; % type
+ 
+-def readResolution(filter, stream):
+-    filter.read(&quot;xres&quot;, &quot;f&quot;, &quot;X resolution&quot;)
+-    filter.read(&quot;yres&quot;, &quot;f&quot;, &quot;Y resolution&quot;)
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;compression&quot;, &quot;Compression&quot;, stream, parent)
++        chunk = self.read(&quot;compression&quot;, &quot;B&quot;, &quot;&quot;)
++        type = XcfCompression.name.get(chunk.value, &quot;Unknow (%s)&quot; % chunk.value)
++        chunk.description = &quot;Compress type (%s)&quot; % type
+ 
+-def readTattoo(filter, stream):
+-    filter.read(&quot;tattoo&quot;, &quot;!L&quot;, &quot;Tattoo&quot;)
++class XcfResolution(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;resolution&quot;, &quot;Resolution&quot;, stream, parent)
++        self.read(&quot;xres&quot;, &quot;f&quot;, &quot;X resolution&quot;)
++        self.read(&quot;yres&quot;, &quot;f&quot;, &quot;Y resolution&quot;)
+ 
+-def readUnit(filter, stream):
+-    filter.read(&quot;unit&quot;, &quot;!L&quot;, &quot;Unit&quot;)
++class XcfTattoo(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;tattoo&quot;, &quot;Tattoo&quot;, stream, parent)
++        self.read(&quot;tattoo&quot;, &quot;!L&quot;, &quot;Tattoo&quot;)
+ 
++class XcfUnit(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;unit&quot;, &quot;Unit&quot;, stream, parent)
++        self.read(&quot;unit&quot;, &quot;!L&quot;, &quot;Unit&quot;)
++
+ def readString(filter, stream, name, description):
+     chunk = filter.read(name+&quot;_size&quot;, &quot;!L&quot;, description+&quot; length&quot;)
+     filter.read(name, &quot;%us&quot; % chunk.value, description)
+ 
+-class XcfParasite(Filter):
++class XcfParasiteEntry(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;xcf_para&quot;, &quot;XCF parasite&quot;, stream, parent)
+         readString(self, stream, &quot;name&quot;, &quot;Name&quot;)
+@@ -92,7 +101,6 @@
+         self.read(&quot;height&quot;, &quot;!L&quot;, &quot;Channel height&quot;)
+         readString(self, stream, &quot;name&quot;, &quot;Channel name&quot;)
+         readProperties(self, stream)
+-        return
+         self.read(&quot;hierarchie_ofs&quot;, &quot;!L&quot;, &quot;Hierarchie offset&quot;)
+         self.readChild(&quot;hierarchie&quot;, XcfHierarchie)
+ 
+@@ -111,9 +119,11 @@
+         self.readChild(&quot;hierarchie&quot;, XcfHierarchie)
+         # TODO: Read layer mask if needed: self[&quot;mask_ofs&quot;] != 0
+ 
+-def readParasites(filter, stream):
+-    while not stream.eof():
+-        filter.readChild(&quot;parasite[]&quot;, XcfParasite)
++class XcfParasites(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;parasites&quot;, &quot;Parasites&quot;, stream, parent)
++        while not stream.eof():
++            self.readChild(&quot;parasite[]&quot;, XcfParasiteEntry)
+ 
+ class XcfProperty(Filter):
+     known_types = {
+@@ -146,11 +156,11 @@
+         26: &quot;Text layer flags&quot;
+     }
+     handler = {
+-        17: readCompression,
+-        19: readResolution,
+-        20: readTattoo,
+-        21: readParasites,
+-        22: readUnit
++        17: XcfCompression,
++        19: XcfResolution,
++        20: XcfTattoo,
++        21: XcfParasites,
++        22: XcfUnit
+     }
+ 
+     def __init__(self, stream, parent):
+@@ -162,7 +172,7 @@
+         if type in XcfProperty.handler:
+             end = stream.tell() + self[&quot;size&quot;]
+             substream = stream.createSub(size=self[&quot;size&quot;])
+-            XcfProperty.handler[type] (self, substream)
++            self.readStreamChild(&quot;data&quot;, substream, XcfProperty.handler[type])
+             assert stream.tell() == end
+         elif 0 &lt; self[&quot;size&quot;]:
+             self.read(&quot;data&quot;, &quot;%us&quot; % self[&quot;size&quot;], &quot;Data&quot;)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000225.html">[Happyboom-svn] r319 - haypo/hachoir/plugins
+</A></li>
+	<LI>Next message: <A HREF="000227.html">[Happyboom-svn] r321 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#226">[ date ]</a>
+              <a href="thread.html#226">[ thread ]</a>
+              <a href="subject.html#226">[ subject ]</a>
+              <a href="author.html#226">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

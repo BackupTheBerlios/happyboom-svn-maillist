@@ -1,0 +1,1717 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r162 - boomboom boomboom/client boomboom/server boomboom/server/agents happyboom/trunk/common happyboom/trunk/net/io happyboom/trunk/net/io_tcp happyboom/trunk/server happywarry
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r162%20-%20boomboom%20boomboom/client%20boomboom/server%20boomboom/server/agents%20happyboom/trunk/common%20happyboom/trunk/net/io%20happyboom/trunk/net/io_tcp%20happyboom/trunk/server%20happywarry&In-Reply-To=%3C200509141047.j8EAld39025710%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000068.html">
+   <LINK REL="Next"  HREF="000070.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r162 - boomboom boomboom/client boomboom/server boomboom/server/agents happyboom/trunk/common happyboom/trunk/net/io happyboom/trunk/net/io_tcp happyboom/trunk/server happywarry</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r162%20-%20boomboom%20boomboom/client%20boomboom/server%20boomboom/server/agents%20happyboom/trunk/common%20happyboom/trunk/net/io%20happyboom/trunk/net/io_tcp%20happyboom/trunk/server%20happywarry&In-Reply-To=%3C200509141047.j8EAld39025710%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r162 - boomboom boomboom/client boomboom/server boomboom/server/agents happyboom/trunk/common happyboom/trunk/net/io happyboom/trunk/net/io_tcp happyboom/trunk/server happywarry">haypo at berlios.de
+       </A><BR>
+    <I>Wed Sep 14 12:47:39 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000068.html">[Happyboom-svn] r161 - in boomboom: . client common
+</A></li>
+        <LI>Next message: <A HREF="000070.html">[Happyboom-svn] r163 - happyboom/trunk/common
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#69">[ date ]</a>
+              <a href="thread.html#69">[ thread ]</a>
+              <a href="subject.html#69">[ subject ]</a>
+              <a href="author.html#69">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-14 12:47:34 +0200 (Wed, 14 Sep 2005)
+New Revision: 162
+
+Modified:
+   boomboom/boomboom_client.py
+   boomboom/boomboom_server.py
+   boomboom/client/bb_client.py
+   boomboom/client/bb_constructor.py
+   boomboom/client/bb_display.py
+   boomboom/client/bb_drawer.py
+   boomboom/client/bb_events.py
+   boomboom/client/bb_input.py
+   boomboom/client/bb_item.py
+   boomboom/protocol.xml
+   boomboom/server/agents/projectile.py
+   boomboom/server/bb_server.py
+   happyboom/trunk/common/log.py
+   happyboom/trunk/common/packer.py
+   happyboom/trunk/common/presentation.py
+   happyboom/trunk/common/protocol.py
+   happyboom/trunk/common/simple_event.py
+   happyboom/trunk/net/io/base_io.py
+   happyboom/trunk/net/io/packet.py
+   happyboom/trunk/net/io_tcp/tcp.py
+   happyboom/trunk/server/agent.py
+   happyboom/trunk/server/base_server.py
+   happyboom/trunk/server/client.py
+   happyboom/trunk/server/client_manager.py
+   happyboom/trunk/server/gateway.py
+   happywarry/happywarry-server.py
+Log:
+Client and server can exchange events.
+
+
+Modified: boomboom/boomboom_client.py
+===================================================================
+--- boomboom/boomboom_client.py	2005-09-14 07:27:34 UTC (rev 161)
++++ boomboom/boomboom_client.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -16,8 +16,7 @@
+     print &quot;\t--help            : Print this help&quot;
+     print &quot;\t--version         : Print the software version&quot;
+     print &quot;\t-h,--host HOST    : Server ip/name (default %s)&quot; % (defval[&quot;host&quot;])
+-    print &quot;\t--view-port PORT  : Server view port (default %u)&quot; % (defval[&quot;view_port&quot;])
+-    print &quot;\t--input-port PORT : Server input port (default %u)&quot; % (defval[&quot;input_port&quot;])
++    print &quot;\t--port PORT       : Server port (default %u)&quot; % (defval[&quot;port&quot;])
+     print &quot;\t-d,--debug        : Enable debug mode&quot;
+     print &quot;\t-v,--verbose      : Enable verbose mode&quot;
+     print &quot;\t--max-fps MAX     : Set maximum frame par second (fps)&quot;
+@@ -44,10 +43,8 @@
+             sys.exit()
+         if o == &quot;--version&quot;:
+             print &quot;%s version %s&quot; % (PROGRAM, VERSION)
+-        if o == &quot;--input-port&quot;:
+-            val[&quot;input_port&quot;] = int(a)
+-        if o == &quot;--view-port&quot;:
+-            val[&quot;view_port&quot;] = int(a)
++        if o == &quot;--port&quot;:
++            val[&quot;port&quot;] = int(a)
+         if o in (&quot;-h&quot;, &quot;--host&quot;,):
+             val[&quot;host&quot;] = a
+         if o in (&quot;-v&quot;, &quot;--verbose&quot;,):
+@@ -62,15 +59,19 @@
+     return val
+ 
+ def run(arg):
++    from happyboom.common.protocol import loadProtocol
+     from client import BoomBoomClient
+-    client = BoomBoomClient(arg)
++    from client.bb_display import BoomBoomDisplay
++
++    protocol = loadProtocol(&quot;protocol.xml&quot;)
++    display = BoomBoomDisplay(protocol, arg)
++    client = BoomBoomClient(display, arg)
+     try:
+         client.start()
+     except KeyboardInterrupt:
+         print &quot;Program interrupted (CTRL+C).&quot;
+         pass
+     client.stop()
+-    print &quot;Classic stop.&quot;
+ 
+ def main():
+     # Add HappyBoom to PYTHONPATH (&quot;../&quot; today, but should be improved)
+@@ -81,8 +82,7 @@
+  
+     val = {
+         &quot;host&quot;: &quot;127.0.0.1&quot;, \
+-        &quot;view_port&quot;: 12430, \
+-        &quot;input_port&quot;: 12431, \
++        &quot;port&quot;: 12430, \
+         &quot;max_fps&quot;: 50, \
+         &quot;verbose&quot;: False, \
+         &quot;name&quot;: &quot;-&quot;, \
+@@ -92,7 +92,6 @@
+     # Create the client
+     import pygame
+     run(arg)
+-    print &quot;pygame.quit()&quot;
+     pygame.quit()
+ 
+ if __name__==&quot;__main__&quot;: main()
+
+Modified: boomboom/boomboom_server.py
+===================================================================
+--- boomboom/boomboom_server.py	2005-09-14 07:27:34 UTC (rev 161)
++++ boomboom/boomboom_server.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -5,8 +5,6 @@
+ 
+ import getopt
+ import sys
+-from happyboom.common.protocol import loadProtocol
+-from happyboom.common.log import log
+ 
+ def usage(defval):
+     print &quot;%s server version %s&quot; % (PROGRAM, VERSION)
+@@ -71,7 +69,7 @@
+     file_dir = os.path.dirname(__file__)
+     happyboomdir = os.path.join(file_dir, &quot;..&quot;, &quot;happyboom&quot;, &quot;trunk&quot;)
+     sys.path.append(happyboomdir)
+-    
++
+     # Get user directory 
+     from happyboom.common.file import getCreateHomeDir
+     logdir = getCreateHomeDir(&quot;boomboom&quot;)
+@@ -92,6 +90,7 @@
+    
+     # Create BoomBoom server
+     from server.bb_server import Server
++    from happyboom.common.protocol import loadProtocol
+     protocol = loadProtocol(&quot;protocol.xml&quot;)
+     server = Server(protocol, arg)
+ 
+
+Modified: boomboom/client/bb_client.py
+===================================================================
+--- boomboom/client/bb_client.py	2005-09-14 07:27:34 UTC (rev 161)
++++ boomboom/client/bb_client.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -4,10 +4,8 @@
+ @contact: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+ @version: 0.2
+ &quot;&quot;&quot;
+-from common import simple_event
+-from common.simple_event import EventListener
++from happyboom.common.simple_event import EventListener
+ import bb_events
+-from bb_display import BoomBoomDisplay
+ from bb_input import BoomBoomInput
+ import thread, time, traceback, pygame
+ 
+@@ -25,7 +23,7 @@
+     @type __stoplock: C{thread.lock}
+     &quot;&quot;&quot;
+     
+-    def __init__(self, arg):
++    def __init__(self, display, arg):
+         &quot;&quot;&quot; BoomBoomClient constructor.
+         @param host: Server hostname.
+         @type host: C{str}
+@@ -42,7 +40,7 @@
+         &quot;&quot;&quot;
+         EventListener.__init__(self, prefix=&quot;evt_&quot;)
+         
+-        self.display = BoomBoomDisplay(arg)
++        self.display = display
+         self.input = BoomBoomInput(arg)
+         self.__verbose = arg.get(&quot;verbose&quot;, False)
+         self.__stopped = False
+@@ -58,11 +56,10 @@
+         
+         # Create thread for input and display
+         thread.start_new_thread(self.thread_display, ())
+-        thread.start_new_thread(self.thread_input, ())
+ 
+         quit = False
+         while not quit:
+-            # Wait for Keyboard Interrupt
++            self.input.process()
+             time.sleep(0.100)
+             quit = self.is_stopped
+         
+@@ -78,7 +75,6 @@
+         
+         if self.__verbose: print &quot;[CLIENT] Stopping client...&quot;
+         self.display.stop()
+-        self.input.stop()
+     
+     def evt_game_Stop(self, event):
+         &quot;&quot;&quot; Stop event handler.
+@@ -91,9 +87,14 @@
+         &quot;&quot;&quot; Thread handler for the &quot;display&quot; part.&quot;&quot;&quot;
+         try:
+             self.display.start()
+-        except:
++        except Exception, msg:
++            print &quot;EXCEPTION IN DISPLAY THREAD:\n%s&quot; % msg
+             traceback.print_exc()
+-        self.stop()
++        try:
++            self.stop()
++        except Exception, msg:
++            print &quot;EXCEPTION IN DISPLAY THREAD:\n%s&quot; % msg
++            traceback.print_exc()
+         
+     def thread_input(self):
+         &quot;&quot;&quot; Thread handler for the &quot;input&quot; part.&quot;&quot;&quot;
+
+Modified: boomboom/client/bb_constructor.py
+===================================================================
+--- boomboom/client/bb_constructor.py	2005-09-14 07:27:34 UTC (rev 161)
++++ boomboom/client/bb_constructor.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -4,8 +4,7 @@
+ @contact: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+ @version: 0.2
+ &quot;&quot;&quot;
+-from common import simple_event
+-from common.simple_event import EventListener
++from happyboom.common.simple_event import EventListener
+ import bb_events
+ from items import Sun, Projectile, Weapon, World, Character
+ 
+@@ -65,4 +64,4 @@
+         @param event: Event with &quot;agent_manager_Text&quot; type.
+         @type event: C{L{common.simple_event.Event}}
+         &quot;&quot;&quot;
+-        print &quot;[DISPLAY] Server message: %s&quot; %(event.content)
+\ No newline at end of file
++        print &quot;[DISPLAY] Server message: %s&quot; %(event.content)
+
+Modified: boomboom/client/bb_display.py
+===================================================================
+--- boomboom/client/bb_display.py	2005-09-14 07:27:34 UTC (rev 161)
++++ boomboom/client/bb_display.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -4,12 +4,13 @@
+ @contact: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+ @version: 0.2
+ &quot;&quot;&quot;
+-from common import simple_event
+-from common.simple_event import EventLauncher, EventListener
++from happyboom.common.presentation import Presentation
++from happyboom.common.simple_event import EventLauncher, EventListener
+ import bb_events
+ from bb_drawer import BoomBoomDrawer
+ from bb_constructor import BoomBoomConstructor
+ from net import io
++from happyboom.net.io import Packet
+ from net import io_udp, io_tcp
+ import thread
+ 
+@@ -38,7 +39,7 @@
+     @type __stoplock: C{thread.lock}
+     &quot;&quot;&quot;
+     
+-    def __init__(self, arg):
++    def __init__(self, protocol, arg):
+         &quot;&quot;&quot; BoomBoomDisplay constructor.
+         @param host: Server hostname.
+         @type host: C{str}
+@@ -55,11 +56,13 @@
+         &quot;&quot;&quot;
+         EventLauncher.__init__(self)
+         EventListener.__init__(self, prefix=&quot;evt_&quot;)
++        self.launchEvent(&quot;x&quot;)
++        self.presentation = Presentation(protocol, False)
+         self.drawer = BoomBoomDrawer(arg.get(&quot;max_fps&quot;, 25))
+         self.host = arg.get(&quot;host&quot;, &quot;localhost&quot;)
+-        self.port = arg.get(&quot;display_port&quot;, 12430)
++        self.port = arg.get(&quot;port&quot;, 12430)
+         self.name = arg.get(&quot;name&quot;, &quot;no name&quot;)
+-        self.__protocol_version = &quot;0.1.4&quot;
++        self.__protocol = protocol
+         self.__io = io_tcp.IO_TCP()
+         self.__verbose = arg.get(&quot;verbose&quot;, False)
+         self.__io.verbose = self.__verbose
+@@ -68,8 +71,7 @@
+         self.__stopped = False
+         self.__stoplock = thread.allocate_lock()
+         
+-        self.registerEvent(bb_events.askVersion)
+-        self.registerEvent(bb_events.askName)
++        self.registerEvent(bb_events.shoot)
+         
+     def start(self):
+         &quot;&quot;&quot; Starts the display client : connection to the server, etc. &quot;&quot;&quot;
+@@ -78,13 +80,14 @@
+         self.__io.on_connect = self.onConnect
+         self.__io.on_connection_fails = self.onConnectionFails
+         self.__io.on_disconnect = self.onDisconnect
+-        self.__io.on_new_packet = self.processPacket
++        self.__io.on_new_packet = self.presentation.processPacket
+         self.__io.on_lost_connection = self.onLostConnection
+         self.__io.connect(self.host, self.port)
+         if not self.__io.is_ready: return
+         thread.start_new_thread(self.__io.run_thread, ())
+     
+         BoomBoomConstructor()
++        self.__io.send(self.presentation.connectionPacket())
+         print &quot;==== BoomBoom ====&quot;
+         self.drawer.start()
+         
+@@ -93,7 +96,9 @@
+         self.__stoplock.acquire()
+         self.__stopped = True
+         self.__stoplock.release()
+-        self.send(&quot;quit&quot;)
++        # TODO: clean &quot;bye&quot;
++        packet = self.presentation.disconnectionPacket(u&quot;Quit.&quot;)
++        self.__io.send(packet)
+         self.__io.stop()
+         if self.__verbose: print &quot;[DISPLAY] Stopped&quot;
+         
+@@ -125,56 +130,18 @@
+         print &quot;[DISPLAY] Lost connection with server&quot;
+         self.launchEvent(bb_events.stop)
+     
+-    def str2evt(self, str):
+-        &quot;&quot;&quot; Utility method to convert incomming network message string to local event.
+-        @param str: incomming network message string to convert.
+-        @type str: C{str}
+-        @return: A couple containing the event type and its optional argument for representing a local event to send.
+-        @rtype: C{(str, str)}
+-        &quot;&quot;&quot;
+-        import re
+-        # Ugly regex to parse string
+-        r = re.compile(&quot;^([^:]+):([^:]+)(:(.*))?$&quot;)
+-        regs = r.match(str)
+-        if regs == None: return (None, None)
+-        role = regs.group(1)
+-        type = regs.group(2)
+-        if 2&lt;regs.lastindex:
+-            arg = regs.group(4)
+-        else:
+-            arg = None
+-        event_type = &quot;%s_%s&quot; %(role, type)
+-        return (event_type, arg)
+-        
+-    def processPacket(self, new_packet):
+-        &quot;&quot;&quot; Processes incomming network packets (converts and launches local event).
+-        @param new_packet: incomming network packet.
+-        @type new_packet: C{net.io.packet.Packet}
+-        &quot;&quot;&quot;
+-        event_type, arg = self.str2evt(new_packet.data)
+-        if event_type != None: 
+-            if self.__debug: print &quot;Received message: type=%s arg=%s&quot; %(event_type, arg)
+-            self.launchEvent(event_type, arg)
+-            
+-    def send(self, str):
++    def send(self, feature, event, *args):
+         &quot;&quot;&quot; Sends a string to the network server.
+         @param str: String to send.
+         @type str: C{str}
+         &quot;&quot;&quot;
+-        p = io.Packet()
+-        p.writeStr(str)
+-        self.__io.send(p)
++        data = self.__protocol.createMsg(feature, event, *args)
++        data = self.presentation.sendMsg(data)
++        self.__io.send(Packet(data))
++
++    def evt_x(self, event):
++        print &quot;x&quot;
+         
+-    def evt_agent_manager_AskVersion(self, event):
+-        &quot;&quot;&quot; AskVersion event handler (when server asks for client version).
+-        @param event: Event with &quot;agent_manager_AskVersion&quot; type
+-        @type event: C{L{common.simple_event.Event}}
+-        &quot;&quot;&quot;
+-        self.send(self.__protocol_version)
+-        
+-    def evt_agent_manager_AskName(self, event):
+-        &quot;&quot;&quot; AskName event handler (when server asks for client name).
+-        @param event: Event with &quot;agent_manager_AskName&quot; type
+-        @type event: C{L{common.simple_event.Event}}
+-        &quot;&quot;&quot;
+-        self.send(self.name)
++    def evt_weapon_shoot(self, event):
++        print &quot;Shoot aussi&quot;
++        self.send(&quot;weapon&quot;, &quot;shoot&quot;)
+
+Modified: boomboom/client/bb_drawer.py
+===================================================================
+--- boomboom/client/bb_drawer.py	2005-09-14 07:27:34 UTC (rev 161)
++++ boomboom/client/bb_drawer.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -4,8 +4,7 @@
+ @contact: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+ @version: 0.2
+ &quot;&quot;&quot;
+-from common import simple_event
+-from common.simple_event import EventListener
++from happyboom.common.simple_event import EventListener
+ import bb_events
+ import pygame, time
+ 
+
+Modified: boomboom/client/bb_events.py
+===================================================================
+--- boomboom/client/bb_events.py	2005-09-14 07:27:34 UTC (rev 161)
++++ boomboom/client/bb_events.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -3,6 +3,8 @@
+ nextTurn = &quot;game_next_turn&quot;
+ activeCharacter = &quot;game_active_character&quot;
+ 
++shoot = &quot;weapon_shoot&quot;
++
+ create = &quot;agent_manager_Create&quot;
+ text = &quot;agent_manager_Text&quot;
+ askVersion = &quot;agent_manager_AskVersion&quot;
+@@ -20,4 +22,4 @@
+ characterMove = &quot;character_move&quot;
+ 
+ visibleItem = &quot;graphical_item&quot;
+-activeCharAbs = &quot;active_character_abscisse&quot;
+\ No newline at end of file
++activeCharAbs = &quot;active_character_abscisse&quot;
+
+Modified: boomboom/client/bb_input.py
+===================================================================
+--- boomboom/client/bb_input.py	2005-09-14 07:27:34 UTC (rev 161)
++++ boomboom/client/bb_input.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -4,8 +4,7 @@
+ @contact: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+ @version: 0.2
+ &quot;&quot;&quot;
+-from common import simple_event
+-from common.simple_event import EventLauncher
++from happyboom.common.simple_event import EventLauncher
+ import bb_events
+ from net import io
+ from net import io_udp, io_tcp
+@@ -51,167 +50,11 @@
+         &quot;&quot;&quot;
+ 
+         EventLauncher.__init__(self)
+-        self.host = arg.get(&quot;host&quot;, &quot;localhost&quot;)
+-        self.port = arg.get(&quot;input_port&quot;, 12431)
+-        self.name = arg.get(&quot;name&quot;, &quot;no name&quot;)
+-        self.__io = io_tcp.IO_TCP()
+-        self.__recv_buffer = net_buffer.NetBuffer()
+-        self.__verbose = arg.get(&quot;verbose&quot;, False)
+-        self.__io.verbose = self.__verbose
+-        self.__debug = arg.get(&quot;debug&quot;, False)
+-        self.__io.debug = self.__debug
+-        self.__protocol_version = &quot;0.1.4&quot;
+-        self.__stopped = False
+-        self.__stoplock = thread.allocate_lock()
+         
+-    def start(self):
+-        &quot;&quot;&quot; Starts the input client : connection to the server, etc. &quot;&quot;&quot;
+-        # Try to connect to server
+-        if self.__verbose: print &quot;[INPUT] Trying to connect to server %s:%s&quot; % (self.host, self.port)
+-        self.__io.on_connect = self.onConnect
+-        self.__io.on_connection_fails = self.onConnectionFails
+-        self.__io.on_disconnect = self.onDisconnect
+-        self.__io.on_lost_connection = self.onLostConnection
+-        self.__io.on_new_packet = self.processPacket
+-        self.__io.connect(self.host, self.port)
+-        if not self.__io.is_ready: return
+-        thread.start_new_thread( self.__io.run_thread, ())
+-        
+-        stopped = False
+-        # Server &quot;challenge&quot; (version, name, ...)
+-        if self.serverChallenge() != True:
+-            self.__stoplock.acquire()
+-            stopped = self.__stopped
+-            self.__stoplock.release()
+-            if not stopped:
+-                print &quot;[INPUT] Server communication mistake !?&quot;
+-                self.launchEvent(bb_events.stop)
+-            return
+-
+-        thread.start_new_thread(self.runIo, ())
+-        
+-        while not stopped:
+-            for input_event in pygame.event.get():
+-                self.process_event(input_event)
+-            time.sleep(0.020)
+-            self.__stoplock.acquire()
+-            stopped = self.__stopped
+-            self.__stoplock.release()
+-        
+-    def stop(self):
+-        &quot;&quot;&quot; Stops the input client : disconnection from the server, etc. &quot;&quot;&quot;
+-        self.__stoplock.acquire()
+-        self.__stopped = True
+-        self.__stoplock.release()
+-        self.__io.stop()
+-        if self.__verbose: print &quot;[INPUT] Stopped&quot;
+-        
+-    def processPacket(self, new_packet):
+-        &quot;&quot;&quot; Bufferizes incomming packets.
+-        @param new_packet: Incomming network packet.
+-        @type new_packet: C{net.io.packet.Packet}
+-        &quot;&quot;&quot;
+-        self.__recv_buffer.append(0,new_packet.data)
+-    
+-    def readCmd(self, timeout=1.000):
+-        &quot;&quot;&quot; Reads incomming commands via the reception buffer.
+-        @param timeout: Timeout to unblock the function.
+-        @type timeout: C{float}
+-        @return: Command read if timeout didn't perform.
+-        @rtype: C{str}
+-        &quot;&quot;&quot;
+-        return self.__recv_buffer.readBlocking(0,timeout)
+-        
+-    def sendCmd(self, cmd):
+-        &quot;&quot;&quot; Sends a command to the network server.
+-        @param cmd: Command to send.
+-        @type cmd: C{str}
+-        &quot;&quot;&quot;
+-        self.__io.send(io.Packet(cmd))
+-        
+-    def processCmd(self, cmd):
+-        &quot;&quot;&quot; Sends only non empty-string command.
+-        @param cmd: Command to send.
+-        @type cmd: C{str}
+-        &quot;&quot;&quot;
+-        if cmd != &quot;&quot;: self.sendCmd(cmd)
+-        
+-    def serverChallenge(self):
+-        &quot;&quot;&quot; Negociate initialisation with the network server. &quot;&quot;&quot;
+-        if self.__verbose: print &quot;[INPUT] Start server challenge (send version, send name, ...).&quot;
+-
+-        cmd = self.readCmd()
+-        if cmd==None: return False
+-        if cmd != &quot;Version?&quot;: 
+-            if self.__debug: print &quot;[INPUT] Server answer: %s instead of Version?&quot; % (cmd)
+-            return False
+-        self.sendCmd(self.__protocol_version)
+-        
+-        cmd = self.readCmd()
+-        if cmd==None: return False
+-        if cmd != &quot;OK&quot;:
+-            if self.__debug: print &quot;[INPUT] Server answer: %s instead of OK&quot; % (cmd)
+-            return False
+-        
+-        cmd = self.readCmd()
+-        if cmd==None: return False
+-        if cmd != &quot;Name?&quot;:
+-            if self.__debug: print &quot;[INPUT] Server answer: %s instead of Name?&quot; % (cmd)
+-            return False
+-        self.sendCmd(self.name)
+-
+-        if self.__debug: print &quot;[INPUT]Challenge: Wait Name OK&quot;
+-        cmd = self.readCmd()
+-        if cmd==None: return False
+-        if cmd != &quot;OK&quot;:
+-            if self.__debug: print &quot;[INPUT] Server answer: %s instead of OK&quot; % (cmd)
+-            return False
+-        if self.__verbose: print &quot;[INPUT] Server challenge done successfully&quot;
+-        return True
+-        
+-    def runIo(self):
+-        &quot;&quot;&quot; Waits for a quit command from server. &quot;&quot;&quot;
+-        while 1:
+-            cmd = self.__recv_buffer.readNonBlocking(0)
+-            while cmd != None:
+-                if cmd == &quot;quit&quot;:
+-                    self.launchEvent(bb_events.stop)
+-                    break
+-                cmd = self.__recv_buffer.readNonBlocking(0)
+-            time.sleep(0.250)
+-            
+-    def onConnect(self):
+-        &quot;&quot;&quot; Handler called on network connection. &quot;&quot;&quot;
+-        if self.__verbose: print &quot;[INPUT] Connected to the server&quot;
+-        
+-    def onConnectionFails(self):
+-        &quot;&quot;&quot; Handler called when network connection fails. &quot;&quot;&quot;
+-        print &quot;[INPUT] Fail to connect to the server&quot;
+-            
+-    def onDisconnect(self):
+-        &quot;&quot;&quot; Handler called on network disconnection. &quot;&quot;&quot;
+-        print &quot;[INPUT] Disconnected from server&quot;
+-        self.launchEvent(bb_events.stop)
+-
+-    def onLostConnection(self):
+-        &quot;&quot;&quot; Handler called on losting network connection. &quot;&quot;&quot;
+-        print &quot;[INPUT] Lost connection with server&quot;
+-        self.launchEvent(bb_events.stop)
+-            
+-    def process_event_active(self, event):
+-        &quot;&quot;&quot; Manages when a pygame event is caught and interact with the server.
+-        @param event: Pygame event.
+-        @type event: C{pygame.Event}
+-        &quot;&quot;&quot;
+-        #delta_angle = -30
+-        if event.type == pygame.KEYDOWN: 
+-            # arrow keys: move character
+-            if event.key == 32: self.sendCmd(&quot;shoot&quot;)
+-            elif event.key == 275: self.sendCmd(&quot;move_right&quot;)
+-            elif event.key == 273: self.sendCmd(&quot;move_up&quot;) 
+-            elif event.key == 274: self.sendCmd(&quot;move_down&quot;)
+-            elif event.key == 276: self.sendCmd(&quot;move_left&quot;)
+-
++    def process(self):
++        for input_event in pygame.event.get():
++            self.process_event(input_event)
++           
+     def process_event(self, event):
+         &quot;&quot;&quot; Manages when a pygame event is caught.
+         @param event: Pygame event.
+@@ -228,3 +71,22 @@
+         #character = self.client.view.getActiveCharacter()
+         #if character != None: self.process_event_active(character, event)
+         self.process_event_active(event)
++
++    def sendCmd(self, cmd):
++        self.x.sendNetMsg(&quot;input&quot;, cmd)
++
++    def process_event_active(self, event):
++        &quot;&quot;&quot; Manages when a pygame event is caught and interact with the server.
++        @param event: Pygame event.
++        @type event: C{pygame.Event}
++        &quot;&quot;&quot;
++        #delta_angle = -30
++        if event.type == pygame.KEYDOWN: 
++            # arrow keys: move character
++            if event.key == 32:
++                print &quot;Event %s&quot; % bb_events.shoot
++                self.launchEvent(bb_events.shoot)
++            elif event.key == 275: self.sendCmd(&quot;move_right&quot;)
++            elif event.key == 273: self.sendCmd(&quot;move_up&quot;) 
++            elif event.key == 274: self.sendCmd(&quot;move_down&quot;)
++            elif event.key == 276: self.sendCmd(&quot;move_left&quot;)
+
+Modified: boomboom/client/bb_item.py
+===================================================================
+--- boomboom/client/bb_item.py	2005-09-14 07:27:34 UTC (rev 161)
++++ boomboom/client/bb_item.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -4,8 +4,7 @@
+ @contact: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+ @version: 0.2
+ &quot;&quot;&quot;
+-from common import simple_event
+-from common.simple_event import EventListener, EventLauncher
++from happyboom.common.simple_event import EventListener, EventLauncher
+ import bb_events
+ import pygame
+ 
+@@ -29,7 +28,6 @@
+         &quot;&quot;&quot;
+         if self.visual == None: return
+         self.visual.draw(screen)
+-        
+ 
+ class VisualObject(object):
+     &quot;&quot;&quot; Manage representation and transformation of an external image to be drawn into game screen.
+
+Modified: boomboom/protocol.xml
+===================================================================
+--- boomboom/protocol.xml	2005-09-14 07:27:34 UTC (rev 161)
++++ boomboom/protocol.xml	2005-09-14 10:47:34 UTC (rev 162)
+@@ -25,10 +25,11 @@
+   &lt;/feature&gt;
+   
+   &lt;feature name=&quot;weapon&quot; id=&quot;4&quot;&gt;
+-    &lt;event name=&quot;setAngle&quot; id=&quot;1&quot;&gt;
++    &lt;event name=&quot;shoot&quot; id=&quot;1&quot; /&gt;
++    &lt;event name=&quot;setAngle&quot; id=&quot;2&quot;&gt;
+       &lt;param type=&quot;int&quot; name=&quot;angle&quot; /&gt;
+     &lt;/event&gt;
+-    &lt;event name=&quot;setStrength&quot; id=&quot;2&quot;&gt;
++    &lt;event name=&quot;setStrength&quot; id=&quot;3&quot;&gt;
+       &lt;param type=&quot;int&quot; name=&quot;angle&quot; /&gt;
+     &lt;/event&gt;
+   &lt;/feature&gt;
+
+Modified: boomboom/server/agents/projectile.py
+===================================================================
+--- boomboom/server/agents/projectile.py	2005-09-14 07:27:34 UTC (rev 161)
++++ boomboom/server/agents/projectile.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -1,4 +1,5 @@
+ from server.bb_agent import Agent, Message
++from happyboom.common.log import log
+ import time
+ import math
+ 
+@@ -30,8 +31,8 @@
+     def msg_weapon_angle(self, angle):
+         self.weapon_angle = (-int(angle)) * math.pi / 180
+ 
+-    def msg_new_command(self, cmd):
+-        if cmd == &quot;shoot&quot; and not self.active:
++    def msg_weapon_shoot(self, cmd):
++        if not self.active:
+             self.shoot()
+ 
+     def msg_character_active_coord(self, x, y):
+@@ -46,8 +47,10 @@
+         self.sendNetMsg(&quot;projectile&quot;, &quot;activate&quot;, 0) 
+ 
+     def shoot(self):
++        log.info(&quot;Shoot!&quot;)
+         if self.weapon_angle==None: return
+         if self.weapon_strength==None: return
++        if self.start_pos==None: return
+         self.move(self.start_pos[0], self.start_pos[1])
+         self.setActive(True)
+         self.time = time.time()
+
+Modified: boomboom/server/bb_server.py
+===================================================================
+--- boomboom/server/bb_server.py	2005-09-14 07:27:34 UTC (rev 161)
++++ boomboom/server/bb_server.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -1,3 +1,4 @@
++from happyboom.common.presentation import Presentation
+ from happyboom.server.base_server import \
+     Server as HBServer, \
+     Gateway as HBGateway, \
+@@ -8,8 +9,8 @@
+ from happyboom.common.log import log
+ 
+ class Gateway(HBGateway):
+-    def __init__(self, protocol, manager, arg):
+-        HBGateway.__init__(self, protocol, manager, arg)
++    def __init__(self, protocol, presentation, manager, arg):
++        HBGateway.__init__(self, protocol, presentation, manager, arg)
+ 
+     def born(self):
+         HBGateway.born(self)
+@@ -41,6 +42,7 @@
+ class Server(HBServer):
+     def __init__(self, protocol, arg):
+         manager = ClientManager(arg)
+-        gateway = Gateway(protocol, manager, arg)
++        presentation = Presentation(protocol, True)
++        gateway = Gateway(protocol, presentation, manager, arg)
+         manager.gateway = gateway
+         HBServer.__init__(self, gateway, arg)
+
+Modified: happyboom/trunk/common/log.py
+===================================================================
+--- happyboom/trunk/common/log.py	2005-09-14 07:27:34 UTC (rev 161)
++++ happyboom/trunk/common/log.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -52,7 +52,7 @@
+         @param str: Message content.
+         @type str: C{str}
+         &quot;&quot;&quot;
+-        
++
+         if not self.__buffer.has_key(level):
+             self.__buffer[level] = [str]
+         else:
+
+Modified: happyboom/trunk/common/packer.py
+===================================================================
+--- happyboom/trunk/common/packer.py	2005-09-14 07:27:34 UTC (rev 161)
++++ happyboom/trunk/common/packer.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -11,7 +11,7 @@
+     elif datatype==&quot;bin&quot;:
+         return true
+     elif datatype==&quot;utf8&quot;:
+-        return type(data)==types.unicode
++        return type(data)==types.UnicodeType
+     else:
+         raise PackerException(&quot;Wrong argument type: %s&quot; % datatype)
+ 
+@@ -23,10 +23,11 @@
+     return struct.pack(&quot;!i&quot;, data)
+     
+ def packUtf8(data):
+-    assert type(data)==types.unicode, &quot;packUtf8 argument have to be Unicode&quot;
++    assert type(data)==types.UnicodeType, &quot;packUtf8 argument have to be an unicode string&quot;
+     return packBin(data.encode(&quot;utf-8&quot;))
+ 
+ def packBin(data):
++    assert type(data)==types.StringType, &quot;packBin argument have to be a string&quot;
+     return struct.pack(&quot;!H%us&quot; % len(data), len(data), data)
+ 
+ def pack(func, event, types, values):
+@@ -38,7 +39,7 @@
+     &quot;&quot;&quot;
+ 
+     assert len(types) == len(values), &quot;Lengths of types and args have to be the same.&quot;
+-    out = struct.pack(&quot;!HH&quot;, func, event)
++    out = struct.pack(&quot;!BB&quot;, func, event)
+ 
+     #TODO: Fix this :-)
+     for i in range(len(values)):
+@@ -57,37 +58,40 @@
+         out = out + data
+     return out        
+ 
+-def unpackBin(data):
++def unpackBin(data):        
+     fmt = &quot;!H&quot;
+     i = struct.calcsize(fmt)
+-    strlen, data = struct.unpack(fmt, data[:i]), data[i:]
+-    fmt = &quot;!%ss&quot; %(strlen)
++    version_len, = struct.unpack(fmt, data[:i])
++    data = data[i:]
++    fmt = &quot;!%us&quot; %(version_len)
+     i = struct.calcsize(fmt)
+-    return (struct.unpack(fmt, data[:i]), data[i:])
+-    
++    bin, = struct.unpack(fmt, data[:i])
++    return bin, data[i:]
++
++def unpackUtf8(data):
++    str, data = unpackBin(data)
++    str = unicode(str, &quot;UTF-8&quot;)
++    return str, data
++ 
+ def unpackInt(data):
+     fmt = &quot;!i&quot;
+     i = struct.calcsize(fmt)
+-    return (struct.unpack(fmt, data[:i]), data[i:])
++    value = struct.unpack(fmt, data[:i])
++    return value, data[i:]
+ 
+-def unpack(data, protocol):
++def unpack(data, feature_id, event_id, protocol):
+     &quot;&quot;&quot;
+     Unpack binary string to arguments.
+     &quot;&quot;&quot;
+-    fmt = &quot;!HH&quot;
+-    i = struct.calcsize(fmt)
+-    feat_id, evt_id = struct.unpack(fmt, data[:i])
+-    data = data[i:]
++    feat = protocol.getFeatureById(feature_id)
++    evt = feat.getEventById(event_id)
+     args = []
+-    feat = protocol.getFeature(feat_id)
+-    evt = feat.getEvent(evt_id)
+     for type in evt.getParamTypes():
+         if type==&quot;int&quot;:
+-            arg, tail = unpackInt(data)
++            arg, data = unpackInt(data)
+         elif type==&quot;bin&quot;:
+-            arg, tail = unpackBin(data)
++            arg, data = unpackBin(data)
+         else:
+             raise PackerException(&quot;Wrong argument type: %s&quot; % type)
+         args.append(arg)
+-        data = tail
+-    return (fea.namet, evt.name, args)
+\ No newline at end of file
++    return (feat.name, evt.name, args)
+
+Modified: happyboom/trunk/common/presentation.py
+===================================================================
+--- happyboom/trunk/common/presentation.py	2005-09-14 07:27:34 UTC (rev 161)
++++ happyboom/trunk/common/presentation.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -1,6 +1,15 @@
++from happyboom.common.packer import packUtf8, packBin
+ from happyboom.common.simple_event import EventLauncher, EventListener
+ from happyboom.common.log import log
++from happyboom.common.packer import unpack, unpackBin, unpackUtf8
++from happyboom.net.io.packet import Packet
++from happyboom.server.client import Client
++import struct
+ 
++class PresentationException(Exception):
++    def __init__(self, msg):
++        Exception.__init__(self, msg)
++
+ class Presentation(EventLauncher, EventListener):
+     
+     CONNECTION    = 0x1
+@@ -10,80 +19,118 @@
+     DESTROY       = 0x5
+     EVENT         = 0x6
+     
+-    def __init__(self, protocol):
++    def __init__(self, protocol, is_server):
++        EventListener.__init__(self)
++        EventLauncher.__init__(self)
+         self.protocol = protocol
+         self.items = {}
+         self.gateway = None
++        self.client_manager = None
++        self.is_server = is_server 
+         
+-    def processPacket(self, newPacket):
++    def processPacket(self, packet):
+         &quot;&quot;&quot; Processes incomming network packets (converts and launches local event).
+-        @param new_packet: incomming network packet.
+-        @type new_packet: C{net.io.packet.Packet}
++        @param packet: incomming network packet.
++        @type packet: C{net.io.packet.Packet}
+         &quot;&quot;&quot;
+       
+         # Get packet type
+-        data = new_packtet.data
++        data = packet.data
+         fmt = &quot;!B&quot;
+         i = struct.calcsize(fmt)
+-        type, data = (struct.unpack(fmt, data[:i]), date[i:],)
++        ptype, = struct.unpack(fmt, data[:i]) 
++        data = data[i:]
+ 
+         # Choose process function
+-        if type == self.CONNECTION:
+-            self.recvConnection(data)
+-            self.sendFeatures()
+-        elif type == self.DISCONNECTION:
+-            log.warning(u&quot;Disconnected from server : %s&quot; % self.getReason(data))
++        if ptype == self.CONNECTION:
++            data = self.recvConnection(packet.recv_from, data)
++        elif ptype == self.DISCONNECTION:
++            data = self.processDisconnect(packet.recv_from, data)
++        elif ptype == self.FEATURES:
++            data = self.processFeatures(packet.recv_from, data)
++        elif ptype == self.CREATE:
++            data = self.createItem(data)
++        elif ptype == self.DESTROY:
++            data = self.destroyItem(data)
++        elif ptype == self.EVENT:
++            data = self.processEvent(data)
++        else:
++            log.warning(&quot;ProtocoleWarning: received unexpected packet type %s.&quot; % ptype)
++        if len(data) != 0:
++            log.warning(&quot;ProtocolWarning: Received a message with an unexpected length.&quot;)
++            log.warning(u&quot;Rest: [%s].&quot; % data)
++
++    def processDisconnect(self, ioclient, data):
++        reason, data = unpackUtf8(data)
++        if self.is_server:
++            self.client_manager.closeClient(ioclient)
++        else:
++            log.warning(u&quot;Received disconnected from server: %s&quot; % reason)
+             self.launchEvent(&quot;happyboom&quot;, &quot;stop&quot;)
+-        elif type == self.CREATE:
+-            self.createItem(data)
+-        elif type == self.DESTROY:
+-            self.destroyItem(data)
+-        elif type == self.EVENT:
+-            self.processEvent(data)
+-        else:
+-            log.warning(&quot;ProtocoleWarning: received unexpected packet type %s.&quot; % type)
++        return data
+         
+-    def recvConnection(self, data):
+-        fmt = &quot;!H&quot;
+-        i = struct.calcsize(fmt)
+-        version_len, data = (struct.unpack(fmt, data[:i]), data[i:])
+-        fmt = &quot;!%us&quot; %(version_len)
+-        i = struct.calcsize(fmt)
+-        version, data = (struct.unpack(fmt, data[:i]), data[i:])
++    def processFeatures(self, ioclient, data):
++        features, data = unpackBin(data)
++        print &quot;Features: %s&quot; % (features)
++        client = Client(ioclient, self.gateway, self.client_manager)
++        self.client_manager.appendClient(client)
++        return data
++
++    def recvConnection(self, client, data):
++        version, data = unpackBin(data)
++        signature, data = unpackBin(data) 
+         
+-        fmt = &quot;!H&quot;
+-        i = struct.calcsize(fmt)
+-        sign_len, data = (struct.unpack(fmt, data[:i]), data[i:])
+-        fmt = &quot;!%us&quot; %(version_len)
+-        i = struct.calcsize(fmt)
+-        signature, data = (struct.unpack(fmt, data[:i]), data[i:])
+-        
+-        if len(data) != 0:
+-            raise TesUneGrosseMerdeError &quot;Received a message with an unexpected length.&quot;
+-        
+-        if version != protocole.version:
+-            pass # TODO
++        if version != self.protocol.version:
++            # TODO: send presentation bye(&lt;why&gt;)
++            raise PresentationException(&quot;Wrong protocol version.&quot;)
++        else:
++            if self.is_server:
++                # Send hello().
++                self.client_manager.generateSignature(client)
++                packet = self.connectionPacket(signature)
++            else:
++                # Send features().
++                self.launchEvent(&quot;signature&quot;, (signature,))
++                packet = self.featuresPacket()
++            client.send(packet)
++        return data
+             
+-        self.launchEvent(&quot;happyboom&quot;, &quot;signature&quot;, (signature,))
+-            
+-    def sendFeatures(self):
+-        pass
+-    
+-    def getReason(self, data):
+-        pass
+-    
++    def featuresPacket(self, features=&quot;TODO: Feed me!&quot;):
++        data = struct.pack(&quot;!B&quot;, self.FEATURES)
++        data = data + packBin(features)
++        return Packet(data)
++       
+     def createItem(self, data):
+-        pass
++        # TODO
++        return data
+ 
++    def connectionPacket(self, signature=&quot;&quot;):
++        data = struct.pack(&quot;!B&quot;, self.CONNECTION)
++        data = data + packBin(self.protocol.version.encode(&quot;ascii&quot;))
++        data = data + packBin(signature)
++        return Packet(data)
++
++    def disconnectionPacket(self, reason):
++        data = struct.pack(&quot;!B&quot;, self.DISCONNECTION) + packUtf8(reason)
++        return Packet(data)
++
+     def sendMsg(self, data):
+         data = struct.pack(&quot;!B&quot;, self.EVENT) + data
+         return data
+         
+     def destroyItem(self, data):
+-        pass
++        # TODO
++        return data
+     
+     def processEvent(self, data):
+-        packer.unpack(data, self.protocol)
+-        if self.__debug:
+-            log.info(&quot;Received message: feature=%s event=%s arguments=%s.&quot; % (feat, evt, args))
+-        self.launchEvent(feat, evt, args)
++        fmt = &quot;!BB&quot;
++        i = struct.calcsize(fmt)
++        feature_id, event_id = struct.unpack(fmt, data[:i])
++        data = data[i:]
++
++        feature, event, args = unpack(data, feature_id, event_id, self.protocol)
++        log.info(&quot;Received: %s.%s(%s)&quot; \
++            % (feature, event, args))
++
++        self.gateway.recvNetMsg(feature, event, args)
++        return &quot;&quot;
+
+Modified: happyboom/trunk/common/protocol.py
+===================================================================
+--- happyboom/trunk/common/protocol.py	2005-09-14 07:27:34 UTC (rev 161)
++++ happyboom/trunk/common/protocol.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -3,6 +3,7 @@
+ &quot;&quot;&quot;
+ 
+ import xml.dom.minidom
++from happyboom.common.packer import pack, checkType
+ 
+ class ProtocolException(Exception):
+     def __init__(self, msg):
+@@ -85,7 +86,7 @@
+                 % (self.protocol.name, self.name, name))
+         return self.__evtnames[name]
+ 
+-    def __getitem__(self, id):
++    def getEventById(self, id):
+         event = self.__evtids.get(id, None)
+         if event == None:
+             raise ProtocolException( \
+@@ -105,12 +106,31 @@
+         return out
+ 
+ class Protocol:
++    &quot;&quot;&quot;
++    HappyBoom protocol utility.
++    version is unicode
++    &quot;&quot;&quot;
+     def __init__(self, name, version):
+         self.name = name
+         self.version = version
+         self.__featnames = {}
+         self.__featids = {}
+ 
++    def createMsg(self, feature, event, *args):
++        f = self.getFeature(feature)
++        e = f.getEvent(event)
++        types = e.getParamTypes()
++        if len(args) != len(types):
++            raise ProtocolException( \
++                &quot;Wrong parameter count (%u) for the event %s.&quot; \
++                % (len(args), e))
++        for i in range(len(args)):
++            if not checkType(types[i], args[i]):
++                raise ProtocolException( \
++                    &quot;Parameter %u of event %s should be of type %s (and not %s).&quot; \
++                    % (i, f, types[i], type(args[i])))
++        return pack(f.id, e.id, types, args)
++
+     def addFeature(self, name, id):
+         # Check if no other feature have the same identifier
+         feature = self.__featnames.get(name, None)
+@@ -118,6 +138,7 @@
+             raise ProtocolException( \
+                 &quot;Features %s and %s have the same identifier (%s).&quot; \
+                 % (feature.name, name, id))
++                
+         # Check if no other feature have the same name
+         feature = self.__featids.get(id, None)
+         if feature != None:
+@@ -135,15 +156,15 @@
+         feature = self.__featnames.get(name, None)
+         if feature == None:
+             raise ProtocolException( \
+-                &quot;The protocol %s has no feature %s.&quot; \
++                &quot;The protocol %s has no feature \&quot;%s\&quot;.&quot; \
+                 % (self.name, name))
+         return feature
+ 
+-    def __getitem__(self, id):
++    def getFeatureById(self, id):
+         feature = self.__featids.get(id, None)
+         if  feature == None:
+             raise ProtocolException( \
+-                &quot;The protocol %s has no feature %s.&quot; \
++                &quot;The protocol %s has no feature with \&quot;%s\&quot; identifier.&quot; \
+                 % (self.name, id))
+         return feature
+         
+
+Modified: happyboom/trunk/common/simple_event.py
+===================================================================
+--- happyboom/trunk/common/simple_event.py	2005-09-14 07:27:34 UTC (rev 161)
++++ happyboom/trunk/common/simple_event.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -64,9 +64,10 @@
+                 # No handle method found, raise error ?
+                 if not obj.silent:
+                     raise UnhandledEventError(&quot;%s has no method to handle %s&quot; %(obj, event))
++        else:
++            print(&quot;Pas de event.type %s&quot; % event.type)
+ 
+ EventManager()
+-
+     
+ class EventListener:
+     &quot;&quot;&quot; Generic class for listening to events.
+@@ -172,4 +173,4 @@
+     
+ class UnhandledEventError(AttributeError):
+     &quot;&quot;&quot; Error raised when an event cannot be handled, except if C{L{silent&lt;EventListener.silent&gt;}} flag is C{True}. &quot;&quot;&quot;
+-    pass
+\ No newline at end of file
++    pass
+
+Modified: happyboom/trunk/net/io/base_io.py
+===================================================================
+--- happyboom/trunk/net/io/base_io.py	2005-09-14 07:27:34 UTC (rev 161)
++++ happyboom/trunk/net/io/base_io.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -31,6 +31,8 @@
+     @type on_new_packet: C{function(L{Packet})}
+     @ivar __name: The IO name.
+     @type __name: C{str}
++    @ivar _running: Is the thread running ?
++    @type _running: C{bool}
+     &quot;&quot;&quot;
+     
+     def __init__(self, is_server=False):
+@@ -41,6 +43,7 @@
+         self.debug = False
+         self.verbose = False 
+         self._is_ready = False
++        self._running = False 
+ 
+         # Events
+         self.on_connect = None            # No argument
+@@ -64,6 +67,7 @@
+         &quot;&quot;&quot;
+         if self.__name==None:
+             self.__name = &quot;%s:%u&quot; % (host, port)
++        self._running = True
+ 
+     def disconnect(self):
+         &quot;&quot;&quot; Close connection. &quot;&quot;&quot;
+@@ -97,10 +101,14 @@
+     
+     def stop(self):
+         &quot;&quot;&quot; Stop the IO (close connections). &quot;&quot;&quot;
+-        pass
++        if not self._running: return
++        self._running = False
++        self.disconnect()
+ 
+     def __str__(self):
+         return self.__name
++    
++    def isRunning(self): return self._running
+ 
+     #--- Private functions ------------------------------------------------------
+ 
+
+Modified: happyboom/trunk/net/io/packet.py
+===================================================================
+--- happyboom/trunk/net/io/packet.py	2005-09-14 07:27:34 UTC (rev 161)
++++ happyboom/trunk/net/io/packet.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -148,7 +148,7 @@
+             data = struct.pack(&quot;!I&quot;, data_len)
+         else:
+             data = struct.pack(&quot;!BBII&quot;, 
+-                self.type, self.skippable+0, self.id, data_len)
++                self.type, int(self.skippable), self.id, data_len)
+         if data_len != 0:
+             data = data + struct.pack(&quot;!%us&quot; % data_len, self.__data)
+         return data
+
+Modified: happyboom/trunk/net/io_tcp/tcp.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/tcp.py	2005-09-14 07:27:34 UTC (rev 161)
++++ happyboom/trunk/net/io_tcp/tcp.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -7,12 +7,13 @@
+ import traceback
+ import struct
+ from tcp_client import TCP_Client
+-from net import io
++from happyboom.net.io.packet import Packet
++from happyboom.net.io.base_io import BaseIO
+ from server_waiter import NetworkServerWaiter
+ from happyboom.common.log import log
+ from happyboom.common.thread import getBacktrace
+ 
+-class IO_TCP(io.BaseIO):
++class IO_TCP(BaseIO):
+     &quot;&quot;&quot;
+     IO for TCP transport.
+     @ivar packet_timeout: Timeout of packets (in seconds)
+@@ -29,12 +30,10 @@
+     @type __clients: C{list&lt;L{IO_client&lt;io.IO_Client&gt;}&gt;?}
+     @ivar __clients_sema: Semaphore used to access L{__clients}.
+     @type __clients_sema: C{thread.lock}
+-    @ivar __running: Is the thread running ?
+-    @type __running: C{bool}
+     &quot;&quot;&quot;
+     
+     def __init__(self, is_server=False):
+-        io.BaseIO.__init__(self)
++        BaseIO.__init__(self)
+         self.packet_timeout = 1.000
+         self.thread_sleep = 0.010
+ 
+@@ -45,8 +44,7 @@
+         self.__clients = {}
+         self.__server = None
+         self.__clients_sema = thread.allocate_lock()
+-        self.__running = False 
+-        io.Packet.use_tcp = True
++        Packet.use_tcp = True
+ 
+     def connect(self, host, port):
+         &quot;&quot;&quot; Connect to host:port &quot;&quot;&quot;
+@@ -79,9 +77,8 @@
+             self.__clients_sema.release()
+ 
+         if self.on_connect != None: self.on_connect()
+-        io.BaseIO.connect(self, host, port)
++        BaseIO.connect(self, host, port)
+         self._is_ready = True
+-        self.__running = True
+ 
+     def disconnect(self):
+         &quot;&quot;&quot; Close connection &quot;&quot;&quot;
+@@ -107,7 +104,7 @@
+         &quot;&quot;&quot; Send a packet to the server or to all clients
+         @type packet: Packet
+         &quot;&quot;&quot;
+-        if not self.__running: return
++        if not self._running: return
+         
+         # Read binary version of the packet
+         data = packet.pack()
+@@ -137,7 +134,7 @@
+ 
+     def __processData(self, client, data):
+         while data != &quot;&quot;:
+-            packet = io.Packet()
++            packet = Packet()
+             packet.recv_from = client
+             data = packet.unpack(data)
+             if not packet.isValid():
+@@ -151,7 +148,7 @@
+     def run_thread(self):
+         &quot;&quot;&quot; Function which should be called in a thread. &quot;&quot;&quot;
+         try:
+-            while self.__running:
++            while self._running:
+                 self.live()                
+                 time.sleep(self.thread_sleep)
+         except Exception, msg:
+@@ -160,13 +157,6 @@
+                 % (msg, getBacktrace()))
+         self.stop()
+ 
+-    def stop(self):
+-        if not self.__running: return
+-        self.__running = False
+-        self.disconnect()
+-
+-    def isRunning(self): return self.__running
+-
+     #--- Private functions ------------------------------------------------------
+ 
+     def __getPort(self):
+
+Modified: happyboom/trunk/server/agent.py
+===================================================================
+--- happyboom/trunk/server/agent.py	2005-09-14 07:27:34 UTC (rev 161)
++++ happyboom/trunk/server/agent.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -1,4 +1,4 @@
+-from pysma import ActionAgent, ActionMessage
++from pysma import ActionAgent, ActionMessage as Message
+ from happyboom.common.log import log
+ 
+ class Agent(ActionAgent):
+@@ -28,7 +28,3 @@
+     def messageReceived(self, msg):
+         if self.__debug:
+             log.warning(&quot;Unhandled message : %s -- %s&quot; %(type(self), msg))
+-
+-class Message(ActionMessage):
+-    def __init__(self, action, arg, kw={}):
+-        ActionMessage.__init__(self, action, arg, kw)
+
+Modified: happyboom/trunk/server/base_server.py
+===================================================================
+--- happyboom/trunk/server/base_server.py	2005-09-14 07:27:34 UTC (rev 161)
++++ happyboom/trunk/server/base_server.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -13,7 +13,8 @@
+         self.__stopped = False
+         self.__stoplock = thread.allocate_lock()
+         self.__gateway = gateway 
+-        gateway.server = self
++        self.__gateway.server = self
++        self.__gateway.client_manager.server = self
+         random.seed()
+         self.__items = []
+         
+
+Modified: happyboom/trunk/server/client.py
+===================================================================
+--- happyboom/trunk/server/client.py	2005-09-14 07:27:34 UTC (rev 161)
++++ happyboom/trunk/server/client.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -1,7 +1,7 @@
+ from happyboom.common.protocol import ProtocolException
+ from happyboom.common.log import log
+ 
+-class Client:
++class Client(object):
+     &quot;&quot;&quot;
+     High-level class for a client in the server.
+     &quot;&quot;&quot;
+@@ -12,6 +12,14 @@
+         self.__gateway = gateway
+         self.signature = None
+ 
++    def __str__(self):
++        return self.__io.__str__()
++
++    def disconnect(self, reason):
++        packet = self.__gateway.presentation.disconnectionPacket(reason)
++        self.sendPacket(packet)
++        self.stop()        
++
+     # Stop client: close socket.
+     def stop(self):
+         self.__io.disconnect()
+@@ -33,3 +41,6 @@
+             log.error(err)
+             return
+         self.__io.send(packet)
++
++    def __getAddr(self): return self.__io.addr
++    addr = property(__getAddr)
+
+Modified: happyboom/trunk/server/client_manager.py
+===================================================================
+--- happyboom/trunk/server/client_manager.py	2005-09-14 07:27:34 UTC (rev 161)
++++ happyboom/trunk/server/client_manager.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -6,7 +6,7 @@
+ 
+ class ClientManager(object):
+     def __init__(self, arg): 
+-        self.__server = None 
++        self.server = None 
+         self.__io = io_tcp.IO_TCP(is_server=True)
+         self.__io.debug = arg.get(&quot;debug&quot;, False)
+         self.__io.verbose = arg.get(&quot;verbose&quot;, False)
+@@ -16,27 +16,28 @@
+         self.max_clients = arg.get(&quot;max_clients&quot;, 2)
+         self.client_port = arg.get(&quot;client_port&quot;, 12430)
+         self.__supported_features = {}
+-        self.__clients = []
+-        self.__clients_sema = thread.allocate_lock()
++        self.__clients = {}
++        self.__clients_lock = thread.allocate_lock()
+         self.gateway = None
++        self.presentation = None
+         
+     def recvClientPacket(self, packet):
+         self.__buffer.append(packet.recv_from.addr, packet)
+ 
+     def stop(self):
+-        for client in self.__clients:
++        for client in self.__clients.values():
+             client.stop()
+ 
+     def process(self):
+-        pass
+-#        processInputs()
++        if not self.__io.isRunning():
++            self.server.stop()
+ 
+     def start(self):
+         if self.__verbose: log.info(&quot;[*] Starting server&quot;)
+         self.__io.name = &quot;server&quot;
+         self.__io.on_client_connect = self.openClient
+         self.__io.on_client_disconnect = self.closeClient
+-        self.__io.on_new_packet = self.recvClientPacket
++        self.__io.on_new_packet = self.presentation.processPacket
+         self.__io.connect('', self.client_port)
+         thread.start_new_thread(self.run_io_thread, ())
+ 
+@@ -53,19 +54,23 @@
+             self.__supported_features[role] = [client,]
+         
+     def openClient(self, client):
+-        # TODO: Ne pas utiliser de thread ?!
+-        thread.start_new_thread( self.__clientChallenge, (client,self.__do_openClient))
++        log.info(&quot;[*] Client %s try to connect ...&quot; % client)
+ 
+-    def closeClient(self, client):
+-        if self.__verbose:
+-            log.info(&quot;Client %s disconnected.&quot; % client)
+-        
+-        txt = &quot;Client %s leave us.&quot; % client
+-        self.gateway.sendText(txt)
+-       
++    def removeClient(self, ioclient):
++        client = self.getClientByAddr(ioclient.addr)
++        if client == None: return
++        log.info(&quot;Disconnect client %s.&quot; % client)
++        self.gateway.sendText(u&quot;Client %s leave us.&quot; % client)
++
++        self.__clients_lock.acquire() 
++        del self.__clients[ioclient.addr]
++        self.__clients_lock.release() 
++    
++    def closeClient(self, ioclient):
+         # TODO: get client of type Client for the client of type ClientIO to send
+         # him bye
+ #        client.sendNetMsg(&quot;presentation&quot;, &quot;bye&quot;, &quot;utf8&quot;, u&quot;Lost connection&quot;)
++        self.removeClient(ioclient)
+         
+     def __clientChallenge(self, client, func):
+         try:
+@@ -77,7 +82,7 @@
+             self.stop()
+ 
+     # Function which should be called in a thread
+-    # TODO: Pourquoi c'est utilis&#233; &#231;a ?
++    # TODO: Why is this used?
+     def run_io_thread(self):
+         try:
+             while self.__io.isRunning():
+@@ -87,51 +92,30 @@
+             log.error( \
+                 &quot;EXCEPTION IN IO THREAD :\n%s\n%s&quot; \
+                 % (msg, getBacktrace()))
+-            self.stop()
++            self.server.stop()
+ 
+-    def generateSignature(self, client):
++    def generateSignature(self, ioclient):
+         import random
+         r = random.randint(0,1000000)
+         return r
+ 
+-    def __do_openClient(self, io_client):
+-        log.info(&quot;[*] Display %s try to connect ...&quot; % io_client)
+-        client = Client(io_client, self.gateway, self)
+-        
+-#        self.__buffer.clear(client.addr)
+-       
+-        # Check protocol version (max: wait 200ms)
+-        answer = client.read(0.200)
+-        if answer != self.gateway.protocol_version:
+-            # If it isn't the right version, send presention.bye(...)
+-            txt = u&quot;Sorry, you don't have same protocol version (%s VS %s)&quot; \
+-                % (answer, self.gateway.protocol_version)
+-            client.sendNetMsg(&quot;presentation&quot;, &quot;bye&quot;, &quot;utf8&quot;, txt)
++    def getClientByAddr(self, addr):
++        &quot;&quot;&quot; Returns None if no client matchs. &quot;&quot;&quot;
++        self.__clients_lock.acquire() 
++        client = self.__clients.get(addr, None)
++        self.__clients_lock.release() 
++        return client
++    
++    def appendClient(self, client):
++        self.__clients_lock.acquire() 
++        self.__clients[client.addr] = client
++        self.__clients_lock.release() 
+ 
+-            # Wait 0.5s and then disconnect the client
+-            time.sleep(0.500)
+-            client.stop()
+-            return
+-            
+-        # Send protocol version with &quot;hello()&quot;
+-        client.signature = self.generateSignature()        
+-        client.send(&quot;presentation&quot;, &quot;hello&quot;, \
+-            &quot;bin&quot;, self.gateway.protocol_version, \
+-            &quot;bin&quot;, signature)
+-         
+-        # Read features (max: wait 1sec)
+-        answer = client.read(1.0)
+-        #TODO: do something with answer :-)
+-
+-        self.__clients_sema.acquire() 
+-        self.__clients.append(client)
+-        self.__clients_sema.release() 
+-
+-        txt = &quot;Welcome to new (display) client : %s&quot; % (client.name)
++        txt = u&quot;Welcome to new (display) client : %s&quot; % client
+         self.gateway.sendText(txt)
+-        log.info(&quot;[*] Display %s connected&quot; % (client.name))
+-        self.sendBBMessage(&quot;sync&quot;)
+-
++        log.info(&quot;[*] Display %s connected&quot; % client)
++        self.gateway.send(&quot;sync&quot;)
++    
+     def __getSupportedFeatures(self): return self.__supported_features
+     supported_features = property(__getSupportedFeatures)
+ 
+
+Modified: happyboom/trunk/server/gateway.py
+===================================================================
+--- happyboom/trunk/server/gateway.py	2005-09-14 07:27:34 UTC (rev 161)
++++ happyboom/trunk/server/gateway.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -1,5 +1,4 @@
+-from happyboom.common import packer 
+-from happyboom.server.agent import Agent
++from happyboom.server.agent import Agent, Message
+ from happyboom.common.protocol import loadProtocol, ProtocolException
+ from happyboom.net.io import Packet
+ from happyboom.common.log import log
+@@ -7,10 +6,14 @@
+ import struct
+ 
+ class Gateway(Agent):
+-    def __init__(self, protocol, client_manager, arg):
++    def __init__(self, protocol, presentation, client_manager, arg):
+         Agent.__init__(self, self, &quot;gateway&quot;)
+         self.__protocol = protocol
+-        self.__client_manager = client_manager
++        self.client_manager = client_manager
++        self.presentation = presentation
++        self.presentation.gateway = self 
++        self.presentation.client_manager = self.client_manager
++        self.client_manager.presentation = self.presentation
+         self.__server = None 
+         self._debug = arg.get(&quot;debug&quot;, False)
+         self._verbose = arg.get(&quot;verbose&quot;, False)
+@@ -19,41 +22,29 @@
+ 
+     def __setServer(self, server):
+         self.__server = server
+-        self.__client_manager.server = server
++        self.client_manager.server = server
+     server = property(None, __setServer)
+ 
+-
+     # Create a network packet for the event feature.event(args)
+     def createMsg(self, feature, event, *args):
+-        f = self.__protocol.getFeature(feature)
+-        e = f.getEvent(event)
+-        types = e.getParamsType()
+-        if len(args) != len(types):
+-            raise ProtocolException( \
+-                &quot;Wrong parameter count (%u) for the event %s.&quot; \
+-                % (len(args), e))
+-        for i in range(len(args)):
+-            if not packer.checkType(types[i], args[i]):
+-                raise ProtocolException( \
+-                    &quot;Parameter %u of event %s should be of type %s (and not %s).&quot; \
+-                    % (i, e, types[i], type(args[i])))
+-        data = packer.pack(f.id, e.id, types, args)
++        data = self.__protocol.createMsg(feature, event, *args)
++        data = self.presentation.sendMsg(data)
+         return Packet(data)
+             
+     def start(self):
+-        self.__client_manager.start()
++        self.client_manager.start()
+         Kernel.instance.addAgent(self)
+         
+     def stop(self):
+         self.sendNetMsg(&quot;game&quot;, &quot;stop&quot;)
+-        self.__client_manager.stop()
++        self.client_manager.stop()
+         Kernel.instance.stopKernel()
+ 
+     def process(self):
+         # Stop server if the scheduler is dead
+         if not self.__scheduler.alive:
+             self.__server.stop()
+-        self.__client_manager.process()
++        self.client_manager.process()
+ 
+     def sendText(self, txt, client=None):
+         if client != None:
+@@ -61,13 +52,17 @@
+         else:
+             self.sendNetMsg(&quot;chat&quot;, &quot;message&quot;, txt)
+ 
++    def recvNetMsg(self, feature, event, *args):
++        message = Message(&quot;%s_%s&quot; % (feature, event), args)
++        self.sendBroadcastMessage(message, &quot;%s_listener&quot; % feature)
++
+     def sendNetMsg(self, feature, event, *args):
+         try:
+             packet = self.createMsg(feature, event, *args)
+         except ProtocolException, err:
+             log.error(err)
+             return
+-        clients = self.__client_manager.supported_features.get(feature, ())
++        clients = self.client_manager.supported_features.get(feature, ())
+         for client in clients:
+             client.sendPacket(packet)
+ 
+
+Modified: happywarry/happywarry-server.py
+===================================================================
+--- happywarry/happywarry-server.py	2005-09-14 07:27:34 UTC (rev 161)
++++ happywarry/happywarry-server.py	2005-09-14 10:47:34 UTC (rev 162)
+@@ -17,27 +17,17 @@
+     sys.path.append(happyboomdir)
+ 
+     # Get user directory 
+-    from common.log import log
+-    if os.name==&quot;nt&quot;:
+-        home = os.environ['USERHOME']
+-    else:
+-        home = os.environ['HOME']
++    from happyboom.common.file import getCreateHomeDir
++    logdir = getCreateHomeDir(&quot;happywarry&quot;)
+ 
+-    # Create happywarry directory if needed
+-    logdir = os.path.join(home, &quot;.happywarry&quot;)
+-    try:
+-        os.mkdir(logdir)
+-    except OSError, err:
+-        if err[0]==17: pass
+-        logdir = None
+-
+     # Setup log filename
++    from happyboom.common.log import log
+     if logdir != None:
+         logname = os.path.join(logdir, &quot;server-log&quot;)    
+         log.setFilename(logname)
+ 
+     # Setup gettext
+-    localedir = os.path.join(file_dir, &quot;./locale&quot;)
++    localedir = os.path.join(file_dir, &quot;locale&quot;)
+     gettext.install('happywarry', localedir, unicode=1)
+ 
+ def main():
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000068.html">[Happyboom-svn] r161 - in boomboom: . client common
+</A></li>
+	<LI>Next message: <A HREF="000070.html">[Happyboom-svn] r163 - happyboom/trunk/common
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#69">[ date ]</a>
+              <a href="thread.html#69">[ thread ]</a>
+              <a href="subject.html#69">[ subject ]</a>
+              <a href="author.html#69">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,38 @@
+From haypo at berlios.de  Mon May  8 05:56:00 2006
+From: haypo at berlios.de (haypo at BerliOS)
+Date: Mon, 8 May 2006 05:56:00 +0200
+Subject: [Happyboom-svn] r455 - haypo/lamer
+Message-ID: <200605080356.k483u0dW001434@sheep.berlios.de>
+
+Author: haypo
+Date: 2006-05-08 05:55:54 +0200 (Mon, 08 May 2006)
+New Revision: 455
+
+Added:
+   haypo/lamer/mod_pypi.sh
+Log:
+Add module Pypi (Python Cheeseshop)
+
+
+Added: haypo/lamer/mod_pypi.sh
+===================================================================
+--- haypo/lamer/mod_pypi.sh	2006-03-15 00:16:16 UTC (rev 454)
++++ haypo/lamer/mod_pypi.sh	2006-05-08 03:55:54 UTC (rev 455)
+@@ -0,0 +1,8 @@
++#!/bin/bash
++export MOD=pypi
++IN=~/.pypirc
++if [ ! -e $IN ]; then exit 0; fi
++tool/common.sh
++echo "http://cheeseshop.python.org/"
++echo $(grep username $IN)
++echo $(grep password $IN)
+
+
+Property changes on: haypo/lamer/mod_pypi.sh
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+
+

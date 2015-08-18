@@ -1,0 +1,509 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r202 - in boomboom: . curses_client curses_client/items
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r202%20-%20in%20boomboom%3A%20.%20curses_client%20curses_client/items&In-Reply-To=%3C200509180928.j8I9SJj3024337%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000108.html">
+   <LINK REL="Next"  HREF="000110.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r202 - in boomboom: . curses_client curses_client/items</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r202%20-%20in%20boomboom%3A%20.%20curses_client%20curses_client/items&In-Reply-To=%3C200509180928.j8I9SJj3024337%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r202 - in boomboom: . curses_client curses_client/items">dboucard at berlios.de
+       </A><BR>
+    <I>Sun Sep 18 11:28:19 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000108.html">[Happyboom-svn] r201 - in boomboom/client: . items
+</A></li>
+        <LI>Next message: <A HREF="000110.html">[Happyboom-svn] r203 - happyboom/trunk/client
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#109">[ date ]</a>
+              <a href="thread.html#109">[ thread ]</a>
+              <a href="subject.html#109">[ subject ]</a>
+              <a href="author.html#109">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-18 11:28:18 +0200 (Sun, 18 Sep 2005)
+New Revision: 202
+
+Modified:
+   boomboom/boomboom_client.py
+   boomboom/curses_client/curses_tools.py
+   boomboom/curses_client/display.py
+   boomboom/curses_client/input.py
+   boomboom/curses_client/items/character.py
+   boomboom/curses_client/items/log.py
+   boomboom/curses_client/items/projectile.py
+   boomboom/curses_client/items/weapon.py
+   boomboom/curses_client/items/world.py
+Log:
+curses client works
+
+
+Modified: boomboom/boomboom_client.py
+===================================================================
+--- boomboom/boomboom_client.py	2005-09-18 07:46:31 UTC (rev 201)
++++ boomboom/boomboom_client.py	2005-09-18 09:28:18 UTC (rev 202)
+@@ -64,8 +64,7 @@
+             val[&quot;debug&quot;] = True
+     return val
+ 
+-def run(arg):
+-    from client import Client
++def run(Client, arg):
+     from happyboom.common.log import log
+     
+     client = Client(arg)
+@@ -78,10 +77,12 @@
+ 
+ def run_curses(stdscr, args):
+     from happyboom.common.log import log
++    from curses_client import Client
+     try:
+         args[&quot;window&quot;] = stdscr
++        args[&quot;item_path&quot;] = &quot;curses_client/items&quot;
+         stdscr.scrollok(True)
+-        run(args)
++        run(Client, args)
+     except Exception, err:
+         log.error(&quot;Uncatched error in run_curses: %s&quot; % err)
+         raise
+@@ -122,7 +123,8 @@
+         log.info(&quot;Start client with pygame.&quot;)
+         import pygame
+         pygame.init()
+-        run(arg)
++        from client import Client
++        run(Client, arg)
+         pygame.quit()
+     else:
+         log.info(&quot;Start client with curses.&quot;)
+
+Modified: boomboom/curses_client/curses_tools.py
+===================================================================
+--- boomboom/curses_client/curses_tools.py	2005-09-18 07:46:31 UTC (rev 201)
++++ boomboom/curses_client/curses_tools.py	2005-09-18 09:28:18 UTC (rev 202)
+@@ -1,7 +1,7 @@
+ import curses
+ 
+-def convertXY(x, y):
+-    global window
++def convertXY(window, x, y):
++    #global window
+     maxy, maxx = window.getmaxyx()
+     x = int(x * maxx / 640)
+     y = int(y * maxy / 350)
+
+Modified: boomboom/curses_client/display.py
+===================================================================
+--- boomboom/curses_client/display.py	2005-09-18 07:46:31 UTC (rev 201)
++++ boomboom/curses_client/display.py	2005-09-18 09:28:18 UTC (rev 202)
+@@ -1,8 +1,8 @@
+ from happyboom.common.event import EventListener
+-import bb_events
+-import curses, time
++from happyboom.common.log import log
++import curses, time, thread, item
+ 
+-class BoomBoomDrawer(EventListener):
++class Display(EventListener):
+     &quot;&quot;&quot; Manages the drawing of the screen game (double buffered) in a display loop.
+     @ivar __screen: Current drawed offscreen.
+     @type __screen: C{{Window}}
+@@ -25,21 +25,44 @@
+         self.__items = []
+         self.registerEvent(&quot;graphical&quot;)
+         self.window = args[&quot;window&quot;]
++        self.__stopped = False
++        self.__stoplock = thread.allocate_lock()
++        self.__itemlock = thread.allocate_lock()
+     
+     def start(self):
+-        pass
++        self.mainLoop()
+         
++    def stop(self):
++        &quot;&quot;&quot; Stops the display loop. &quot;&quot;&quot;
++        # Does not stop several times
++        self.__stoplock.acquire()
++        if self.__stopped:
++            self.__stoplock.release()
++            return False
++        self.__stopped = True
++        self.__stoplock.release()
++        
+     def mainLoop(self):
+         &quot;&quot;&quot; Display loop. &quot;&quot;&quot;
+-        while True:
++        while not self.stopped:
+             live_begin = time.time()
+             
+             # Clearing screen
+             self.window.clear()
+ 
+             # Drawing each items
+-            for item in self.__items:
+-                item.draw()
++            items = self.getItems()
++            for item in items[:]:
++                if item.__class__.__name__ == &quot;Projectile&quot;:
++                    item.draw(self.window)
++                    items.remove(item)
++            for item in items[:]:
++                if item.__class__.__name__ == &quot;Character&quot;:
++                    item.draw(self.window)
++                    items.remove(item)
++            for item in items[:]:
++                item.draw(self.window)
++                items.remove(item)
+ 
+             # Displaying offscreen 
+             self.window.refresh()
+@@ -55,4 +78,21 @@
+         @type event: C{L{common.simple_event.Event}}
+         &quot;&quot;&quot;
+         if item not in self.__items:
+-            self.__items.append(item)
++            self.addItem(item)
++            
++    def __isStopped(self):
++        self.__stoplock.acquire()
++        stop = self.__stopped
++        self.__stoplock.release()
++        return stop
++    stopped = property(__isStopped)
++    
++    def getItems(self):
++        self.__itemlock.acquire()
++        items = self.__items[:]
++        self.__itemlock.release()
++        return items
++    def addItem(self, item):
++        self.__itemlock.acquire()
++        self.__items.append(item)
++        self.__itemlock.release()
+\ No newline at end of file
+
+Modified: boomboom/curses_client/input.py
+===================================================================
+--- boomboom/curses_client/input.py	2005-09-18 07:46:31 UTC (rev 201)
++++ boomboom/curses_client/input.py	2005-09-18 09:28:18 UTC (rev 202)
+@@ -1,7 +1,7 @@
+-from client.bb_input import BoomBoomInput as BaseInput
++from generic_input import Input as BaseInput
+ import curses
+                 
+-class BoomBoomInput(BaseInput):
++class Input(BaseInput):
+     def __init__(self, arg):
+         BaseInput.__init__(self, arg)
+         self.window = arg[&quot;window&quot;]
+@@ -19,7 +19,7 @@
+ #            return
+     
+         if key == 32: # space
+-            self.launchEvent(&quot;happyboom&quot;, &quot;netSendMsg&quot;, &quot;weapon&quot;, &quot;shoot&quot;)
++            self.launchEvent(&quot;happyboom&quot;, &quot;network&quot;, &quot;weapon&quot;, &quot;shoot&quot;)
+         elif key == curses.KEY_RIGHT:
+             self.weapon_setStrengthDelta(10)
+         elif key == curses.KEY_UP:
+
+Modified: boomboom/curses_client/items/character.py
+===================================================================
+--- boomboom/curses_client/items/character.py	2005-09-18 07:46:31 UTC (rev 201)
++++ boomboom/curses_client/items/character.py	2005-09-18 09:28:18 UTC (rev 202)
+@@ -1,20 +1,23 @@
+-from client.bb_item import BoomBoomItem
+-from client.curses_tools import convertXY
++from curses_client.item import Item
++from curses_client.curses_tools import convertXY
+ 
+-class Character(BoomBoomItem):
+-    def __init__(self, id, name, args):
+-        BoomBoomItem.__init__(self)
++class Character(Item):
++    feature = &quot;character&quot;
++    
++    def __init__(self, id):
++        Item.__init__(self)
+         self.x, self.y = None, None
+         self.__id = id
+-        self.__name = name
++        self.__name = &quot;unamed%s&quot;%id
+         self.active = False
+         self.registerEvent(&quot;character&quot;)
+-        self.window = args[&quot;window&quot;]
+         
+     def evt_character_move(self, id, x, y):
+         if self.__id != id: return
+-        self.x, self.y = convertXY(x, y)
++        self.x, self.y = (x, y)
+         
+-    def draw(self):
++    def draw(self, screen):
+         if self.x == None: return
+-        self.window.addstr(self.y, self.x, &quot;Gorilla&quot;)
++        x, y = convertXY(screen, int(self.x), int(self.y))
++        screen.addstr(y, x, &quot; oo&quot;)
++        screen.addstr(y+1, x, &quot;(ww)&quot;+&quot; &quot;*screen.getmaxyx()[1])
+
+Modified: boomboom/curses_client/items/log.py
+===================================================================
+--- boomboom/curses_client/items/log.py	2005-09-18 07:46:31 UTC (rev 201)
++++ boomboom/curses_client/items/log.py	2005-09-18 09:28:18 UTC (rev 202)
+@@ -1,4 +1,4 @@
+-from client.item import Item
++from curses_client.item import Item
+ from happyboom.common.log import log
+ 
+ class LogItem(Item):
+
+Modified: boomboom/curses_client/items/projectile.py
+===================================================================
+--- boomboom/curses_client/items/projectile.py	2005-09-18 07:46:31 UTC (rev 201)
++++ boomboom/curses_client/items/projectile.py	2005-09-18 09:28:18 UTC (rev 202)
+@@ -4,34 +4,34 @@
+ @contact: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+ @version: 0.2
+ &quot;&quot;&quot;
+-from client.bb_item import BoomBoomItem
+-from client.curses_tools import convertXY
++from curses_client.item import Item
++from curses_client.curses_tools import convertXY
+ import curses
+ 
+-class Projectile(BoomBoomItem):
++class Projectile(Item):
+     &quot;&quot;&quot; Represents a banana projectile launch by the monkey.
+     @ivar visual: Graphical object containing data and transformations
+     @type visual: C{L{VisualObject}}
+     &quot;&quot;&quot;
++    feature = &quot;projectile&quot;
+     
+-    def __init__(self, args):
++    def __init__(self, id):
+         &quot;&quot;&quot; Projectile itemp constructor. &quot;&quot;&quot;
+-        BoomBoomItem.__init__(self)
++        Item.__init__(self)
+         self.registerEvent(&quot;projectile&quot;)
+-        self.window = args[&quot;window&quot;]
+         self.x, self.y = 10,10
+         self.display = False
+ 
+-    def draw(self):
++    def draw(self, screen):
+         if not self.display: return
+-        maxy, maxx = self.window.getmaxyx()
+-        if self.x &lt; 0 or maxx &lt; self.x: return
+-        if self.y &lt; 0 or maxy &lt; self.y: return
+-        self.window.addstr(self.y,self.x,&quot;*&quot;)
++        maxy, maxx = screen.getmaxyx()
++        x, y = convertXY(screen, int(self.x), int(self.y))
++        if x &lt; 0 or maxx &lt; x: return
++        if y &lt; 0 or maxy &lt; y: return
++        screen.addstr(y,x,&quot;)&quot;+&quot; &quot;*maxx)
+         
+     def evt_projectile_move(self, x, y):
+-        height,width = self.window.getmaxyx()
+-        self.x, self.y = convertXY(x, y)
++        self.x, self.y = (x, y)
+         
+ #    def evt_projectile_hitGround(self, x, y):
+ #        pass
+
+Modified: boomboom/curses_client/items/weapon.py
+===================================================================
+--- boomboom/curses_client/items/weapon.py	2005-09-18 07:46:31 UTC (rev 201)
++++ boomboom/curses_client/items/weapon.py	2005-09-18 09:28:18 UTC (rev 202)
+@@ -4,23 +4,24 @@
+ @contact: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+ @version: 0.2
+ &quot;&quot;&quot;
+-from client.bb_item import BoomBoomItem
++from curses_client.item import Item
++from curses_client.curses_tools import convertXY
++from happyboom.common.log import log
+ import curses 
+-from client.curses_tools import convertXY
+ 
+-class Weapon(BoomBoomItem):
+-    def __init__(self, args):
++class Weapon(Item):
++    feature = &quot;weapon&quot;
++    
++    def __init__(self, id):
+         &quot;&quot;&quot; Weapon item constructor. &quot;&quot;&quot;
+-        BoomBoomItem.__init__(self)
++        Item.__init__(self)
+         self.__angle = None 
+         self.__strength = None
+         self.x, self.y = (None, 10)
+         self.character_pos = {}
+-        self.window = args[&quot;window&quot;]
+         self.active_character = None
+         self.registerEvent(&quot;weapon&quot;)
+         self.registerEvent(&quot;character&quot;)
+-        self.registerEvent(&quot;game&quot;)
+ 
+     def evt_weapon_setStrength(self, strength):
+         &quot;&quot;&quot; Weapon strength event handler.
+@@ -40,7 +41,7 @@
+         self.character_pos[id] = (x, y,)
+         self.updateXY()
+         
+-    def evt_game_setActiveCharacter(self, id):
++    def evt_character_activate(self, id):
+         &quot;&quot;&quot; Active character abcsisse event handler.
+         @param event: Event with &quot;active_character_abscisse&quot; type.
+         @type event: C{L{common.simple_event.Event}}
+@@ -48,7 +49,7 @@
+         self.active_character = id
+         self.updateXY()
+                
+-    def draw(self):
++    def draw(self, screen):
+         &quot;&quot;&quot; Drawing method called by C{BoomBoomDrawer}
+         @param screen: Offscreen to draw in.
+         @type screen: C{L{Window&lt;bb_drawer.Window&gt;}}
+@@ -56,19 +57,22 @@
+         if self.__angle == None: return
+         if self.__strength == None: return
+         if self.x == None: return
++        maxy,maxx = screen.getmaxyx()
++        x, y = convertXY(screen, self.x, self.y)
++        if x &lt; maxx/2:
++            x = 1
++        else:
++            x = maxx - 20
++        y = 1
++        log.info(&quot;x=%s, y=%s&quot; %(x, y))
+         txt = &quot;Angle: %s&quot; % self.__angle
+-        self.window.addstr(self.y, self.x, txt)
++        screen.addstr(y, x, txt)
+         txt = &quot;Strength: %s&quot; % self.__strength
+-        self.window.addstr(self.y+1, self.x, txt)
++        screen.addstr(y+1, x, txt)
+ 
+     def updateXY(self):
+         if self.active_character==None: return
+         pos = self.character_pos.get(self.active_character, None)
+         if pos == None: return
+-        x, y = convertXY(pos[0], pos[1])
+-        maxy,maxx = self.window.getmaxyx()
+-        if x &lt; maxx/2:
+-            self.x = 1
+-        else:
+-            self.x = maxx - 20
+-        self.y = 1
++        self.x, self.y = pos
++        
+
+Modified: boomboom/curses_client/items/world.py
+===================================================================
+--- boomboom/curses_client/items/world.py	2005-09-18 07:46:31 UTC (rev 201)
++++ boomboom/curses_client/items/world.py	2005-09-18 09:28:18 UTC (rev 202)
+@@ -1,5 +1,5 @@
+-from client.bb_item import BoomBoomItem
+-from client.curses_tools import convertXY
++from curses_client.item import Item
++from curses_client.curses_tools import convertXY
+ 
+ class Building:
+     &quot;&quot;&quot; Represents a building which is used as plat-form in the game.
+@@ -23,25 +23,28 @@
+         self.width, self.height = width, height
+ #        self.color = None # TODO: Choose color 
+ 
+-    def draw(self, win):
++    def draw(self, screen):
+         &quot;&quot;&quot; Drawing method called by C{BoomBoomDrawer}
+         @param screen: Offscreen to draw in.
+         @type screen: C{L{Window&lt;bb_drawer.Window&gt;}}
+         &quot;&quot;&quot;
+-        for y in range(self.y, self.y+self.height):
+-            win.addstr(y, self.x, &quot;#&quot; * self.width)
++        x, y = convertXY(screen, int(self.x), int(self.y))
++        w, h = convertXY(screen, int(self.width), int(self.height))
++        for line in range(y, y+h):
++            screen.addstr(line, x, &quot;#&quot; * w)
+         
+-class World(BoomBoomItem):
++class World(Item):
+     &quot;&quot;&quot; Represents the ground of the game (collection of buildings).
+     @ivar __buildings: Collection of buildings.
+     @type __buildings: C{list&lt;L{Building}&gt;}
+     &quot;&quot;&quot;
+-    def __init__(self, args):
++    feature = &quot;world&quot;
++    
++    def __init__(self, id):
+         &quot;&quot;&quot; World item constructor. &quot;&quot;&quot;
+-        BoomBoomItem.__init__(self)
++        Item.__init__(self)
+         self.__buildings = []
+         self.registerEvent(&quot;world&quot;)
+-        self.window = args[&quot;window&quot;]
+ 
+     def born(self):
+         Agent.born(self)
+@@ -54,17 +57,17 @@
+         &quot;&quot;&quot;
+         self.__buildings = []
+         rects = data.split(&quot;;&quot;)
+-        maxy, maxx = self.window.getmaxyx()
++        #maxy, maxx = self.window.getmaxyx()
+         for rect in rects:
+             x, y, w, h = rect.split(&quot;,&quot;)
+-            x, y = convertXY(int(x), int(y))
+-            w, h = convertXY(int(w), int(h))
++            #x, y = convertXY(int(x), int(y))
++            #w, h = convertXY(int(w), int(h))
+             b = Building(x, y, w, h)
+             self.__buildings.append(b)
+ 
+-    def draw(self):
++    def draw(self, screen):
+         &quot;&quot;&quot; Drawing method called by C{BoomBoomDrawer}
+         @param screen: Offscreen to draw in.
+         @type screen: C{L{Window&lt;bb_drawer.Window&gt;}}
+         &quot;&quot;&quot;
+-        for b in self.__buildings: b.draw(self.window)
++        for b in self.__buildings: b.draw(screen)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000108.html">[Happyboom-svn] r201 - in boomboom/client: . items
+</A></li>
+	<LI>Next message: <A HREF="000110.html">[Happyboom-svn] r203 - happyboom/trunk/client
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#109">[ date ]</a>
+              <a href="thread.html#109">[ thread ]</a>
+              <a href="subject.html#109">[ subject ]</a>
+              <a href="author.html#109">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

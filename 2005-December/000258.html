@@ -1,0 +1,1601 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r355 - in haypo/hachoir/trunk: . broken_plugins plugins stream ui
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r355%20-%20in%20haypo/hachoir/trunk%3A%20.%20broken_plugins%20plugins%20stream%20ui&In-Reply-To=%3C200512262344.jBQNiI0a021299%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000257.html">
+   <LINK REL="Next"  HREF="000259.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r355 - in haypo/hachoir/trunk: . broken_plugins plugins stream ui</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r355%20-%20in%20haypo/hachoir/trunk%3A%20.%20broken_plugins%20plugins%20stream%20ui&In-Reply-To=%3C200512262344.jBQNiI0a021299%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r355 - in haypo/hachoir/trunk: . broken_plugins plugins stream ui">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec 27 00:44:18 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000257.html">[Happyboom-svn] r354 - haypo/hachoir/tags/2005-12-26
+</A></li>
+        <LI>Next message: <A HREF="000259.html">[Happyboom-svn] r356 - haypo/hachoir/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#258">[ date ]</a>
+              <a href="thread.html#258">[ thread ]</a>
+              <a href="subject.html#258">[ subject ]</a>
+              <a href="author.html#258">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-27 00:44:13 +0100 (Tue, 27 Dec 2005)
+New Revision: 355
+
+Added:
+   haypo/hachoir/trunk/cache.py
+   haypo/hachoir/trunk/plugins/ext2.py
+   haypo/hachoir/trunk/todo.py
+Removed:
+   haypo/hachoir/trunk/broken_plugins/ext2.py
+Modified:
+   haypo/hachoir/trunk/chunk.py
+   haypo/hachoir/trunk/config.py
+   haypo/hachoir/trunk/filter.py
+   haypo/hachoir/trunk/format.py
+   haypo/hachoir/trunk/plugins/png.py
+   haypo/hachoir/trunk/stream/file.py
+   haypo/hachoir/trunk/stream/stream.py
+   haypo/hachoir/trunk/tools.py
+   haypo/hachoir/trunk/ui/hachoir.glade
+   haypo/hachoir/trunk/ui/ui_window.py
+Log:
+- humanDuration can display years
+- fix stream/stream.py for new FormatChunk syntax
+- cache:
+  o write a class Cache with getCacheSize() and purgeCache() virtual methods
+  o write CacheList to list all caches which have method purgeCaches()
+- Chunk can not be moved anymore: you should delete them and recreate others.
+  So the chunk don't have to check if it has moved to read it's value.
+- Remove Chunk.update() method: have to be rewritten from scratch
+- Remove Chunk.clone(): not needed anymore
+- Create a class for format cache: FormatCache (original name, isn't it?)
+- Fix ext2 plugin for new syntax
+- Filter and Chunk can have &quot;static size&quot;: so it's not needed to instanciate
+  the object to get it's size
+
+
+Deleted: haypo/hachoir/trunk/broken_plugins/ext2.py
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/ext2.py	2005-12-26 05:24:27 UTC (rev 354)
++++ haypo/hachoir/trunk/broken_plugins/ext2.py	2005-12-26 23:44:13 UTC (rev 355)
+@@ -1,424 +0,0 @@
+-&quot;&quot;&quot;
+-EXT2 (Linux) file system parser.
+-
+-Sources:
+-- EXT2FS source code
+-  <A HREF="http://ext2fsd.sourceforge.net/">http://ext2fsd.sourceforge.net/</A>
+-- Analysis of the Ext2fs structure
+-  <A HREF="http://www.nondot.org/sabre/os/files/FileSystems/ext2fs/">http://www.nondot.org/sabre/os/files/FileSystems/ext2fs/</A>
+-&quot;&quot;&quot;
+-
+-from datetime import datetime
+-from filter import Filter, OnDemandFilter
+-from plugin import registerPlugin
+-from tools import humanDuration, getUnixRWX, humanFilesize
+-
+-class DirectoryEntry(OnDemandFilter):
+-    file_type = {
+-        1: &quot;Regular&quot;,
+-        2: &quot;Directory&quot;,
+-        3: &quot;Char. dev.&quot;,
+-        4: &quot;Block dev.&quot;,
+-        5: &quot;Fifo&quot;,
+-        6: &quot;Socket&quot;,
+-        7: &quot;Symlink&quot;,
+-        8: &quot;Max&quot;
+-    }
+-    def __init__(self, stream, parent):
+-        OnDemandFilter.__init__(self, &quot;dir&quot;, &quot;EXT2 directory entry&quot;, stream, parent)
+-        self.read(&quot;inode&quot;, &quot;&lt;L&quot;, &quot;Inode&quot;)
+-        self.read(&quot;rec_len&quot;, &quot;&lt;H&quot;, &quot;Record length&quot;)
+-        name_length = self.doRead(&quot;name_len&quot;, &quot;B&quot;, &quot;Name length&quot;).value
+-        self.read(&quot;file_type&quot;, &quot;B&quot;, &quot;File type&quot;, post=self.postFileType)
+-        self.read(&quot;name&quot;, &quot;%us&quot; % name_length, &quot;Name&quot;)
+-        size = self[&quot;rec_len&quot;]-8-name_length 
+-        if size != 0:
+-            self.read(&quot;padding&quot;, &quot;%us&quot; % size, &quot;Padding&quot;)
+-
+-    def updateParent(self, chunk):        
+-        name = self[&quot;name&quot;].strip(&quot;\0&quot;)
+-        if name != &quot;&quot;:
+-            desc = &quot;Directory entry: %s&quot; % name
+-        else:
+-            desc = &quot;Directory entry (empty)&quot;
+-        chunk.description = desc
+-        self.setDescription(desc)
+-
+-    def postFileType(self, chunk):
+-        type = chunk.value
+-        return DirectoryEntry.file_type.get(type, &quot;Unknow (%02X)&quot; % type)
+-
+-class Inode(OnDemandFilter):
+-    name = {
+-        1: &quot;list of bad blocks&quot;,
+-        2: &quot;Root directory&quot;,
+-        3: &quot;ACL inode&quot;,
+-        4: &quot;ACL inode&quot;,
+-        5: &quot;Boot loader&quot;,
+-        6: &quot;Undelete directory&quot;,
+-        8: &quot;EXT3 journal&quot;
+-    }
+-    
+-    def __init__(self, stream, parent, index):
+-        OnDemandFilter.__init__(self, &quot;inode&quot;, &quot;EXT2 inode&quot;, stream, parent)
+-        self.index = index
+-        self.read(&quot;mode&quot;, &quot;&lt;H&quot;, &quot;Mode&quot;, post=self.postMode)
+-        self.read(&quot;uid&quot;, &quot;&lt;H&quot;, &quot;User ID&quot;)
+-        self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;File size&quot;)
+-        self.read(&quot;atime&quot;, &quot;&lt;L&quot;, &quot;Last access time&quot;, post=self.getTime)
+-        self.read(&quot;ctime&quot;, &quot;&lt;L&quot;, &quot;Creation time&quot;, post=self.getTime)
+-        self.read(&quot;mtime&quot;, &quot;&lt;L&quot;, &quot;Last modification time&quot;, post=self.getTime)
+-        self.read(&quot;dtime&quot;, &quot;&lt;L&quot;, &quot;Delete time&quot;, post=self.getTime)
+-        self.read(&quot;gid&quot;, &quot;&lt;H&quot;, &quot;Group ID&quot;)
+-        self.read(&quot;links_count&quot;, &quot;&lt;H&quot;, &quot;Links count&quot;)
+-        self.read(&quot;blocks&quot;, &quot;&lt;L&quot;, &quot;Number of blocks&quot;)
+-        self.read(&quot;flags&quot;, &quot;&lt;L&quot;, &quot;Flags&quot;)
+-        self.read(&quot;reserved1&quot;, &quot;&lt;L&quot;, &quot;Reserved&quot;)
+-        for i in range(0,15):
+-            self.read(&quot;block[]&quot;, &quot;&lt;L&quot;, &quot;Block %i&quot; % i)
+-        self.read(&quot;version&quot;, &quot;&lt;L&quot;, &quot;Version&quot;)
+-        self.read(&quot;file_acl&quot;, &quot;&lt;L&quot;, &quot;File ACL&quot;)
+-        self.read(&quot;dir_acl&quot;, &quot;&lt;L&quot;, &quot;Directory ACL&quot;)
+-        self.read(&quot;faddr&quot;, &quot;&lt;L&quot;, &quot;Block where the fragment of the file resides&quot;)
+-        os = parent.getParent().getParent().superblock[&quot;creator_os&quot;]
+-        if os == SuperBlock.OS_LINUX:
+-            self.read(&quot;frag&quot;, &quot;B&quot;, &quot;Number of fragments in the block&quot;)
+-            self.read(&quot;fsize&quot;, &quot;B&quot;, &quot;Fragment size&quot;)
+-            self.read(&quot;padding&quot;, &quot;&lt;H&quot;, &quot;Padding&quot;)
+-            self.read(&quot;uid_high&quot;, &quot;&lt;H&quot;, &quot;High 16 bits of user ID&quot;)
+-            self.read(&quot;gid_high&quot;, &quot;&lt;H&quot;, &quot;High 16 bits of group ID&quot;)
+-            self.read(&quot;reserved&quot;, &quot;&lt;L&quot;, &quot;Reserved&quot;)
+-        elif os == SuperBlock.OS_HURD:
+-            self.read(&quot;frag&quot;, &quot;B&quot;, &quot;Number of fragments in the block&quot;)
+-            self.read(&quot;fsize&quot;, &quot;B&quot;, &quot;Fragment size&quot;)
+-            self.read(&quot;mode_high&quot;, &quot;&lt;H&quot;, &quot;High 16 bits of mode&quot;)
+-            self.read(&quot;uid_high&quot;, &quot;&lt;H&quot;, &quot;High 16 bits of user ID&quot;)
+-            self.read(&quot;gid_high&quot;, &quot;&lt;H&quot;, &quot;High 16 bits of group ID&quot;)
+-            self.read(&quot;author&quot;, &quot;&lt;L&quot;, &quot;Author ID (?)&quot;)
+-        else:
+-            self.read(&quot;raw&quot;, &quot;12s&quot;, &quot;Reserved&quot;)
+-
+-    def updateParent(self, chunk):
+-        desc = &quot;Inode %s: &quot; % self.index
+-        size = humanFilesize(self[&quot;size&quot;])
+-        if 11 &lt;= self.index:
+-            desc = desc + &quot;file, size=%s, mode=%s&quot; % (size, self.getChunk(&quot;mode&quot;).display)
+-        else:
+-            if self.index in Inode.name:
+-                desc = desc + Inode.name[self.index]
+-                if self.index == 2:
+-                    desc = desc + &quot; (%s)&quot; % getUnixRWX(self[&quot;mode&quot;])
+-            else:
+-                desc = desc + &quot;special&quot;
+-            if size == 0:
+-                desc = desc + &quot; (unused)&quot;
+-        chunk.description = desc
+-        self.setDescription(desc)
+-
+-    def postMode(self, chunk):
+-        mode = chunk.value
+-        text = &quot;&quot;
+-        if mode &amp; 0100000 != 0:
+-            text = &quot;regular (%s)&quot; % getUnixRWX(mode)
+-        elif mode &amp; 0040000:
+-            text = &quot;directory (%s)&quot; % getUnixRWX(mode)
+-        elif mode &amp; 0020000:
+-            text = &quot;char. dev.&quot;
+-        elif mode &amp; 0060000:
+-            text = &quot;block dev.&quot;
+-        elif mode &amp; 0010000:
+-            text = &quot;fifo&quot;
+-        elif mode &amp; 0120000:
+-            text = &quot;sym. link&quot;
+-        elif mode &amp; 0140000:
+-            text = &quot;socket&quot;
+-        elif mode == 0:
+-            text = &quot;(empty)&quot;
+-        else:
+-            text = &quot;???&quot;
+-        return text
+-
+-    def getTime(self, chunk):
+-        if chunk.value != 0:
+-            return datetime.fromtimestamp(chunk.value)
+-        else:
+-            return &quot;(empty)&quot;
+-
+-class Bitmap(OnDemandFilter):
+-    def __init__(self, stream, parent, description, count, start):
+-        OnDemandFilter.__init__(self, &quot;bitmap&quot;, &quot;%s: %s items&quot; % (description, count), stream, parent)
+-        self.start = start
+-        size = count / 8
+-        self.read(&quot;block_bitmap&quot;, &quot;%us&quot; % size, &quot;Bitmap&quot;)
+-
+-    def showFree(self, type=&quot;Block&quot;):
+-        data = self[&quot;block_bitmap&quot;]
+-        cpt = self.start
+-        for octet in data:
+-            octet = ord(octet)
+-            mask = 1
+-            for i in range(0,8):
+-                if octet &amp; mask == 0:
+-                    print &quot;%s %s free.&quot; % (type, cpt)
+-                cpt = cpt + 1
+-                mask = mask &lt;&lt; 1
+-
+-BlockBitmap = Bitmap
+-InodeBitmap = Bitmap
+-
+-class GroupDescriptor(OnDemandFilter):
+-    def __init__(self, stream, parent, index):
+-        OnDemandFilter.__init__(self, &quot;group&quot;, &quot;Group descriptor&quot;, stream, parent)
+-        self.index = index
+-        self.read(&quot;block_bitmap&quot;, &quot;&lt;L&quot;, &quot;Points to the blocks bitmap block&quot;)
+-        self.read(&quot;inode_bitmap&quot;, &quot;&lt;L&quot;, &quot;Points to the inodes bitmap block&quot;)
+-        self.read(&quot;inode_table&quot;, &quot;&lt;L&quot;, &quot;Points to the inodes table first block&quot;)
+-        self.read(&quot;free_blocks_count&quot;, &quot;&lt;H&quot;, &quot;Number of free blocks&quot;)
+-        self.read(&quot;free_inodes_count&quot;, &quot;&lt;H&quot;, &quot;Number of free inodes&quot;)
+-        self.read(&quot;used_dirs_count&quot;, &quot;&lt;H&quot;, &quot;Number of inodes allocated to directories&quot;)
+-        self.read(&quot;padding&quot;, &quot;&lt;H&quot;, &quot;Padding&quot;)
+-        self.read(&quot;reserved&quot;, &quot;12s&quot;, &quot;Reserved&quot;)
+-
+-    def updateParent(self, chunk):
+-        superblock = self.getParent().getParent().superblock
+-        blocks_per_group = superblock[&quot;blocks_per_group&quot;]
+-        start = self.index * blocks_per_group
+-        end = start + blocks_per_group 
+-        chunk.description = &quot;Group descriptor: blocks %s-%s&quot; % (start, end)
+-    
+-
+-class SuperBlock(OnDemandFilter):
+-    error_handling = {
+-        1: &quot;Continue&quot;
+-    }
+-    OS_LINUX = 0
+-    OS_HURD = 1
+-    os_name = {
+-        0: &quot;Linux&quot;,
+-        1: &quot;Hurd&quot;,
+-        2: &quot;Masix&quot;,
+-        3: &quot;FreeBSD&quot;,
+-        4: &quot;Lites&quot;,
+-        5: &quot;WinNT&quot;
+-    }
+-    state = {
+-        1: &quot;Valid&quot;,
+-        2: &quot;Error&quot;
+-    }
+-    
+-    def __init__(self, stream, parent):
+-        OnDemandFilter.__init__(self, &quot;super_block&quot;, &quot;Super block&quot;, stream, parent)
+-        self.read(&quot;inodes_count&quot;, &quot;&lt;L&quot;, &quot;Inodes count&quot;)
+-        self.read(&quot;blocks_count&quot;, &quot;&lt;L&quot;, &quot;Blocks count&quot;)
+-        self.read(&quot;r_blocks_count&quot;, &quot;&lt;L&quot;, &quot;Reserved blocks count&quot;)
+-        self.read(&quot;free_blocks_count&quot;, &quot;&lt;L&quot;, &quot;Free blocks count&quot;)
+-        self.read(&quot;free_inodes_count&quot;, &quot;&lt;L&quot;, &quot;Free inodes count&quot;)
+-        first = self.doRead(&quot;first_data_block&quot;, &quot;&lt;L&quot;, &quot;First data block&quot;).value
+-        assert (first == 0)
+-        self.read(&quot;log_block_size&quot;, &quot;&lt;L&quot;, &quot;Block size&quot;)
+-        self.read(&quot;log_frag_size&quot;, &quot;&lt;L&quot;, &quot;Fragment size&quot;)
+-        self.read(&quot;blocks_per_group&quot;, &quot;&lt;L&quot;, &quot;Blocks per group&quot;)
+-        self.read(&quot;frags_per_group&quot;, &quot;&lt;L&quot;, &quot;Fragments per group&quot;)
+-        self.read(&quot;inodes_per_group&quot;, &quot;&lt;L&quot;, &quot;Inodes per group&quot;)
+-        self.read(&quot;mtime&quot;, &quot;&lt;L&quot;, &quot;Mount time&quot;, post=self.getTime)
+-        self.read(&quot;wtime&quot;, &quot;&lt;L&quot;, &quot;Write time&quot;, post=self.getTime)
+-        self.read(&quot;mnt_count&quot;, &quot;&lt;H&quot;, &quot;Mount count&quot;)
+-        self.read(&quot;max_mnt_count&quot;, &quot;&lt;h&quot;, &quot;Max mount count&quot;)
+-        id = self.doRead(&quot;magic&quot;, &quot;&gt;H&quot;, &quot;Magic number (0x53EF)&quot;).value
+-        assert id == 0x53EF
+-
+-        # Read state
+-        chunk = self.doRead(&quot;state&quot;, &quot;&lt;H&quot;, &quot;File system state&quot;)
+-        chunk.description = &quot;Behaviour when detecting errors: %s&quot; % \
+-            SuperBlock.state.get(chunk.value, &quot;Unknow (%s)&quot; % chunk.value)
+-
+-        # Read error handling
+-        chunk = self.doRead(&quot;errors&quot;, &quot;&lt;H&quot;, &quot;&quot;)
+-        desc = &quot;Behaviour when detecting errors&quot;
+-        if chunk.value in SuperBlock.error_handling:
+-            desc = &quot;%s: %s&quot; % (desc, SuperBlock.error_handling[chunk.value])
+-        chunk.description = desc
+-        
+-        self.read(&quot;minor_rev_level&quot;, &quot;&lt;H&quot;, &quot;Minor revision level&quot;)
+-        self.read(&quot;last_check&quot;, &quot;&lt;L&quot;, &quot;Time of last check&quot;, post=self.getTime)
+-        self.read(&quot;check_interval&quot;, &quot;&lt;L&quot;, &quot;Maximum time between checks&quot;, post=self.postMaxTime)
+-        
+-        chunk = self.doRead(&quot;creator_os&quot;, &quot;&lt;L&quot;, &quot;&quot;)
+-        desc = &quot;Creator OS&quot;
+-        if chunk.value in SuperBlock.os_name:
+-            desc = &quot;%s: %s&quot; % (desc, SuperBlock.os_name[chunk.value])
+-        chunk.description = desc
+-        
+-        self.read(&quot;rev_level&quot;, &quot;&lt;L&quot;, &quot;Revision level&quot;)
+-        self.read(&quot;def_resuid&quot;, &quot;&lt;H&quot;, &quot;Default uid for reserved blocks&quot;)
+-        self.read(&quot;def_resgid&quot;, &quot;&lt;H&quot;, &quot;Default guid for reserverd blocks&quot;)
+-
+-        # ---------
+-
+-        self.read(&quot;first_ino&quot;, &quot;&lt;L&quot;, &quot;First non-reserved inode&quot;)
+-        inode_size = self.doRead(&quot;inode_size&quot;, &quot;&lt;H&quot;, &quot;Size of inode structure&quot;).value
+-        assert inode_size == (68 + 15*4)
+-        self.read(&quot;block_group_nr&quot;, &quot;&lt;H&quot;, &quot;Block group # of this superblock&quot;)
+-        self.read(&quot;feature_compat&quot;, &quot;&lt;L&quot;, &quot;Compatible feature set&quot;)
+-        self.read(&quot;feature_incompat&quot;, &quot;&lt;L&quot;, &quot;Incompatible feature set&quot;)
+-        self.read(&quot;feature_ro_compat&quot;, &quot;&lt;L&quot;, &quot;Read-only compatible feature set&quot;)
+-        self.read(&quot;uuid&quot;, &quot;16s&quot;, &quot;128-bit uuid for volume&quot;)
+-        self.read(&quot;volume_name&quot;, &quot;16s&quot;, &quot;Volume name&quot;)
+-        self.read(&quot;last_mounted&quot;, &quot;64s&quot;, &quot;Directory where last mounted&quot;)
+-        self.read(&quot;compression&quot;, &quot;&lt;L&quot;, &quot;For compression (algorithm usage bitmap)&quot;)
+-        
+-        self.read(&quot;prealloc_blocks&quot;, &quot;B&quot;, &quot;Number of blocks to try to preallocate&quot;)
+-        self.read(&quot;prealloc_dir_blocks&quot;, &quot;B&quot;, &quot;Number to preallocate for directories&quot;)
+-        self.read(&quot;padding&quot;, &quot;H&quot;, &quot;Padding&quot;)
+-        
+-        self.read(&quot;journal_uuid&quot;, &quot;16s&quot;, &quot;uuid of journal superblock&quot;)
+-        self.read(&quot;journal_inum&quot;, &quot;&lt;L&quot;, &quot;inode number of journal file&quot;)
+-        self.read(&quot;journal_dev&quot;, &quot;&lt;L&quot;, &quot;device number of journal file&quot;)
+-        self.read(&quot;last_orphan&quot;, &quot;&lt;L&quot;, &quot;start of list of inodes to delete&quot;)
+-        
+-        self.read(&quot;reserved&quot;, &quot;197s&quot;, &quot;Padding to the end of the block&quot;)
+-
+-        blocks_per_group = self[&quot;blocks_per_group&quot;]
+-        self.group_count = (self[&quot;blocks_count&quot;] - self[&quot;first_data_block&quot;] + blocks_per_group - 1) / blocks_per_group
+-
+-    def updateParent(self, chunk):
+-        if self[&quot;feature_compat&quot;] &amp; 4 == 4:
+-            type = &quot;ext3&quot;
+-        else:
+-            type = &quot;ext2&quot;
+-        desc = &quot;Superblock: %s file system&quot; % type
+-        self.setDescription(desc)
+-        chunk.description = desc
+-
+-    def postMaxTime(self, chunk):
+-        return humanDuration(chunk.value * 1000)
+-
+-    def getTime(self, chunk):
+-        return datetime.fromtimestamp(chunk.value)
+-
+-class GroupDescriptors(OnDemandFilter):
+-    def __init__(self, stream, parent, count, start):
+-        OnDemandFilter.__init__(self, &quot;groups&quot;, &quot;Group descriptors: %s items&quot; % count, stream, parent)
+-        self.start = start
+-        for i in range(0, count):
+-            self.readSizedChild(&quot;group[]&quot;, &quot;Group&quot;, 32, GroupDescriptor, i)
+-
+-    def getGroup(self, index):
+-        return self[&quot;group[%s]&quot; % (self.start + index)]
+-
+-class InodeTable(OnDemandFilter):
+-    def __init__(self, stream, parent, start, count):
+-        OnDemandFilter.__init__(self, &quot;ino_table&quot;, &quot;Inode table: %s inodes&quot; % count, stream, parent)
+-        self.start = start
+-        chunk_size = parent.getParent().superblock[&quot;inode_size&quot;]
+-        for index in range(self.start, self.start+count):
+-            self.readSizedChild(&quot;inode[]&quot;, &quot;Inode %s&quot; % index, chunk_size, Inode, index)
+-
+-    def __getitem__(self, index):
+-        index = index - self.start - 1
+-        return self.getChunk(&quot;inode[%u]&quot; % index).getFilter()
+-
+-def testSuperblock(stream):
+-    oldpos = stream.tell()
+-    stream.seek(80-24, 1)
+-    is_super = stream.getN(2) == &quot;\x53\xEF&quot;    
+-    stream.seek(oldpos)
+-    return is_super
+-
+-class Group(OnDemandFilter):
+-    def __init__(self, stream, parent, index):
+-        OnDemandFilter.__init__(self, &quot;group&quot;, &quot;Group %u&quot; % index, stream, parent)
+-        self.index = index
+-        group = parent[&quot;group_desc&quot;].getGroup(index)
+-        superblock = parent.superblock
+-        block_size = parent.block_size
+-    
+-        # Read block bitmap
+-        self.superblock_copy = False
+-        if testSuperblock(stream):
+-            self.readChild(&quot;superblock_copy&quot;, &quot;Superblock&quot;, SuperBlock)
+-            self.superblock_copy = True
+-        self.seek(group[&quot;block_bitmap&quot;] * block_size)
+-            
+-        count = superblock[&quot;blocks_per_group&quot;]
+-        self.readSizedChild(&quot;block_bitmap[]&quot;, &quot;Block bitmap&quot;, count / 8, BlockBitmap, &quot;Block bitmap&quot;, count, 0)
+-
+-        # Read inode bitmap
+-        assert (group[&quot;inode_bitmap&quot;] * block_size) == stream.tell()
+-        count = superblock[&quot;inodes_per_group&quot;]
+-        self.readSizedChild(&quot;inode_bitmap[]&quot;, &quot;Inode bitmap&quot;, count / 8, InodeBitmap, &quot;Inode bitmap&quot;, count, 1)
+-        addr = stream.tell() % 4096
+-        if addr != 0:
+-            addr = stream.tell() + (4096 - addr % 4096)
+-            self.seek(addr)
+-             
+-        count = superblock[&quot;inodes_per_group&quot;]
+-        size = superblock[&quot;inode_size&quot;] * count
+-        inode_index = 1 + index * count
+-        self.readSizedChild(&quot;inode_table[]&quot;, &quot;Inode table&quot;, size, InodeTable, inode_index, count)
+-
+-        size = (index+1) * superblock[&quot;blocks_per_group&quot;] * block_size
+-        if stream.getSize() &lt; size:
+-            size = stream.getSize()
+-        size = size - stream.tell() 
+-        self.read(&quot;data&quot;, &quot;%us&quot; % size, &quot;Data&quot;)
+-
+-    def updateParent(self, chunk):
+-        desc = &quot;Group %s: %s&quot; % (self.index, humanFilesize(self.getSize()))
+-        if self.superblock_copy:
+-            desc = desc + &quot; (with superblock copy)&quot;
+-        chunk.description = desc 
+-
+-    def seek(self, to):
+-        size = to - self.getStream().tell()
+-        assert 0 &lt;= size
+-        if 0 &lt; size:
+-            self.read(&quot;raw[]&quot;, &quot;%us&quot; % size, &quot;Raw&quot;)
+-
+-
+-class EXT2_FS(OnDemandFilter):
+-    def __init__(self, stream, parent):
+-        OnDemandFilter.__init__(self, &quot;ext2&quot;, &quot;EXT2 file system&quot;, stream, parent)
+-        
+-        # Read superblock
+-        self.seek(1024) 
+-        self.superblock = self.doReadChild(&quot;superblock&quot;, &quot;Super block&quot;, SuperBlock).getFilter()
+-        self.block_size = 1024 &lt;&lt; self.superblock[&quot;log_block_size&quot;]
+-
+-        # Read groups
+-        self.seek(4096) 
+-        groups = self.doReadChild(&quot;group_desc&quot;, &quot;Group descriptors&quot;, GroupDescriptors, self.superblock.group_count, 0).getFilter()
+-        self.seek(groups.getGroup(0)[&quot;block_bitmap&quot;] * self.block_size)
+-        for i in range(0,self.superblock.group_count):
+-            self.readChild(&quot;group[]&quot;, &quot;Group&quot;, Group, i)
+-
+-        size = stream.getSize() - stream.tell()
+-        if size != 0:
+-            self.read(&quot;end&quot;, &quot;%us&quot; % size, &quot;End (raw)&quot;)
+-
+-    def seek(self, to):
+-        size = to - self.getStream().tell()
+-        assert 0 &lt;= size
+-        if 0 &lt; size:
+-            self.read(&quot;raw[]&quot;, &quot;%us&quot; % size, &quot;Raw&quot;)
+-
+-    def readDirectory(self, inode):
+-        stream = self.getStream()
+-        block_index = 0
+-        while True:
+-            assert block_index &lt; 12
+-            block = inode[&quot;block[%u]&quot; % block_index]
+-            if block == 0:
+-                return
+-            self.seek(block * self.block_size)
+-
+-            total = 0
+-            while total &lt; self.block_size:
+-                entry = self.doReadChild(&quot;directory[]&quot;, &quot;Directory entry&quot;, DirectoryEntry).getFilter()
+-                if entry[&quot;inode&quot;] == 0:
+-                    return
+-                total = total + entry.getSize()
+-            assert total == self.block_size
+-            block_index = block_index + 1
+-
+-registerPlugin(EXT2_FS, &quot;hachoir/fs-ext2&quot;)
+
+Added: haypo/hachoir/trunk/cache.py
+===================================================================
+--- haypo/hachoir/trunk/cache.py	2005-12-26 05:24:27 UTC (rev 354)
++++ haypo/hachoir/trunk/cache.py	2005-12-26 23:44:13 UTC (rev 355)
+@@ -0,0 +1,50 @@
++import gc
++from todo import todoWriteMethod
++
++class CacheList:
++    _instance = None
++
++    def __init__(self):
++        assert CacheList._instance == None
++        self._list = []
++
++    def purgeCaches(self):
++        size = self.getSize()
++        for value in self._list:
++            item, name = value
++            item.purgeCache()
++        gc.collect()            
++        print &quot;Purge caches: clear %s item(s)&quot; % size
++
++    def output(self):
++        size = 0
++        nb_obj = 0
++        print &quot;--- Caches&quot;
++        for value in self._list:
++            item, name = value
++            size = item.getCacheSize()
++            nb_obj += size
++            if size != 0:
++                print &quot;o %s: %s item(s)&quot; % (name, size)
++        print &quot;--- Total = %s item(s)&quot; % (nb_obj)
++
++    def getSize(self):
++        size = 0
++        for value in self._list:
++            size += value[0].getCacheSize()
++        return size           
++
++    def register(self, item, name):
++        self._list.append( (item,name) )
++
++    def getInstance():
++        if CacheList._instance == None:
++            CacheList._instance = CacheList()
++        return CacheList._instance
++    getInstance = staticmethod(getInstance)
++
++class Cache:
++    def __init__(self, name):
++        CacheList.getInstance().register(self, name)
++    def getCacheSize(self): todoWriteMethod(self, &quot;getCacheSize&quot;)
++    def purgeCache(self): todoWriteMethod(self, &quot;purgeCache&quot;)
+
+Modified: haypo/hachoir/trunk/chunk.py
+===================================================================
+--- haypo/hachoir/trunk/chunk.py	2005-12-26 05:24:27 UTC (rev 354)
++++ haypo/hachoir/trunk/chunk.py	2005-12-26 23:44:13 UTC (rev 355)
+@@ -5,6 +5,9 @@
+ from tools import convertDataToPrintableString
+ 
+ class Chunk(object):
++    &quot;&quot;&quot;
++    A chunk address is fixed. If you want to move the chunk, delete it :-P
++    &quot;&quot;&quot;
+     def __init__(self, id, description, stream, addr, size, parent):
+         self._id = id
+         self.description = description
+@@ -15,6 +18,10 @@
+         self.post_process = None
+         self.display = None
+ 
++    def getStaticSize(stream, args):
++        return None
++    getStaticSize = staticmethod(getStaticSize)
++
+     def clone(self):
+         raise Exception(&quot;%s doesn't implement clone() method!&quot; % self)
+ 
+@@ -28,10 +35,6 @@
+     def getSmallFormat(self):
+         return self.__class__.__name__
+ 
+-    def update(self):
+-        self.display = None
+-        self.postProcess()
+-
+     def getStream(self):
+         return self._stream
+ 
+@@ -64,7 +67,6 @@
+     def setParent(self, parent):
+         self._parent = parent
+     def getParent(self): return self._parent
+-    def _setAddr(self, addr): self._addr = addr
+     def _getAddr(self): return self._addr
+     def _getSize(self): return self._size
+     def _getId(self):
+@@ -75,7 +77,7 @@
+             return
+         self._id = new_id
+         self._parent.updateChunkId(old_id, new_id)
+-    addr = property(_getAddr, _setAddr)        
++    addr = property(_getAddr)
+     size = property(_getSize)        
+     id = property(_getId, _setId)
+     value = property(getValue)
+@@ -93,33 +95,16 @@
+             filter.getSize(), parent)
+         self._description = filter.getDescription()
+     
+-    def clone(self, addr=None):
+-        filter_copy = self._filter.clone(addr=addr)
+-        # TODO: Is it always alright? (or use parent_addr = self.parent_addr)
+-        parent_addr = addr
+-        return FilterChunk(self.id, filter_copy, self.getParent(), parent_addr)
+-    
+     def getFormat(self):
+         return self.__class__.__name__ + &quot; (%s)&quot; % self._filter.__class__.__name__
+ 
+     def getSmallFormat(self):
+         return self._filter.__class__.__name__
+ 
+-    def update(self):
+-        new = self._filter.clone()
+-        if new != None:
+-            self.setFilter(new)
+-        Chunk.update(self)
+-
+     def setFilter(self, filter):
+         self._filter = filter
+         self._filter.updateParent(self)
+     
+-    def _setAddr(self, addr):
+-        self._addr = addr
+-        self._filter.setAddr(addr)
+-    addr = property(Chunk._getAddr, _setAddr)        
+-        
+     def _getSize(self):
+         return self._filter.getSize()
+     size = property(_getSize)        
+@@ -172,9 +157,6 @@
+         self._str_type = str_type
+         self.eol = None
+         self._findSize()
+-        self._cache_addr = None
+-        self._cache_max_size = None
+-        self._cache_value = None
+         self.strip = strip
+ 
+     def getFormat(self):
+@@ -221,11 +203,6 @@
+         self._stream.seek(self.addr + self._size)
+         
+     def _read(self, max_size):
+-        if self._cache_addr==self.addr and self._cache_max_size==max_size:
+-            return self._cache_value
+-        self._cache_addr = self.addr
+-        self._cache_max_size = max_size
+-
+         self._stream.seek(self.addr)
+         if self._str_type == &quot;Pascal32&quot;:
+             self._stream.seek(4,1)
+@@ -245,13 +222,8 @@
+                 text = text.strip()
+             else:
+                 text = text.strip(self.strip)
+-        self._cache_value = text
+         return text
+ 
+-    def update(self):
+-        Chunk.update(self)
+-        self._findSize()
+-
+     def getValue(self, max_size=None):
+         return self._read(None)
+     value = property(getValue)
+@@ -268,7 +240,12 @@
+         Chunk.__init__(self, id, description, stream, stream.tell(), None, parent)
+         self._format = None
+         self._doSetFormat(format)
++        stream.seek(self.size, 1)
+ 
++    def getStaticSize(stream, args):
++        return getFormatSize(args[0])
++    getStaticSize = staticmethod(getStaticSize)
++
+     def _doSetFormat(self, format):
+         if format == self._format:
+             return
+@@ -295,11 +272,6 @@
+             addr = self._addr
+         return FormatChunk(self.id, self.description, self._stream, addr, self._format, self._parent)
+ 
+-    def _setAddr(self, addr):
+-        self._addr = addr
+-        self._value = {}
+-    addr = property(Chunk._getAddr, _setAddr)
+-
+     def getFormat(self):
+         return self.__class__.__name__ + &quot; (%s)&quot; % self._format
+ 
+
+Modified: haypo/hachoir/trunk/config.py
+===================================================================
+--- haypo/hachoir/trunk/config.py	2005-12-26 05:24:27 UTC (rev 354)
++++ haypo/hachoir/trunk/config.py	2005-12-26 23:44:13 UTC (rev 355)
+@@ -1,5 +1,12 @@
+-max_string_length = 10
+-max_hexa_length = 4096 
+-max_ascii_length = 4096 
++# UI: display options
++max_string_length = 10    # Max. length of displayed string
++max_hexa_length = 4096    # Max. length of raw data displayed in hex
++max_ascii_length = 4096   # Max. length of raw data displayed in ASCII
++
++# Global options
+ debug = False
+ verbose = False
++
++# Size of file cache (for each opened file)
++file_cache_block_size = 4096
++file_cache_block_count = 10
+
+Modified: haypo/hachoir/trunk/filter.py
+===================================================================
+--- haypo/hachoir/trunk/filter.py	2005-12-26 05:24:27 UTC (rev 354)
++++ haypo/hachoir/trunk/filter.py	2005-12-26 23:44:13 UTC (rev 355)
+@@ -8,6 +8,7 @@
+ from chunk import Chunk, FormatChunk, FilterChunk, StringChunk, BitsChunk
+ from error import error
+ from format import getFormatSize, splitFormat
++from cache import Cache
+ 
+ class BasicFilter(object):
+     regex_chunk_uniq_id = re.compile(&quot;^(.*?)([0-9]+)$&quot;)
+@@ -23,6 +24,10 @@
+         self._endian = endian
+         self.filter_chunk = None
+ 
++    def getStaticSize(stream, args):
++        return None
++    getStaticSize = staticmethod(getStaticSize)
++
+     def updateParent(self, chunk): pass
+     def getId(self): return self._id
+     def setId(self, id):
+@@ -34,7 +39,6 @@
+     def getDescription(self): return self._description
+     def setDescription(self, description): self._description = description
+     def getAddr(self): return self._addr
+-    def setAddr(self, addr): self._addr = addr
+     def getParent(self): return self._parent
+     def getStream(self): return self._stream
+     def updateChunkId(self, old_id, new_id): pass
+@@ -90,22 +94,26 @@
+     def hasChunk(self, id):
+         return id in self._chunks_dict
+ 
+-    # --- Pure virtual methods -----------
+-    def getSize(self): assert False
+-    def __getitem__(self, chunk_id): assert False
+-    def getChunk(self, chunk_id): assert False
+-    def display(self): assert False
+-
+     def _getEndian(self): return self._endian
+     endian = property(_getEndian)
+ 
+-class OnDemandFilter(BasicFilter):
++    # --- Pure virtual methods -----------
++    def getSize(self): todoWriteMethod(self, &quot;getSize&quot;) 
++    def __getitem__(self, chunk_id): todoWriteMethod(self, &quot;__getitem__&quot;) 
++    def getChunk(self, chunk_id): todoWriteMethod(self, &quot;getChunk&quot;)
++    def display(self): todoWriteMethod(self, &quot;display&quot;)
++
++class OnDemandFilter(BasicFilter, Cache):
+     def __init__(self, id, description, stream, parent, endian=None):
+         BasicFilter.__init__(self, id, description, stream, parent, stream.tell(), endian)
++        Cache.__init__(self, &quot;Filter %s&quot; % id)
+         self._size = 0
+         self._chunks = []
+         self._chunks_cache = {}
+-    
++   
++    def getCacheSize(self):
++        return len(self._chunks_cache)
++
+     def updateChunkId(self, old_id, new_id):
+         # Update self._chunks
+         pos = self._chunks.index(old_id)
+@@ -137,7 +145,7 @@
+         ui.window.update_table(self, pos, *info)
+ 
+     def purgeCache(self):
+-        if len(self._chunks_cache) != 0:
++        if len(self._chunks_cache) != 0 and config.verbose:
+             print &quot;Purge cache: destroy %s chunks&quot; % len(self._chunks_cache)
+         self._chunks_cache = {}
+         
+@@ -150,8 +158,11 @@
+             size = optionnal.get(&quot;size&quot;, None)
+             filter_addr = filter_stream.tell()
+             args = info[1:]
+-
+             if size == None:
++                size = chunk_class.getStaticSize(self._stream, info[1:])
++#                if size != None:
++#                    optionnal[&quot;size&quot;] = size
++            if size == None:
+                 filter = chunk_class(filter_stream, self, *args)
+                 description = filter.getDescription()
+                 filter.setId(id)
+@@ -182,11 +193,12 @@
+             else:
+                 args = [ i for i in info[1:] ]
+             instance_info = [info[0], id, description, self._stream]+args+[self]
+-            # TODO: Use static method to get chunk fixed size (if existing)
+-            if chunk_class == FormatChunk:
+-                size = getFormatSize(info[1])
++
++            size = chunk_class.getStaticSize(self._stream, info[1:])
++            if size != None:
+                 self._stream.seek(size, 1)
+             else:
++                # Instanciate the chunk
+                 seek = False
+                 chunk = info[0] (*instance_info[1:], **optionnal)
+                 size = chunk.size
+
+Modified: haypo/hachoir/trunk/format.py
+===================================================================
+--- haypo/hachoir/trunk/format.py	2005-12-26 05:24:27 UTC (rev 354)
++++ haypo/hachoir/trunk/format.py	2005-12-26 23:44:13 UTC (rev 355)
+@@ -1,74 +1,101 @@
+ import re, struct
++from cache import Cache
+ 
+-_regex_array =  re.compile(&quot;^([a-z]+[0-9]*)\[([0-9]+)\]$&quot;)
+-_format_size_cache = {}
+-_format_type = {
+-    &quot;string&quot;: &quot;s&quot;,
+-    &quot;char&quot;: &quot;c&quot;,
+-    &quot;float&quot;: &quot;f&quot;,
+-    &quot;double&quot;: &quot;d&quot;,
+-    &quot;int8&quot;: &quot;b&quot;,
+-    &quot;uint8&quot;: &quot;B&quot;,
+-    &quot;int16&quot;: &quot;h&quot;,
+-    &quot;uint16&quot;: &quot;H&quot;,
+-    &quot;int32&quot;: &quot;l&quot;,
+-    &quot;uint32&quot;: &quot;L&quot;
+-}
++class FormatCache(Cache):
++    # Uniq instance of the class
++    _instance = None
+ 
+-def _convertNewFormat(format):
+-    old_format = format
+-    if format[0] in &quot;!&lt;&gt;&quot;:
+-        endian = format[0]
+-        str_endian = format[0]
+-        format = format[1:]
+-    else:
+-        endian = None
+-        str_endian = &quot;&quot;
+-    m = _regex_array.match(format)
+-    if m != None:
+-        format = m.group(1)
+-        str_count = m.group(2)
+-        count = int(str_count)
+-    else:
+-        str_count = &quot;&quot; 
+-        count = 1
+-    if format not in _format_type:
+-        raise Exception(&quot;Format \&quot;%s\&quot; is invalid!&quot; % old_format)
+-    type = _format_type[format]
+-    return (str_endian + str_count + type, endian, count, type)
++    # Check if a format is an array or not
++    # &quot;string[4]&quot; is an array, &quot;char&quot; isn't
++    regex_array =  re.compile(&quot;^([a-z]+[0-9]*)\[([0-9]+)\]$&quot;)
+ 
+-def _getFormatCache(format):
+-    global _format_size_cache
+-    if format not in _format_size_cache:
+-        real_format, endian, count, type = _convertNewFormat(format)
+-        size = count * struct.calcsize(type)
+-        _format_size_cache[format] = (real_format, endian, count, type, size)
+-    return _format_size_cache[format]   
++    # Convert Hachoir syntax to struct module syntax
++    format_type = {
++        &quot;string&quot;: &quot;s&quot;,
++        &quot;char&quot;: &quot;c&quot;,
++        &quot;float&quot;: &quot;f&quot;,
++        &quot;double&quot;: &quot;d&quot;,
++        &quot;int8&quot;: &quot;b&quot;,
++        &quot;uint8&quot;: &quot;B&quot;,
++        &quot;int16&quot;: &quot;h&quot;,
++        &quot;uint16&quot;: &quot;H&quot;,
++        &quot;int32&quot;: &quot;l&quot;,
++        &quot;uint32&quot;: &quot;L&quot;
++    }
++    
++    def __init__(self):
++        assert FormatCache._instance == None
++        Cache.__init__(self, &quot;FormatCache&quot;)
++        self._dict = {}
+ 
++    def getCacheSize(self):
++        return len(self._dict)
++
++    def purgeCache(self):
++        self._dict = {}
++
++    def convertNewFormat(self, format):
++        old_format = format
++        if format[0] in &quot;!&lt;&gt;&quot;:
++            endian = format[0]
++            str_endian = format[0]
++            format = format[1:]
++        else:
++            endian = None
++            str_endian = &quot;&quot;
++        m = FormatCache.regex_array.match(format)
++        if m != None:
++            format = m.group(1)
++            str_count = m.group(2)
++            count = int(str_count)
++        else:
++            str_count = &quot;&quot; 
++            count = 1
++        if format not in FormatCache.format_type:
++            raise Exception(&quot;Format \&quot;%s\&quot; is invalid!&quot; % old_format)
++        type = FormatCache.format_type[format]
++        return (str_endian + str_count + type, endian, count, type)
++
++    def __getitem__(self, format):
++        if format not in self._dict:
++            real_format, endian, count, type = self.convertNewFormat(format)
++            size = count * struct.calcsize(type)
++            self._dict[format] = (real_format, endian, count, type, size)
++        return self._dict[format]   
++
++    def getInstance():
++        if FormatCache._instance == None:
++            FormatCache._instance = FormatCache()
++        return FormatCache._instance
++    getInstance = staticmethod(getInstance)        
++
++_format_size_cache = {}
++
+ def formatIsString(format):
+-    cache = _getFormatCache(format)
++    cache = FormatCache.getInstance()[format]
+     return cache[3] == &quot;s&quot;
+ 
+ def formatIsInteger(format):
+-    cache = _getFormatCache(format)
++    cache = FormatCache.getInstance()[format]
+     return cache[3] in &quot;bBhHlL&quot;
+ 
+ def getFormatSize(format):
+-    cache = _getFormatCache(format)
++    cache = FormatCache.getInstance()[format]
+     return cache[4]   
+ 
+ def getRealFormat(format):
+-    cache = _getFormatCache(format)
++    cache = FormatCache.getInstance()[format]
+     return cache[0]   
+ 
+ def checkFormat(format):
+     # TODO: Don't use try/except, but something better
+     try:
+-        conv = _convertNewFormat(format)
++        cache = FormatCache.getInstance()
++        conv = cache.convertNewFormat(format)
+         return True
+     except:
+         return False
+ 
+ def splitFormat(format):
+-    cache = _getFormatCache(format)
++    cache = FormatCache.getInstance()[format]
+     return cache[1:4]   
+
+Copied: haypo/hachoir/trunk/plugins/ext2.py (from rev 351, haypo/hachoir/trunk/broken_plugins/ext2.py)
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/ext2.py	2005-12-26 03:53:11 UTC (rev 351)
++++ haypo/hachoir/trunk/plugins/ext2.py	2005-12-26 23:44:13 UTC (rev 355)
+@@ -0,0 +1,401 @@
++&quot;&quot;&quot;
++EXT2 (Linux) file system parser.
++
++Sources:
++- EXT2FS source code
++  <A HREF="http://ext2fsd.sourceforge.net/">http://ext2fsd.sourceforge.net/</A>
++- Analysis of the Ext2fs structure
++  <A HREF="http://www.nondot.org/sabre/os/files/FileSystems/ext2fs/">http://www.nondot.org/sabre/os/files/FileSystems/ext2fs/</A>
++&quot;&quot;&quot;
++
++from text_handler import unixTimestamp
++from chunk import EnumChunk, FormatChunk
++from filter import OnDemandFilter
++from plugin import registerPlugin
++from tools import humanDuration, getUnixRWX, humanFilesize
++
++class DirectoryEntry(OnDemandFilter):
++    file_type = {
++        1: &quot;Regular&quot;,
++        2: &quot;Directory&quot;,
++        3: &quot;Char. dev.&quot;,
++        4: &quot;Block dev.&quot;,
++        5: &quot;Fifo&quot;,
++        6: &quot;Socket&quot;,
++        7: &quot;Symlink&quot;,
++        8: &quot;Max&quot;
++    }
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;dir&quot;, &quot;EXT2 directory entry&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;inode&quot;, &quot;Inode&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;rec_len&quot;, &quot;Record length&quot;, (FormatChunk, &quot;uint16&quot;))
++        name_length = self.doRead(&quot;name_len&quot;, &quot;B&quot;, &quot;Name length&quot;, (FormatChunk, &quot;uint8&quot;)).value
++        self.read(&quot;file_type&quot;, &quot;File type&quot;, (EnumChunk, &quot;uint8&quot;, DirectoryEntry.file_type))
++        self.read(&quot;name&quot;, &quot;File name&quot;, (FormatChunk, &quot;string[%u]&quot; % name_length))
++        size = self[&quot;rec_len&quot;]-8-name_length 
++        if size != 0:
++            self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++    def updateParent(self, chunk):        
++        name = self[&quot;name&quot;].strip(&quot;\0&quot;)
++        if name != &quot;&quot;:
++            desc = &quot;Directory entry: %s&quot; % name
++        else:
++            desc = &quot;Directory entry (empty)&quot;
++        chunk.description = desc
++        self.setDescription(desc)
++
++class Inode(OnDemandFilter):
++    name = {
++        1: &quot;list of bad blocks&quot;,
++        2: &quot;Root directory&quot;,
++        3: &quot;ACL inode&quot;,
++        4: &quot;ACL inode&quot;,
++        5: &quot;Boot loader&quot;,
++        6: &quot;Undelete directory&quot;,
++        8: &quot;EXT3 journal&quot;
++    }
++    
++    def __init__(self, stream, parent, index):
++        OnDemandFilter.__init__(self, &quot;inode&quot;, &quot;EXT2 inode&quot;, stream, parent, &quot;&lt;&quot;)
++        self.index = index
++        self.read(&quot;mode&quot;, &quot;Mode&quot;, (FormatChunk, &quot;uint16&quot;), {&quot;post&quot;: self.postMode})
++        self.read(&quot;uid&quot;, &quot;User ID&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;size&quot;, &quot;File size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;atime&quot;, &quot;Last access time&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: unixTimestamp})
++        self.read(&quot;ctime&quot;, &quot;Creation time&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: unixTimestamp})
++        self.read(&quot;mtime&quot;, &quot;Last modification time&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: unixTimestamp})
++        self.read(&quot;dtime&quot;, &quot;Delete time&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: unixTimestamp})
++        self.read(&quot;gid&quot;, &quot;Group ID&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;links_count&quot;, &quot;Links count&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;blocks&quot;, &quot;Number of blocks&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;flags&quot;, &quot;Flags&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;reserved1&quot;, &quot;Reserved&quot;, (FormatChunk, &quot;uint32&quot;))
++        for i in range(0,15):
++            self.read(&quot;block[]&quot;, &quot;Block %i&quot; % i, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;version&quot;, &quot;Version&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;file_acl&quot;, &quot;File ACL&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;dir_acl&quot;, &quot;Directory ACL&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;faddr&quot;, &quot;Block where the fragment of the file resides&quot;, (FormatChunk, &quot;uint32&quot;))
++        os = parent.getParent().getParent().superblock[&quot;creator_os&quot;]
++        if os == SuperBlock.OS_LINUX:
++            self.read(&quot;frag&quot;, &quot;Number of fragments in the block&quot;, (FormatChunk, &quot;uint8&quot;))
++            self.read(&quot;fsize&quot;, &quot;Fragment size&quot;, (FormatChunk, &quot;uint8&quot;))
++            self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk, &quot;uint16&quot;))
++            self.read(&quot;uid_high&quot;, &quot;High 16 bits of user ID&quot;, (FormatChunk, &quot;uint16&quot;))
++            self.read(&quot;gid_high&quot;, &quot;High 16 bits of group ID&quot;, (FormatChunk, &quot;uint16&quot;))
++            self.read(&quot;reserved&quot;, &quot;Reserved&quot;, (FormatChunk, &quot;uint32&quot;))
++        elif os == SuperBlock.OS_HURD:
++            self.read(&quot;frag&quot;, &quot;Number of fragments in the block&quot;, (FormatChunk, &quot;uint8&quot;))
++            self.read(&quot;fsize&quot;, &quot;Fragment size&quot;, (FormatChunk, &quot;uint8&quot;))
++            self.read(&quot;mode_high&quot;, &quot;High 16 bits of mode&quot;, (FormatChunk, &quot;uint16&quot;))
++            self.read(&quot;uid_high&quot;, &quot;High 16 bits of user ID&quot;, (FormatChunk, &quot;uint16&quot;))
++            self.read(&quot;gid_high&quot;, &quot;High 16 bits of group ID&quot;, (FormatChunk, &quot;uint16&quot;))
++            self.read(&quot;author&quot;, &quot;Author ID (?)&quot;, (FormatChunk, &quot;uint32&quot;))
++        else:
++            self.read(&quot;raw&quot;, &quot;Reserved&quot;, (FormatChunk, &quot;string[12]&quot;))
++
++    def getStaticSize(stream, args):
++        return 68 + 15*4
++    getStaticSize = staticmethod(getStaticSize)
++
++    def updateParent(self, chunk):
++        desc = &quot;Inode %s: &quot; % self.index
++        size = humanFilesize(self[&quot;size&quot;])
++        if 11 &lt;= self.index:
++            desc = desc + &quot;file, size=%s, mode=%s&quot; % (size, self.getChunk(&quot;mode&quot;).display)
++        else:
++            if self.index in Inode.name:
++                desc = desc + Inode.name[self.index]
++                if self.index == 2:
++                    desc = desc + &quot; (%s)&quot; % getUnixRWX(self[&quot;mode&quot;])
++            else:
++                desc = desc + &quot;special&quot;
++            if size == 0:
++                desc = desc + &quot; (unused)&quot;
++        chunk.description = desc
++        self.setDescription(desc)
++
++    def postMode(self, chunk):
++        mode = chunk.value
++        text = &quot;&quot;
++        if mode &amp; 0100000 != 0:
++            text = &quot;regular (%s)&quot; % getUnixRWX(mode)
++        elif mode &amp; 0040000:
++            text = &quot;directory (%s)&quot; % getUnixRWX(mode)
++        elif mode &amp; 0020000:
++            text = &quot;char. dev.&quot;
++        elif mode &amp; 0060000:
++            text = &quot;block dev.&quot;
++        elif mode &amp; 0010000:
++            text = &quot;fifo&quot;
++        elif mode &amp; 0120000:
++            text = &quot;sym. link&quot;
++        elif mode &amp; 0140000:
++            text = &quot;socket&quot;
++        elif mode == 0:
++            text = &quot;(empty)&quot;
++        else:
++            text = &quot;???&quot;
++        return text
++
++class Bitmap(OnDemandFilter):
++    def __init__(self, stream, parent, description, count, start):
++        OnDemandFilter.__init__(self, &quot;bitmap&quot;, &quot;%s: %s items&quot; % (description, count), stream, parent)
++        self.start = start
++        size = count / 8
++        self.read(&quot;block_bitmap&quot;, &quot;Bitmap&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++    def showFree(self, type=&quot;Block&quot;):
++        data = self[&quot;block_bitmap&quot;]
++        cpt = self.start
++        for octet in data:
++            octet = ord(octet)
++            mask = 1
++            for i in range(0,8):
++                if octet &amp; mask == 0:
++                    print &quot;%s %s free.&quot; % (type, cpt)
++                cpt = cpt + 1
++                mask = mask &lt;&lt; 1
++
++BlockBitmap = Bitmap
++InodeBitmap = Bitmap
++
++class GroupDescriptor(OnDemandFilter):
++    def __init__(self, stream, parent, index):
++        OnDemandFilter.__init__(self, &quot;group&quot;, &quot;Group descriptor&quot;, stream, parent, &quot;&lt;&quot;)
++        self.index = index
++        self.read(&quot;block_bitmap&quot;, &quot;Points to the blocks bitmap block&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;inode_bitmap&quot;, &quot;Points to the inodes bitmap block&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;inode_table&quot;, &quot;Points to the inodes table first block&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;free_blocks_count&quot;, &quot;Number of free blocks&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;free_inodes_count&quot;, &quot;Number of free inodes&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;used_dirs_count&quot;, &quot;Number of inodes allocated to directories&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;reserved&quot;, &quot;Reserved&quot;, (FormatChunk, &quot;string[12]&quot;))
++
++    def getStaticSize(stream, args):
++        return 32
++    getStaticSize = staticmethod(getStaticSize)
++
++    def updateParent(self, chunk):
++        superblock = self.getParent().getParent().superblock
++        blocks_per_group = superblock[&quot;blocks_per_group&quot;]
++        start = self.index * blocks_per_group
++        end = start + blocks_per_group 
++        chunk.description = &quot;Group descriptor: blocks %s-%s&quot; % (start, end)
++    
++
++class SuperBlock(OnDemandFilter):
++    error_handling = {
++        1: &quot;Continue&quot;
++    }
++    OS_LINUX = 0
++    OS_HURD = 1
++    os_name = {
++        0: &quot;Linux&quot;,
++        1: &quot;Hurd&quot;,
++        2: &quot;Masix&quot;,
++        3: &quot;FreeBSD&quot;,
++        4: &quot;Lites&quot;,
++        5: &quot;WinNT&quot;
++    }
++    state = {
++        1: &quot;Valid&quot;,
++        2: &quot;Error&quot;
++    }
++   
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;super_block&quot;, &quot;Super block&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;inodes_count&quot;, &quot;Inodes count&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;blocks_count&quot;, &quot;Blocks count&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;r_blocks_count&quot;, &quot;Reserved blocks count&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;free_blocks_count&quot;, &quot;Free blocks count&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;free_inodes_count&quot;, &quot;Free inodes count&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;first_data_block&quot;, &quot;First data block&quot;, (FormatChunk, &quot;uint32&quot;))
++        assert self[&quot;first_data_block&quot;] == 0
++        self.read(&quot;log_block_size&quot;, &quot;Block size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;log_frag_size&quot;, &quot;Fragment size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;blocks_per_group&quot;, &quot;Blocks per group&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;frags_per_group&quot;, &quot;Fragments per group&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;inodes_per_group&quot;, &quot;Inodes per group&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;mtime&quot;, &quot;Mount time&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: unixTimestamp})
++        self.read(&quot;wtime&quot;, &quot;Write time&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: unixTimestamp})
++        self.read(&quot;mnt_count&quot;, &quot;Mount count&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;max_mnt_count&quot;, &quot;Max mount count&quot;, (FormatChunk, &quot;int16&quot;))
++        self.read(&quot;magic&quot;, &quot;Magic number (0x53EF)&quot;, (FormatChunk, &quot;string[2]&quot;))
++        assert self[&quot;magic&quot;] == &quot;\x53\xEF&quot;
++        self.read(&quot;state&quot;, &quot;File system state&quot;, (EnumChunk, &quot;uint16&quot;, SuperBlock.state))
++        self.read(&quot;errors&quot;, &quot;Behaviour when detecting errors&quot;, (EnumChunk, &quot;uint16&quot;, SuperBlock.error_handling))
++        self.read(&quot;minor_rev_level&quot;, &quot;Minor revision level&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;last_check&quot;, &quot;Time of last check&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: unixTimestamp})
++        self.read(&quot;check_interval&quot;, &quot;Maximum time between checks&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: self.postMaxTime})        
++        self.read(&quot;creator_os&quot;, &quot;Creator OS&quot;, (EnumChunk, &quot;uint32&quot;, SuperBlock.os_name))        
++        self.read(&quot;rev_level&quot;, &quot;Revision level&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;def_resuid&quot;, &quot;Default uid for reserved blocks&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;def_resgid&quot;, &quot;Default guid for reserverd blocks&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;first_ino&quot;, &quot;First non-reserved inode&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;inode_size&quot;, &quot;Size of inode structure&quot;, (FormatChunk, &quot;uint16&quot;))
++        assert self[&quot;inode_size&quot;] == (68 + 15*4)
++        self.read(&quot;block_group_nr&quot;, &quot;Block group # of this superblock&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;feature_compat&quot;, &quot;Compatible feature set&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;feature_incompat&quot;, &quot;Incompatible feature set&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;feature_ro_compat&quot;, &quot;Read-only compatible feature set&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;uuid&quot;, &quot;128-bit uuid for volume&quot;, (FormatChunk, &quot;string[16]&quot;))
++        self.read(&quot;volume_name&quot;, &quot;Volume name&quot;, (FormatChunk, &quot;string[16]&quot;))
++        self.read(&quot;last_mounted&quot;, &quot;Directory where last mounted&quot;, (FormatChunk, &quot;string[64]&quot;))
++        self.read(&quot;compression&quot;, &quot;For compression (algorithm usage bitmap)&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;prealloc_blocks&quot;, &quot;Number of blocks to try to preallocate&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;prealloc_dir_blocks&quot;, &quot;Number to preallocate for directories&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;journal_uuid&quot;, &quot;uuid of journal superblock&quot;, (FormatChunk, &quot;string[16]&quot;))
++        self.read(&quot;journal_inum&quot;, &quot;inode number of journal file&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;journal_dev&quot;, &quot;device number of journal file&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;last_orphan&quot;, &quot;start of list of inodes to delete&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;reserved&quot;, &quot;Padding to the end of the block&quot;, (FormatChunk, &quot;string[197]&quot;))
++
++        # Calculate number of groups
++        blocks_per_group = self[&quot;blocks_per_group&quot;]
++        self.group_count = (self[&quot;blocks_count&quot;] - self[&quot;first_data_block&quot;] + (blocks_per_group - 1)) / blocks_per_group
++
++    def getStaticSize(stream, args):
++        return 433
++    getStaticSize = staticmethod(getStaticSize)
++ 
++    def updateParent(self, chunk):
++        if self[&quot;feature_compat&quot;] &amp; 4 == 4:
++            type = &quot;ext3&quot;
++        else:
++            type = &quot;ext2&quot;
++        desc = &quot;Superblock: %s file system&quot; % type
++        self.setDescription(desc)
++        chunk.description = desc
++
++    def postMaxTime(self, chunk):
++        return humanDuration(chunk.value * 1000)
++
++class GroupDescriptors(OnDemandFilter):
++    def __init__(self, stream, parent, count, start):
++        OnDemandFilter.__init__(self, &quot;groups&quot;, &quot;Group descriptors: %s items&quot; % count, stream, parent)
++        self.start = start
++        for i in range(0, count):
++            self.read(&quot;group[]&quot;, &quot;Group&quot;, (GroupDescriptor, i))
++
++    def getGroup(self, index):
++        return self[&quot;group[%s]&quot; % (self.start + index)]
++
++class InodeTable(OnDemandFilter):
++    def __init__(self, stream, parent, start, count):
++        OnDemandFilter.__init__(self, &quot;ino_table&quot;, &quot;Inode table: %s inodes&quot; % count, stream, parent)
++        self.start = start
++        for index in range(self.start, self.start+count):
++            self.read(&quot;inode[]&quot;, &quot;Inode %s&quot; % index, (Inode, index))
++
++    def __getitem__(self, index):
++        index = index - self.start - 1
++        return self.getChunk(&quot;inode[%u]&quot; % index).getFilter()
++
++def testSuperblock(stream):
++    oldpos = stream.tell()
++    stream.seek(56, 1)
++    magic = stream.getN(2)    
++    stream.seek(oldpos)
++    return (magic == &quot;\x53\xEF&quot;)
++
++class Group(OnDemandFilter):
++    def __init__(self, stream, parent, index):
++        OnDemandFilter.__init__(self, &quot;group&quot;, &quot;Group %u&quot; % index, stream, parent)
++        self.index = index
++        group = parent[&quot;group_desc&quot;].getGroup(index)
++        superblock = parent.superblock
++        block_size = parent.block_size
++    
++        # Read block bitmap
++        self.superblock_copy = False
++        if testSuperblock(stream):
++            self.read(&quot;superblock_copy&quot;, &quot;Superblock&quot;, (SuperBlock,))
++            self.superblock_copy = True
++        self.seek(group[&quot;block_bitmap&quot;] * block_size)
++            
++        count = superblock[&quot;blocks_per_group&quot;]
++        self.read(&quot;block_bitmap[]&quot;, &quot;Block bitmap&quot;, (BlockBitmap, &quot;Block bitmap&quot;, count, 0), {&quot;size&quot;: count / 8})
++
++        # Read inode bitmap
++        assert (group[&quot;inode_bitmap&quot;] * block_size) == stream.tell()
++        count = superblock[&quot;inodes_per_group&quot;]
++        self.read(&quot;inode_bitmap[]&quot;, &quot;Inode bitmap&quot;, (InodeBitmap, &quot;Inode bitmap&quot;, count, 1), {&quot;size&quot;: count / 8})
++        addr = stream.tell() % 4096
++        if addr != 0:
++            addr = stream.tell() + (4096 - addr % 4096)
++            self.seek(addr)
++             
++        count = superblock[&quot;inodes_per_group&quot;]
++        size = superblock[&quot;inode_size&quot;] * count
++        inode_index = 1 + index * count
++        self.read(&quot;inode_table[]&quot;, &quot;Inode table&quot;, (InodeTable, inode_index, count), {&quot;size&quot;: size})
++
++        size = (index+1) * superblock[&quot;blocks_per_group&quot;] * block_size
++        if stream.getSize() &lt; size:
++            size = stream.getSize()
++        size = size - stream.tell() 
++        self.read(&quot;data&quot;, &quot;Data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++    def updateParent(self, chunk):
++        desc = &quot;Group %s: %s&quot; % (self.index, humanFilesize(self.getSize()))
++        if self.superblock_copy:
++            desc = desc + &quot; (with superblock copy)&quot;
++        chunk.description = desc 
++
++    def seek(self, to):
++        size = to - self.getStream().tell()
++        assert 0 &lt;= size
++        if 0 &lt; size:
++            self.read(&quot;raw[]&quot;, &quot;Raw&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++
++class EXT2_FS(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;ext2&quot;, &quot;EXT2 file system&quot;, stream, parent)
++        
++        # Read superblock
++        self.seek(1024) 
++        self.superblock = self.doRead(&quot;superblock&quot;, &quot;Super block&quot;, (SuperBlock,))
++        self.block_size = 1024 &lt;&lt; self.superblock[&quot;log_block_size&quot;]
++
++        # Read groups
++        self.seek(4096) 
++        groups = self.doRead(&quot;group_desc&quot;, &quot;Group descriptors&quot;, (GroupDescriptors, self.superblock.group_count, 0))
++        self.seek(groups.getGroup(0)[&quot;block_bitmap&quot;] * self.block_size)
++        for i in range(0,self.superblock.group_count):
++            self.read(&quot;group[]&quot;, &quot;Group&quot;, (Group, i))
++
++        size = stream.getSize() - stream.tell()
++        if size != 0:
++            self.read(&quot;end&quot;, &quot;End (raw)&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++    def seek(self, to):
++        size = to - self.getStream().tell()
++        assert 0 &lt;= size
++        if 0 &lt; size:
++            self.read(&quot;raw[]&quot;, &quot;Raw&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++    def readDirectory(self, inode):
++        stream = self.getStream()
++        block_index = 0
++        while True:
++            assert block_index &lt; 12
++            block = inode[&quot;block[%u]&quot; % block_index]
++            if block == 0:
++                return
++            self.seek(block * self.block_size)
++
++            total = 0
++            while total &lt; self.block_size:
++                entry = self.doRead(&quot;directory[]&quot;, &quot;Directory entry&quot;, (DirectoryEntry,))
++                if entry[&quot;inode&quot;] == 0:
++                    return
++                total = total + entry.getSize()
++            assert total == self.block_size
++            block_index = block_index + 1
++
++registerPlugin(EXT2_FS, &quot;hachoir/fs-ext2&quot;)
+
+Modified: haypo/hachoir/trunk/plugins/png.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/png.py	2005-12-26 05:24:27 UTC (rev 354)
++++ haypo/hachoir/trunk/plugins/png.py	2005-12-26 23:44:13 UTC (rev 355)
+@@ -93,9 +93,8 @@
+         type = self[&quot;type&quot;]
+         if type in Chunk.handler:
+             size = self[&quot;size&quot;]
+-            print &quot;%s.SIZE=%s&quot; % (self.getId(), size)
+             oldpos = self._stream.tell()
+-            sub = stream.createSub(size=size)
++            sub = stream.createLimited(size=size)
+             handler = Chunk.handler[type]
+             self.read(&quot;data&quot;, &quot;Data&quot;, (handler,), {&quot;stream&quot;: sub, &quot;size&quot;: size})
+             assert stream.tell() == (oldpos + size) 
+
+Modified: haypo/hachoir/trunk/stream/file.py
+===================================================================
+--- haypo/hachoir/trunk/stream/file.py	2005-12-26 05:24:27 UTC (rev 354)
++++ haypo/hachoir/trunk/stream/file.py	2005-12-26 23:44:13 UTC (rev 355)
+@@ -1,6 +1,8 @@
++import os
+ from error import StreamError
+ from stream import Stream
+-import os
++from cache import Cache
++import config
+ 
+ class FileCacheEntry:
+     def __init__(self, index, data):
+@@ -11,14 +13,21 @@
+     def __cmp__(self, to):
+         return cmp(self.used, to.used)
+ 
+-class FileCache:
++class FileCache(Cache):
+     def __init__(self, file, file_size, block_size=4096, block_count=100):
++        Cache.__init__(self, &quot;FileCache&quot;)
+         self.file = file
+         self.file_size = file_size
+         self.block_size = block_size
+         self.max_block = block_count
+         self.blocks = {}
+ 
++    def getCacheSize(self):
++        return len(self.blocks)
++
++    def purgeCache(self):
++        self.blocks = {}
++
+     def removeOldestBlock(self):
+         entry = min(self.blocks.values())
+         del self.blocks[entry.index]
+@@ -76,7 +85,8 @@
+             else:
+                 self._end = 0
+             if use_cache:
+-                self._cache = FileCache(self._file, self._size, 4096, 10)
++                self._cache = FileCache(self._file, self._size, \
++                    config.file_cache_block_size, config.file_cache_block_count)
+             else:
+                 self._cache = None
+ 
+
+Modified: haypo/hachoir/trunk/stream/stream.py
+===================================================================
+--- haypo/hachoir/trunk/stream/stream.py	2005-12-26 05:24:27 UTC (rev 354)
++++ haypo/hachoir/trunk/stream/stream.py	2005-12-26 23:44:13 UTC (rev 355)
+@@ -1,7 +1,7 @@
+ import struct
+ from error import StreamError
+ from tools import regexMaxLength
+-from format import getFormatSize
++from format import getRealFormat, getFormatSize
+ 
+ class Stream:
+     def __init__(self, filename):
+@@ -60,8 +60,9 @@
+         Read data using struct format. Eg. getFormat(&quot;BB&quot;) returns (10, 14).
+         &quot;&quot;&quot;
+         size = getFormatSize(format)
++        real = getRealFormat(format)
+         data = self.getN(size, seek)
+-        return struct.unpack(format, data)
++        return struct.unpack(real, data)[0]
+ 
+     def searchLength(self, needle, include_str, size_max=None):        
+         pos = self.search(needle, size_max)
+
+Added: haypo/hachoir/trunk/todo.py
+===================================================================
+--- haypo/hachoir/trunk/todo.py	2005-12-26 05:24:27 UTC (rev 354)
++++ haypo/hachoir/trunk/todo.py	2005-12-26 23:44:13 UTC (rev 355)
+@@ -0,0 +1,2 @@
++def todoWriteMethod(obj, method):
++    raise Exception(&quot;Class %s doesn't implement method %s!&quot; % (obj.__class__.__name__, method))
+
+Modified: haypo/hachoir/trunk/tools.py
+===================================================================
+--- haypo/hachoir/trunk/tools.py	2005-12-26 05:24:27 UTC (rev 354)
++++ haypo/hachoir/trunk/tools.py	2005-12-26 23:44:13 UTC (rev 355)
+@@ -103,21 +103,28 @@
+     min = sec/60
+     sec = sec%60
+     if min&lt;60:
+-        text = &quot;%u min %u sec&quot; % (min, sec)
++        return &quot;%u min %u sec&quot; % (min, sec)
+ 
+     # Hours
+     hour = min/60
+     min = min/60
+     if hour &lt; 24:
+-        text = &quot;%u hour(s) %u min&quot; % (hour, min)
++        return &quot;%u hour(s) %u min&quot; % (hour, min)
+ 
+     # Days
+     day = hour/24
+     hour = hour%24
++    if day &lt; 365:
++        return &quot;%u day(s) %u hour(s)&quot; % (day, hour)    
++
++    # Years
++    # TODO: Better estimation !?
++    year = day / 365
++    day = day % 365
+     if hour != 0:
+-        text = &quot;%u day(s) %u hour(s)&quot; % (day, hour)    
++        text = &quot;%u year(s) %u day(s)&quot; % (year, day)    
+     else:
+-        text = &quot;%u day(s)&quot; % (day)
++        text = &quot;%u year(s)&quot; % (year)
+     return text
+ 
+ def humanFilesize(size):
+
+Modified: haypo/hachoir/trunk/ui/hachoir.glade
+===================================================================
+--- haypo/hachoir/trunk/ui/hachoir.glade	2005-12-26 05:24:27 UTC (rev 354)
++++ haypo/hachoir/trunk/ui/hachoir.glade	2005-12-26 23:44:13 UTC (rev 355)
+@@ -177,6 +177,23 @@
+ 		  &lt;property name=&quot;homogeneous&quot;&gt;True&lt;/property&gt;
+ 		&lt;/packing&gt;
+ 	      &lt;/child&gt;
++
++	      &lt;child&gt;
++		&lt;widget class=&quot;GtkToolButton&quot; id=&quot;toolbutton_purge_cache&quot;&gt;
++		  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++		  &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Purge cache&lt;/property&gt;
++		  &lt;property name=&quot;use_underline&quot;&gt;True&lt;/property&gt;
++		  &lt;property name=&quot;stock_id&quot;&gt;gtk-clear&lt;/property&gt;
++		  &lt;property name=&quot;visible_horizontal&quot;&gt;True&lt;/property&gt;
++		  &lt;property name=&quot;visible_vertical&quot;&gt;True&lt;/property&gt;
++		  &lt;property name=&quot;is_important&quot;&gt;False&lt;/property&gt;
++		  &lt;signal name=&quot;clicked&quot; handler=&quot;on_toolbutton_purge_cache&quot; last_modification_time=&quot;Mon, 26 Dec 2005 07:42:41 GMT&quot;/&gt;
++		&lt;/widget&gt;
++		&lt;packing&gt;
++		  &lt;property name=&quot;expand&quot;&gt;False&lt;/property&gt;
++		  &lt;property name=&quot;homogeneous&quot;&gt;True&lt;/property&gt;
++		&lt;/packing&gt;
++	      &lt;/child&gt;
+ 	    &lt;/widget&gt;
+ 	  &lt;/child&gt;
+ 	&lt;/widget&gt;
+
+Modified: haypo/hachoir/trunk/ui/ui_window.py
+===================================================================
+--- haypo/hachoir/trunk/ui/ui_window.py	2005-12-26 05:24:27 UTC (rev 354)
++++ haypo/hachoir/trunk/ui/ui_window.py	2005-12-26 23:44:13 UTC (rev 355)
+@@ -210,6 +210,10 @@
+         col.add_attribute(cell, 'text', num)
+         treeview.set_search_column(num)
+         col.set_sort_column_id(num)
++
++    def on_toolbutton_purge_cache(self, widget, data=None):
++        from cache import CacheList
++        CacheList.getInstance().purgeCaches()
+  
+     def on_toolbutton_parent(self, widget, data=None):
+         self.ui.on_go_parent()
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000257.html">[Happyboom-svn] r354 - haypo/hachoir/tags/2005-12-26
+</A></li>
+	<LI>Next message: <A HREF="000259.html">[Happyboom-svn] r356 - haypo/hachoir/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#258">[ date ]</a>
+              <a href="thread.html#258">[ thread ]</a>
+              <a href="subject.html#258">[ subject ]</a>
+              <a href="author.html#258">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

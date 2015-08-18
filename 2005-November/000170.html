@@ -1,0 +1,592 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r265 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r265%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511240246.jAO2kFL6008450%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000169.html">
+   <LINK REL="Next"  HREF="000171.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r265 - in haypo/hachoir: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r265%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511240246.jAO2kFL6008450%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r265 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Thu Nov 24 03:46:15 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000169.html">[Happyboom-svn] r264 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000171.html">[Happyboom-svn] r266 - in haypo/hachoir: . plugins stream ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#170">[ date ]</a>
+              <a href="thread.html#170">[ thread ]</a>
+              <a href="subject.html#170">[ subject ]</a>
+              <a href="author.html#170">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-24 03:46:05 +0100 (Thu, 24 Nov 2005)
+New Revision: 265
+
+Added:
+   haypo/hachoir/plugins/asn1.py
+Modified:
+   haypo/hachoir/filter.py
+   haypo/hachoir/hachoir_class.py
+   haypo/hachoir/plugin.py
+   haypo/hachoir/plugins/png.py
+   haypo/hachoir/plugins/tar.py
+   haypo/hachoir/stream.py
+   haypo/hachoir/ui_window.py
+Log:
+Add ASN1 plugin (very alpha...). Fix MIME dectection. Use limited stream
+in Gzip, Tar and Png files: fix/improve LimitedStream class. Hachoir filter
+and main_filter become privates.
+
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-11-23 23:24:52 UTC (rev 264)
++++ haypo/hachoir/filter.py	2005-11-24 02:46:05 UTC (rev 265)
+@@ -316,6 +316,15 @@
+             setattr(self, id, data)
+             self._chunks_dict[id] = chunk
+ 
++    def readLimitedChild(self, id, size, filter_class, *args):
++        start = self._stream.tell()
++        limited = self._stream.createLimited(start, size)
++        filter = filter_class(limited, self, *args)
++        chunk = self.addFilter(id, filter)
++        chunk.postProcess()
++        self._stream.seek(start+size)
++        return chunk
++        
+     def readChild(self, id, filter_class, *args): 
+         filter = filter_class(self._stream, self, *args)
+         chunk = self.addFilter(id, filter)
+
+Modified: haypo/hachoir/hachoir_class.py
+===================================================================
+--- haypo/hachoir/hachoir_class.py	2005-11-23 23:24:52 UTC (rev 264)
++++ haypo/hachoir/hachoir_class.py	2005-11-24 02:46:05 UTC (rev 265)
+@@ -1,5 +1,5 @@
+ from stream import FileStream
+-from plugin import getPluginByFile
++from plugin import getPluginByStream
+ from chunk import FilterChunk
+ from default import DefaultFilter
+ from user_filter import UserFilterDescriptor, loadUserFilter
+@@ -15,74 +15,87 @@
+         self.display = True
+         self.depth = 5
+         self.ui = None 
+-        self.main_filter = None
++        self._main_filter = None
++        self._filter = None
+         self.script = None
+ 
++    def getFilter(self):
++        return self._filter
++
++    def setFilter(self, filter):
++        self._main_filter = filter
++        self._filter = filter
++        self._addPadding()
++        self._filter.display()
++        self.ui.window.updateToolbar()
++
+     def onGoParent(self):
+-        if self.filter.getParent() == None: return
+-        self.filter = self.filter.getParent()
+-        self.filter.display()
++        if self._filter.getParent() == None: return
++        self._filter = self._filter.getParent()
++        self._filter.display()
+         
+     def onRowClick(self, chunk_id):
+         if chunk_id == None: return
+-        chunk = self.filter.getChunk(chunk_id)
++        chunk = self._filter.getChunk(chunk_id)
+         if issubclass(chunk.__class__, FilterChunk):
+-            self.filter = chunk.getFilter()
+-            self.filter.display()
++            self._filter = chunk.getFilter()
++            self._filter.display()
+ 
+     def loadUser(self, filename):
+         try:
+-            old_filter = self.filter
++            old_filter = self._filter
+             old_size = old_filter.getSize()
+             user = UserFilterDescriptor(xml_file=filename)
+-            stream = self.filter.getStream()
+-            parent = self.filter.getParent()
+-            stream.seek(self.filter.getAddr())
++            stream = self._filter.getStream()
++            parent = self._filter.getParent()
++            stream.seek(self._filter.getAddr())
+             new_filter = loadUserFilter(user, stream, parent)
+         except Exception, err:
+             error(&quot;Error while loading user XML filter \&quot;%s\&quot;:\n%s&quot; % (filename, err))
+             return
+-        self.filter = new_filter           
++        self._filter = new_filter           
+         if parent == None:
+-            self.main_filter = self.filter
++            self._main_filter = self._filter
+             self._addPadding()
+         else:
+             chunk = old_filter.filter_chunk
+-            chunk.setFilter(self.filter)
+-            diff_size = self.filter.getSize() - old_size
++            chunk.setFilter(self._filter)
++            diff_size = self._filter.getSize() - old_size
+             chunk.getParent().rescan(chunk, diff_size)
+-        self.filter.display()
++        self._filter.display()
+         self.ui.window.updateToolbar()
+     
+     def saveUser(self, filename):
+-        my = UserFilterDescriptor(filter=self.filter)
++        my = UserFilterDescriptor(filter=self._filter)
+         my.writeIntoXML(filename)
+     
+     def exportUser(self, filename):
+-        my = UserFilterDescriptor(filter=self.filter)
++        my = UserFilterDescriptor(filter=self._filter)
+         my.exportPython(filename)
+         
+     def _addPadding(self):
+-        size = self.filter.getSize()
+-        diff_size = (size - self.filter.getStream().getSize())
++        size = self._filter.getSize()
++        diff_size = (size - self._filter.getStream().getSize())
+         if diff_size &lt; 0:
+-            chunks = self.filter.getChunks()
++            chunks = self._filter.getChunks()
+             if len(chunks) != 0:
+                 last_chunk = chunks[-1]
+             else:
+                 last_chunk = None
+-            self.filter.addRawChunk(last_chunk, &quot;end&quot;, &quot;{@end@}&quot;, &quot;&quot;)
++            self._filter.addRawChunk(last_chunk, &quot;end&quot;, &quot;{@end@}&quot;, &quot;&quot;)
+ 
+-    def load(self, filename):
++    def loadFile(self, filename):
+         try:
+             file = open(filename, 'r')
+             stream = FileStream(file, filename)
+         except IOError, err:
+             error(&quot;Can't load file %s:\n%s&quot; % (filename, err))
+             return
++        self.loadStream(stream, filename)
+ 
++    def loadStream(self, stream, filename=None):
+         # Look for a plugin
+-        plugin = getPluginByFile(filename)
++        plugin = getPluginByStream(stream, filename)
+         if plugin != None:
+             split_class = plugin
+         else:
+@@ -90,18 +103,15 @@
+             
+         # Split 
+         try:
++            stream.seek(0)
+             filter = split_class(stream)
+         except Exception, msg:
+             error(&quot;Exception while processing file %s:\n%s\n%s&quot; \
+                 % (filename, msg, getBacktrace()))
+             stream.seek(0)
+             filter = DefaultFilter(stream)
+-        self.main_filter = self.filter = filter
+-        self._addPadding()
+-        self.filter.display()
++        self.setFilter(filter)
+ 
+-        self.ui.window.updateToolbar()
+-
+     def loadScript(self, filename):
+         try:
+             f = open(self.script, 'r')
+@@ -117,5 +127,5 @@
+         if self.script:
+             self.loadScript(self.script)
+         elif filename != None:
+-            self.load(filename)
++            self.loadFile(filename)
+         self.ui.run()      
+
+Modified: haypo/hachoir/plugin.py
+===================================================================
+--- haypo/hachoir/plugin.py	2005-11-23 23:24:52 UTC (rev 264)
++++ haypo/hachoir/plugin.py	2005-11-24 02:46:05 UTC (rev 265)
+@@ -1,10 +1,13 @@
+ import re
+ from mime import getFileMime, getBufferMime
+ 
+-def guessPlugin(stream):
++def guessPlugin(stream, filename):
+     oldpos = stream.tell()
+-    buffer = stream.getN(4096)
+-    plugin = getPluginByBuffer(buffer)
++    size = stream.getSize()
++    if 4096&lt;size:
++        size = 4096
++    buffer = stream.getN(size)
++    plugin = getPluginByBuffer(buffer, filename)
+     stream.seek(oldpos)
+     return plugin
+ 
+@@ -24,7 +27,10 @@
+ 
+ def getPluginByStream(stream, filename):
+     stream.seek(0)
+-    data = stream.getN(4096)
++    size = stream.getSize()
++    if 4096&lt;size:
++        size = 4096
++    data = stream.getN(size)
+     mime = getBufferMime(data, filename)
+     return getPluginByMime(mime)
+ 
+
+Added: haypo/hachoir/plugins/asn1.py
+===================================================================
+--- haypo/hachoir/plugins/asn1.py	2005-11-23 23:24:52 UTC (rev 264)
++++ haypo/hachoir/plugins/asn1.py	2005-11-24 02:46:05 UTC (rev 265)
+@@ -0,0 +1,92 @@
++&quot;&quot;&quot;
++ASN1 Parser
++
++Information: <A HREF="http://www.openssl.org/docs/apps/asn1parse.html">http://www.openssl.org/docs/apps/asn1parse.html</A>
++
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from filter import Filter
++
++class ASN1_Sequence(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;asn1_seq&quot;, &quot;ASN1 sequence&quot;, stream, parent)
++        self.readArray(&quot;item&quot;, ASN1_Object, &quot;Items&quot;, self.checkEnd)
++
++    def checkEnd(self, stream, array, last):        
++        return stream.eof()
++
++class ASN1_Object(Filter):
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;asn1_obj&quot;, &quot;ASN1 object&quot;, stream, parent)
++        
++        import sys
++        sys.stdout.write(&quot;%s: &quot; % stream.tell())
++        
++        self.read(&quot;type&quot;, &quot;B&quot;, &quot;type&quot;)
++        tag = self.type &amp; 0x1f
++        if tag == 0x1f:
++            raise Exception(&quot;Error in ASN1 parser: TODO ...&quot;)
++        else:
++            length = stream.getFormat(&quot;B&quot;, False)[0]
++            if 128 &lt;= length:
++                size = length &amp; 0x7f 
++                length = 0
++                oldpos = stream.tell()
++                for i in range(0,size):
++                    stream.seek(oldpos+1+i)
++                    new = stream.getFormat(&quot;B&quot;, False)[0]
++                    length = length * 256 + new
++                    assert length &lt; (1 &lt;&lt; 32)
++                stream.seek(oldpos)
++                self.length = length
++                self.read(&quot;dummylength&quot;, &quot;%uB&quot; % (1+size), &quot;Length&quot;)
++            else:
++                self.read(&quot;length&quot;, &quot;B&quot;, &quot;Length&quot;)
++            print &quot;Length = %s&quot; % self.length
++            self.getChunk(&quot;type&quot;).description = &quot;type (tag=%s)&quot; % tag
++            handler = {
++                0: self.readEOC,
++                1: self.readBoolean,
++                4: self.readOctetString,
++#                6: self.readObject,
++                10: self.readEnum,
++                12: self.readUTF8,
++                16: self.readSequence
++            }
++            if tag in handler:
++                handler[tag]()
++            else:
++                self.read(&quot;value&quot;, &quot;%us&quot; % length, \
++                    &quot;Value (don't know tag %s)&quot; % tag)
++
++    def readEnum(self):
++        self.read(&quot;value&quot;, &quot;%us&quot; % self.length, &quot;Value (EOC)&quot;)
++
++    def readObject(self):
++        self.readChild(&quot;object&quot;, ASN1_Object)
++
++    def readEOC(self):
++        self.read(&quot;value&quot;, &quot;%us&quot; % self.length, &quot;Value (EOC)&quot;)
++
++    def readOctetString(self):
++        self.read(&quot;value&quot;, &quot;%us&quot; % self.length, &quot;Value (octet string)&quot;)
++
++    def readBoolean(self):
++        self.read(&quot;value&quot;, &quot;B&quot;, &quot;Value (boolean)&quot;)
++
++    def readUTF8(self):
++        self.read(&quot;value&quot;, &quot;%us&quot; % self.length, &quot;Value (string)&quot;)
++        
++    def readSequence(self):
++        self.readLimitedChild(&quot;sequence&quot;, self.length, ASN1_Sequence)
++
++class ASN1_Parser(Filter):
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;asn1&quot;, &quot;ASN1 parser&quot;, stream, parent)
++        #self.readArray(&quot;item&quot;, ASN1_Object, &quot;Items&quot;, self.checkEnd)
++        self.readChild(&quot;a&quot;, ASN1_Object)
++#        self.readChild(&quot;b&quot;, ASN1_Object)
++
++    def checkEnd(self, stream, array, last):        
++        return stream.eof()
+
+Modified: haypo/hachoir/plugins/png.py
+===================================================================
+--- haypo/hachoir/plugins/png.py	2005-11-23 23:24:52 UTC (rev 264)
++++ haypo/hachoir/plugins/png.py	2005-11-24 02:46:05 UTC (rev 265)
+@@ -5,7 +5,7 @@
+ Author: Victor Stinner
+ &quot;&quot;&quot;
+ 
+-from stream import StringStream, LimitedFileStream
++from stream import StringStream
+ from filter import Filter
+ from plugin import registerPlugin
+ 
+@@ -114,7 +114,7 @@
+         if self.type in self.chunk_splitter:
+             oldpos = self._stream.tell()
+             child_filter = self.chunk_splitter[self.type]
+-            self.readChild(&quot;chunk_data&quot;, child_filter)
++            self.readLimitedChild(&quot;chunk_data&quot;, self.size, child_filter)
+             assert oldpos + self.size == self._stream.tell()
+         else:
+             self.read(&quot;data&quot;, &quot;!{size}s&quot;, &quot;Chunk data&quot;)
+
+Modified: haypo/hachoir/plugins/tar.py
+===================================================================
+--- haypo/hachoir/plugins/tar.py	2005-11-23 23:24:52 UTC (rev 264)
++++ haypo/hachoir/plugins/tar.py	2005-11-24 02:46:05 UTC (rev 265)
+@@ -96,16 +96,16 @@
+         self.read(&quot;devminor&quot;, &quot;!8s&quot;, &quot;Dev minor&quot;)
+         self.read(&quot;header_padding&quot;, &quot;!167s&quot;, &quot;Padding (zero)&quot;)
+         if self.type in (&quot;\0&quot;, &quot;0&quot;):
+-            plugin = guessPlugin(stream, self.name)
++            substream = stream.createLimited(stream.tell(), self.size)
++            plugin = guessPlugin(substream, self.name)
+             ok = False
+             if plugin != None:
+                 oldpos = stream.tell()
+                 try:
+-                    # TODO: Fix child stream start &amp; end (size)
+-                    chunk = self.readChild(&quot;filedata&quot;, plugin)
++                    chunk = self.readLimitedChild(&quot;filedata&quot;, self.size, plugin)
+                     ok = True
+                 except Exception, msg:
+-                    error(&quot;Error while processing tar file: %s&quot; % msg)
++                    error(&quot;Error while processing tar file \&quot;%s\&quot;: %s&quot; % (self.name, msg))
+                     stream.seek(oldpos)
+ 
+             if not ok:
+
+Modified: haypo/hachoir/stream.py
+===================================================================
+--- haypo/hachoir/stream.py	2005-11-23 23:24:52 UTC (rev 264)
++++ haypo/hachoir/stream.py	2005-11-24 02:46:05 UTC (rev 265)
+@@ -6,11 +6,14 @@
+         Exception.__init__(self, msg)
+ 
+ class Stream:
+-    def __init__(self):
+-        pass
++    def __init__(self, filename):
++        self.filename = filename
+     
+     def getSize(self):
+         return 0
++
++    def clone(self):
++        return None
+     
+     def getLastPos(self):
+         return 0
+@@ -21,6 +24,17 @@
+     def tell(self):
+         return 0
+ 
++    def createLimited(self, start, size):
++        return LimitedStream(self, start, size, self.filename)
++    
++    def getN(self, size, seek=True):
++        return None
++
++    def getFormat(self, format, seek=True):
++        size = struct.calcsize(format)
++        data = self.getN(size, seek)
++        return struct.unpack(format, data)
++
+     def searchLength(self, str, include_str, size_max=None):        
+         pos = self.search(str, size_max)
+         if pos == -1: return -1
+@@ -35,11 +49,14 @@
+     file = StringIO(data)
+     return FileStream(file)
+ 
+-class LimitedFileStream(Stream):
+-    def __init__(self, filename, start=0, size=0):
+-        self.__stream = FileStream(filename)
+-        if start&lt;0: start = 0
+-        if self.__stream.getSize() &lt; start+size: size = self.__stream.getSize()-start
++class LimitedStream(Stream):
++    def __init__(self, stream, start=0, size=0, filename=None):
++        Stream.__init__(self, filename)
++        self.__stream = stream.clone()
++        if start&lt;0:
++            start = 0
++        if self.__stream.getLastPos() &lt; start+size:
++            size = self.__stream.getLastPos()-start
+         self.__start = start
+         self.__size = size
+         self.__end = self.__start + self.__size
+@@ -52,10 +69,10 @@
+         assert 0&lt;=size_max  and size_max&lt;=self.__size
+         return self.__stream.search(str, size_max)
+ 
+-    def getN(self, size):
++    def getN(self, size, seek=True):
+         if self.__start+self.__size&lt;self.__stream.tell()+size:
+             raise StreamError(&quot;Can't read outsize the stream.&quot;)
+-        return self.__stream.getN(size)
++        return self.__stream.getN(size, seek)
+ 
+     def tell(self):
+         return self.__stream.tell()
+@@ -68,20 +85,25 @@
+     
+     def getLastPos(self):
+         return self.__end
+-    
++
++    def clone(self):
++        return LimitedStream(self.__stream, self.__start, self.__size, self.filename)
++
+ class FileStream(Stream):
+     def __init__(self, file, filename=None):
+         &quot;&quot;&quot;
+         Endian: See setEndian function. 
+         &quot;&quot;&quot;
+ 
+-        Stream.__init__(self)
++        Stream.__init__(self, filename)
+         self.__file = file 
+-        self.filename = filename
+         self.__file.seek(0,2) # Seek to end
+         self.__size = self.__file.tell()
+         self.__file.seek(0,0) # Seel to beginning
+ 
++    def clone(self):
++        return FileStream(self.__file, self.filename)
++
+     def seek(self, pos, where=0):
+         &quot;&quot;&quot; Read file seek document to understand where. &quot;&quot;&quot;
+         self.__file.seek(pos, where)
+@@ -131,10 +153,12 @@
+         self.seek(oldpos)
+         return pos
+ 
+-    def getN(self, size):
++    def getN(self, size, seek=True):
+         data = self.__file.read(size)
+         if len(data) != size:
+             raise StreamError(&quot;Can't read %u bytes in a stream (get %u bytes).&quot; % (size, len(data)))
++        if not seek:
++            self.__file.seek(-size, 1)
+         return data
+ 
+     def getEnd(self):
+
+Modified: haypo/hachoir/ui_window.py
+===================================================================
+--- haypo/hachoir/ui_window.py	2005-11-23 23:24:52 UTC (rev 264)
++++ haypo/hachoir/ui_window.py	2005-11-24 02:46:05 UTC (rev 265)
+@@ -25,7 +25,7 @@
+         self.build_table()
+         
+     def updateToolbar(self):
+-        file_present = (self.ui.hachoir.main_filter != None)
++        file_present = (self.ui.hachoir.getFilter() != None)
+         self.toolbutton_open.set_sensitive(file_present)
+         self.toolbutton_save.set_sensitive(file_present)
+         if not file_present:
+@@ -35,7 +35,7 @@
+     def getTableChunk(self, col):
+         chunk_id = self.table_store[col][3]
+         if chunk_id == None: return None
+-        return self.ui.hachoir.filter.getChunk(chunk_id)
++        return self.ui.hachoir.getFilter().getChunk(chunk_id)
+ 
+     def on_treeview_button_press_event(self, treeview, event):
+         if event.button == 3:
+@@ -106,7 +106,7 @@
+         self.on_open_activate(widget)
+ 
+     def on_toolbutton_property(self, widget):
+-        filter = self.ui.hachoir.filter
++        filter = self.ui.hachoir.getFilter()
+         dlg = self.ui.property_dialog
+         if dlg.run(filter) == gtk.RESPONSE_CANCEL: return
+         filter.setId( dlg.getId() )
+@@ -120,7 +120,7 @@
+             buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
+         if chooser.run() == gtk.RESPONSE_OK:
+             filename = chooser.get_filename() 
+-            self.ui.hachoir.load(filename)
++            self.ui.hachoir.loadFile(filename)
+         chooser.destroy()
+ 
+     def on_toolbutton_open(self, widget):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000169.html">[Happyboom-svn] r264 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000171.html">[Happyboom-svn] r266 - in haypo/hachoir: . plugins stream ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#170">[ date ]</a>
+              <a href="thread.html#170">[ thread ]</a>
+              <a href="subject.html#170">[ subject ]</a>
+              <a href="author.html#170">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

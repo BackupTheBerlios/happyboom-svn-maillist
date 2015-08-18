@@ -1,0 +1,288 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r386 - in haypo/hachoir/trunk: . plugins stream
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r386%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins%20stream&In-Reply-To=%3C200601022309.k02N9kq0031699%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000287.html">
+   <LINK REL="Next"  HREF="000289.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r386 - in haypo/hachoir/trunk: . plugins stream</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r386%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins%20stream&In-Reply-To=%3C200601022309.k02N9kq0031699%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r386 - in haypo/hachoir/trunk: . plugins stream">haypo at berlios.de
+       </A><BR>
+    <I>Tue Jan  3 00:09:46 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000287.html">[Happyboom-svn] r385 - in haypo/hachoir/trunk: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000289.html">[Happyboom-svn] r387 - in haypo/hachoir/trunk: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#288">[ date ]</a>
+              <a href="thread.html#288">[ thread ]</a>
+              <a href="subject.html#288">[ subject ]</a>
+              <a href="author.html#288">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-03 00:09:45 +0100 (Tue, 03 Jan 2006)
+New Revision: 386
+
+Modified:
+   haypo/hachoir/trunk/hachoir.py
+   haypo/hachoir/trunk/plugins/exif.py
+   haypo/hachoir/trunk/plugins/jpeg.py
+   haypo/hachoir/trunk/plugins/zip.py
+   haypo/hachoir/trunk/reverse.py
+   haypo/hachoir/trunk/stream/stream.py
+Log:
+- LimitedStream &amp; SubStream: seek() may now raise exception (instead of
+  use assertion)
+- Zip plugin: add post-process functions
+- Reverse: add optionnal arguments size_bits and endian for findField
+- Exif: fix JPEG SOI recognition
+
+
+Modified: haypo/hachoir/trunk/hachoir.py
+===================================================================
+--- haypo/hachoir/trunk/hachoir.py	2006-01-02 14:21:08 UTC (rev 385)
++++ haypo/hachoir/trunk/hachoir.py	2006-01-02 23:09:45 UTC (rev 386)
+@@ -21,7 +21,7 @@
+     print &quot;Usage: %s [options] file&quot; % (sys.argv[0])
+     print &quot;&quot;
+     print &quot;Options:&quot;
+-    print &quot;\t--script file.py  : Load python script&quot;
++    print &quot;\t--script file.py  : Load python script after loading file (if any specified)&quot;
+     print &quot;\t--no-ui           : Don't load user interface&quot;
+     print &quot;\t--use-profiler    : Use profiler&quot;
+     print &quot;\t--version         : Show the program version&quot;
+
+Modified: haypo/hachoir/trunk/plugins/exif.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/exif.py	2006-01-02 14:21:08 UTC (rev 385)
++++ haypo/hachoir/trunk/plugins/exif.py	2006-01-02 23:09:45 UTC (rev 386)
+@@ -36,6 +36,9 @@
+         10: &quot;SRATIONTAL (two SLONGs)&quot;
+     }
+ 
++    OFFSET_JPEG_SOI = 0x0201
++    EXIF_IFD_POINTER = 0x8769
++
+     tag_name = {    
+         0x0100: &quot;Image width&quot;,
+         0x0101: &quot;Image height&quot;,
+@@ -167,8 +170,10 @@
+             if next in (0, 0xF0000000):
+                 break
+             entry = self.doRead(&quot;entry[]&quot;, &quot;Entry&quot;, (ExifEntry, self._endian))
+-            if entry[&quot;tag&quot;] in (0x8769, 0x0201):
++            if entry[&quot;tag&quot;] in (ExifEntry.EXIF_IFD_POINTER, ExifEntry.OFFSET_JPEG_SOI):
+                 next_chunk_offset = entry[&quot;value&quot;]+offset_diff
++                if entry[&quot;tag&quot;] == ExifEntry.OFFSET_JPEG_SOI:
++                   parent.jpeg_soi = next_chunk_offset
+                 break
+             if 4 &lt; entry.size:
+                 entries.append(entry)
+@@ -180,11 +185,17 @@
+             if 0 &lt; padding:
+                 self.read(&quot;padding[]&quot;, &quot;Padding (?)&quot;, (FormatChunk, &quot;string[%u]&quot; % padding))
+             assert offset == stream.tell()
+-            self.read(&quot;entry_value[]&quot;, &quot;Value of %s&quot; % entry.getId(), (FormatChunk, entry.format))
++            id = self.read(&quot;entry_value[]&quot;, &quot;Value of %s&quot; % entry.getId(), (FormatChunk, entry.format))
+         if next_chunk_offset != None:
+             padding = next_chunk_offset - stream.tell()
+             if 0 &lt; padding:
+                 self.read(&quot;padding[]&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[%u]&quot; % padding))
++        size = self.getSize()
++        if (size % 4) != 0:
++            if parent.jpeg_soi != None and parent.jpeg_soi &lt;= stream.tell():
++                return
++            padding = 4 - (size % 4)
++            self.read(&quot;padding[]&quot;, &quot;Padding to be aligned to 4&quot;, (FormatChunk, &quot;string[%u]&quot; % padding))
+ 
+     def updateParent(self, chunk):
+         chunk.description = &quot;Exif IFD (id %s)&quot; % self[&quot;id&quot;]
+@@ -194,6 +205,7 @@
+         OnDemandFilter.__init__(self, &quot;exif&quot;, &quot;Exif&quot;, stream, parent, None)
+ 
+         # Headers
++        self.jpeg_soi = None
+         self.read(&quot;header&quot;, &quot;Header (Exif\\0\\0)&quot;, (FormatChunk, &quot;string[6]&quot;))
+         assert self[&quot;header&quot;] == &quot;Exif\0\0&quot;
+         self.read(&quot;byte_order&quot;, &quot;Byte order&quot;, (FormatChunk, &quot;string[2]&quot;))
+@@ -215,8 +227,6 @@
+                 break
+             elif tag == 0xFFFF:
+                 break
+-            id = self.read(&quot;ifd[]&quot;, &quot;IFD&quot;, (ExifIFD, self._endian, 6))
+-        size = stream.getSize() - stream.tell()
+-        if 0 &lt; size:
+-            self.read(&quot;end&quot;, &quot;End&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++            self.read(&quot;ifd[]&quot;, &quot;IFD&quot;, (ExifIFD, self._endian, 6))
++        self.addPadding()            
+         assert self.getSize() == stream.getSize()
+
+Modified: haypo/hachoir/trunk/plugins/jpeg.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/jpeg.py	2006-01-02 14:21:08 UTC (rev 385)
++++ haypo/hachoir/trunk/plugins/jpeg.py	2006-01-02 23:09:45 UTC (rev 386)
+@@ -15,7 +15,7 @@
+         self.read(&quot;jfif&quot;, &quot;JFIF string&quot;, (FormatChunk, &quot;string[5]&quot;))
+         self.read(&quot;ver_maj&quot;, &quot;Major version&quot;, (FormatChunk, &quot;uint8&quot;))
+         self.read(&quot;ver_min&quot;, &quot;Minor version&quot;, (FormatChunk, &quot;uint8&quot;))
+-        self.read(&quot;units&quot;, &quot;Units (=0)&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;units&quot;, &quot;Units&quot;, (FormatChunk, &quot;uint8&quot;))
+         if self[&quot;units&quot;] == 0:
+             self.read(&quot;aspect_x&quot;, &quot;Aspect ratio (X)&quot;, (FormatChunk, &quot;uint16&quot;))
+             self.read(&quot;aspect_y&quot;, &quot;Aspect ratio (Y)&quot;, (FormatChunk, &quot;uint16&quot;))
+
+Modified: haypo/hachoir/trunk/plugins/zip.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/zip.py	2006-01-02 14:21:08 UTC (rev 385)
++++ haypo/hachoir/trunk/plugins/zip.py	2006-01-02 23:09:45 UTC (rev 386)
+@@ -12,6 +12,8 @@
+ from error import error
+ from text_handler import humanFilesize, hexadecimal, msdosDatetime
+ 
++# TODO: Merge ZipCentralDirectory and FileEntry (looks very similar)
++
+ class ZipCentralDirectory(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;zip_central_dir&quot;, &quot;ZIP central directory&quot;, stream, parent, &quot;&lt;&quot;)
+@@ -77,11 +79,9 @@
+             (6, &quot;unused&quot;, &quot;Unused bits&quot;),
+             (4, &quot;pkware&quot;, &quot;Reserved by PKWARE&quot;))
+         flags = self.doRead(&quot;flags&quot;, &quot;Flags&quot;, (BitsChunk, BitsStruct(bits)))
+-#        self.read(&quot;flags&quot;, &quot;Flags&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;compression&quot;, &quot;Compression method&quot;, (EnumChunk, &quot;uint16&quot;, FileEntry.compression_name))
+-        self.read(&quot;last_mod_time&quot;, &quot;Last modification time&quot;, (FormatChunk, &quot;uint16&quot;))
+-        self.read(&quot;last_mod_date&quot;, &quot;Last modification date&quot;, (FormatChunk, &quot;uint16&quot;))
+-        self.read(&quot;crc32&quot;, &quot;Checksum (CRC32)&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;last_mod&quot;, &quot;Last modification time&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: msdosDatetime})
++        self.read(&quot;crc32&quot;, &quot;Checksum (CRC32)&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: hexadecimal})
+         self.read(&quot;compressed_size&quot;, &quot;Compressed size (bytes)&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: humanFilesize})
+         self.read(&quot;uncompressed_size&quot;, &quot;Uncompressed size (bytes)&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: humanFilesize})
+         self.read(&quot;filename_length&quot;, &quot;Filename length&quot;, (FormatChunk, &quot;uint16&quot;))
+@@ -90,9 +90,9 @@
+         self.read(&quot;extra&quot;, &quot;Extra&quot;, (FormatChunk, &quot;string[%u]&quot; % self[&quot;extra_length&quot;]))
+         self.read(&quot;compressed_data&quot;, &quot;Compressed data&quot;, (FormatChunk, &quot;string[%u]&quot; % self[&quot;compressed_size&quot;]))
+         if flags[&quot;use_data_desc&quot;]:
+-            self.read(&quot;file_crc32&quot;, &quot;Checksum (CRC32)&quot;, (FormatChunk, &quot;uint32&quot;))
+-            self.read(&quot;file_compressed_size&quot;, &quot;Compressed size (bytes)&quot;, (FormatChunk, &quot;uint32&quot;))
+-            self.read(&quot;file_uncompressed_size&quot;, &quot;Uncompressed size (bytes)&quot;, (FormatChunk, &quot;uint32&quot;))
++            self.read(&quot;file_crc32&quot;, &quot;Checksum (CRC32)&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: hexadecimal})
++            self.read(&quot;file_compressed_size&quot;, &quot;Compressed size (bytes)&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: humanFilesize})
++            self.read(&quot;file_uncompressed_size&quot;, &quot;Uncompressed size (bytes)&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: humanFilesize})
+ 
+     def updateParent(self, chunk):
+         size = self.getChunk(&quot;compressed_size&quot;).display
+
+Modified: haypo/hachoir/trunk/reverse.py
+===================================================================
+--- haypo/hachoir/trunk/reverse.py	2006-01-02 14:21:08 UTC (rev 385)
++++ haypo/hachoir/trunk/reverse.py	2006-01-02 23:09:45 UTC (rev 386)
+@@ -371,16 +371,17 @@
+                     print &quot;Found filter -&gt; header size=%s, chunk size delta=%s (format \&quot;%s\&quot;)&quot; % (header_size, chunk_size_delta, chunk_size_format)
+                     return pattern.testFilter(stream)
+ 
+-    def findField(self, id, data_range):
++    def findField(self, id, data_range, size_bits=None, endian=None):
+         field = self.fields[id]
+         ok = data_range
+-        size_bits = field.getBitSize()
++        if size_bits == None:
++            size_bits = field.getBitSize()
+         print &quot;Find integer field \&quot;%s\&quot; (at least %u bits long) ...&quot; % (id, size_bits)
+         i = 1
+         for stream in self.streams:
+             print &quot;  find in stream %u/%u ...&quot; % (i, len(self.streams))
+             value = field.getValueByStream(stream)
+-            addr = self.findInteger(stream, value, data_range, size_bits)
++            addr = self.findInteger(stream, value, data_range, size_bits, endian)
+             ok = ok.intersection(addr)
+             if ok.isEmpty():
+                 break
+@@ -391,6 +392,8 @@
+         self.streams.append(stream)
+         for id in fields:
+             value = fields[id]
++            if isinstance(value, int) or isinstance(value, tuple):
++                value = IntValues(value)
+             if id not in self.fields:
+                 self.fields[id] = Field(id, type(value))
+             self.fields[id].addValue(stream, value)
+
+Modified: haypo/hachoir/trunk/stream/stream.py
+===================================================================
+--- haypo/hachoir/trunk/stream/stream.py	2006-01-02 14:21:08 UTC (rev 385)
++++ haypo/hachoir/trunk/stream/stream.py	2006-01-02 23:09:45 UTC (rev 386)
+@@ -185,13 +185,15 @@
+         return self._seed
+ 
+     def seek(self, pos, where=0):
++        oldpos = pos
+         if where == 2:
+             pos = self.getLastPos() - pos
+         elif where == 0:
+             pos = pos
+         elif where == 1:
+             pos = self._seed + pos
+-        assert self._start &lt;= pos and pos &lt;= self._end
++        if not(self._start &lt;= pos and pos &lt;= self._end):
++            raise StreamError(&quot;Error in a limited stream: can't seek to (%i,%u).&quot; % (oldpos, where))
+         self._seed = pos
+         
+     def getSize(self):
+@@ -216,13 +218,15 @@
+         return pos
+                
+     def seek(self, pos, where=0):
++        oldpos = pos
+         if where == 2:
+             pos = self.getLastPos() - pos
+         elif where == 0:
+             pos = self._start + pos
+         elif where == 1:
+             pos = self._seed + pos
+-        assert self._start &lt;= pos and pos &lt;= self._end
++        if not(self._start &lt;= pos and pos &lt;= self._end):
++            raise StreamError(&quot;Error in a sub-stream: can't seek to (%i,%u).&quot; % (oldpos, where))
+         self._seed = pos
+ 
+     def tell(self):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000287.html">[Happyboom-svn] r385 - in haypo/hachoir/trunk: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000289.html">[Happyboom-svn] r387 - in haypo/hachoir/trunk: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#288">[ date ]</a>
+              <a href="thread.html#288">[ thread ]</a>
+              <a href="subject.html#288">[ subject ]</a>
+              <a href="author.html#288">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

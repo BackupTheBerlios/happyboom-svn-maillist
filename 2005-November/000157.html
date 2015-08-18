@@ -1,0 +1,298 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r250 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r250%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511050352.jA53q7Y9011622%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000156.html">
+   <LINK REL="Next"  HREF="000158.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r250 - in haypo/hachoir: . plugins</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r250%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511050352.jA53q7Y9011622%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r250 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Sat Nov  5 04:52:07 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000156.html">[Happyboom-svn] r249 - haypo/hachoir
+</A></li>
+        <LI>Next message: <A HREF="000158.html">[Happyboom-svn] r251 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#157">[ date ]</a>
+              <a href="thread.html#157">[ thread ]</a>
+              <a href="subject.html#157">[ subject ]</a>
+              <a href="author.html#157">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-05 04:52:03 +0100 (Sat, 05 Nov 2005)
+New Revision: 250
+
+Modified:
+   haypo/hachoir/filter.py
+   haypo/hachoir/plugins/pdf.py
+   haypo/hachoir/stream.py
+Log:
+Improve PDF plugin =&gt; split into objects
+
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-11-05 01:23:06 UTC (rev 249)
++++ haypo/hachoir/filter.py	2005-11-05 03:52:03 UTC (rev 250)
+@@ -31,7 +31,11 @@
+         if self.__class__ == Filter:
+             return None
+         self.getStream().seek(self.getAddr())
+-        new = self.__class__(self.getStream(), self.getParent())
++        try:
++            new = self.__class__(self.getStream(), self.getParent())
++        except:
++            error(&quot;Error while clone class of type %s!&quot; % self.__class__)
++            raise
+         new.filter_chunk = self.filter_chunk
+         return new
+ 
+@@ -262,7 +266,7 @@
+         if lg == -1:
+             raise Exception(&quot;Delimiter \&quot;%s\&quot; not found for %s (%s)!&quot; % (delimiter, id, description))
+         self.read(id, &quot;!%us&quot; % lg, description) 
+-        self.read(None, &quot;!%us&quot; % len(delimiter), &quot;Delimiter of %s&quot; % id) 
++        self.read(id+&quot;_delimiter&quot;, &quot;!%us&quot; % len(delimiter), &quot;Delimiter of %s&quot; % id) 
+ 
+     def searchEol(self, eol):
+         lg = self._stream.searchLength(eol, True)
+
+Modified: haypo/hachoir/plugins/pdf.py
+===================================================================
+--- haypo/hachoir/plugins/pdf.py	2005-11-05 01:23:06 UTC (rev 249)
++++ haypo/hachoir/plugins/pdf.py	2005-11-05 03:52:03 UTC (rev 250)
+@@ -1,7 +1,8 @@
+ from filter import Filter
+ from plugin import registerPlugin
+ import re
+-from tools import convertDataToPrintableString
++from stream import StreamError
++from tools import convertDataToPrintableString, getBacktrace
+ 
+ def isEnd(stream, array, last):
+     return stream.eof()
+@@ -11,41 +12,92 @@
+ 
+ class PdfObject(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;value&quot;, &quot;&quot;, stream, parent)
+-        n = 0
+-        while not stream.eof():
+-            chunk = self.readString(&quot;line[]&quot;, &quot;AutoLine&quot;, &quot;&quot;, post=stripLine)
+-            if chunk.value.strip() == &quot;&gt;&gt;&quot;:
+-                break
+-            n = n + 1
++        Filter.__init__(self, &quot;pdf_obj&quot;, &quot;PDF object&quot;, stream, parent)
++        self.metadata = {}
++        chunk = self.readString(&quot;header&quot;, &quot;AutoLine&quot;, &quot;Object header&quot;, post=stripLine)
++        header = chunk.value 
++        assert header != &quot;&quot;
++        if header == &quot;xref&quot;:
++            self.type = &quot;xref&quot;
++            self.readXref()
++        else: 
++            self.type = &quot;obj&quot;
++            m = re.match(&quot;([0-9]+) [0-9]+ obj&quot;, header)
++            if m != None:
++                id = int(m.group(1))
++                self.metadata[&quot;id&quot;] = id
++                self.setDescription(&quot;Object (id %s)&quot; % id)
++            else:
++                self.metadata[&quot;id&quot;] = header
++                self.setDescription(&quot;Object (%s)&quot; % header)
++            self.readObj()                
++        self.updateDescription()
+ 
+-class PdfXref(Filter):
+-    def __init__(self, stream, parent, nb_items):
+-        Filter.__init__(self, &quot;id&quot;, &quot;&quot;, stream, parent)
++    def updateDescription(self):
++        if self.type == &quot;obj&quot;:
++            info = &quot;id %s&quot; % self.metadata[&quot;id&quot;]
++            if &quot;type&quot; in self.metadata:
++                info = info + &quot;, %s&quot; % self.metadata[&quot;type&quot;]
++                if &quot;fontname&quot; in self.metadata:
++                    info = info + &quot;, name: %s&quot; % self.metadata[&quot;fontname&quot;]
++        else:
++            info = &quot;XREF&quot;
++        self.setDescription(&quot;Object (%s)&quot; % info)
++
++    def readObj(self):
++        chunk = self.readString(&quot;line[]&quot;, &quot;AutoLine&quot;, &quot;&quot;, post=stripLine)
++        if re.match(&quot;^\&lt;\&lt;&quot;, chunk.value) != None:
++            self.processLine(chunk.value)
++            while re.match(&quot;^.*\&gt;\&gt;$&quot;, chunk.value) == None:
++                chunk = self.readString(&quot;line[]&quot;, &quot;AutoLine&quot;, &quot;&quot;, post=stripLine)
++                self.processLine(chunk.value)
++        chunk = self.readString(&quot;endobj&quot;, &quot;AutoLine&quot;, &quot;Object end&quot;, post=stripLine)
++        if chunk.value == &quot;stream&quot;:
++            chunk.id = &quot;xref&quot;
++            lg = self._stream.searchLength(&quot;endstream&quot;, False)
++            if lg == -1:
++                raise Exception(&quot;Delimiter \&quot;%s\&quot; not found for %s (%s)!&quot; % (delimiter, id, description))
++            self.read(&quot;data[]&quot;, &quot;!%us&quot; % lg, &quot;Data&quot;)
++            self.readString(&quot;data_end[]&quot;, &quot;AutoLine&quot;, &quot;Data end&quot;)
++            self.readString(&quot;endobj&quot;, &quot;AutoLine&quot;, &quot;Object end&quot;, post=stripLine)
++        self.readString(&quot;emptyline&quot;, &quot;AutoLine&quot;, &quot;&quot;)
++
++    def readXref(self):
++        chunk = self.readString(&quot;xref_header&quot;, &quot;AutoLine&quot;, &quot;XRef header&quot;, post=stripLine)
++        m = re.match(&quot;^[0-9]+ ([0-9]+)$&quot;, chunk.value)
++        assert m != None
++        nb_ref = int(m.group(1)) - 1
+         n = 0
+-        while n&lt;nb_items and not stream.eof():
+-            chunk = self.readString(&quot;line[]&quot;, &quot;AutoLine&quot;, &quot;&quot;, post=stripLine)
++        while n&lt;nb_ref:
++            chunk = self.readString(&quot;ref[]&quot;, &quot;AutoLine&quot;, &quot;Reference&quot;, post=stripLine)
+             n = n + 1
++        self.readString(&quot;endobj&quot;, &quot;AutoLine&quot;, &quot;Object end&quot;, post=stripLine)
+ 
++    def processLine(self, line):
++        tests = {
++            &quot;type&quot;:  &quot;^.*/Type /([A-Za-z]+)$&quot;,
++            &quot;fontname&quot;:  &quot;^.*/FontName /[BD]A+\+([A-Za-z-]+)$&quot;
++        }
++        for field in tests:
++            m = re.match(tests[field], line)
++            if m != None:
++                self.metadata[field] = m.group(1)
++                break 
++
+ class PdfFile(Filter):
+     def __init__(self, stream, parent=None):
+         Filter.__init__(self, &quot;id&quot;, &quot;&quot;, stream, parent)
+         self.readString(&quot;version&quot;, &quot;AutoLine&quot;, &quot;PDF version&quot;)
++        self.readString(&quot;header&quot;, &quot;AutoLine&quot;, &quot;PDF header&quot;)
++        self.nb_ref = None
+         while not stream.eof():
+             try:
+-                chunk = self.readString(&quot;line[]&quot;, &quot;AutoLine&quot;, &quot;&quot;, post=stripLine)
+-                value = chunk.value.strip()
+-                if re.match(&quot;^\&lt;\&lt;&quot;, value) != None:
+-                    self.readChild(&quot;data[]&quot;, PdfObject)
+-                elif value == &quot;stream&quot;:
+-                    break
+-                else:
+-                    m = re.match(&quot;^[0-9]+ ([0-9]+)$&quot;, value)
+-                    if m != None:
+-                        nb_ref = int(m.group(1))
+-                        self.readChild(&quot;xref&quot;, PdfXref, nb_ref)
++                self.readChild(&quot;obj[]&quot;, PdfObject)
++            except StreamError, err:
++                return
+             except Exception, err:
+-                print &quot;Exception: %s&quot; % err
+-                break
++                print &quot;Exception in PDF: %s&quot; % err
++                print getBacktrace()
++                return
+ 
+ registerPlugin(&quot;^.*\.(PDF|pdf)$&quot;, &quot;PDF document file&quot;, PdfFile, None)
+
+Modified: haypo/hachoir/stream.py
+===================================================================
+--- haypo/hachoir/stream.py	2005-11-05 01:23:06 UTC (rev 249)
++++ haypo/hachoir/stream.py	2005-11-05 03:52:03 UTC (rev 250)
+@@ -1,13 +1,20 @@
+ import struct
+ from StringIO import StringIO
+ 
++class StreamError(Exception):
++    def __init__(self, msg):
++        Exception.__init__(self, msg)
++
+ class Stream:
+     def __init__(self):
+         pass
++    
++    def getSize(self):
++        return 0
++    
++    def getLastPos(self):
++        return 0
+ 
+-    def get16(self):
+-        return None
+-
+     def eof(self):
+         return self.getLastPos() &lt;= self.tell() 
+ 
+@@ -47,7 +54,7 @@
+ 
+     def getN(self, size):
+         if self.__start+self.__size&lt;self.__stream.tell()+size:
+-            raise Exception(&quot;Can't read outsize the stream.&quot;)
++            raise StreamError(&quot;Can't read outsize the stream.&quot;)
+         return self.__stream.getN(size)
+ 
+     def tell(self):
+@@ -79,7 +86,7 @@
+         &quot;&quot;&quot; Read file seek document to understand where. &quot;&quot;&quot;
+         self.__file.seek(pos, where)
+         if self.__size &lt; self.tell():
+-            raise Exception(&quot;Error when seek to (%s,%s) in a stream.&quot; % (pos, where))
++            raise StreamError(&quot;Error when seek to (%s,%s) in a stream.&quot; % (pos, where))
+ 
+     def tell(self):
+         return self.__file.tell()
+@@ -89,7 +96,7 @@
+         pos_max: Position of last tested byte
+         &quot;&quot;&quot;
+         if 2048&lt;=len(binary_string):
+-            raise Exception(&quot;Search string too big.&quot;)
++            raise StreamError(&quot;Search string too big.&quot;)
+         size = 2048 
+         doublesize = size * 2
+         oldpos = self.tell()
+@@ -127,7 +134,7 @@
+     def getN(self, size):
+         data = self.__file.read(size)
+         if len(data) != size:
+-            raise Exception(&quot;Can't read %u bytes in a stream (get %u bytes).&quot; % (size, len(data)))
++            raise StreamError(&quot;Can't read %u bytes in a stream (get %u bytes).&quot; % (size, len(data)))
+         return data
+ 
+     def getEnd(self):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000156.html">[Happyboom-svn] r249 - haypo/hachoir
+</A></li>
+	<LI>Next message: <A HREF="000158.html">[Happyboom-svn] r251 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#157">[ date ]</a>
+              <a href="thread.html#157">[ thread ]</a>
+              <a href="subject.html#157">[ subject ]</a>
+              <a href="author.html#157">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

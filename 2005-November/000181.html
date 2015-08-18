@@ -1,0 +1,343 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r276 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r276%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511272109.jARL9qfZ019846%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000180.html">
+   <LINK REL="Next"  HREF="000182.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r276 - in haypo/hachoir: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r276%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511272109.jARL9qfZ019846%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r276 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Sun Nov 27 22:09:52 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000180.html">[Happyboom-svn] r275 - haypo
+</A></li>
+        <LI>Next message: <A HREF="000182.html">[Happyboom-svn] r277 - haypo/hachoir
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#181">[ date ]</a>
+              <a href="thread.html#181">[ thread ]</a>
+              <a href="subject.html#181">[ subject ]</a>
+              <a href="author.html#181">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-27 22:09:52 +0100 (Sun, 27 Nov 2005)
+New Revision: 276
+
+Modified:
+   haypo/hachoir/mime.py
+   haypo/hachoir/plugin.py
+   haypo/hachoir/plugins/email.py
+   haypo/hachoir/plugins/zip.py
+Log:
+A lot of good things in email
+
+
+Modified: haypo/hachoir/mime.py
+===================================================================
+--- haypo/hachoir/mime.py	2005-11-27 20:58:27 UTC (rev 275)
++++ haypo/hachoir/mime.py	2005-11-27 21:09:52 UTC (rev 276)
+@@ -43,7 +43,8 @@
+     - &quot;text/plain; charset=ISO-8859-1; format=flowed&quot;
+       =&gt; [['text/plain', {'charset': 'ISO-8859-1', 'format': 'flowed'}]]
+     &quot;&quot;&quot;
+-
++    
++    print mimes
+     list = []
+     for mime in map(string.strip, mimes.split(&quot;,&quot;)):
+         parts = mime.split(&quot;;&quot;)
+@@ -51,16 +52,11 @@
+         parts = map(string.strip, parts[1:])
+         values = {}
+         for part in parts:
+-            split_part = part.split(&quot;=&quot;, 1)             
+-            values[ split_part[0] ] = split_part[1]
++            if part != &quot;&quot;:
++                split_part = part.split(&quot;=&quot;, 1)             
++                values[ split_part[0] ] = split_part[1]
+         list.append([mime,values])
+     return list
+-        
+-    mimes = map(string.split, mimes, ';')
+-    print mimes
+-#    for key in mimes:
+-#        mimes[key] = map(string.strip, mimes[key])    
+-    return mimes
+ 
+ def getBufferMime(buffer, filename):
+     magic = getInstance()
+
+Modified: haypo/hachoir/plugin.py
+===================================================================
+--- haypo/hachoir/plugin.py	2005-11-27 20:58:27 UTC (rev 275)
++++ haypo/hachoir/plugin.py	2005-11-27 21:09:52 UTC (rev 276)
+@@ -20,7 +20,7 @@
+         if mime in hachoir_plugins:
+             plugins = plugins + hachoir_plugins[mime]
+     if len(plugins)==0:
+-        plugins = (default,)
++        return default
+     if 1&lt;len(plugins):
+         warning(&quot;More than one plugin have same MIME...&quot;)
+     return plugins[0]
+
+Modified: haypo/hachoir/plugins/email.py
+===================================================================
+--- haypo/hachoir/plugins/email.py	2005-11-27 20:58:27 UTC (rev 275)
++++ haypo/hachoir/plugins/email.py	2005-11-27 21:09:52 UTC (rev 276)
+@@ -6,9 +6,9 @@
+ 
+ from filter import Filter, DeflateFilter
+ from plugin import registerPlugin, guessPlugin, getPluginByMime
+-from error import warning
++from default import DefaultFilter
+ from mime import splitMimes
+-from error import warning
++from error import warning, error
+ from stream.base_64 import Base64Stream
+ import re
+ 
+@@ -16,8 +16,8 @@
+     def __init__(self, stream, parent=None):
+         Filter.__init__(self, &quot;email_hdr&quot;, &quot;Email header&quot;, stream, parent)
+         self._dict = {}
+-        regex_new = re.compile(&quot;^([A-Za-z-]+): (.*)$&quot;)
+-        regex_continue = re.compile(&quot;^\t(.*)$&quot;)
++        regex_new = re.compile(&quot;^([A-Za-z][A-Za-z0-9-]*): (.*)$&quot;)
++        regex_continue = re.compile(&quot;^[\t ]+(.*)$&quot;)
+         linenb = 1
+         last_key = None
+         last_index = None
+@@ -42,7 +42,8 @@
+             linenb = linenb + 1
+ 
+     def __contains__(self, key):
+-        return key.lower() in self._dict
++        key = key.lower()
++        return key in self._dict
+ 
+     def _appendHeader(self, key, index, value):
+         key = key.lower()
+@@ -66,33 +67,30 @@
+     def __init__(self, stream, parent=None):
+         Filter.__init__(self, &quot;email_part&quot;, &quot;Email part&quot;, stream, parent)
+         self.readChild(&quot;header&quot;, EmailHeader)
+-        readEmailContent(self, stream.createSub(), True)
++        readEmailContent(self, stream.createSub())
+ 
+ class EmailBody(Filter):
+-    def __init__(self, stream, parent=None, in_multipart=True):
++    def __init__(self, stream, parent=None):
+         Filter.__init__(self, &quot;email_body&quot;, &quot;Email body&quot;, stream, parent)
+         linenb = 1 
+-        empty_line = 0
+         while not stream.eof():
++            guess = stream.read(5, False)
++            if guess==&quot;From &quot;:
++                break
+             id = &quot;body[%u]&quot; % linenb
+             chunk = self.readString(id, &quot;AutoLine&quot;, &quot;Body text&quot;)
+-            if not in_multipart:
+-                if chunk.length == 0:
+-                    empty_line = empty_line + 1
+-                    if empty_line == 2:
+-                        break
+-                else:
+-                    empty_line = 0
+             linenb = linenb + 1
+ 
+-def readEmailContent(self, stream, in_multipart):
++def readEmailContent(self, stream):
+     mime = getEmailMime(self)
+-    if re.match(&quot;^multipart/&quot;, mime[0]) != None:
++    if mime != None and re.match(&quot;^multipart/&quot;, mime[0]) != None:
+         readMultipartEmail(self, stream, mime[1][&quot;boundary&quot;])
+     else:
+-        readBody(self, stream, mime, in_multipart)
++        if mime == None:
++            warning(&quot;Can't get MIME type for email %s&quot; % self)
++        readBody(self, stream, mime)
+ 
+-def readBody(self, stream, mime, in_multipart):
++def readBody(self, stream, mime):
+     # Read encoding
+     header = self[&quot;header&quot;]
+     if &quot;Content-Transfer-Encoding&quot; in header:
+@@ -101,7 +99,11 @@
+         encoding = None
+ 
+     # Get filename
+-    filename = mime[1].get(&quot;name&quot;, None)
++    if mime != None:
++        filename = mime[1].get(&quot;name&quot;, None)
++    else:
++        raise Exception(&quot;No MIME in readBody()&quot;)
++        filename = None
+     if filename == None:
+         if &quot;Content-Disposition&quot; in header:
+             disp = header[&quot;Content-Disposition&quot;][0].split(&quot;;&quot;)
+@@ -121,27 +123,35 @@
+         substream = Base64Stream(data)
+         deflate = True
+     else:
+-        substream = stream
++#        regex_new_mail = re.compile(&quot;[\r\n]From &quot;)
++#        pos = stream.search(regex_new_mail)
++#        if pos != -1:
++#            substream = stream.createSub(size=pos)
++#        else:
++#            substream = stream
++        substream = stream.createSub()
+         deflate = False
+ 
+     # Guess plugin
+-    plugin = getPluginByMime((mime,), None)
++    if mime != None:
++        plugin = getPluginByMime((mime,), None)
++    else:
++        plugin = None
+     if plugin == None:
+         plugin = guessPlugin(substream, filename, None)
+-    if plugin == None:
++    if plugin == None or plugin == EmailFilter:
+         plugin = EmailBody
+ 
+     # Finally read data
+-    if plugin != EmailBody:
++    try:
+         if deflate:
+             self.readChild(&quot;body&quot;, DeflateFilter, substream, size, plugin) 
+         else:
+-            chunk = self.readStreamChild(&quot;body&quot;, substream, plugin)
+-    else:
+-        if deflate:
+-            self.readChild(&quot;body&quot;, DeflateFilter, substream, size, plugin, in_multipart) 
+-        else:
+-            chunk = self.readStreamChild(&quot;body&quot;, substream, plugin, in_multipart)
++            self.readStreamChild(&quot;body&quot;, substream, plugin)
++    except Exception, msg:
++        error(&quot;Error while parsing email body: %s&quot; % msg)
++        substream.seek(0)
++        self.readStreamChild(&quot;body&quot;, substream, DefaultFilter)
+ 
+ def readMultipartEmail(self, stream, boundary):
+     assert boundary[0] == '&quot;' and boundary[-1] == '&quot;'
+@@ -171,28 +181,43 @@
+             break
+ 
+ def getEmailMime(self):
+-    content_type = self[&quot;header&quot;][&quot;Content-Type&quot;]
++    header = self[&quot;header&quot;]
++    if not(&quot;Content-Type&quot; in header):
++        raise Exception(&quot;No mime&quot;)
++        return None
++    content_type = header[&quot;Content-Type&quot;]
+     assert len(content_type) == 1
+     mimes = splitMimes(content_type[0])
+     assert len(mimes) == 1
+     return mimes[0]
+ 
+ class Email(Filter):
+-    def __init__(self, stream, parent, in_multipart=True):
++    def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;email&quot;, &quot;Email&quot;, stream, parent)
+         self.readString(&quot;id&quot;, &quot;AutoLine&quot;, &quot;Email identifier&quot;)
+         self.readChild(&quot;header&quot;, EmailHeader)
+-        readEmailContent(self, stream.createSub(), in_multipart)
++        readEmailContent(self, stream.createSub())
+ 
++    def __str__(self):
++        header = self[&quot;header&quot;]
++        text = &quot;Email&quot;
++        if &quot;From&quot; in header:
++            text = text + &quot; from %s&quot; % header[&quot;From&quot;]
++        if &quot;Date&quot; in header:
++            text = text + &quot; (date %s)&quot; % header[&quot;Date&quot;]
++        return text
++
+ class EmailFilter(Filter):
+     def __init__(self, stream, parent=None):
+         Filter.__init__(self, &quot;email&quot;, &quot;Email maildir parser&quot;, stream, parent)
+-        cpt = 1
+         while not stream.eof():
+-            chunk = self.readChild(&quot;email[%u]&quot; % cpt, Email, False)
+-            end = stream.read(4, seek=False)
+-            if len(end.strip()) == 0:
++            chunk = self.readChild(&quot;email[]&quot;, Email)
++            if stream.eof():
+                 break
+-            cpt = cpt + 1
++            while not stream.eof():
++                guess = stream.read(5, False)
++                if guess == &quot;From &quot;:
++                    break
++                self.readString(&quot;space[]&quot;, &quot;AutoLine&quot;, &quot;Space&quot;)
+ 
+ registerPlugin(EmailFilter, [&quot;message/rfc822&quot;, &quot;text/x-mail&quot;])
+
+Modified: haypo/hachoir/plugins/zip.py
+===================================================================
+--- haypo/hachoir/plugins/zip.py	2005-11-27 20:58:27 UTC (rev 275)
++++ haypo/hachoir/plugins/zip.py	2005-11-27 21:09:52 UTC (rev 276)
+@@ -5,9 +5,10 @@
+ Author: Victor Stinner
+ &quot;&quot;&quot;
+ 
++import sys
+ from filter import Filter
+ from plugin import registerPlugin
+-import sys
++from error import error
+ 
+ class ZipCentralDirectory(Filter):
+     def __init__(self, stream, parent):
+@@ -98,6 +99,7 @@
+                 self.read(&quot;signature_length&quot;, &quot;!H&quot;, &quot;Signature length&quot;)
+                 self.read(&quot;signature&quot;, &quot;!{signature_length}s&quot;, &quot;Signature&quot;)
+             else:
+-                raise Exception(&quot;Error, unknow ZIP header (0x%08X).&quot; % header)
++                error(&quot;Error, unknow ZIP header (0x%08X).&quot; % header)
++                self.read(&quot;raw&quot;, &quot;{@end@}s&quot;, &quot;Raw&quot;)
+         
+ registerPlugin(ZipFile, &quot;application/x-zip&quot;)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000180.html">[Happyboom-svn] r275 - haypo
+</A></li>
+	<LI>Next message: <A HREF="000182.html">[Happyboom-svn] r277 - haypo/hachoir
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#181">[ date ]</a>
+              <a href="thread.html#181">[ thread ]</a>
+              <a href="subject.html#181">[ subject ]</a>
+              <a href="author.html#181">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

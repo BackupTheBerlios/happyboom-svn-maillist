@@ -1,0 +1,2471 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r141 - in happyboom/trunk: agent input net net/io net/io_tcp net/io_udp server
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r141%20-%20in%20happyboom/trunk%3A%20agent%20input%20net%20net/io%20net/io_tcp%20net/io_udp%20server&In-Reply-To=%3C200509140032.j8E0WhYV026053%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000047.html">
+   <LINK REL="Next"  HREF="000049.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r141 - in happyboom/trunk: agent input net net/io net/io_tcp net/io_udp server</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r141%20-%20in%20happyboom/trunk%3A%20agent%20input%20net%20net/io%20net/io_tcp%20net/io_udp%20server&In-Reply-To=%3C200509140032.j8E0WhYV026053%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r141 - in happyboom/trunk: agent input net net/io net/io_tcp net/io_udp server">haypo at berlios.de
+       </A><BR>
+    <I>Wed Sep 14 02:32:43 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000047.html">[Happyboom-svn] r140 - in happyboom/trunk: common net server
+</A></li>
+        <LI>Next message: <A HREF="000049.html">[Happyboom-svn] r142 - in boomboom: . server server/agents
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#48">[ date ]</a>
+              <a href="thread.html#48">[ thread ]</a>
+              <a href="subject.html#48">[ subject ]</a>
+              <a href="author.html#48">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-14 02:32:33 +0200 (Wed, 14 Sep 2005)
+New Revision: 141
+
+Modified:
+   happyboom/trunk/agent/agent.py
+   happyboom/trunk/input/base_input.py
+   happyboom/trunk/net/io/io_client.py
+   happyboom/trunk/net/io_tcp/server_waiter.py
+   happyboom/trunk/net/io_tcp/tcp.py
+   happyboom/trunk/net/io_tcp/tcp_client.py
+   happyboom/trunk/net/io_udp/udp.py
+   happyboom/trunk/net/io_udp/udp_client.py
+   happyboom/trunk/net/io_udp/udp_ping.py
+   happyboom/trunk/net/net_buffer.py
+   happyboom/trunk/server/base_server.py
+   happyboom/trunk/server/server_agent.py
+   happyboom/trunk/server/stat.py
+Log:
+Replace threading.Semaphore() by thread.allocate_lock(), use happyboom package for imports, and replace tab by four spaces.
+
+
+Modified: happyboom/trunk/agent/agent.py
+===================================================================
+--- happyboom/trunk/agent/agent.py	2005-09-14 00:03:32 UTC (rev 140)
++++ happyboom/trunk/agent/agent.py	2005-09-14 00:32:33 UTC (rev 141)
+@@ -1,46 +1,46 @@
+ class AgentMessage:
+-	def __init__(self, role, type, arg):
+-		self.role = role
+-		self.type = type
+-		self.arg  = arg
+-		self.id = -1
+-		self.msg_handler = {}
++    def __init__(self, role, type, arg):
++        self.role = role
++        self.type = type
++        self.arg  = arg
++        self.id = -1
++        self.msg_handler = {}
+ 
+-	def str(self):
+-		if self.arg != None:
+-			return &quot;Message(role=%s, type=%s, arg=%s)&quot; % (self.role, self.type, self.arg)
+-		else:
+-			return &quot;Message(role=%s, type=%s)&quot; % (self.role, self.type)
++    def str(self):
++        if self.arg != None:
++            return &quot;Message(role=%s, type=%s, arg=%s)&quot; % (self.role, self.type, self.arg)
++        else:
++            return &quot;Message(role=%s, type=%s)&quot; % (self.role, self.type)
+ 
+ class Agent(object):
+-	def __init__(self):
+-		self.mailbox = []
+-		self.msg_handler = {}
++    def __init__(self):
++        self.mailbox = []
++        self.msg_handler = {}
+ 
+-	def hasMessage(self):
+-		return len(self.mailbox) != 0
+-		
+-	def putMessage(self, msg):
+-		self.mailbox.append(msg)
+-		
+-	def getMessage(self):
+-		if not self.hasMessage(): return None
+-		msg = self.mailbox[0]
+-		del self.mailbox[0]
+-		return msg
++    def hasMessage(self):
++        return len(self.mailbox) != 0
++        
++    def putMessage(self, msg):
++        self.mailbox.append(msg)
++        
++    def getMessage(self):
++        if not self.hasMessage(): return None
++        msg = self.mailbox[0]
++        del self.mailbox[0]
++        return msg
+ 
+-	def processMessages(self):
+-		while self.hasMessage():
+-			msg = self.getMessage()
+-			if self.msg_handler.has_key(msg.role):
+-				handlers = self.msg_handler[msg.role]
+-				if handlers.has_key(msg.type):
+-					hdl = handlers[msg.type]	
+-					hdl(msg.arg)
+-		
+-	def start(self):
+-		for key in self.msg_handler:
+-			self.server.registerMessage(self, key)
++    def processMessages(self):
++        while self.hasMessage():
++            msg = self.getMessage()
++            if self.msg_handler.has_key(msg.role):
++                handlers = self.msg_handler[msg.role]
++                if handlers.has_key(msg.type):
++                    hdl = handlers[msg.type]    
++                    hdl(msg.arg)
++        
++    def start(self):
++        for key in self.msg_handler:
++            self.server.registerMessage(self, key)
+ 
+-	def live(self):
+-		self.processMessages()
++    def live(self):
++        self.processMessages()
+
+Modified: happyboom/trunk/input/base_input.py
+===================================================================
+--- happyboom/trunk/input/base_input.py	2005-09-14 00:03:32 UTC (rev 140)
++++ happyboom/trunk/input/base_input.py	2005-09-14 00:32:33 UTC (rev 141)
+@@ -9,123 +9,123 @@
+ import thread
+ 
+ class BaseInput(object):
+-	def __init__(self):
+-		self.__io = io_udp.IO_UDP() 
+-		#self.__io = io_tcp.IO_TCP() 
+-		self.pid = os.getpid()
+-		self.quit = False
+-		self.active = True
+-		self.debug = False
+-		self.verbose = False
+-		self.cmds = None
+-		self.use_readline = False
+-		self.__protocol_version = &quot;0.1.4&quot;
+-		self.name = &quot;-&quot;
+-		self.__recv_buffer = net_buffer.NetBuffer()
++    def __init__(self):
++        self.__io = io_udp.IO_UDP() 
++        #self.__io = io_tcp.IO_TCP() 
++        self.pid = os.getpid()
++        self.quit = False
++        self.active = True
++        self.debug = False
++        self.verbose = False
++        self.cmds = None
++        self.use_readline = False
++        self.__protocol_version = &quot;0.1.4&quot;
++        self.name = &quot;-&quot;
++        self.__recv_buffer = net_buffer.NetBuffer()
+ 
+-	def processPacket(self, new_packet):
+-		self.__recv_buffer.append(0,new_packet.data)
+-	
+-	def readCmd(self, timeout=1.000):
+-		return self.__recv_buffer.readBlocking(0,timeout)
+-	
+-	def serverChallenge(self):
+-		if self.verbose: 
+-			print &quot;Start server challenge (send version, send name, ...).&quot;
++    def processPacket(self, new_packet):
++        self.__recv_buffer.append(0,new_packet.data)
++    
++    def readCmd(self, timeout=1.000):
++        return self.__recv_buffer.readBlocking(0,timeout)
++    
++    def serverChallenge(self):
++        if self.verbose: 
++            print &quot;Start server challenge (send version, send name, ...).&quot;
+ 
+-		cmd = self.readCmd()
+-		if cmd==None: return False
+-		if cmd != &quot;Version?&quot;: 
+-			if self.debug: print &quot;Server answer: %s instead of Version?&quot; % (cmd)
+-			return False
+-		self.sendCmd(self.__protocol_version)
+-		
+-		cmd = self.readCmd()
+-		if cmd==None: return False
+-		if cmd != &quot;OK&quot;:
+-			if self.debug: print &quot;Server answer: %s instead of OK&quot; % (cmd)
+-			return False
+-		
+-		cmd = self.readCmd()
+-		if cmd==None: return False
+-		if cmd != &quot;Name?&quot;:
+-			if self.debug: print &quot;Server answer: %s instead of Name?&quot; % (cmd)
+-			return False
+-		self.sendCmd(self.name)
++        cmd = self.readCmd()
++        if cmd==None: return False
++        if cmd != &quot;Version?&quot;: 
++            if self.debug: print &quot;Server answer: %s instead of Version?&quot; % (cmd)
++            return False
++        self.sendCmd(self.__protocol_version)
++        
++        cmd = self.readCmd()
++        if cmd==None: return False
++        if cmd != &quot;OK&quot;:
++            if self.debug: print &quot;Server answer: %s instead of OK&quot; % (cmd)
++            return False
++        
++        cmd = self.readCmd()
++        if cmd==None: return False
++        if cmd != &quot;Name?&quot;:
++            if self.debug: print &quot;Server answer: %s instead of Name?&quot; % (cmd)
++            return False
++        self.sendCmd(self.name)
+ 
+-		if self.debug: print &quot;Challenge: Wait Name OK&quot;
+-		cmd = self.readCmd()
+-		if cmd==None: return False
+-		if cmd != &quot;OK&quot;:
+-			if self.debug: print &quot;Server answer: %s instead of OK&quot; % (cmd)
+-			return False
+-		if self.verbose: print &quot;Server challenge done.&quot;
+-		return True
++        if self.debug: print &quot;Challenge: Wait Name OK&quot;
++        cmd = self.readCmd()
++        if cmd==None: return False
++        if cmd != &quot;OK&quot;:
++            if self.debug: print &quot;Server answer: %s instead of OK&quot; % (cmd)
++            return False
++        if self.verbose: print &quot;Server challenge done.&quot;
++        return True
+ 
+-	def start(self, host, port):
+-		# Try to connect to server
+-		if self.verbose: 
+-			print &quot;Try to connect to server %s:%s&quot; % (host, port)
+-		self.__io.on_disconnect = self.onDisconnect
+-		self.__io.on_lost_connection = self.onLostConnection
+-		self.__io.on_new_packet = self.processPacket
+-		self.__io.connect(host, port)
++    def start(self, host, port):
++        # Try to connect to server
++        if self.verbose: 
++            print &quot;Try to connect to server %s:%s&quot; % (host, port)
++        self.__io.on_disconnect = self.onDisconnect
++        self.__io.on_lost_connection = self.onLostConnection
++        self.__io.on_new_packet = self.processPacket
++        self.__io.connect(host, port)
+ 
+-		thread.start_new_thread( self.__io.run_thread, ())
++        thread.start_new_thread( self.__io.run_thread, ())
+ 
+-		# Server &quot;challenge&quot; (version, name, ...)
+-		if self.serverChallenge() != True:
+-			if not self.quit:
+-				print &quot;Server communication mistake !?&quot;
+-			self.stop()
+-			return
++        # Server &quot;challenge&quot; (version, name, ...)
++        if self.serverChallenge() != True:
++            if not self.quit:
++                print &quot;Server communication mistake !?&quot;
++            self.stop()
++            return
+ 
+-		thread.start_new_thread( self.runIo, ())
++        thread.start_new_thread( self.runIo, ())
+ 
+-	def setDebugMode(self, debug):
+-		self.debug = debug
+-		self.__io.debug = debug
++    def setDebugMode(self, debug):
++        self.debug = debug
++        self.__io.debug = debug
+ 
+-	def setVerbose(self, verbose):
+-		self.verbose = verbose
+-		self.__io.verbose = verbose
++    def setVerbose(self, verbose):
++        self.verbose = verbose
++        self.__io.verbose = verbose
+ 
+-	def sendCmd(self, cmd):
+-		self.__io.send( io.Packet(cmd))
++    def sendCmd(self, cmd):
++        self.__io.send( io.Packet(cmd))
+ 
+-	def processCmd(self, cmd):
+-		if cmd != &quot;&quot;: self.sendCmd(cmd)
++    def processCmd(self, cmd):
++        if cmd != &quot;&quot;: self.sendCmd(cmd)
+ 
+-	def runIo(self):
+-		while 1:
+-			cmd = self.__recv_buffer.readNonBlocking(0)
+-			while cmd != None:
+-				if cmd == &quot;quit&quot;:
+-					self.stop()
+-					break
+-				cmd = self.__recv_buffer.readNonBlocking(0)
+-			time.sleep(0.250)
+-	
+-	def live(self):
+-		if self.use_readline: import readline
+-		while self.quit == False:
+-			cmd = raw_input(&quot;cmd ? &quot;)
+-			if cmd != &quot;&quot;:
+-				self.processCmd(cmd)
+-			if (cmd == &quot;quit&quot;) or (cmd == &quot;close&quot;):
+-				self.quit = True
++    def runIo(self):
++        while 1:
++            cmd = self.__recv_buffer.readNonBlocking(0)
++            while cmd != None:
++                if cmd == &quot;quit&quot;:
++                    self.stop()
++                    break
++                cmd = self.__recv_buffer.readNonBlocking(0)
++            time.sleep(0.250)
++    
++    def live(self):
++        if self.use_readline: import readline
++        while self.quit == False:
++            cmd = raw_input(&quot;cmd ? &quot;)
++            if cmd != &quot;&quot;:
++                self.processCmd(cmd)
++            if (cmd == &quot;quit&quot;) or (cmd == &quot;close&quot;):
++                self.quit = True
+ 
+-	def onDisconnect(self):
+-		print &quot;Disconnect from server.&quot;
+-		self.stop()
++    def onDisconnect(self):
++        print &quot;Disconnect from server.&quot;
++        self.stop()
+ 
+-	def onLostConnection(self):
+-		print &quot;Lost connection with server.&quot;
+-		self.stop()
++    def onLostConnection(self):
++        print &quot;Lost connection with server.&quot;
++        self.stop()
+ 
+-	def stop(self):
+-		if not self.active: return
+-		self.active = False
+-		self.quit = True
+-		self.__io.stop()
+-		print &quot;Input closed.&quot;
++    def stop(self):
++        if not self.active: return
++        self.active = False
++        self.quit = True
++        self.__io.stop()
++        print &quot;Input closed.&quot;
+
+Modified: happyboom/trunk/net/io/io_client.py
+===================================================================
+--- happyboom/trunk/net/io/io_client.py	2005-09-14 00:03:32 UTC (rev 140)
++++ happyboom/trunk/net/io/io_client.py	2005-09-14 00:32:33 UTC (rev 141)
+@@ -1,52 +1,52 @@
+ import socket
+ 
+ class IO_Client(object):
+-	&quot;&quot;&quot; IO Client.
+-	@ivar __addr: Client address (host, port).
+-	@type __addr: C{(str,int)}
+-	@ivar connected: Is client connected ?
+-	@type connected: C{bool}
+-	@ivar io: Main IO used by client.
+-	@type io: C{L{BaseIO}}
+-	@ivar name: Client name.
+-	@type name: C{str}
+-	&quot;&quot;&quot;
+-	
+-	def __init__(self, io, addr, name=None):
+-		&quot;&quot;&quot; Constructor.
+-		@parameter io: Main IO used by client.
+-		@type io: C{L{BaseIO}}
+-		@parameter addr: Client address (host, port).
+-		@type addr: C{(str,int)}
+-		@parameter name: Client name.
+-		@type name: C{str}
+-		&quot;&quot;&quot;
+-		self.__addr = addr
+-		self.name = name
+-		self.connected = True 
+-		self.io = io
+-		if self.name == None:
+-			self.name = &quot;%s:%u&quot; % (self.host, self.port)
++    &quot;&quot;&quot; IO Client.
++    @ivar __addr: Client address (host, port).
++    @type __addr: C{(str,int)}
++    @ivar connected: Is client connected ?
++    @type connected: C{bool}
++    @ivar io: Main IO used by client.
++    @type io: C{L{BaseIO}}
++    @ivar name: Client name.
++    @type name: C{str}
++    &quot;&quot;&quot;
++    
++    def __init__(self, io, addr, name=None):
++        &quot;&quot;&quot; Constructor.
++        @parameter io: Main IO used by client.
++        @type io: C{L{BaseIO}}
++        @parameter addr: Client address (host, port).
++        @type addr: C{(str,int)}
++        @parameter name: Client name.
++        @type name: C{str}
++        &quot;&quot;&quot;
++        self.__addr = addr
++        self.name = name
++        self.connected = True 
++        self.io = io
++        if self.name == None:
++            self.name = &quot;%s:%u&quot; % (self.host, self.port)
+ 
+-	def send(self, packet):
+-		&quot;&quot;&quot; Send a packet to the client.
+-		@type packet: C{L{Packet}}
+-		&quot;&quot;&quot;
+-		pass
++    def send(self, packet):
++        &quot;&quot;&quot; Send a packet to the client.
++        @type packet: C{L{Packet}}
++        &quot;&quot;&quot;
++        pass
+ 
+-	def disconnect(self):	
+-		&quot;&quot;&quot; Disconnect the client. &quot;&quot;&quot;
+-		self.connected = False
+-		self.io.disconnectClient(self)
++    def disconnect(self):    
++        &quot;&quot;&quot; Disconnect the client. &quot;&quot;&quot;
++        self.connected = False
++        self.io.disconnectClient(self)
+ 
+-	def __getAddr(self):
+-		return self.__addr
+-	def __getHost(self):
+-		if self.__addr[0]=='': return 'localhost'
+-		return self.__addr[0]
+-	def __getPort(self):
+-		return self.__addr[1]
++    def __getAddr(self):
++        return self.__addr
++    def __getHost(self):
++        if self.__addr[0]=='': return 'localhost'
++        return self.__addr[0]
++    def __getPort(self):
++        return self.__addr[1]
+ 
+-	addr = property(__getAddr, doc=&quot;Client address (host, port)&quot;)
+-	host = property(__getHost, doc=&quot;Client network hostname.&quot;)
+-	port = property(__getPort, doc=&quot;Client network port.&quot;)
++    addr = property(__getAddr, doc=&quot;Client address (host, port)&quot;)
++    host = property(__getHost, doc=&quot;Client network hostname.&quot;)
++    port = property(__getPort, doc=&quot;Client network port.&quot;)
+
+Modified: happyboom/trunk/net/io_tcp/server_waiter.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/server_waiter.py	2005-09-14 00:03:32 UTC (rev 140)
++++ happyboom/trunk/net/io_tcp/server_waiter.py	2005-09-14 00:32:33 UTC (rev 141)
+@@ -1,124 +1,124 @@
+ import socket
+-import threading
++import thread
+ import traceback
+ from tcp_client import TCP_Client
+ 
+ class NetworkServerWaiter(object):
+-	def __init__(self, server):
+-		self.__server = server
+-		self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+-		self.__port = None
+-		self.__host = ''
+-		self.__max_clients = None
+-		self.__nb_clients = 0
+-		self.__nb_clients_sema = threading.Semaphore()
+-		self.__listening = False
+-		self.__listening_sema = threading.Semaphore()
+-		self.__running = False
++    def __init__(self, server):
++        self.__server = server
++        self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
++        self.__port = None
++        self.__host = ''
++        self.__max_clients = None
++        self.__nb_clients = 0
++        self.__nb_clients_sema = thread.allocate_lock()
++        self.__listening = False
++        self.__listening_sema = thread.allocate_lock()
++        self.__running = False
+ 
+-	def isRunning(self):
+-		return self.__running
++    def isRunning(self):
++        return self.__running
+ 
+-	def run_thread(self, port, max_connection):
+-		try:
+-			self.__running = True
+-			self.start(port, max_connection)
+-		except Exception, msg:
+-			print &quot;NETWORK SERVER EXCEPTION!&quot;
+-			print &quot;ERROR MSG: %s&quot; % (msg)
+-		traceback.print_exc()
+-		self.__running = False 
+-		
+-	def clientConnect(self, client):
+-		if self.__server.debug:
+-			print &quot;Client %s enter server %s.&quot; \
+-				% (client.name, self.__server.name)
+-		self.__nb_clients_sema.acquire()
+-		self.__nb_clients = self.__nb_clients + 1
+-		self.__nb_clients_sema.release()
+-		self.__server.clientConnect (client)
++    def run_thread(self, port, max_connection):
++        try:
++            self.__running = True
++            self.start(port, max_connection)
++        except Exception, msg:
++            print &quot;NETWORK SERVER EXCEPTION!&quot;
++            print &quot;ERROR MSG: %s&quot; % (msg)
++            traceback.print_exc()
++        self.__running = False 
++        
++    def clientConnect(self, client):
++        if self.__server.debug:
++            print &quot;Client %s enter server %s.&quot; \
++                % (client.name, self.__server.name)
++        self.__nb_clients_sema.acquire()
++        self.__nb_clients = self.__nb_clients + 1
++        self.__nb_clients_sema.release()
++        self.__server.clientConnect (client)
+ 
+-	def clientDisconnect(self, client):
+-		if self.__server.debug: print &quot;New client : %s&quot; % (client.getName())
+-		self.__nb_clients_sema.acquire()
+-		self.__nb_clients = self.__nb_clients - 1
+-		self.__nb_clients_sema.release()
++    def clientDisconnect(self, client):
++        if self.__server.debug: print &quot;New client : %s&quot; % (client.getName())
++        self.__nb_clients_sema.acquire()
++        self.__nb_clients = self.__nb_clients - 1
++        self.__nb_clients_sema.release()
+ 
+-	def waitClient(self):
+-		try:
+-			(conn, addr) = self.__socket.accept()
+-		except socket.error, err:
+-			if err[0] == 11: # Resource temporarily unavailable
+-				return None
+-			raise
+-		if self.__max_clients &lt;= self.getNbClients():
+-			if self.__server.debug:
+-				print &quot;Client %s refused on server %s (too many connection, %u/%u).&quot; \
+-					% (addr, self.__server.name, \
+-					   self.getNbClients(), self.__max_clients)
+-			conn.close()
+-			return None
+-		return TCP_Client(self.__server, addr, socket=conn)
++    def waitClient(self):
++        try:
++            (conn, addr) = self.__socket.accept()
++        except socket.error, err:
++            if err[0] == 11: # Resource temporarily unavailable
++                return None
++            raise
++        if self.__max_clients &lt;= self.getNbClients():
++            if self.__server.debug:
++                print &quot;Client %s refused on server %s (too many connection, %u/%u).&quot; \
++                    % (addr, self.__server.name, \
++                       self.getNbClients(), self.__max_clients)
++            conn.close()
++            return None
++        return TCP_Client(self.__server, addr, socket=conn)
+ 
+-	def start(self, port, max_connection):
+-		self.__max_clients = max_connection
+-		self.__port = port
+-		if self.__server.debug: 
+-			print &quot;Start %s on port %u.&quot; \
+-				% (self.__server.name, port)
+-		self.__socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+-		try:
+-			self.__socket.bind((self.__host, self.__port))
+-			self.__socket.listen(max_connection)
+-		except socket.error, err:
+-			if self.__server.debug:
+-				print &quot;Binding error for %s.&quot; % (self.__server.name)
+-			if self.__server.on_binding_error != None:
+-				self.__server.on_binding_error (self.__server)
+-			return
+-		if self.__server.debug: 
+-			print &quot;Server %s is listening (max=%u clients).&quot; \
+-				% (self.__server.name, max_connection)
+-		self.__listening_sema.acquire()
+-		self.__listening = True 
+-		self.__listening_sema.release()
++    def start(self, port, max_connection):
++        self.__max_clients = max_connection
++        self.__port = port
++        if self.__server.debug: 
++            print &quot;Start %s on port %u.&quot; \
++                % (self.__server.name, port)
++        self.__socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
++        try:
++            self.__socket.bind((self.__host, self.__port))
++            self.__socket.listen(max_connection)
++        except socket.error, err:
++            if self.__server.debug:
++                print &quot;Binding error for %s.&quot; % (self.__server.name)
++            if self.__server.on_binding_error != None:
++                self.__server.on_binding_error (self.__server)
++            return
++        if self.__server.debug: 
++            print &quot;Server %s is listening (max=%u clients).&quot; \
++                % (self.__server.name, max_connection)
++        self.__listening_sema.acquire()
++        self.__listening = True 
++        self.__listening_sema.release()
+ 
+-		while 1:
+-			try:
+-				client = self.waitClient()
+-				if client != None: self.clientConnect (client)
+-				client = None
++        while 1:
++            try:
++                client = self.waitClient()
++                if client != None: self.clientConnect (client)
++                client = None
+ 
+-			except socket.error, error:
+-				# Connection reset by peer.
+-				if error[0] == 104:
+-					if client != None: client.disconnect()
+-				else:
+-					raise
++            except socket.error, error:
++                # Connection reset by peer.
++                if error[0] == 104:
++                    if client != None: client.disconnect()
++                else:
++                    raise
+ 
+-	def getNbClients(self):
+-		self.__nb_clients_sema.acquire()
+-		val = self.__nb_clients
+-		self.__nb_clients_sema.release()
+-		return val
+-	nb_clients = property(getNbClients)
+-	
+-	def getMaxClients(self):
+-		return self.__max_clients
+-	max_clients = property(getMaxClients)
+-		
+-	def getListening(self):
+-		self.__listening_sema.acquire()
+-		listening = self.__listening
+-		self.__listening_sema.release()
+-		return listening
+-	listening = property(getListening)
++    def getNbClients(self):
++        self.__nb_clients_sema.acquire()
++        val = self.__nb_clients
++        self.__nb_clients_sema.release()
++        return val
++    nb_clients = property(getNbClients)
++    
++    def getMaxClients(self):
++        return self.__max_clients
++    max_clients = property(getMaxClients)
++        
++    def getListening(self):
++        self.__listening_sema.acquire()
++        listening = self.__listening
++        self.__listening_sema.release()
++        return listening
++    listening = property(getListening)
+ 
+-	def getPort(self):
+-		return self.__port
+-	port = property(getPort)
+-	
+-	def getHost(self):
+-		if self.__host == '': return 'localhost'
+-		return self.__host
+-	host = property(getHost)
++    def getPort(self):
++        return self.__port
++    port = property(getPort)
++    
++    def getHost(self):
++        if self.__host == '': return 'localhost'
++        return self.__host
++    host = property(getHost)
+
+Modified: happyboom/trunk/net/io_tcp/tcp.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/tcp.py	2005-09-14 00:03:32 UTC (rev 140)
++++ happyboom/trunk/net/io_tcp/tcp.py	2005-09-14 00:32:33 UTC (rev 141)
+@@ -3,7 +3,6 @@
+ 
+ import time
+ import thread
+-import threading
+ import socket
+ import traceback
+ import struct
+@@ -27,7 +26,7 @@
+     @ivar __clients: List of clients connected to this IO.
+     @type __clients: C{list&lt;L{IO_client&lt;io.IO_Client&gt;}&gt;?}
+     @ivar __clients_sema: Semaphore used to access L{__clients}.
+-    @type __clients_sema: C{threading.Semaphore}
++    @type __clients_sema: C{thread.lock}
+     @ivar __running: Is the thread running ?
+     @type __running: C{bool}
+     &quot;&quot;&quot;
+@@ -43,7 +42,7 @@
+         self.__addr = None
+         self.__clients = {}
+         self.__server = None
+-        self.__clients_sema = threading.Semaphore()
++        self.__clients_sema = thread.allocate_lock()
+         self.__running = False 
+         io.Packet.use_tcp = True
+ 
+
+Modified: happyboom/trunk/net/io_tcp/tcp_client.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/tcp_client.py	2005-09-14 00:03:32 UTC (rev 140)
++++ happyboom/trunk/net/io_tcp/tcp_client.py	2005-09-14 00:32:33 UTC (rev 141)
+@@ -2,79 +2,79 @@
+ import socket
+ 
+ class TCP_Client(io.IO_Client):
+-	&quot;&quot;&quot; An TCP client.
+-	@ivar __socket: The TCP socket
+-	@type __socket: C{socket}
+-	@ivar on_send: Event called when a packet is sent to the client.
+-	@type on_send: C{function}
+-	@ivar on_receive: Event called when a new packet is received.
+-	@type on_receive: C{function}
+-	&quot;&quot;&quot;
+-	def __init__(self, io_tcp, addr, name=None, socket=None):
+-		io.IO_Client.__init__(self, io_tcp, addr, name)
+-		self.__socket = socket 
+-		self.on_send = None
+-		self.on_receive = None
++    &quot;&quot;&quot; An TCP client.
++    @ivar __socket: The TCP socket
++    @type __socket: C{socket}
++    @ivar on_send: Event called when a packet is sent to the client.
++    @type on_send: C{function}
++    @ivar on_receive: Event called when a new packet is received.
++    @type on_receive: C{function}
++    &quot;&quot;&quot;
++    def __init__(self, io_tcp, addr, name=None, socket=None):
++        io.IO_Client.__init__(self, io_tcp, addr, name)
++        self.__socket = socket 
++        self.on_send = None
++        self.on_receive = None
+ 
+-	def send(self, packet):
+-		&quot;&quot;&quot; Send a packet to the client.
+-		@type packet: Packet
+-		&quot;&quot;&quot;
+-		self.sendBinary( packet.pack() )
+-	
+-	def sendBinary(self, data):
+-		&quot;&quot;&quot; Send binary datas to the client.
+-		@type data: str
+-		&quot;&quot;&quot;
+-		if not self.connected: return
+-		self.__socket.send(data)
++    def send(self, packet):
++        &quot;&quot;&quot; Send a packet to the client.
++        @type packet: Packet
++        &quot;&quot;&quot;
++        self.sendBinary( packet.pack() )
++    
++    def sendBinary(self, data):
++        &quot;&quot;&quot; Send binary datas to the client.
++        @type data: str
++        &quot;&quot;&quot;
++        if not self.connected: return
++        self.__socket.send(data)
+ 
+-		# Call user event if needed
+-		if self.on_send != None: self.on_send(data)
++        # Call user event if needed
++        if self.on_send != None: self.on_send(data)
+ 
+-	def receiveNonBlocking(self, max_size=1024):
+-		&quot;&quot;&quot; Non blocking read on the socket. &quot;&quot;&quot;
+-		if not self.connected: return
+-		try:
+-			self.__socket.setblocking(0)
+-			data = self.__socket.recv(max_size)
+-		except socket.error, err:
+-			if err[0] == 11: return None
+-			# Broken pipe (32) or Connection reset by peer (104)
+-			if err[0] in (32, 104,):
+-				self.disconnect()
+-				return None
+-			raise
+-		return self.__processRecvData(data)
++    def receiveNonBlocking(self, max_size=1024):
++        &quot;&quot;&quot; Non blocking read on the socket. &quot;&quot;&quot;
++        if not self.connected: return
++        try:
++            self.__socket.setblocking(0)
++            data = self.__socket.recv(max_size)
++        except socket.error, err:
++            if err[0] == 11: return None
++            # Broken pipe (32) or Connection reset by peer (104)
++            if err[0] in (32, 104,):
++                self.disconnect()
++                return None
++            raise
++        return self.__processRecvData(data)
+ 
+-	def receiveBlocking(self, max_size=1024):
+-		&quot;&quot;&quot; Blocking read on the socket. &quot;&quot;&quot;
+-		if not self.connected: return
+-		try:
+-			self.__socket.setblocking(1)
+-			data = self.__socket.recv(max_size)
+-		except socket.error, err:
+-			# Broken pipe (32) or Connection reset by peer (104)
+-			if err[0] in (32, 104,):
+-				self.disconnect()
+-				return None
+-			print err
+-			raise
+-		return self.__processRecvData(data)
++    def receiveBlocking(self, max_size=1024):
++        &quot;&quot;&quot; Blocking read on the socket. &quot;&quot;&quot;
++        if not self.connected: return
++        try:
++            self.__socket.setblocking(1)
++            data = self.__socket.recv(max_size)
++        except socket.error, err:
++            # Broken pipe (32) or Connection reset by peer (104)
++            if err[0] in (32, 104,):
++                self.disconnect()
++                return None
++            print err
++            raise
++        return self.__processRecvData(data)
+ 
+-	def disconnect(self):
+-		&quot;&quot;&quot; Disconned the client : close the socket. &quot;&quot;&quot;
+-		self.__socket.close()
+-		io.IO_Client.disconnect(self)
++    def disconnect(self):
++        &quot;&quot;&quot; Disconned the client : close the socket. &quot;&quot;&quot;
++        self.__socket.close()
++        io.IO_Client.disconnect(self)
+ 
+-	def __processRecvData(self, data):
+-		# If no data, connection is lost
+-		if len(data)==0:
+-			if self.io.verbose:
+-				print &quot;Client %s lost connection with server!&quot; % (self.name)
+-			self.disconnect()
+-			return None
++    def __processRecvData(self, data):
++        # If no data, connection is lost
++        if len(data)==0:
++            if self.io.verbose:
++                print &quot;Client %s lost connection with server!&quot; % (self.name)
++            self.disconnect()
++            return None
+ 
+-		# Call user event if needed
+-		if self.on_receive != None: self.on_receive(data)
+-		return data
++        # Call user event if needed
++        if self.on_receive != None: self.on_receive(data)
++        return data
+
+Modified: happyboom/trunk/net/io_udp/udp.py
+===================================================================
+--- happyboom/trunk/net/io_udp/udp.py	2005-09-14 00:03:32 UTC (rev 140)
++++ happyboom/trunk/net/io_udp/udp.py	2005-09-14 00:32:33 UTC (rev 141)
+@@ -1,7 +1,7 @@
+ # -*- coding: ISO-8859-1 -*-
+ 
+ import time
+-import threading
++import thread
+ import socket
+ import traceback
+ import struct
+@@ -9,353 +9,353 @@
+ from udp_client import UDP_Client
+ 
+ class IO_UDP(io.BaseIO):
+-	&quot;&quot;&quot; IO for UDP transport.
+-	@ivar packet_timeout: Try to send a packet until this timeout.
+-	@type packet_timeout: C{float}
+-	@ivar thread_sleep: Sleep time used in the thread.
+-	@type thread_sleep: C{float}
+-	@ivar __is_server: ??? 
+-	@type __is_server: C{bool}
+-	@ivar __server: The server (only used by clients, None else).
+-	@type __server: ?
+-	@ivar __running: Is the thread running ?
+-	@type __running: C{bool}
+-	@ivar __socket: The network socket.
+-	@type __socket: C{socket}
+-	@ivar __socket_open: Is the network socket L{__socket} opened ?
+-	@type __socket_open: C{bool}
+-	@ivar __addr: The IO network address (host, port).
+-	@type __addr: C{(string, string,)}
+-	@ivar __packet_id: ???
+-	@type __packet_id: C{int}
+-	@ivar __clients: List of clients connected to this IO.
+-	@type __clients: C{list&lt;L{IO_client&lt;io.IO_Client&gt;}&gt;?}
+-	@ivar __clients_sema: Semaphore used to access L{__clients}.
+-	@type __clients_sema: C{threading.Semaphore}
+-	&quot;&quot;&quot;
+-	
+-	def __init__(self, is_server=False):
+-		&quot;&quot;&quot; Constructor. &quot;&quot;&quot;
+-		io.BaseIO.__init__(self)
+-		self.packet_timeout = 1.000
+-		self.thread_sleep = 0.010
++    &quot;&quot;&quot; IO for UDP transport.
++    @ivar packet_timeout: Try to send a packet until this timeout.
++    @type packet_timeout: C{float}
++    @ivar thread_sleep: Sleep time used in the thread.
++    @type thread_sleep: C{float}
++    @ivar __is_server: ??? 
++    @type __is_server: C{bool}
++    @ivar __server: The server (only used by clients, None else).
++    @type __server: ?
++    @ivar __running: Is the thread running ?
++    @type __running: C{bool}
++    @ivar __socket: The network socket.
++    @type __socket: C{socket}
++    @ivar __socket_open: Is the network socket L{__socket} opened ?
++    @type __socket_open: C{bool}
++    @ivar __addr: The IO network address (host, port).
++    @type __addr: C{(string, string,)}
++    @ivar __packet_id: ???
++    @type __packet_id: C{int}
++    @ivar __clients: List of clients connected to this IO.
++    @type __clients: C{list&lt;L{IO_client&lt;io.IO_Client&gt;}&gt;?}
++    @ivar __clients_sema: Lock used to access L{__clients}.
++    @type __clients_sema: C{thread.lock}
++    &quot;&quot;&quot;
++    
++    def __init__(self, is_server=False):
++        &quot;&quot;&quot; Constructor. &quot;&quot;&quot;
++        io.BaseIO.__init__(self)
++        self.packet_timeout = 1.000
++        self.thread_sleep = 0.010
+ 
+-		self.__is_server = is_server
+-		self.__server = None # only used in client mode
+-		self.__running = True
++        self.__is_server = is_server
++        self.__server = None # only used in client mode
++        self.__running = True
+ 
+-		self.__socket = None
+-		self.__socket_open = False		
+-		self.__addr = None
+-		self.__packet_id = 0
+-		self.__clients = {}
+-		self.__clients_sema = threading.Semaphore()
++        self.__socket = None
++        self.__socket_open = False        
++        self.__addr = None
++        self.__packet_id = 0
++        self.__clients = {}
++        self.__clients_sema = thread.allocate_lock()
+ 
+-	def connect(self, host, port):
+-		&quot;&quot;&quot; Connect to host:port 
+-		@type host: C{str}
+-		@type port: C{int}
+-		&quot;&quot;&quot;
+-		if host != &quot;&quot;:
+-			host = socket.gethostbyname(host)
+-		else:
+-			host = &quot;127.0.0.1&quot;
+-		self.__addr = (host, port,)
+-		self.__socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+-		if self.__is_server:
+-			if self.verbose:
+-				print &quot;Run server at %s:%u (udp)&quot; % (&quot;&quot;, self.port)
+-			self.__socket.bind((&quot;&quot;,port,))
+-		else:
+-			if self.verbose:
+-				print &quot;Connect to server %s:%u&quot; % (self.host, self.port)
+-			self.__server = UDP_Client(self, self.__addr)
+-			self.__server.name = &quot;server&quot;
+-			self.__server.send_ping = True
+-			self.__clients_sema.acquire()
+-			self.__clients[self.__addr] = self.__server
+-			self.__clients_sema.release()
++    def connect(self, host, port):
++        &quot;&quot;&quot; Connect to host:port 
++        @type host: C{str}
++        @type port: C{int}
++        &quot;&quot;&quot;
++        if host != &quot;&quot;:
++            host = socket.gethostbyname(host)
++        else:
++            host = &quot;127.0.0.1&quot;
++        self.__addr = (host, port,)
++        self.__socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
++        if self.__is_server:
++            if self.verbose:
++                print &quot;Run server at %s:%u (udp)&quot; % (&quot;&quot;, self.port)
++            self.__socket.bind((&quot;&quot;,port,))
++        else:
++            if self.verbose:
++                print &quot;Connect to server %s:%u&quot; % (self.host, self.port)
++            self.__server = UDP_Client(self, self.__addr)
++            self.__server.name = &quot;server&quot;
++            self.__server.send_ping = True
++            self.__clients_sema.acquire()
++            self.__clients[self.__addr] = self.__server
++            self.__clients_sema.release()
+ 
+-		self.__socket_open = True
+-		self.__socket.setblocking(0)
++        self.__socket_open = True
++        self.__socket.setblocking(0)
+ 
+-		if not self.__is_server:
+-			self.send( io.Packet(&quot;I'm here&quot;) )
+-		
+-		io.BaseIO.connect(self, host, port)
++        if not self.__is_server:
++            self.send( io.Packet(&quot;I'm here&quot;) )
++        
++        io.BaseIO.connect(self, host, port)
+ 
+-		# Call user event if needed
+-		if self.on_connect != None: self.on_connect()
++        # Call user event if needed
++        if self.on_connect != None: self.on_connect()
+ 
+-	def disconnect(self):
+-		&quot;&quot;&quot; Close connection. &quot;&quot;&quot;
+-		if not self.__socket_open: return
+-		self.__socket.close()
+-		self.__socket_open = False
+-		if self.on_disconnect != None: self.on_disconnect()
+-		self.stop()
++    def disconnect(self):
++        &quot;&quot;&quot; Close connection. &quot;&quot;&quot;
++        if not self.__socket_open: return
++        self.__socket.close()
++        self.__socket_open = False
++        if self.on_disconnect != None: self.on_disconnect()
++        self.stop()
+ 
+-	def disconnectClient(self, client):
+-		&quot;&quot;&quot; Disconnect a client.
+-		@type client: C{L{IO_Client&lt;io.IO_Client&gt;}}
+-		&quot;&quot;&quot;
+-		self.__clients_sema.acquire()
+-		if self.__clients.has_key(client.addr): del self.__clients[client.addr]
+-		self.__clients_sema.release()
+-		if self.verbose:
+-			print &quot;Disconnect client %s&quot; % (client.name)
+-		if self.on_client_disconnect != None: self.on_client_disconnect(client)
+-	
+-	def send(self, packet, to=None):
+-		&quot;&quot;&quot; Send a packet to the server or to all clients.
+-		@type packet: C{L{Packet&lt;io.Packet&gt;}}
+-		@type to: C{L{IO_Client&lt;io.IO_Client&gt;}}
+-		&quot;&quot;&quot;
+-		if not self.__socket_open: return
+-		first_send = (packet.sent == 0)
+-		
+-		# No client, exit !
+-		if self.__is_server:
+-			self.__clients_sema.acquire()
+-			nb_clients = len(self.__clients)
+-			self.__clients_sema.release()
+-			if nb_clients==0: return None
++    def disconnectClient(self, client):
++        &quot;&quot;&quot; Disconnect a client.
++        @type client: C{L{IO_Client&lt;io.IO_Client&gt;}}
++        &quot;&quot;&quot;
++        self.__clients_sema.acquire()
++        if self.__clients.has_key(client.addr): del self.__clients[client.addr]
++        self.__clients_sema.release()
++        if self.verbose:
++            print &quot;Disconnect client %s&quot; % (client.name)
++        if self.on_client_disconnect != None: self.on_client_disconnect(client)
++    
++    def send(self, packet, to=None):
++        &quot;&quot;&quot; Send a packet to the server or to all clients.
++        @type packet: C{L{Packet&lt;io.Packet&gt;}}
++        @type to: C{L{IO_Client&lt;io.IO_Client&gt;}}
++        &quot;&quot;&quot;
++        if not self.__socket_open: return
++        first_send = (packet.sent == 0)
++        
++        # No client, exit !
++        if self.__is_server:
++            self.__clients_sema.acquire()
++            nb_clients = len(self.__clients)
++            self.__clients_sema.release()
++            if nb_clients==0: return None
+ 
+-		# Prepare the packet
+-		packet.prepareSend()
+-		if first_send:
+-			# First send : give an ID to the packet
+-			self.__packet_id = self.__packet_id + 1
+-			packet.id = self.__packet_id
+-			if self.debug: packet.creation = time.time()
+-		need_ack = first_send and not packet.skippable
+-		
+-		# Read binary version of the packet
+-		data = packet.pack()
++        # Prepare the packet
++        packet.prepareSend()
++        if first_send:
++            # First send : give an ID to the packet
++            self.__packet_id = self.__packet_id + 1
++            packet.id = self.__packet_id
++            if self.debug: packet.creation = time.time()
++        need_ack = first_send and not packet.skippable
++        
++        # Read binary version of the packet
++        data = packet.pack()
+ 
+-		# Send data to client(s)
+-		if self.__is_server:
+-			if to==None:
+-				for addr,client in self.clients.items(): # use internal copy for clients
+-					self.__sendDataTo(packet, data, client, need_ack)
+-			else:
+-				self.__sendDataTo(packet, data, to, need_ack)
+-		else:
+-			self.__sendDataTo(packet, data, self.__server, need_ack)
+-		
+-	def sendBinary(self, data, client):
+-		&quot;&quot;&quot; Send binary data that doesn't need an acknoledge. 
+-		@type data: C{str}
+-		@type client: C{L{IO_Client&lt;io.IO_Client&gt;}}
+-		&quot;&quot;&quot;		
+-		if self.debug: print &quot;Send data %s to %s (without ack)&quot; % (data, client.name)
+-		self.__socket.sendto(data, client.addr)	
+-		
+-		# Call user event if needed
+-		if self.on_send != None: self.on_send(data)
+-	
+-	def __sendDataTo(self, packet, data, client, need_ack):
+-		&quot;&quot;&quot; Send binary data with an acknoledge to a client.
+-		@type data: C{str}
+-		@type client: C{L{IO_Client&lt;io.IO_Client&gt;}}
+-		@type need_ack: C{bool}
+-		&quot;&quot;&quot;
+-		if self.debug: print &quot;Send packet %s to %s&quot; % (packet.toStr(), client.name)
+-		self.__socket.sendto(data, client.addr)
++        # Send data to client(s)
++        if self.__is_server:
++            if to==None:
++                for addr,client in self.clients.items(): # use internal copy for clients
++                    self.__sendDataTo(packet, data, client, need_ack)
++            else:
++                self.__sendDataTo(packet, data, to, need_ack)
++        else:
++            self.__sendDataTo(packet, data, self.__server, need_ack)
++        
++    def sendBinary(self, data, client):
++        &quot;&quot;&quot; Send binary data that doesn't need an acknoledge. 
++        @type data: C{str}
++        @type client: C{L{IO_Client&lt;io.IO_Client&gt;}}
++        &quot;&quot;&quot;        
++        if self.debug: print &quot;Send data %s to %s (without ack)&quot; % (data, client.name)
++        self.__socket.sendto(data, client.addr)    
++        
++        # Call user event if needed
++        if self.on_send != None: self.on_send(data)
++    
++    def __sendDataTo(self, packet, data, client, need_ack):
++        &quot;&quot;&quot; Send binary data with an acknoledge to a client.
++        @type data: C{str}
++        @type client: C{L{IO_Client&lt;io.IO_Client&gt;}}
++        @type need_ack: C{bool}
++        &quot;&quot;&quot;
++        if self.debug: print &quot;Send packet %s to %s&quot; % (packet.toStr(), client.name)
++        self.__socket.sendto(data, client.addr)
+ 
+-		# If the packet need an ack, add it to the list
+-		if need_ack: client.needAck(packet)
+-		
+-		# Call user event if needed
+-		if self.on_send != None: self.on_send(data)
+-	
+-	def receive(self, max_size = 1024):
+-		&quot;&quot;&quot; Read a packet from the socket.
+-		Returns None if there is not new data.
+-		@type max_size: C{int}
+-		@rtype: C{L{Packet&lt;io.Packet&gt;}}
+-		&quot;&quot;&quot;
+-		if not self.__socket_open: return None
++        # If the packet need an ack, add it to the list
++        if need_ack: client.needAck(packet)
++        
++        # Call user event if needed
++        if self.on_send != None: self.on_send(data)
++    
++    def receive(self, max_size = 1024):
++        &quot;&quot;&quot; Read a packet from the socket.
++        Returns None if there is not new data.
++        @type max_size: C{int}
++        @rtype: C{L{Packet&lt;io.Packet&gt;}}
++        &quot;&quot;&quot;
++        if not self.__socket_open: return None
+ 
+-		# Try to read data from the socket
+-		try:						
+-			data,addr = self.__socket.recvfrom(max_size)
+-		except socket.error, err:
+-			if err[0] == 11: return None
+-			raise
+-	
+-		# New client ?
+-		return self.__processRecvData(data, addr)
++        # Try to read data from the socket
++        try:                        
++            data,addr = self.__socket.recvfrom(max_size)
++        except socket.error, err:
++            if err[0] == 11: return None
++            raise
++    
++        # New client ?
++        return self.__processRecvData(data, addr)
+ 
+-	def live(self):				
+-		&quot;&quot;&quot; Keep the connection alive. &quot;&quot;&quot;
+-		# Resend packets which don't have received their ack
+-		for addr, client in self.clients.items(): # use internal copy for clients
+-			client.live()							
+-					
+-		# Read data from network (if needed)
+-		packet = self.receive()				
+-		if packet != None: self.__processNewPacket(packet)
+-					
++    def live(self):                
++        &quot;&quot;&quot; Keep the connection alive. &quot;&quot;&quot;
++        # Resend packets which don't have received their ack
++        for addr, client in self.clients.items(): # use internal copy for clients
++            client.live()                            
++                    
++        # Read data from network (if needed)
++        packet = self.receive()                
++        if packet != None: self.__processNewPacket(packet)
++                    
+ 
+-	def clientLostConnection(self, client):
+-		if self.__is_server:
+-			self.__lostClient(client)
+-		else:
+-			self.lostConnection()
++    def clientLostConnection(self, client):
++        if self.__is_server:
++            self.__lostClient(client)
++        else:
++            self.lostConnection()
+ 
+-	def __lostClient(self, client):
+-		if not client.addr in self.__clients: return
+-		client = self.__clients[client.addr]
+-		if self.verbose:
+-			print &quot;Lost connection with client %s !&quot; % (client.name)
+-		self.disconnectClient(client)
+-	
+-	def lostConnection(self):
+-		if self.verbose:
+-			print &quot;Lost connection to %s:%u!&quot; % (self.host, self.port)
+-		if self.__socket_open:
+-			self.__socket.close()
+-			self.__socket_open = False
+-		if self.on_lost_connection: self.on_lost_connection()
+-		self.stop()
+-	
+-	def run_thread(self):
+-		&quot;&quot;&quot; Function which should be called in a thread : call L{live()} with a sleep. &quot;&quot;&quot;
+-		try:
+-			while self.__running:
+-				self.live()				
+-				time.sleep(self.thread_sleep)
+-		except Exception, msg:
+-			print &quot;EXCEPTION DANS LE THREAD IO :&quot;
+-			print msg
+-			traceback.print_exc()
+-			self.stop()
++    def __lostClient(self, client):
++        if not client.addr in self.__clients: return
++        client = self.__clients[client.addr]
++        if self.verbose:
++            print &quot;Lost connection with client %s !&quot; % (client.name)
++        self.disconnectClient(client)
++    
++    def lostConnection(self):
++        if self.verbose:
++            print &quot;Lost connection to %s:%u!&quot; % (self.host, self.port)
++        if self.__socket_open:
++            self.__socket.close()
++            self.__socket_open = False
++        if self.on_lost_connection: self.on_lost_connection()
++        self.stop()
++    
++    def run_thread(self):
++        &quot;&quot;&quot; Function which should be called in a thread : call L{live()} with a sleep. &quot;&quot;&quot;
++        try:
++            while self.__running:
++                self.live()                
++                time.sleep(self.thread_sleep)
++        except Exception, msg:
++            print &quot;EXCEPTION DANS LE THREAD IO :&quot;
++            print msg
++            traceback.print_exc()
++            self.stop()
+ 
+-	def stop(self):
+-		if not self.__running: return
+-		self.__running = False 
+-		self.disconnect()
++    def stop(self):
++        if not self.__running: return
++        self.__running = False 
++        self.disconnect()
+ 
+-	def isRunning(self): return self.__running
++    def isRunning(self): return self.__running
+ 
+-	#--- Private functions ------------------------------------------------------
++    #--- Private functions ------------------------------------------------------
+ 
+-	def __processRecvData(self, data, addr):
+-		if self.__is_server:
+-			self.__clients_sema.acquire()
+-			if addr not in self.__clients:
+-				client = UDP_Client(self, addr)
+-				self.__clients[addr] = client
+-				self.__clients_sema.release()
+-				if self.verbose: print &quot;New client : %s:%u&quot; % (addr[0], addr[1])
+-				client.send_ping = True
+-				if self.on_client_connect != None: self.on_client_connect(client)
+-			else:
+-				client = self.__clients[addr] 
+-				self.__clients_sema.release()
+-		else:
+-			# Drop packets which doesn't come from server
+-			if self.__server.addr != addr:
+-				if self.debug:
+-					print &quot;Drop packet from %s:%u (it isn't the server address)&quot; % (addr[0], addr[1])
+-				return None
+-			client = self.__server
+-	
+-		# Call user event if needed
+-		if self.on_receive != None: self.on_receive(data)
+-					
+-		# Decode data to normal packet (unpack) 
+-		packet = io.Packet()
+-		packet.unpack(data)
+-		if not packet.isValid():
+-			if self.debug: print &quot;Drop invalid packet (%s) from %s&quot; % (data, client.name)			
+-			return None
+-		
+-		# Return packet
+-		packet.recv_from = client 
+-		return self.__processPacket(packet)
++    def __processRecvData(self, data, addr):
++        if self.__is_server:
++            self.__clients_sema.acquire()
++            if addr not in self.__clients:
++                client = UDP_Client(self, addr)
++                self.__clients[addr] = client
++                self.__clients_sema.release()
++                if self.verbose: print &quot;New client : %s:%u&quot; % (addr[0], addr[1])
++                client.send_ping = True
++                if self.on_client_connect != None: self.on_client_connect(client)
++            else:
++                client = self.__clients[addr] 
++                self.__clients_sema.release()
++        else:
++            # Drop packets which doesn't come from server
++            if self.__server.addr != addr:
++                if self.debug:
++                    print &quot;Drop packet from %s:%u (it isn't the server address)&quot; % (addr[0], addr[1])
++                return None
++            client = self.__server
++    
++        # Call user event if needed
++        if self.on_receive != None: self.on_receive(data)
++                    
++        # Decode data to normal packet (unpack) 
++        packet = io.Packet()
++        packet.unpack(data)
++        if not packet.isValid():
++            if self.debug: print &quot;Drop invalid packet (%s) from %s&quot; % (data, client.name)            
++            return None
++        
++        # Return packet
++        packet.recv_from = client 
++        return self.__processPacket(packet)
+ 
+-	def __processPacket(self, packet):
+-		client = packet.recv_from
++    def __processPacket(self, packet):
++        client = packet.recv_from
+ 
+-		if self.debug:
+-			print &quot;Received packet %s from %s:%u&quot; % (packet.toStr(), client.host, client.port)
+-		
+-		# Send an ack if needed
+-		if not packet.skippable: self.__sendAck(packet)
+-		
+-		# Is is a special packet (ack / ping / poing) ?
+-		if packet.type == io.Packet.PACKET_ACK:
+-			client.processAck(packet)
+-			return None
+-		if packet.type == io.Packet.PACKET_PING:
+-			client.processPing(packet)
+-			return None
+-		if packet.type == io.Packet.PACKET_PONG:
+-			client.processPong(packet)
+-			return None
+-			
+-		# This packet is already received ? Drop it!
+-		if client.alreadyReceived(packet.id):
+-			if self.debug:
+-				print &quot;Drop packet %u (already received)&quot; % (packet.id)
+-			return None	
+-			
+-		client.receivePacket(packet)
+-		
+-		# Returns the new packet
+-		return packet
++        if self.debug:
++            print &quot;Received packet %s from %s:%u&quot; % (packet.toStr(), client.host, client.port)
++        
++        # Send an ack if needed
++        if not packet.skippable: self.__sendAck(packet)
++        
++        # Is is a special packet (ack / ping / poing) ?
++        if packet.type == io.Packet.PACKET_ACK:
++            client.processAck(packet)
++            return None
++        if packet.type == io.Packet.PACKET_PING:
++            client.processPing(packet)
++            return None
++        if packet.type == io.Packet.PACKET_PONG:
++            client.processPong(packet)
++            return None
++            
++        # This packet is already received ? Drop it!
++        if client.alreadyReceived(packet.id):
++            if self.debug:
++                print &quot;Drop packet %u (already received)&quot; % (packet.id)
++            return None    
++            
++        client.receivePacket(packet)
++        
++        # Returns the new packet
++        return packet
+ 
+-	def __sendAck(self, packet):
+-		&quot;&quot;&quot; Send an ack for a packet.
+-		@type packet: C{L{Packet&lt;io.Packet&gt;}}
+-		&quot;&quot;&quot;
+-		# Write ack to socket
+-		ack = io.Packet(skippable=True)
+-		ack.type = io.Packet.PACKET_ACK
+-		ack.writeStr( struct.pack(&quot;!I&quot;, packet.id) )
+-		#if self.debug: print &quot;Send ACK %u.&quot; % (ack.id)
+-		packet.recv_from.send(ack)
++    def __sendAck(self, packet):
++        &quot;&quot;&quot; Send an ack for a packet.
++        @type packet: C{L{Packet&lt;io.Packet&gt;}}
++        &quot;&quot;&quot;
++        # Write ack to socket
++        ack = io.Packet(skippable=True)
++        ack.type = io.Packet.PACKET_ACK
++        ack.writeStr( struct.pack(&quot;!I&quot;, packet.id) )
++        #if self.debug: print &quot;Send ACK %u.&quot; % (ack.id)
++        packet.recv_from.send(ack)
+ 
+-	def __processNewPacket(self, packet):
+-		&quot;&quot;&quot; Do something with a new packet
+-		@type packet: C{L{Packet&lt;io.Packet&gt;}}
+-		&quot;&quot;&quot;
+-		if self.verbose:
+-			print &quot;New udp message : %s&quot; % (packet.toStr())
+-		if self.on_new_packet != None: self.on_new_packet(packet)		
++    def __processNewPacket(self, packet):
++        &quot;&quot;&quot; Do something with a new packet
++        @type packet: C{L{Packet&lt;io.Packet&gt;}}
++        &quot;&quot;&quot;
++        if self.verbose:
++            print &quot;New udp message : %s&quot; % (packet.toStr())
++        if self.on_new_packet != None: self.on_new_packet(packet)        
+ 
+-	def __getPort(self):
+-		return self.__addr[1]
++    def __getPort(self):
++        return self.__addr[1]
+ 
+-	def __getHost(self):
+-		if self.__addr[0]=='': return &quot;localhost&quot;
+-		return self.__addr[0]
++    def __getHost(self):
++        if self.__addr[0]=='': return &quot;localhost&quot;
++        return self.__addr[0]
+ 
+-	def __getAddr(self): return self.__addr
++    def __getAddr(self): return self.__addr
+ 
+-	def __getName(self):
+-		if self.__name != None: return self.__name
+-		return self.host
+-		
+-	def __setName(self, name):
+-		self.__name = name	
++    def __getName(self):
++        if self.__name != None: return self.__name
++        return self.host
++        
++    def __setName(self, name):
++        self.__name = name    
+ 
+-	def __getClients(self):
+-		self.__clients_sema.acquire()
+-		clients = self.__clients.copy()
+-		self.__clients_sema.release()
+-		return clients
++    def __getClients(self):
++        self.__clients_sema.acquire()
++        clients = self.__clients.copy()
++        self.__clients_sema.release()
++        return clients
+ 
+-	def __getMaxClients(self):
+-		return 0
+-		
+-	#--- Properties -------------------------------------------------------------
++    def __getMaxClients(self):
++        return 0
++        
++    #--- Properties -------------------------------------------------------------
+ 
+-	name = property(__getName, __setName, doc=&quot;The IO name&quot;)
+-	addr = property(__getAddr, doc=&quot;The IO addresse (host, port).&quot;)
+-	port = property(__getPort, doc=&quot;The network port number.&quot;)
+-	host = property(__getHost, doc=&quot;The network hostname.&quot;)
+-	clients = property(__getClients, doc=&quot;List of clients.&quot;)
+-	max_clients = property(__getMaxClients, doc=&quot;Maximum number of clients connected to the server.&quot;)
++    name = property(__getName, __setName, doc=&quot;The IO name&quot;)
++    addr = property(__getAddr, doc=&quot;The IO addresse (host, port).&quot;)
++    port = property(__getPort, doc=&quot;The network port number.&quot;)
++    host = property(__getHost, doc=&quot;The network hostname.&quot;)
++    clients = property(__getClients, doc=&quot;List of clients.&quot;)
++    max_clients = property(__getMaxClients, doc=&quot;Maximum number of clients connected to the server.&quot;)
+
+Modified: happyboom/trunk/net/io_udp/udp_client.py
+===================================================================
+--- happyboom/trunk/net/io_udp/udp_client.py	2005-09-14 00:03:32 UTC (rev 140)
++++ happyboom/trunk/net/io_udp/udp_client.py	2005-09-14 00:32:33 UTC (rev 141)
+@@ -1,145 +1,145 @@
+ from net import io
+-import threading
++import thread
+ import time
+ import struct
+ from udp_ping import UDP_Pinger 
+ 
+ class UDP_Client(io.IO_Client):
+-	&quot;&quot;&quot; An UDP Client.
+-	@ivar __waitAck: List of packets (id) which are waiting for an acknoledge.
+-	@type __waitAck: C{dict&lt;int&gt;, L{Packet&lt;io.Packet&gt;}}
+-	@ivar __waitAck_sema: Semaphore used to access L{__waitAck}.
+-	@type __waitAck_sema: C{threading.Semaphore}
+-	@ivar __received: List of received packets (id). List used to remove duplicated packets.
+-	@type __received: C{dict&lt;int, L{Packet&lt;io.Packet&gt;}&gt;}
+-	@ivar __received_sema: Semaphore used to access L{__received}.
+-	@type __received_sema: C{threading.Semaphore}
+-	@ivar __pinger: Send regulary ping to server.
+-	@type __pinger: C{L{UDP_Pinger}}
+-	&quot;&quot;&quot;
+-	def __init__(self, io_udp, addr, name=None):
+-		&quot;&quot;&quot; Constructor.
+-		@parameter io_udp: Main IO.
+-		@type io_udp: C{L{IO_UDP}}
+-		@parameter addr: The client network address (host, port).
+-		@type addr: C{(str, int)}
+-		@parameter name: The client name.
+-		@type name: C{str}
+-		&quot;&quot;&quot;
+-		io.IO_Client.__init__(self, io_udp, addr, name)
+-		self.send_ping = False
+-		self.__waitAck = {}
+-		self.__received = {}
+-		self.__waitAck_sema = threading.Semaphore()
+-		self.__received_sema = threading.Semaphore()
+-		self.__pinger = UDP_Pinger(self)
++    &quot;&quot;&quot; An UDP Client.
++    @ivar __waitAck: List of packets (id) which are waiting for an acknoledge.
++    @type __waitAck: C{dict&lt;int&gt;, L{Packet&lt;io.Packet&gt;}}
++    @ivar __waitAck_sema: Lock used to access L{__waitAck}.
++    @type __waitAck_sema: C{thread.lock}
++    @ivar __received: List of received packets (id). List used to remove duplicated packets.
++    @type __received: C{dict&lt;int, L{Packet&lt;io.Packet&gt;}&gt;}
++    @ivar __received_sema: Lock used to access L{__received}.
++    @type __received_sema: C{thread.lock}
++    @ivar __pinger: Send regulary ping to server.
++    @type __pinger: C{L{UDP_Pinger}}
++    &quot;&quot;&quot;
++    def __init__(self, io_udp, addr, name=None):
++        &quot;&quot;&quot; Constructor.
++        @parameter io_udp: Main IO.
++        @type io_udp: C{L{IO_UDP}}
++        @parameter addr: The client network address (host, port).
++        @type addr: C{(str, int)}
++        @parameter name: The client name.
++        @type name: C{str}
++        &quot;&quot;&quot;
++        io.IO_Client.__init__(self, io_udp, addr, name)
++        self.send_ping = False
++        self.__waitAck = {}
++        self.__received = {}
++        self.__waitAck_sema = thread.allocate_lock()
++        self.__received_sema = thread.allocate_lock()
++        self.__pinger = UDP_Pinger(self)
+ 
+-	def alreadyReceived(self, id):
+-		&quot;&quot;&quot; Tell if a packet (id) is already received.
+-		@rtype: C{bool}
+-		&quot;&quot;&quot;
+-		self.__received_sema.acquire()
+-		received = id in self.__received
+-		self.__received_sema.release()
+-		return received
++    def alreadyReceived(self, id):
++        &quot;&quot;&quot; Tell if a packet (id) is already received.
++        @rtype: C{bool}
++        &quot;&quot;&quot;
++        self.__received_sema.acquire()
++        received = id in self.__received
++        self.__received_sema.release()
++        return received
+ 
+-	def receivePacket(self, packet):
+-		&quot;&quot;&quot; Process a new received packet.
+-		@type packet: C{L{Packet&lt;io.Packet&gt;}}
+-		&quot;&quot;&quot;
+-		if packet.skippable: return
+-		
+-		# Store packet to drop packet which are receive twice
+-		timeout = time.time()+io.Packet.total_timeout
+-		self.__received_sema.acquire()
+-		self.__received[packet.id] = timeout 
+-		self.__received_sema.release()	
++    def receivePacket(self, packet):
++        &quot;&quot;&quot; Process a new received packet.
++        @type packet: C{L{Packet&lt;io.Packet&gt;}}
++        &quot;&quot;&quot;
++        if packet.skippable: return
++        
++        # Store packet to drop packet which are receive twice
++        timeout = time.time()+io.Packet.total_timeout
++        self.__received_sema.acquire()
++        self.__received[packet.id] = timeout 
++        self.__received_sema.release()    
+ 
+-	def processPing(self, id):
+-		&quot;&quot;&quot; Process a new received ping.
+-		@type id: C{int}
+-		&quot;&quot;&quot;
+-		self.__pinger.processPing(id)
+-		
+-	def processPong(self, id):
+-		&quot;&quot;&quot; Process a new received pong.
+-		@type id: C{int}
+-		&quot;&quot;&quot;
+-		self.__pinger.processPong(id)
+-		
+-	def processAck(self, packet):
+-		&quot;&quot;&quot; Process new received acknoledge.
+-		@type packet: C{L{Packet&lt;io.Packet&gt;}}
+-		&quot;&quot;&quot;
+-		# Read packet ID
+-		format  = &quot;!I&quot;
+-		if len(packet.data) != struct.calcsize(format): return None
+-		data = struct.unpack(format, packet.data)
+-		id = data[0]
++    def processPing(self, id):
++        &quot;&quot;&quot; Process a new received ping.
++        @type id: C{int}
++        &quot;&quot;&quot;
++        self.__pinger.processPing(id)
++        
++    def processPong(self, id):
++        &quot;&quot;&quot; Process a new received pong.
++        @type id: C{int}
++        &quot;&quot;&quot;
++        self.__pinger.processPong(id)
++        
++    def processAck(self, packet):
++        &quot;&quot;&quot; Process new received acknoledge.
++        @type packet: C{L{Packet&lt;io.Packet&gt;}}
++        &quot;&quot;&quot;
++        # Read packet ID
++        format  = &quot;!I&quot;
++        if len(packet.data) != struct.calcsize(format): return None
++        data = struct.unpack(format, packet.data)
++        id = data[0]
+ 
+-		# Packet still exists ?
+-		self.__waitAck_sema.acquire()
+-		if not self.__waitAck.has_key(id):
+-			self.__waitAck_sema.release()
+-			return
++        # Packet still exists ?
++        self.__waitAck_sema.acquire()
++        if not self.__waitAck.has_key(id):
++            self.__waitAck_sema.release()
++            return
+ 
+-		# Debug message
+-		if self.io.debug:
+-			t = time.time() - self.__waitAck[id].creation
+-			print &quot;Ack %u received (time=%.1f ms)&quot; % (id, t*1000)
++        # Debug message
++        if self.io.debug:
++            t = time.time() - self.__waitAck[id].creation
++            print &quot;Ack %u received (time=%.1f ms)&quot; % (id, t*1000)
+ 
+-		# The packet don't need ack anymore
+-		del self.__waitAck[id]
+-		self.__waitAck_sema.release()
++        # The packet don't need ack anymore
++        del self.__waitAck[id]
++        self.__waitAck_sema.release()
+ 
+-	def disconnect(self):
+-		&quot;&quot;&quot; Disconnect client. &quot;&quot;&quot;
+-		self.io.disconnectClient(self)
++    def disconnect(self):
++        &quot;&quot;&quot; Disconnect client. &quot;&quot;&quot;
++        self.io.disconnectClient(self)
+ 
+-	def needAck(self, packet):
+-		&quot;&quot;&quot; Tell that a packet needs an acknoledge. &quot;&quot;&quot;
+-		self.__waitAck_sema.acquire()
+-		self.__waitAck[packet.id] = packet
+-		self.__waitAck_sema.release()
++    def needAck(self, packet):
++        &quot;&quot;&quot; Tell that a packet needs an acknoledge. &quot;&quot;&quot;
++        self.__waitAck_sema.acquire()
++        self.__waitAck[packet.id] = packet
++        self.__waitAck_sema.release()
+ 
+-	def live(self):
+-		&quot;&quot;&quot; Keep the connection alive :
+-		Resend packet if needed,
+-		clean old received packets,
+-		send ping if needed.
+-		&quot;&quot;&quot;
+-		
+-		# Resend packet which don't have received their ack yet
+-		self.__waitAck_sema.acquire()
+-		waitAckCopy = self.__waitAck.copy()
+-		self.__waitAck_sema.release()
+-		for id,packet in waitAckCopy.items():
+-			if packet.timeout &lt; time.time():
+-				if packet.sent &lt; io.Packet.max_resend:
+-					self.send(packet)
+-				else:
+-					self.io.clientLostConnection(self)
++    def live(self):
++        &quot;&quot;&quot; Keep the connection alive :
++        Resend packet if needed,
++        clean old received packets,
++        send ping if needed.
++        &quot;&quot;&quot;
++        
++        # Resend packet which don't have received their ack yet
++        self.__waitAck_sema.acquire()
++        waitAckCopy = self.__waitAck.copy()
++        self.__waitAck_sema.release()
++        for id,packet in waitAckCopy.items():
++            if packet.timeout &lt; time.time():
++                if packet.sent &lt; io.Packet.max_resend:
++                    self.send(packet)
++                else:
++                    self.io.clientLostConnection(self)
+ 
+-		# Clean old received packets 
+-		self.__received_sema.acquire()
+-		receivedCopy = self.__received.copy()
+-		self.__received_sema.release()
+-		for id,timeout in receivedCopy.items():
+-			if timeout &lt; time.time():
+-				if self.io.debug:
+-					print &quot;Supprime ancien paquet %u de %s:%u (timeout)&quot; \
+-						% (id, self.host, self.port)
+-				self.__received_sema.acquire()
+-				del self.__received[id]
+-				self.__received_sema.release()
++        # Clean old received packets 
++        self.__received_sema.acquire()
++        receivedCopy = self.__received.copy()
++        self.__received_sema.release()
++        for id,timeout in receivedCopy.items():
++            if timeout &lt; time.time():
++                if self.io.debug:
++                    print &quot;Supprime ancien paquet %u de %s:%u (timeout)&quot; \
++                        % (id, self.host, self.port)
++                self.__received_sema.acquire()
++                del self.__received[id]
++                self.__received_sema.release()
+ 
+-		# Send ping if needed
+-		if self.send_ping: self.__pinger.live()
++        # Send ping if needed
++        if self.send_ping: self.__pinger.live()
+ 
+-	def send(self, packet):
+-		&quot;&quot;&quot; Send packet to the client. &quot;&quot;&quot;
+-		self.io.send(packet, to=self)
+-		
+-	def sendBinary(self, data):
+-		&quot;&quot;&quot; Send binary datas the client. &quot;&quot;&quot;
+-		self.io.sendBinary(data, self)
++    def send(self, packet):
++        &quot;&quot;&quot; Send packet to the client. &quot;&quot;&quot;
++        self.io.send(packet, to=self)
++        
++    def sendBinary(self, data):
++        &quot;&quot;&quot; Send binary datas the client. &quot;&quot;&quot;
++        self.io.sendBinary(data, self)
+
+Modified: happyboom/trunk/net/io_udp/udp_ping.py
+===================================================================
+--- happyboom/trunk/net/io_udp/udp_ping.py	2005-09-14 00:03:32 UTC (rev 140)
++++ happyboom/trunk/net/io_udp/udp_ping.py	2005-09-14 00:32:33 UTC (rev 141)
+@@ -3,121 +3,121 @@
+ from net import io
+ 
+ class UDP_Ping:
+-	&quot;&quot;&quot; One UDP ping.
+-	@ivar timeout: Ping timeout (in seconds).
+-	@type timeout: C{float}
+-	@ivar creation: Creation time.
+-	@type creation: C{float}
+-	@ivar id: Ping id.
+-	@type id: C{int}
+-	&quot;&quot;&quot;
+-	timeout = 5.000
+-	
+-	def __init__(self, id):
+-		&quot;&quot;&quot; Constuctor.
+-		@type id: C{int}
+-		&quot;&quot;&quot;
+-		self.creation = time.time()
+-		self.timeout = self.creation+UDP_Ping.timeout
+-		self.id = id
++    &quot;&quot;&quot; One UDP ping.
++    @ivar timeout: Ping timeout (in seconds).
++    @type timeout: C{float}
++    @ivar creation: Creation time.
++    @type creation: C{float}
++    @ivar id: Ping id.
++    @type id: C{int}
++    &quot;&quot;&quot;
++    timeout = 5.000
++    
++    def __init__(self, id):
++        &quot;&quot;&quot; Constuctor.
++        @type id: C{int}
++        &quot;&quot;&quot;
++        self.creation = time.time()
++        self.timeout = self.creation+UDP_Ping.timeout
++        self.id = id
+ 
+-	def getPacket(self):
+-		&quot;&quot;&quot; Create a network packet containing the ping. &quot;&quot;&quot;
+-		ping = io.Packet()
+-		ping.type = io.Packet.PACKET_PING
+-		ping.writeStr( struct.pack(&quot;!I&quot;, self.id) )
+-		return ping	
++    def getPacket(self):
++        &quot;&quot;&quot; Create a network packet containing the ping. &quot;&quot;&quot;
++        ping = io.Packet()
++        ping.type = io.Packet.PACKET_PING
++        ping.writeStr( struct.pack(&quot;!I&quot;, self.id) )
++        return ping    
+ 
+ class UDP_Pinger:
+-	&quot;&quot;&quot; An UDP pinger (send ping and process pong).
+-	@ivar ping_sleep: Sleep (in seconds) after sending one ping.
+-	@type ping_sleep: C{float}
+-	@ivar client: The UDP Client.
+-	@type client: C{L{UDP_Client&lt;udp.UDP_Client&gt;}}
+-	@ivar __sent_ping: List of sent pings (id,packet).
+-	@type __sent_ping: C{dict&lt;int, L{UDP_Ping}&gt;}
+-	@ivar __ping_id: Next ping id.
+-	@type __ping_id: C{int}
+-	@ivar __next_ping: Timer until next ping.
+-	@type __next_ping: C{float}
+-	&quot;&quot;&quot;
++    &quot;&quot;&quot; An UDP pinger (send ping and process pong).
++    @ivar ping_sleep: Sleep (in seconds) after sending one ping.
++    @type ping_sleep: C{float}
++    @ivar client: The UDP Client.
++    @type client: C{L{UDP_Client&lt;udp.UDP_Client&gt;}}
++    @ivar __sent_ping: List of sent pings (id,packet).
++    @type __sent_ping: C{dict&lt;int, L{UDP_Ping}&gt;}
++    @ivar __ping_id: Next ping id.
++    @type __ping_id: C{int}
++    @ivar __next_ping: Timer until next ping.
++    @type __next_ping: C{float}
++    &quot;&quot;&quot;
+ 
+-	ping_sleep = 1.000
+-	
+-	def __init__(self, client):
+-		&quot;&quot;&quot; Constructor.
+-		@type client: C{L{UDP_Client&lt;udp.UDP_Client&gt;}}
+-		&quot;&quot;&quot;
+-		self.__next_ping = time.time()+UDP_Pinger.ping_sleep
+-		self.__ping_id = 0
+-		self.client = client
+-		self.__sent_ping = {}
++    ping_sleep = 1.000
++    
++    def __init__(self, client):
++        &quot;&quot;&quot; Constructor.
++        @type client: C{L{UDP_Client&lt;udp.UDP_Client&gt;}}
++        &quot;&quot;&quot;
++        self.__next_ping = time.time()+UDP_Pinger.ping_sleep
++        self.__ping_id = 0
++        self.client = client
++        self.__sent_ping = {}
+ 
+-	def processPong(self, id):
+-		&quot;&quot;&quot; Process pong. &quot;&quot;&quot;
+-		pass
++    def processPong(self, id):
++        &quot;&quot;&quot; Process pong. &quot;&quot;&quot;
++        pass
+ 
+-	def sendPing(self):
+-		&quot;&quot;&quot; Send a new ping : create the packet and send it to the client. &quot;&quot;&quot;
+-		self.__ping_id = self.__ping_id + 1
+-		ping = UDP_Ping(self.__ping_id)
+-		self.client.send( ping.getPacket() )
+-		self.__sent_ping[ping.id] = ping
+-				
+-	def pingTimeout(self, id):
+-		&quot;&quot;&quot; Function called when a ping timeout is raised.
+-		@parameter id: The ping id.
+-		@type id: C{int}
+-		&quot;&quot;&quot;
+-		print &quot;Ping timeout.&quot;
+-#		print &quot;Disconnect client %s:%u (ping timeout).&quot; \
+-#			% (self.client.host, self.client.port)
+-#		self.client.disconnect()
++    def sendPing(self):
++        &quot;&quot;&quot; Send a new ping : create the packet and send it to the client. &quot;&quot;&quot;
++        self.__ping_id = self.__ping_id + 1
++        ping = UDP_Ping(self.__ping_id)
++        self.client.send( ping.getPacket() )
++        self.__sent_ping[ping.id] = ping
++                
++    def pingTimeout(self, id):
++        &quot;&quot;&quot; Function called when a ping timeout is raised.
++        @parameter id: The ping id.
++        @type id: C{int}
++        &quot;&quot;&quot;
++        print &quot;Ping timeout.&quot;
++#        print &quot;Disconnect client %s:%u (ping timeout).&quot; \
++#            % (self.client.host, self.client.port)
++#        self.client.disconnect()
+ 
+-	def live(self):
+-		&quot;&quot;&quot; Remove old ping and send ping if needed. &quot;&quot;&quot;
+-		
+-		# Remove old ping
+-		for id,ping in self.__sent_ping.items():
+-			if ping.timeout &lt; time.time():
+-				del self.__sent_ping[id]
+-				self.pingTimeout(id)
+-		
+-		# Send ping if needed
+-		if self.__next_ping &lt; time.time():
+-			self.__next_ping = time.time()+UDP_Pinger.ping_sleep
+-			self.sendPing()
++    def live(self):
++        &quot;&quot;&quot; Remove old ping and send ping if needed. &quot;&quot;&quot;
++        
++        # Remove old ping
++        for id,ping in self.__sent_ping.items():
++            if ping.timeout &lt; time.time():
++                del self.__sent_ping[id]
++                self.pingTimeout(id)
++        
++        # Send ping if needed
++        if self.__next_ping &lt; time.time():
++            self.__next_ping = time.time()+UDP_Pinger.ping_sleep
++            self.sendPing()
+ 
+-	def __getPingId(self, data):
+-		&quot;&quot;&quot; Utility used to get an ping id from binary data.
+-		@type data: C{str}
+-		&quot;&quot;&quot;
+-		format  = &quot;!I&quot;
+-		if len(data) != struct.calcsize(format): return None
+-		data = struct.unpack(format, data)
+-		return data[0]
++    def __getPingId(self, data):
++        &quot;&quot;&quot; Utility used to get an ping id from binary data.
++        @type data: C{str}
++        &quot;&quot;&quot;
++        format  = &quot;!I&quot;
++        if len(data) != struct.calcsize(format): return None
++        data = struct.unpack(format, data)
++        return data[0]
+ 
+-	def processPing(self, packet):
+-		&quot;&quot;&quot; Process ping : send pong.
+-		@type packet: C{L{Packet&lt;io.Packet&gt;}}
+-		&quot;&quot;&quot;
+-		pong = io.Packet(skippable=True)
+-		pong.type = io.Packet.PACKET_PONG
+-		pong.writeStr( packet.data )
+-		self.client.send(pong)
+-		
+-	def processPong(self, packet):
+-		&quot;&quot;&quot; Process pong.
+-		@type packet: C{L{Packet&lt;io.Packet&gt;}}
+-		&quot;&quot;&quot;
+-		id = self.__getPingId(packet.data)
+-		if id == None:
+-			if self.debug:
+-				print &quot;Wrong ping packet (%s)!&quot; % (packet.toStr())
+-			return
++    def processPing(self, packet):
++        &quot;&quot;&quot; Process ping : send pong.
++        @type packet: C{L{Packet&lt;io.Packet&gt;}}
++        &quot;&quot;&quot;
++        pong = io.Packet(skippable=True)
++        pong.type = io.Packet.PACKET_PONG
++        pong.writeStr( packet.data )
++        self.client.send(pong)
++        
++    def processPong(self, packet):
++        &quot;&quot;&quot; Process pong.
++        @type packet: C{L{Packet&lt;io.Packet&gt;}}
++        &quot;&quot;&quot;
++        id = self.__getPingId(packet.data)
++        if id == None:
++            if self.debug:
++                print &quot;Wrong ping packet (%s)!&quot; % (packet.toStr())
++            return
+ 
+-		# Received too late ?
+-		if not self.__sent_ping.has_key(id): return
++        # Received too late ?
++        if not self.__sent_ping.has_key(id): return
+ 
+-		# Remove ping from the list
+-		del self.__sent_ping[id]
++        # Remove ping from the list
++        del self.__sent_ping[id]
+
+Modified: happyboom/trunk/net/net_buffer.py
+===================================================================
+--- happyboom/trunk/net/net_buffer.py	2005-09-14 00:03:32 UTC (rev 140)
++++ happyboom/trunk/net/net_buffer.py	2005-09-14 00:32:33 UTC (rev 141)
+@@ -2,58 +2,58 @@
+ import time
+ 
+ class NetBuffer:
+-	&quot;&quot;&quot; Buffer used to store network packets. Support multithreading.
+-	@ivar blocking_read_sleep : Sleep duration when waiting data from network.
+-	@type blocking_read_sleep: C{float}
+-	@ivar __buffer: Buffer which store network packets.
+-	@type __buffer: C{list&lt;L{Packet&lt;io.Packet&gt;}&gt;}
+-	&quot;&quot;&quot;
+-	
+-	def __init__(self):
+-		&quot;&quot;&quot; Constructor. &quot;&quot;&quot;
+-		self.blocking_read_sleep = 0.010
+-		self.__buffer = {} 
+-		self.__sema = thread.allocate_lock()
++    &quot;&quot;&quot; Buffer used to store network packets. Support multithreading.
++    @ivar blocking_read_sleep : Sleep duration when waiting data from network.
++    @type blocking_read_sleep: C{float}
++    @ivar __buffer: Buffer which store network packets.
++    @type __buffer: C{list&lt;L{Packet&lt;io.Packet&gt;}&gt;}
++    &quot;&quot;&quot;
++    
++    def __init__(self):
++        &quot;&quot;&quot; Constructor. &quot;&quot;&quot;
++        self.blocking_read_sleep = 0.010
++        self.__buffer = {} 
++        self.__sema = thread.allocate_lock()
+ 
+-	def clear(self, key):
+-		&quot;&quot;&quot; Clear buffer. &quot;&quot;&quot;
+-		self.__sema.acquire()
+-		self.__buffer[key] = [] 
+-		self.__sema.release()
+-	
+-	def append(self, key, data):
+-		&quot;&quot;&quot; Append new data to the buffer. &quot;&quot;&quot;
+-		self.__sema.acquire()
+-		if self.__buffer.has_key(key):
+-			self.__buffer[key].append(data)
+-		else:
+-			self.__buffer[key] = [data]
+-		self.__sema.release()
++    def clear(self, key):
++        &quot;&quot;&quot; Clear buffer. &quot;&quot;&quot;
++        self.__sema.acquire()
++        self.__buffer[key] = [] 
++        self.__sema.release()
++    
++    def append(self, key, data):
++        &quot;&quot;&quot; Append new data to the buffer. &quot;&quot;&quot;
++        self.__sema.acquire()
++        if self.__buffer.has_key(key):
++            self.__buffer[key].append(data)
++        else:
++            self.__buffer[key] = [data]
++        self.__sema.release()
+ 
+-	def readNonBlocking(self, key):
+-		&quot;&quot;&quot; Read one data. Returns None if their is no data.
+-		@rtype: C{str}
+-		&quot;&quot;&quot;
+-		self.__sema.acquire()
+-		buffer = self.__buffer.get(key, [])
+-		self.__buffer[key] = []
+-		self.__sema.release()
+-		return buffer
++    def readNonBlocking(self, key):
++        &quot;&quot;&quot; Read one data. Returns None if their is no data.
++        @rtype: C{str}
++        &quot;&quot;&quot;
++        self.__sema.acquire()
++        buffer = self.__buffer.get(key, [])
++        self.__buffer[key] = []
++        self.__sema.release()
++        return buffer
+ 
+-	def readBlocking(self, key, timeout):
+-		&quot;&quot;&quot; Read one data.
+-		Returns None if their is no data after the timeout.
+-		@type timeout: C{float}
+-		@rtype: C{str}
+-		&quot;&quot;&quot;
+-		data = None
+-		timeout = time.time()+timeout
+-		while data == None:
+-			if timeout &lt; time.time(): break
+-			self.__sema.acquire()
+-			if self.__buffer.has_key(key) and len(self.__buffer[key]) != 0:
+-				data = self.__buffer[key][0]
+-				del self.__buffer[key][0] 
+-			self.__sema.release()
+-			if data == None: time.sleep(self.blocking_read_sleep)
+-		return data
++    def readBlocking(self, key, timeout):
++        &quot;&quot;&quot; Read one data.
++        Returns None if their is no data after the timeout.
++        @type timeout: C{float}
++        @rtype: C{str}
++        &quot;&quot;&quot;
++        data = None
++        timeout = time.time()+timeout
++        while data == None:
++            if timeout &lt; time.time(): break
++            self.__sema.acquire()
++            if self.__buffer.has_key(key) and len(self.__buffer[key]) != 0:
++                data = self.__buffer[key][0]
++                del self.__buffer[key][0] 
++            self.__sema.release()
++            if data == None: time.sleep(self.blocking_read_sleep)
++        return data
+
+Modified: happyboom/trunk/server/base_server.py
+===================================================================
+--- happyboom/trunk/server/base_server.py	2005-09-14 00:03:32 UTC (rev 140)
++++ happyboom/trunk/server/base_server.py	2005-09-14 00:32:33 UTC (rev 141)
+@@ -1,6 +1,7 @@
+ # TODO: Check if it's always possible to send skippable packets
+ 
+-from net import io, io_udp, io_tcp, net_buffer
++from happyboom.common.packer import HappyBoomPacker
++from happyboom.net import io, io_udp, io_tcp, net_buffer
+ from pysma import Kernel, DummyScheduler, ActionAgent, ActionMessage
+ import re, random, thread, traceback, time
+ import types # maybe only used for assertions
+
+Modified: happyboom/trunk/server/server_agent.py
+===================================================================
+--- happyboom/trunk/server/server_agent.py	2005-09-14 00:03:32 UTC (rev 140)
++++ happyboom/trunk/server/server_agent.py	2005-09-14 00:32:33 UTC (rev 141)
+@@ -1,14 +1,14 @@
+ from agent import *
+ 
+ class ServerAgent(Agent):
+-	def __init__(self, type):
+-		Agent.__init__(self)
+-		self.type = type
+-		self.id = -1 
+-		self.server = None
++    def __init__(self, type):
++        Agent.__init__(self)
++        self.type = type
++        self.id = -1 
++        self.server = None
+ 
+-	def sendMsg(self, role, type, arg=None, client=None, skippable=False):
+-		if client != None:
+-			self.server.sendMsgToClient(client, role, type, arg, skippable=skippable)
+-		else:
+-			self.server.sendMsg(role, type, arg, skippable=skippable)
++    def sendMsg(self, role, type, arg=None, client=None, skippable=False):
++        if client != None:
++            self.server.sendMsgToClient(client, role, type, arg, skippable=skippable)
++        else:
++            self.server.sendMsg(role, type, arg, skippable=skippable)
+
+Modified: happyboom/trunk/server/stat.py
+===================================================================
+--- happyboom/trunk/server/stat.py	2005-09-14 00:03:32 UTC (rev 140)
++++ happyboom/trunk/server/stat.py	2005-09-14 00:32:33 UTC (rev 141)
+@@ -2,90 +2,90 @@
+ import server_agent 
+ 
+ class ServerStat:
+-	def __init__(self, server):
+-		self.started = time.time()
+-		self.server = server
+-		self.net_in = 0
+-		self.net_out = 0
++    def __init__(self, server):
++        self.started = time.time()
++        self.server = server
++        self.net_in = 0
++        self.net_out = 0
+ 
+-	# Event called on new sent/read data from network
+-	def onNetSend(self, data):
+-		self.net_out = self.net_out + len(data)
+-	def onNetReceive(self, data):
+-		self.net_in = self.net_in + len(data)
++    # Event called on new sent/read data from network
++    def onNetSend(self, data):
++        self.net_out = self.net_out + len(data)
++    def onNetReceive(self, data):
++        self.net_in = self.net_in + len(data)
+ 
+-	# Number of seconds since server started
+-	def getUptime(self):
+-		return int( time.time() - self.started )
++    # Number of seconds since server started
++    def getUptime(self):
++        return int( time.time() - self.started )
+ 
+-	# Current/Maximum number of view/input clients
+-	def getNbInputs(self):
+-		return self.server.getNbInput()
+-	def getNbViews(self):
+-		return self.server.getNbView()
+-	def getMaxViews(self):
+-		return self.server.getMaxNbView()
+-	def getMaxInputs(self):
+-		return self.server.getMaxNbInput()
++    # Current/Maximum number of view/input clients
++    def getNbInputs(self):
++        return self.server.getNbInput()
++    def getNbViews(self):
++        return self.server.getNbView()
++    def getMaxViews(self):
++        return self.server.getMaxNbView()
++    def getMaxInputs(self):
++        return self.server.getMaxNbInput()
+ 
+ class ServerStatAgent(server_agent.ServerAgent):
+-	def __init__(self):
+-		server_agent.ServerAgent.__init__(self, &quot;server_stat&quot;)
+-		self.uptime = None
+-		self.nb_view = None
+-		self.nb_input = None
+-		self.net_in = None
+-		self.net_out = None
+-		self.max_views = None
+-		self.max_inputs = None
+-		self.net_time = time.time()
+-		self.net_time_update = 1.0
++    def __init__(self):
++        server_agent.ServerAgent.__init__(self, &quot;server_stat&quot;)
++        self.uptime = None
++        self.nb_view = None
++        self.nb_input = None
++        self.net_in = None
++        self.net_out = None
++        self.max_views = None
++        self.max_inputs = None
++        self.net_time = time.time()
++        self.net_time_update = 1.0
+ 
+-	def sync(self, client=None):
+-		if self.uptime != None:
+-			self.sendMsg(&quot;server_stat&quot;, &quot;Uptime&quot;, &quot;%u&quot; % self.uptime, client)
+-		if self.max_views != None:
+-			self.sendMsg(&quot;server_stat&quot;, &quot;MaxViews&quot;, &quot;%u&quot; % self.max_views, client)
+-		if self.max_inputs != None:
+-			self.sendMsg(&quot;server_stat&quot;, &quot;MaxInputs&quot;, &quot;%u&quot; % self.max_inputs, client)
+-		if self.nb_input != None:
+-			self.sendMsg(&quot;server_stat&quot;, &quot;NbInput&quot;, &quot;%u&quot; % self.nb_input, client)
+-		if self.nb_view != None:
+-			self.sendMsg(&quot;server_stat&quot;, &quot;NbView&quot;, &quot;%u&quot; % self.nb_view, client)
+-		if (self.net_in != None) and (self.net_out != None):
+-			self.sendMsg(&quot;server_stat&quot;, &quot;NetStat&quot;, &quot;%u,%u&quot; % (self.net_in, self.net_out), client)
+-	
+-	def update(self):
+-		if self.server.stat == None: return
+-		
+-		if self.max_views == None:
+-			self.max_views = self.server.stat.getMaxViews()
+-		
+-		if self.max_inputs == None:
+-			self.max_inputs = self.server.stat.getMaxInputs()
+-		
+-		if self.net_time_update &lt; time.time() - self.net_time:
+-			self.net_time = time.time()
+-			if (self.server.stat.net_in != self.net_in) \
+-			or (self.server.stat.net_out != self.net_out):
+-				self.net_in = self.server.stat.net_in
+-				self.net_out = self.server.stat.net_out
+-				self.sendMsg(&quot;server_stat&quot;, &quot;NetStat&quot;, &quot;%u,%u&quot; % (self.net_in, self.net_out,))
+-		
+-		input = self.server.stat.getNbInputs()
+-		if input != self.nb_input:
+-			self.nb_input = input
+-			self.sendMsg(&quot;server_stat&quot;, &quot;NbInput&quot;, &quot;%u&quot; % self.nb_input)
+-		
+-		view = self.server.stat.getNbViews()
+-		if view != self.nb_view:
+-			self.nb_view = view
+-			self.sendMsg(&quot;server_stat&quot;, &quot;NbView&quot;, &quot;%u&quot; % self.nb_view)
++    def sync(self, client=None):
++        if self.uptime != None:
++            self.sendMsg(&quot;server_stat&quot;, &quot;Uptime&quot;, &quot;%u&quot; % self.uptime, client)
++        if self.max_views != None:
++            self.sendMsg(&quot;server_stat&quot;, &quot;MaxViews&quot;, &quot;%u&quot; % self.max_views, client)
++        if self.max_inputs != None:
++            self.sendMsg(&quot;server_stat&quot;, &quot;MaxInputs&quot;, &quot;%u&quot; % self.max_inputs, client)
++        if self.nb_input != None:
++            self.sendMsg(&quot;server_stat&quot;, &quot;NbInput&quot;, &quot;%u&quot; % self.nb_input, client)
++        if self.nb_view != None:
++            self.sendMsg(&quot;server_stat&quot;, &quot;NbView&quot;, &quot;%u&quot; % self.nb_view, client)
++        if (self.net_in != None) and (self.net_out != None):
++            self.sendMsg(&quot;server_stat&quot;, &quot;NetStat&quot;, &quot;%u,%u&quot; % (self.net_in, self.net_out), client)
++    
++    def update(self):
++        if self.server.stat == None: return
++        
++        if self.max_views == None:
++            self.max_views = self.server.stat.getMaxViews()
++        
++        if self.max_inputs == None:
++            self.max_inputs = self.server.stat.getMaxInputs()
++        
++        if self.net_time_update &lt; time.time() - self.net_time:
++            self.net_time = time.time()
++            if (self.server.stat.net_in != self.net_in) \
++            or (self.server.stat.net_out != self.net_out):
++                self.net_in = self.server.stat.net_in
++                self.net_out = self.server.stat.net_out
++                self.sendMsg(&quot;server_stat&quot;, &quot;NetStat&quot;, &quot;%u,%u&quot; % (self.net_in, self.net_out,))
++        
++        input = self.server.stat.getNbInputs()
++        if input != self.nb_input:
++            self.nb_input = input
++            self.sendMsg(&quot;server_stat&quot;, &quot;NbInput&quot;, &quot;%u&quot; % self.nb_input)
++        
++        view = self.server.stat.getNbViews()
++        if view != self.nb_view:
++            self.nb_view = view
++            self.sendMsg(&quot;server_stat&quot;, &quot;NbView&quot;, &quot;%u&quot; % self.nb_view)
+ 
+-		uptime = self.server.stat.getUptime()
+-		if uptime != self.uptime:
+-			self.uptime = uptime
+-			self.sendMsg(&quot;server_stat&quot;, &quot;Uptime&quot;, &quot;%u&quot; % self.uptime)			
++        uptime = self.server.stat.getUptime()
++        if uptime != self.uptime:
++            self.uptime = uptime
++            self.sendMsg(&quot;server_stat&quot;, &quot;Uptime&quot;, &quot;%u&quot; % self.uptime)            
+ 
+-	def live(self):
+-		self.update()
++    def live(self):
++        self.update()
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000047.html">[Happyboom-svn] r140 - in happyboom/trunk: common net server
+</A></li>
+	<LI>Next message: <A HREF="000049.html">[Happyboom-svn] r142 - in boomboom: . server server/agents
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#48">[ date ]</a>
+              <a href="thread.html#48">[ thread ]</a>
+              <a href="subject.html#48">[ subject ]</a>
+              <a href="author.html#48">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

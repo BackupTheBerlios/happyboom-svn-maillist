@@ -1,0 +1,243 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r212 - in happyboom/trunk/net: io io_udp
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r212%20-%20in%20happyboom/trunk/net%3A%20io%20io_udp&In-Reply-To=%3C200509192219.j8JMJ0mK024612%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000117.html">
+   <LINK REL="Next"  HREF="000119.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r212 - in happyboom/trunk/net: io io_udp</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r212%20-%20in%20happyboom/trunk/net%3A%20io%20io_udp&In-Reply-To=%3C200509192219.j8JMJ0mK024612%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r212 - in happyboom/trunk/net: io io_udp">haypo at berlios.de
+       </A><BR>
+    <I>Tue Sep 20 00:19:00 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000117.html">[Happyboom-svn] r211 - in boomboom: client curses_client curses_client/items
+</A></li>
+        <LI>Next message: <A HREF="000119.html">[Happyboom-svn] r213 - happyboom/trunk/specification
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#118">[ date ]</a>
+              <a href="thread.html#118">[ thread ]</a>
+              <a href="subject.html#118">[ subject ]</a>
+              <a href="author.html#118">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-20 00:19:00 +0200 (Tue, 20 Sep 2005)
+New Revision: 212
+
+Modified:
+   happyboom/trunk/net/io/packet.py
+   happyboom/trunk/net/io_udp/udp.py
+   happyboom/trunk/net/io_udp/udp_ping.py
+Log:
+Supprime Packet.writeStr()
+
+Modified: happyboom/trunk/net/io/packet.py
+===================================================================
+--- happyboom/trunk/net/io/packet.py	2005-09-19 22:16:40 UTC (rev 211)
++++ happyboom/trunk/net/io/packet.py	2005-09-19 22:19:00 UTC (rev 212)
+@@ -43,15 +43,6 @@
+     PACKET_PONG = 3
+     PACKET_ACK = 4
+ 
+-    def __str__(self):
+-        txt = &quot;Packet &lt;type=%u, &quot; % (self.type)
+-        if self.__data:
+-            txt = txt+&quot;data=\&quot;%s\&quot;&quot; % (self.__data)
+-        else:
+-            txt = txt+&quot;no data&quot;            
+-        if self.skippable: txt = txt+&quot;, skippable&quot;
+-        return txt+&quot;&gt;&quot;
+-
+     def __init__(self, str=None, skippable=False):
+         &quot;&quot;&quot; Constructor.
+         @parameter str: String data.
+@@ -60,14 +51,22 @@
+         @type skippable: C{bool}
+         &quot;&quot;&quot;
+         self.sent = 0
+-        self.__data = None
+         self.timeout = None
+         self.skippable = skippable
+         self.id = None
+         self.type = Packet.PACKET_DATA
+         self.recv_from = None
+         self.__valid = True
+-        if str != None: self.writeStr(str)
++        self.__data = str        
++            
++    def __str__(self):
++        txt = &quot;Packet &lt;type=%u, &quot; % (self.type)
++        if self.__data:
++            txt = txt+&quot;data=\&quot;%s\&quot;&quot; % (self.__data)
++        else:
++            txt = txt+&quot;no data&quot;            
++        if self.skippable: txt = txt+&quot;, skippable&quot;
++        return txt+&quot;&gt;&quot;
+ 
+     def isValid(self):
+         &quot;&quot;&quot; After unpack, say if the packet is valid or not.
+@@ -153,13 +152,6 @@
+             data = data + struct.pack(&quot;!%us&quot; % data_len, self.__data)
+         return data
+         
+-    def writeStr(self, str):
+-        &quot;&quot;&quot; Write a sting into packet (still used ???) &quot;&quot;&quot;
+-        if self.__data == None:
+-            self.__data = str
+-        else:
+-            self.__data = self.__data + str
+-        
+     def prepareSend(self):
+         &quot;&quot;&quot; Prepare the packet before it will be send : set timeout and send counter. &quot;&quot;&quot;
+         self.timeout = time.time()+Packet.timeout
+
+Modified: happyboom/trunk/net/io_udp/udp.py
+===================================================================
+--- happyboom/trunk/net/io_udp/udp.py	2005-09-19 22:16:40 UTC (rev 211)
++++ happyboom/trunk/net/io_udp/udp.py	2005-09-19 22:19:00 UTC (rev 212)
+@@ -6,6 +6,7 @@
+ import traceback
+ import struct
+ from net.io.base_io import BaseIO
++from net.io.packet import Packet
+ from udp_client import UDP_Client
+ from happyboom.common.log import log
+ from happyboom.common.thread import getBacktrace
+@@ -82,7 +83,7 @@
+         self.__socket.setblocking(0)
+ 
+         if not self.__is_server:
+-            self.send( io.Packet(&quot;I'm here&quot;) )
++            self.send( Packet(&quot;I'm here&quot;) )
+         
+         BaseIO.connect(self, host, port)
+ 
+@@ -270,7 +271,7 @@
+         if self.on_receive != None: self.on_receive(data)
+                     
+         # Decode data to normal packet (unpack) 
+-        packet = io.Packet()
++        packet = Packet()
+         packet.unpack(data)
+         if not packet.isValid():
+             if self.debug:
+@@ -291,13 +292,13 @@
+         if not packet.skippable: self.__sendAck(packet)
+         
+         # Is is a special packet (ack / ping / poing) ?
+-        if packet.type == io.Packet.PACKET_ACK:
++        if packet.type == Packet.PACKET_ACK:
+             client.processAck(packet)
+             return None
+-        if packet.type == io.Packet.PACKET_PING:
++        if packet.type == Packet.PACKET_PING:
+             client.processPing(packet)
+             return None
+-        if packet.type == io.Packet.PACKET_PONG:
++        if packet.type == Packet.PACKET_PONG:
+             client.processPong(packet)
+             return None
+             
+@@ -314,18 +315,18 @@
+ 
+     def __sendAck(self, packet):
+         &quot;&quot;&quot; Send an ack for a packet.
+-        @type packet: C{L{Packet&lt;io.Packet&gt;}}
++        @type packet: C{L{Packet}}
+         &quot;&quot;&quot;
+         # Write ack to socket
+-        ack = io.Packet(skippable=True)
+-        ack.type = io.Packet.PACKET_ACK
+-        ack.writeStr( struct.pack(&quot;!I&quot;, packet.id) )
+-        #if self.debug: log.info(&quot;Send ACK %u.&quot; % ack.id)
++        data = struct.pack(&quot;!I&quot;, packet.id)
++        ack = Packet(data)
++        ack.type = Packet.PACKET_ACK
++        ack.skippable = True        
+         packet.recv_from.send(ack)
+ 
+     def __processNewPacket(self, packet):
+         &quot;&quot;&quot; Do something with a new packet
+-        @type packet: C{L{Packet&lt;io.Packet&gt;}}
++        @type packet: C{L{Packet}}
+         &quot;&quot;&quot;
+         if self.verbose:
+             log.info(&quot;New udp message : %s&quot; % packet.toStr())
+
+Modified: happyboom/trunk/net/io_udp/udp_ping.py
+===================================================================
+--- happyboom/trunk/net/io_udp/udp_ping.py	2005-09-19 22:16:40 UTC (rev 211)
++++ happyboom/trunk/net/io_udp/udp_ping.py	2005-09-19 22:19:00 UTC (rev 212)
+@@ -1,6 +1,6 @@
+ import time
+ import struct
+-from net import io
++from net.io.packet import Packet
+ from happyboom.common.log import log
+ 
+ class UDP_Ping:
+@@ -24,9 +24,9 @@
+ 
+     def getPacket(self):
+         &quot;&quot;&quot; Create a network packet containing the ping. &quot;&quot;&quot;
+-        ping = io.Packet()
++        data = struct.pack(&quot;!I&quot;, self.id)
++        ping = io.Packet(data)
+         ping.type = io.Packet.PACKET_PING
+-        ping.writeStr( struct.pack(&quot;!I&quot;, self.id) )
+         return ping    
+ 
+ class UDP_Pinger:
+@@ -102,9 +102,9 @@
+         &quot;&quot;&quot; Process ping : send pong.
+         @type packet: C{L{Packet&lt;io.Packet&gt;}}
+         &quot;&quot;&quot;
+-        pong = io.Packet(skippable=True)
+-        pong.type = io.Packet.PACKET_PONG
+-        pong.writeStr( packet.data )
++        pong = Packet( packet.data )
++        pong.type = Packet.PACKET_PONG
++        pong.skippable = True        
+         self.client.send(pong)
+         
+     def processPong(self, packet):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000117.html">[Happyboom-svn] r211 - in boomboom: client curses_client curses_client/items
+</A></li>
+	<LI>Next message: <A HREF="000119.html">[Happyboom-svn] r213 - happyboom/trunk/specification
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#118">[ date ]</a>
+              <a href="thread.html#118">[ thread ]</a>
+              <a href="subject.html#118">[ subject ]</a>
+              <a href="author.html#118">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

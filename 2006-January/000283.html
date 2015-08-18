@@ -1,0 +1,741 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r381 - in haypo/hachoir/trunk: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r381%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200601011931.k01JVaUm023430%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000282.html">
+   <LINK REL="Next"  HREF="000284.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r381 - in haypo/hachoir/trunk: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r381%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200601011931.k01JVaUm023430%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r381 - in haypo/hachoir/trunk: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Sun Jan  1 20:31:36 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000282.html">[Happyboom-svn] r380 - haypo/hachoir/trunk/stream
+</A></li>
+        <LI>Next message: <A HREF="000284.html">[Happyboom-svn] r382 - in haypo/hachoir/trunk: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#283">[ date ]</a>
+              <a href="thread.html#283">[ thread ]</a>
+              <a href="subject.html#283">[ subject ]</a>
+              <a href="author.html#283">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-01 20:31:30 +0100 (Sun, 01 Jan 2006)
+New Revision: 381
+
+Added:
+   haypo/hachoir/trunk/bits.py
+   haypo/hachoir/trunk/reverse.py
+Modified:
+   haypo/hachoir/trunk/chunk.py
+   haypo/hachoir/trunk/plugins/worms2.py
+   haypo/hachoir/trunk/text_handler.py
+   haypo/hachoir/trunk/tools.py
+Log:
+- Move all functions about bits into bits.py
+- Create Reverse class which will help for reverse engineering
+
+
+Added: haypo/hachoir/trunk/bits.py
+===================================================================
+--- haypo/hachoir/trunk/bits.py	2006-01-01 16:09:24 UTC (rev 380)
++++ haypo/hachoir/trunk/bits.py	2006-01-01 19:31:30 UTC (rev 381)
+@@ -0,0 +1,79 @@
++def str2hex(value):
++    text = &quot;(hex) &quot;
++    for character in value:
++        if text != &quot;&quot;:
++            text += &quot; &quot;
++        text += &quot;%02X&quot; % ord(character)
++    return text
++
++def countBits(value):
++    &quot;&quot;&quot;
++    0 -&gt; 0 bit
++    1 -&gt; 1 bit
++    2 -&gt; 2 bits
++    4 -&gt; 3 bits
++    ...
++    &quot;&quot;&quot;
++    bits = 0
++    if value &lt; 0:
++        bits += 1
++        value = -value
++    while value &gt;= 1:
++        bits += 1
++        value &gt;&gt;= 1
++    return bits        
++
++def byte2bin(x, reverse=True):
++    text = &quot;&quot;
++    for i in range(0,8):
++        if reverse:
++            mask = 1 &lt;&lt; (7-i)
++        else:
++            mask = 1 &lt;&lt; i
++        if (x &amp; mask) == mask:
++            text += &quot;1&quot;
++        else:
++            text += &quot;0&quot;
++    return text            
++
++def long2bin(value, reverse=True):
++    text = &quot;&quot;
++    while (value != 0 or text == &quot;&quot;):
++        if text != &quot;&quot;:
++            text += &quot; &quot;
++        byte = value &amp; 0xFF            
++        text += byte2bin(byte, not reverse)
++        value &gt;&gt;= 8
++    return text        
++
++def str2bin(value, reverse=False):
++    text = &quot;&quot;
++    for character in value:
++        if text != &quot;&quot;:
++            text += &quot; &quot;
++        byte = ord(character)
++        text += byte2bin(byte, not reverse)
++    return text
++
++def reverseBits(x):
++    y = 0
++    for i in range(0,8):
++        mask = (1 &lt;&lt; i)
++        if (x &amp; mask) == mask:
++            y |= (1 &lt;&lt; (7-i))
++    return y
++
++def str2long(data, reverse_byte=False):
++    &quot;&quot;&quot;
++    Convert a string into a number with big endian order.
++    Eg. &quot;\0\1\2&quot; =&gt; 0x001020
++    &quot;&quot;&quot;
++    shift = 0
++    value = 0
++    for character in data:
++        byte = ord(character)
++        if reverse_byte:
++            byte = reverseBits(byte)
++        value += (byte &lt;&lt; shift) 
++        shift += 8
++    return value        
+
+Modified: haypo/hachoir/trunk/chunk.py
+===================================================================
+--- haypo/hachoir/trunk/chunk.py	2006-01-01 16:09:24 UTC (rev 380)
++++ haypo/hachoir/trunk/chunk.py	2006-01-01 19:31:30 UTC (rev 381)
+@@ -2,7 +2,8 @@
+ import config
+ from format import checkFormat, splitFormat, getFormatSize, getRealFormat, formatIsString, formatIsArray, formatIsInteger, formatIsArray
+ from error import warning, error
+-from tools import convertDataToPrintableString, str2long
++from tools import convertDataToPrintableString
++from bits import str2long
+ 
+ class Chunk(object):
+     &quot;&quot;&quot;
+
+Modified: haypo/hachoir/trunk/plugins/worms2.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/worms2.py	2006-01-01 16:09:24 UTC (rev 380)
++++ haypo/hachoir/trunk/plugins/worms2.py	2006-01-01 19:31:30 UTC (rev 381)
+@@ -14,7 +14,6 @@
+ 
+ # Only for debug purpose
+ from text_handler import binary
+-from tools import str2hex, str2bin
+ 
+ class ImageData(OnDemandFilter):
+     def __init__(self, stream, parent):
+@@ -39,9 +38,7 @@
+         self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
+         size = self[&quot;width&quot;] * self[&quot;height&quot;]
+         self.read(&quot;img_data&quot;, &quot;Data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+-        size = stream.getLastPos() - stream.tell()
+-        if size != 0:
+-            self.read(&quot;end&quot;, &quot;Raw end&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        self.addPadding()
+ 
+     def updateParent(self, chunk):            
+         chunk.description = &quot;Image: %ux%u pixels&quot; % \
+@@ -75,43 +72,42 @@
+         self.read(&quot;zero[]&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
+         flags_b = self.doRead(&quot;flags_b&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;), {&quot;post&quot;: binary}).value
+         import re
++        self.n = 0
+         if flags_b != 0:
+-            n = 1
++            self.n = 1
+             if re.match(&quot;^Batrope&quot;, name) != None:
+-                n = 3
++                self.n = 3
+             elif re.match(&quot;^Homing&quot;, name) != None:
+-                n = 2
++                self.n = 2
+             elif re.match(&quot;^Sheep&quot;, name) != None:
+-                n = 5
++                self.n = 5
+             elif re.match(&quot;^Network&quot;, name) != None:
+-                n = 18
+-            size = n * 12
++                self.n = 18
++        size = self.n * 12
++        if size != 0:
+             self.read(&quot;zero[]&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+         self.x = self.doRead(&quot;x[]&quot;, &quot;Offset X&quot;, (FormatChunk, &quot;uint16&quot;)).value
+         self.y = self.doRead(&quot;y[]&quot;, &quot;Offset Y&quot;, (FormatChunk, &quot;uint16&quot;)).value
+         self.width = self.doRead(&quot;width[]&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;)).value
+         self.height = self.doRead(&quot;height[]&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;)).value
+         self.count = self.doRead(&quot;count&quot;, &quot;Item count&quot;, (FormatChunk, &quot;uint16&quot;)).value
+-        for i in range(0, self.count):
+-            self.read(&quot;item[]&quot;, &quot;Item&quot;, (SpriteItem,))
++#        for i in range(0, self.count):
++#            self.read(&quot;item[]&quot;, &quot;Item&quot;, (SpriteItem,))
+         if False:            
+             real_width = self.width - self.x
+             real_height = self.height - self.y
+             size = real_width * real_height
+-            if size &lt;= (stream.getLastPos() - stream.tell()+1-1):
++            if size &lt;= (stream.getLastPos() - stream.tell()):
+                 self.read(&quot;image_data[]&quot;, &quot;Data (%ux%u pixels)&quot; % (real_width, real_height), (FormatChunk, &quot;string[%u]&quot; % size))
+-        else:                
+-            size = stream.getLastPos() - stream.tell() + 1
++        elif False:                
++            size = stream.getLastPos() - stream.tell()
+             self.read(&quot;raw&quot;, &quot;Raw data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        self.addPadding()
+ 
+-        size = stream.getLastPos() - stream.tell() + 1
+-        if 0 &lt; size:
+-            self.read(&quot;end&quot;, &quot;Raw end&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+-
+     def updateParent(self, chunk):            
+         if self.count is not None:
+-            chunk.description = &quot;Animation: %ux%u pixels, %u frame(s)&quot; % \
+-                (self.width, self.height, self.count)
++            chunk.description = &quot;Animation: n=%u, %ux%u pixels, %u frame(s)&quot; % \
++                (self.n, self.width, self.height, self.count)
+         else:                
+             chunk.description = &quot;Sprite: %ux%u pixels&quot; % \
+                 (self.width, self.height)
+@@ -134,8 +130,7 @@
+                 self.width = image.width
+                 self.height = image.height
+             self.nb_characters += 1
+-        size = stream.getLastPos() - stream.tell() + 1
+-        self.read(&quot;end&quot;, &quot;Raw end&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        self.addPadding()
+ 
+     def updateParent(self, chunk):
+         chunk.description = &quot;Font: %ux%u pixels, %u characters&quot; \
+@@ -166,7 +161,8 @@
+             
+             size = pos + size + 1 - stream.tell()
+             if self.tag in Resource.handler:
+-                sub = stream.createLimited(size=size)
++                #sub = stream.createLimited(size=size)
++                sub = stream.createSub(size=size)
+                 self.read(&quot;data&quot;, &quot;Data&quot;, (Resource.handler[self.tag],), {&quot;stream&quot;: sub})
+             else:
+                 self.read(&quot;data&quot;, &quot;Data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+
+Added: haypo/hachoir/trunk/reverse.py
+===================================================================
+--- haypo/hachoir/trunk/reverse.py	2006-01-01 16:09:24 UTC (rev 380)
++++ haypo/hachoir/trunk/reverse.py	2006-01-01 19:31:30 UTC (rev 381)
+@@ -0,0 +1,359 @@
++from stream.file import FileStream
++from plugins.worms2 import Worms2_Dir_File
++from plugins.gzip import GzipFile
++from format import getFormatSize
++from bits import countBits
++import sys
++
++class IntValues:
++    def __init__(self, data=None):
++        self.items = None
++        self.min = None
++        self.max = None
++        if data != None:
++            self.set(data)
++
++    def hasValue(self, value):
++        return self._in(self.items, value)
++        
++    def _in(self, values, x):
++        if isinstance(values, tuple):
++            return values[0] &lt;= x and x &lt;= values[1]
++        elif isinstance(values, list):
++            result = 0
++            for item in values:
++                if self._in(item, x):
++                    return True
++            return False
++        elif values != None:        
++            return values == x
++        else:
++            return False
++
++    def set(self, value):
++        self.items = None
++        self.min = self.max = None
++        self.add(value)
++
++    def __str__(self):
++        return str(self.items)        
++
++    def isEmpty(self):
++        return self.items == None
++
++    def __len__(self):
++        return self._length(self.items)
++        
++    def _length(self, values):
++        if isinstance(values, tuple):
++            return values[1] - values[0] + 1
++        elif isinstance(values, list):
++            result = 0
++            for item in values:
++                result += self._length(item)
++            return result
++        elif values != None:        
++            return 1 
++        else:
++            return 0
++
++    def values(self):
++        return self._values(self.items)
++        
++    def _values(self, values):
++        if isinstance(values, tuple):
++            return range(values[0], values[1]+1)
++        elif isinstance(values, list):
++            result = []
++            for item in values:
++                result.extend( self._values(item) )
++            return result
++        elif values != None:        
++            return [values]
++        else:
++            return []
++
++    def add(self, new):
++        if isinstance(new, IntValues):
++            new = new.items
++
++        # TODO: Fix that!
++        if isinstance(new, int):
++            if self.min == None or new &lt; self.min:
++                self.min = new
++            if self.max == None or new &gt; self.max:
++                self.max = new
++        elif isinstance(new, tuple):
++            if self.min == None or new[0] &lt; self.min:
++                self.min = new[0]
++            if self.max == None or new[1] &gt; self.max:
++                self.max = new[1]
++
++        if isinstance(self.items, tuple):
++            if isinstance(new, tuple):
++                if self.items[0] &lt;= new[0] and new[1] &lt;= self.items[1]:
++                    return
++                assert False # TODO: Finish ..
++            elif isinstance(new, int):
++                if (new - self.items[1]) == 1:
++                    self.items = (self.items[0], new)
++                else:
++                    self.items = [self.items, new]
++            else:            
++                assert False # TODO: Finish ..
++            return
++        elif isinstance(self.items, list):
++            for index in range(0, len(self.items)):
++                item = self.items[index]
++                if item == new:
++                    return
++                if new &lt; item:
++                    self.items.insert(index-1, new)
++                    return
++ #               if isinstance(item, tuple):
++#                    ...
++            if isinstance(new, list):
++                for item in new:
++                    self.add(item)
++            else:
++                self.items.append(new)
++        elif self.items != None:        
++            if isinstance(self.items, int) and isinstance(new, int):
++                if (self.items-new) == 1:
++                    self.items = (new, self.items)
++                    return
++                elif (self.items-new) == -1:
++                    self.items = (self.items, new)
++                    return
++            self.items = [self.items]
++            self.add(new)
++        else:
++            self.items = new
++
++    def intersection(self, second):
++        first = set( self.values() ) 
++        second = set( second.values() )
++        result = first.intersection(second)
++        result = list(result)
++        return IntValues(result)
++
++class Field:
++    def __init__(self, id):
++        self.id = id    
++        self.values = {}
++        self.streams = {}
++
++    def getStreamsByValue(self, value):
++        return self.streams.get(value, [])
++
++    def getValueByStream(self, stream, default=None):
++        return self.values.get(stream, default)
++
++    def getValues(self):
++        return self.streams.keys()
++
++    def addValue(self, stream, value):
++        self.values[stream] = value
++        if value not in self.streams:
++            self.streams[value] = []
++        self.streams[value].append(stream)
++
++class Reverse:
++    def __init__(self):
++        self.fields = {}
++        self.streams = []
++        
++        # Feeded after analyse
++        self.started = False
++        self.min_size, self.max_size = None, None
++        self.data_range = None
++        self.cst_list = None
++        self.data_list = None
++
++    def _initAnalyse(self, data_range):
++        if self.started:
++            assert data_range == self.data_range
++            return
++        assert 0 &lt; len(self.streams)
++        self.started = True        
++        self.data_range = data_range
++
++        # Find mimimum/maximum stream size
++        self.min_size = self.max_size = self.streams[0].getSize()
++        for stream in self.streams[1:]:
++            size = stream.getSize()
++            if size &lt; self.min_size:
++                self.min_size = size
++            if size &gt; self.max_size:
++                self.max_size = size            
++        assert 1 &lt;= self.min_size                
++
++    def _findConstant(self, streams, data_range):
++        assert 2 &lt;= len(streams)
++
++        # Find mimimum/maximum stream size
++        min_size = streams[0].getSize()
++        for stream in streams[1:]:
++            size = stream.getSize()
++            if size &lt; min_size:
++                min_size = size
++        assert 1 &lt;= min_size                
++
++        # Verify data range
++        if not isinstance(data_range, IntValues):
++            data_range = IntValues(data_range)
++        assert 0 &lt;= data_range.min and data_range.max &lt; min_size
++
++        # Compare streams ...
++        cst_list = IntValues()
++        data_list = IntValues()
++        input = streams[0] 
++        for addr in data_range.values():
++            input.seek(addr)
++            byte = input.getFormat(&quot;uint8&quot;)
++            cst = True
++            for stream in streams[1:]:
++                stream.seek(addr)
++                if stream.getFormat(&quot;uint8&quot;) != byte:
++                    cst = False
++                    break
++            if cst:
++                cst_list.add(addr)
++            else:
++                data_list.add(addr)
++        return (cst_list, data_list)                
++
++    def displayConstant(self, data_range):
++        cst_list, data_list = self._findConstant(self.streams, data_range)
++        stream = self.streams[0]
++        for addr in cst_list.values():
++            stream.seek(addr)
++            byte = stream.getFormat(&quot;uint8&quot;)
++            print &quot;Constant %u: %02X&quot; % (addr, byte)
++
++    def displayData(self, data_range):
++        cst_list, data_list = self._findConstant(self.streams, data_range)
++        for id in self.fields:
++            field = self.fields[id]
++            data = []
++            for stream in self.streams:
++                value = field.getValueByStream(stream)
++                data.append(value)
++            data = [ &quot;%02X&quot; % x for x in data ]
++            data = &quot; &quot;.join(data)
++            print &quot;       %s: %s&quot; % (id, data)
++            
++        for addr in data_list.values():
++            data = []
++            for stream in self.streams:
++                stream.seek(addr)
++                byte = stream.getFormat(&quot;uint8&quot;)
++                data.append(byte)                    
++            data = [ &quot;%02X&quot; % x for x in data ]
++            data = &quot; &quot;.join(data)
++            print &quot;Data %u: %s&quot; % (addr, data)
++
++    def OLDfindField(self, id, data_range):
++        self.cst_list, self.data_list = self._findConstant(self.streams, data_range)
++        field = self.fields[id]
++        values = field.getValues()
++        addr = IntValues()
++        possible_addr = self.data_list
++        first = True
++        for value in values:
++            streams = field.getStreamsByValue(value)
++            if 1&lt;len(streams):
++                cst_list, data_list = self._findConstant(streams, self.data_list)
++            else:
++                cst_list = self.data_list
++            if first:
++                addr.add(cst_list)
++                first = False
++            else:
++                addr = addr.intersection(cst_list)
++            if addr.isEmpty():
++                break            
++        return (addr, possible_addr)
++
++    def findInteger(self, stream, value, range, size_bits):
++        assert size_bits &lt;= 32
++        formats = [&quot;&lt;uint32&quot;, &quot;&gt;uint32&quot;]
++        if size_bits &lt;= 16:
++            formats.extend([&quot;&lt;uint16&quot;, &quot;&gt;uint16&quot;])
++        if size_bits &lt;= 8:
++            formats.append(&quot;uint8&quot;)
++        ok = IntValues()
++        endian = {}
++        for addr in range.values():
++            stream.seek(addr)
++            for format in formats:
++                size = getFormatSize(format)
++                if addr+size &lt;= stream.getLastPos():
++                    read = int( stream.getFormat(format, False) )
++                    if value.hasValue(read):
++                        ok.add(addr)
++        return ok                    
++
++    def findField(self, id, data_range):
++        field = self.fields[id]
++        ok = data_range
++        max_values = map(lambda x: x.max, field.getValues())
++        min_values = map(lambda x: x.min, field.getValues())
++        size_bits = max(countBits(max(max_values)), countBits(min(min_values)))
++        print size_bits
++        for stream in self.streams:
++            value = field.getValueByStream(stream)
++            addr = self.findInteger(stream, value, data_range, size_bits)
++            ok = ok.intersection(addr)
++        return ok            
++
++    def addSource(self, stream, fields={}):
++        assert not self.started
++        self.streams.append(stream)
++        for id in fields:
++            if id not in self.fields:
++                self.fields[id] = Field(id)
++            self.fields[id].addValue(stream, fields[id])
++
++def main():
++    name = '/home/haypo/worms/Gfx.dir'
++    f = open(name, 'r')
++    input = FileStream(f, name)
++    root = Worms2_Dir_File(input, None)
++    res = root[&quot;resources&quot;]
++    reverse = Reverse()
++#    sprite_range = IntValues( [(0,13), 67, 72] )
++    sprite_range = IntValues( (0,72) )
++    for i in sprite_range.values():
++        sprite = res[&quot;res[%u]&quot; % i][&quot;data&quot;]
++        stream = sprite.getStream().createSub(start=sprite.getAddr(), size=sprite.getSize())
++#        assert sprite.n &lt; 5
++        reverse.addSource(stream, {&quot;n&quot;: sprite.n})
++    header = IntValues( (243, 258) )
++    print &quot;Find field in range %s&quot; % header
++#    reverse.displayData(header)        
++#     reverse.displayConstant(header)
++    addr = reverse.findField(&quot;n&quot;, header)
++    print &quot;Address of field n: %s\n(or in %s)&quot; % (addr[0], addr[1])
++
++def loadGZ(filename):
++    f = open(filename, 'r')
++    input = FileStream(f, filename)
++    return GzipFile(input, None) 
++
++def main():
++    reverse = Reverse()
++    for filename in sys.argv[1:]:
++        g = loadGZ(filename)
++        stream = g.getStream()
++        sub = stream.createSub(start=stream.getSize()-50)
++        size = int(g[&quot;size&quot;])
++        size = IntValues( (size-30, size+30) )
++        reverse.addSource(sub, {&quot;size&quot;: size})
++    header = IntValues( (0,49) )
++#    reverse.displayConstant(header)
++    addr = reverse.findField(&quot;size&quot;, header)
++    print &quot;Address of field n: %s&quot; % addr 
++
++if __name__==&quot;__main__&quot;:
++    main()
+
+
+Property changes on: haypo/hachoir/trunk/reverse.py
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Modified: haypo/hachoir/trunk/text_handler.py
+===================================================================
+--- haypo/hachoir/trunk/text_handler.py	2006-01-01 16:09:24 UTC (rev 380)
++++ haypo/hachoir/trunk/text_handler.py	2006-01-01 19:31:30 UTC (rev 381)
+@@ -1,5 +1,6 @@
+ import datetime
+-from tools import humanFilesize as doHumanFilesize, str2bin
++from tools import humanFilesize as doHumanFilesize
++from bits import str2bin
+ 
+ def msdosDatetime(chunk):
+     assert chunk.size == 4
+
+Modified: haypo/hachoir/trunk/tools.py
+===================================================================
+--- haypo/hachoir/trunk/tools.py	2006-01-01 16:09:24 UTC (rev 380)
++++ haypo/hachoir/trunk/tools.py	2006-01-01 19:31:30 UTC (rev 381)
+@@ -1,69 +1,5 @@
+ import traceback, sys, string, re
+ 
+-def reverseBits(x):
+-    y = 0
+-    for i in range(0,8):
+-        mask = (1 &lt;&lt; i)
+-        if (x &amp; mask) == mask:
+-            y |= (1 &lt;&lt; (7-i))
+-    return y
+-
+-def str2long(data, reverse_byte=False):
+-    &quot;&quot;&quot;
+-    Convert a string into a number with big endian order.
+-    Eg. &quot;\0\1\2&quot; =&gt; 0x001020
+-    &quot;&quot;&quot;
+-    shift = 0
+-    value = 0
+-    for character in data:
+-        byte = ord(character)
+-        if reverse_byte:
+-            byte = reverseBits(byte)
+-        value += (byte &lt;&lt; shift) 
+-        shift += 8
+-    return value        
+-
+-
+-def byte2bin(x, reverse=True):
+-    text = &quot;&quot;
+-    for i in range(0,8):
+-        if reverse:
+-            mask = 1 &lt;&lt; (7-i)
+-        else:
+-            mask = 1 &lt;&lt; i
+-        if (x &amp; mask) == mask:
+-            text += &quot;1&quot;
+-        else:
+-            text += &quot;0&quot;
+-    return text            
+-
+-def long2bin(value, reverse=True):
+-    text = &quot;&quot;
+-    while (value != 0 or text == &quot;&quot;):
+-        if text != &quot;&quot;:
+-            text += &quot; &quot;
+-        byte = value &amp; 0xFF            
+-        text += byte2bin(byte, not reverse)
+-        value &gt;&gt;= 8
+-    return text        
+- 
+-def str2bin(value, reverse=False):
+-    text = &quot;&quot;
+-    for character in value:
+-        if text != &quot;&quot;:
+-            text += &quot; &quot;
+-        byte = ord(character)
+-        text += byte2bin(byte, not reverse)
+-    return text
+-
+-def str2hex(value):
+-    text = &quot;(hex) &quot;
+-    for character in value:
+-        if text != &quot;&quot;:
+-            text += &quot; &quot;
+-        text += &quot;%02X&quot; % ord(character)
+-    return text
+-
+ def _regexMaxLength(pattern, in_parenthesis=False):
+     &quot;&quot;&quot;
+     Don't use this function directly, use regexMagLength!
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000282.html">[Happyboom-svn] r380 - haypo/hachoir/trunk/stream
+</A></li>
+	<LI>Next message: <A HREF="000284.html">[Happyboom-svn] r382 - in haypo/hachoir/trunk: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#283">[ date ]</a>
+              <a href="thread.html#283">[ thread ]</a>
+              <a href="subject.html#283">[ subject ]</a>
+              <a href="author.html#283">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

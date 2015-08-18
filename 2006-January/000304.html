@@ -1,0 +1,130 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r400 - in haypo/hachoir/trunk: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r400%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200601062023.k06KNFDl028897%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000303.html">
+   <LINK REL="Next"  HREF="000305.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r400 - in haypo/hachoir/trunk: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r400%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200601062023.k06KNFDl028897%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r400 - in haypo/hachoir/trunk: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Fri Jan  6 21:23:15 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000303.html">[Happyboom-svn] r399 - in haypo/hachoir/trunk: . ui
+</A></li>
+        <LI>Next message: <A HREF="000305.html">[Happyboom-svn] r401 - haypo/hachoir/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#304">[ date ]</a>
+              <a href="thread.html#304">[ thread ]</a>
+              <a href="subject.html#304">[ subject ]</a>
+              <a href="author.html#304">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-06 21:23:14 +0100 (Fri, 06 Jan 2006)
+New Revision: 400
+
+Modified:
+   haypo/hachoir/trunk/plugins/worms2.py
+   haypo/hachoir/trunk/reverse.py
+Log:
+Little bugfix in Worms2, and Worms2 add &quot;(compressed)&quot; in compressed image description.
+
+
+Modified: haypo/hachoir/trunk/plugins/worms2.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/worms2.py	2006-01-06 20:14:11 UTC (rev 399)
++++ haypo/hachoir/trunk/plugins/worms2.py	2006-01-06 20:23:14 UTC (rev 400)
+@@ -52,13 +52,17 @@
+         self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
+         size = self[&quot;width&quot;] * self[&quot;height&quot;]
+         if size &lt;= stream.getRemainSize():
++            self.compressed = False
+             self.read(&quot;img_data&quot;, &quot;Image data: %ux%u pixels in 8 bits/pixels&quot; % (self[&quot;width&quot;], self[&quot;height&quot;]), (FormatChunk, &quot;string[%u]&quot; % size))
++        else:
++            self.compressed = True
+         self.addPadding()
+ 
+     def updateParent(self, chunk):            
+-        chunk.description = &quot;Image: %ux%u pixels&quot; % \
+-            (self[&quot;width&quot;], self[&quot;height&quot;])
+-
++        desc = &quot;Image: %ux%u pixels&quot; % (self[&quot;width&quot;], self[&quot;height&quot;])
++        if self.compressed:
++            desc += &quot; (compressed)&quot;
++        chunk.description = desc 
+ class Step(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;sprite_item&quot;, &quot;Sprite item&quot;, stream, parent, &quot;&lt;&quot;)
+@@ -268,7 +272,7 @@
+         if use_bank:
+             for i in range(0, self[&quot;nb_char&quot;]):
+                 image = self[&quot;image[%u]&quot; % i]
+-                size = image.width * image.height
++                size = image[&quot;width&quot;] * image[&quot;height&quot;]
+                 self.read(&quot;image_data[]&quot;, &quot;Image data content&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+         self.addPadding()
+ 
+
+Modified: haypo/hachoir/trunk/reverse.py
+===================================================================
+--- haypo/hachoir/trunk/reverse.py	2006-01-06 20:14:11 UTC (rev 399)
++++ haypo/hachoir/trunk/reverse.py	2006-01-06 20:23:14 UTC (rev 400)
+@@ -6,6 +6,7 @@
+ from error import error, warning
+ from chunk import FormatChunk
+ from default import EmptyFilter
++from tools import humanFilesize
+ import config
+ import sys, math
+ 
+@@ -17,7 +18,8 @@
+         count[ chr(i) ] = 0
+     p = []
+     if 1024 * 1024 &lt; stream.getSize():
+-        warning(&quot;Warning: Computing entropy is slow, be patient ...&quot;)
++        size = humanFilesize(stream.getSize())
++        warning(&quot;Warning: Computing entropy of %s of data is slow, please be patient ...&quot; % size)
+     stream.seek(0)
+     n = 0
+     while not stream.eof():
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000303.html">[Happyboom-svn] r399 - in haypo/hachoir/trunk: . ui
+</A></li>
+	<LI>Next message: <A HREF="000305.html">[Happyboom-svn] r401 - haypo/hachoir/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#304">[ date ]</a>
+              <a href="thread.html#304">[ thread ]</a>
+              <a href="subject.html#304">[ subject ]</a>
+              <a href="author.html#304">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

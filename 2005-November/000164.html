@@ -1,0 +1,223 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r257 - greycstoration_gimp
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r257%20-%20greycstoration_gimp&In-Reply-To=%3C200511212146.jALLknvk020762%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000163.html">
+   <LINK REL="Next"  HREF="000183.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r257 - greycstoration_gimp</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r257%20-%20greycstoration_gimp&In-Reply-To=%3C200511212146.jALLknvk020762%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r257 - greycstoration_gimp">haypo at berlios.de
+       </A><BR>
+    <I>Mon Nov 21 22:46:49 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000163.html">[Happyboom-svn] r256 - haypo/mediawiki
+</A></li>
+        <LI>Next message: <A HREF="000183.html">[Happyboom-svn] r258 - in greycstoration_gimp: . src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#164">[ date ]</a>
+              <a href="thread.html#164">[ thread ]</a>
+              <a href="subject.html#164">[ subject ]</a>
+              <a href="author.html#164">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-21 22:46:49 +0100 (Mon, 21 Nov 2005)
+New Revision: 257
+
+Modified:
+   greycstoration_gimp/dialog.cpp
+   greycstoration_gimp/greycstoration.cpp
+   greycstoration_gimp/image.cpp
+   greycstoration_gimp/main.cpp
+Log:
+Commit patch of Thomas de Grenier de Latour (first part).
+
+
+Modified: greycstoration_gimp/dialog.cpp
+===================================================================
+--- greycstoration_gimp/dialog.cpp	2005-11-17 21:20:01 UTC (rev 256)
++++ greycstoration_gimp/dialog.cpp	2005-11-21 21:46:49 UTC (rev 257)
+@@ -17,17 +17,18 @@
+  * Boston, MA 02111-1307, USA.
+  */
+ 
++#ifdef HAVE_CONFIG_H
++#include &quot;config.h&quot;
++#endif
++
++#include &quot;plugin-intl.h&quot;
++
+ #include &lt;stdio.h&gt;
+ 
+ #include &quot;dialog.h&quot;
+ //----------------------------------------------------------------------------
+-
+-// Future gettext use
+-#define _(X) X
+-
+ #include &quot;image.h&quot;
+ #include &quot;greycstoration.h&quot;
+-#include &quot;plug_in.h&quot;
+ #include &lt;libgimp/gimp.h&gt;
+ #include &lt;libgimp/gimpui.h&gt;
+ #include &lt;gtk/gtk.h&gt;
+@@ -127,7 +128,7 @@
+ 	TABLE_SCALE(1, _(&quot;_Gradient factor (p2):&quot;), float, params.power2, 0, 100, 0.1, 1, SCALE_DIGITS);
+ 	TABLE_SCALE(2, _(&quot;_Time step (dt):&quot;), float, params.dt, 1, 300, 10, 25, SCALE_DIGITS);
+ 	TABLE_SCALE(3, _(&quot;_Blur (sigma):&quot;), float, params.sigma, 0, 10, 0.2, 1, SCALE_DIGITS);
+-	TABLE_SCALE(4, _(&quot;_Blur iterations (iter) :&quot;), int, params.nb_iter, 1, 5, 1, 2, 0);
++	TABLE_SCALE(4, _(&quot;Blur _iterations (iter) :&quot;), int, params.nb_iter, 1, 5, 1, 2, 0);
+ }
+ 
+ void dialog_page2 (GREYCstoration_params &amp;params, GtkWidget *notebook, GtkWidget *preview)
+@@ -182,12 +183,12 @@
+ 	GtkWidget *main_vbox;
+ 
+ 	// New dialog
+-	gimp_ui_init (PLUG_IN_NAME, false);
++	gimp_ui_init (PLUGIN_NAME, false);
+ 	dialog = gimp_dialog_new(
+ 			_(&quot;GREYCstoration&quot;), 
+-			PLUG_IN_NAME,
++			PLUGIN_NAME,
+ 			NULL, (GtkDialogFlags)0,
+-			gimp_standard_help_func, &quot;plug-in-&quot; PLUG_IN_NAME,
++			gimp_standard_help_func, &quot;plug-in-&quot; PLUGIN_NAME,
+ 			GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+ 			GTK_STOCK_OK,     GTK_RESPONSE_OK,
+ 			NULL);
+
+Modified: greycstoration_gimp/greycstoration.cpp
+===================================================================
+--- greycstoration_gimp/greycstoration.cpp	2005-11-17 21:20:01 UTC (rev 256)
++++ greycstoration_gimp/greycstoration.cpp	2005-11-21 21:46:49 UTC (rev 257)
+@@ -17,6 +17,10 @@
+  * Boston, MA 02111-1307, USA.
+  */
+ 
++#ifdef HAVE_CONFIG_H
++#include &quot;config.h&quot;
++#endif
++
+ #include &quot;greycstoration.h&quot;
+ //----------------------------------------------------------------------------
+ using namespace cimg_library;
+
+Modified: greycstoration_gimp/image.cpp
+===================================================================
+--- greycstoration_gimp/image.cpp	2005-11-17 21:20:01 UTC (rev 256)
++++ greycstoration_gimp/image.cpp	2005-11-21 21:46:49 UTC (rev 257)
+@@ -17,6 +17,10 @@
+  * Boston, MA 02111-1307, USA.
+  */
+ 
++#ifdef HAVE_CONFIG_H
++#include &quot;config.h&quot;
++#endif
++
+ #include &quot;image.h&quot;
+ //----------------------------------------------------------------------------
+ 
+
+Modified: greycstoration_gimp/main.cpp
+===================================================================
+--- greycstoration_gimp/main.cpp	2005-11-17 21:20:01 UTC (rev 256)
++++ greycstoration_gimp/main.cpp	2005-11-21 21:46:49 UTC (rev 257)
+@@ -17,8 +17,12 @@
+  * Boston, MA 02111-1307, USA.
+  */
+ 
++#ifdef HAVE_CONFIG_H
++#include &quot;config.h&quot;
++#endif
++#include &quot;plugin-intl.h&quot;
++
+ #include &lt;libgimp/gimp.h&gt;
+-#include &quot;plug_in.h&quot;
+ #include &quot;dialog.h&quot;
+ #include &quot;greycstoration.h&quot;
+ #include &lt;unistd.h&gt;
+@@ -72,7 +76,7 @@
+ 	};
+ 	gimp_install_procedure (
+ 			&quot;plug_in_hello&quot;,
+-			PLUG_IN_NAME,
++			PLUGIN_NAME,
+ 			&quot;Filtre Greystoration&quot;,
+ 			&quot;Victor STINNER&quot;,
+ 			&quot;Copyright Victor STINNER&quot;,
+@@ -99,6 +103,13 @@
+ 	   non-interactive */
+ 	nice(19);
+ 
++	/*  Initialize i18n support  */
++	bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
++#ifdef HAVE_BIND_TEXTDOMAIN_CODESET
++	bind_textdomain_codeset (GETTEXT_PACKAGE, &quot;UTF-8&quot;);
++#endif
++	textdomain (GETTEXT_PACKAGE);
++
+ 	/* Mise en place d'une valeur obligatoire de retour */
+ 	*nreturn_vals = 1;
+ 	*return_vals = values;
+@@ -112,9 +123,9 @@
+ 	switch (image.run_mode)
+ 	{
+ 		case GIMP_RUN_INTERACTIVE:
+-			gimp_get_data(&quot;plug_in_&quot; PLUG_IN_NAME, &amp;greyc_params);
++			gimp_get_data(&quot;plug_in_&quot; PLUGIN_NAME, &amp;greyc_params);
+ 			if (!dialog(greyc_params, drawable)) return;
+-			gimp_set_data(&quot;plug_in_&quot; PLUG_IN_NAME, &amp;greyc_params, sizeof(greyc_params));
++			gimp_set_data(&quot;plug_in_&quot; PLUGIN_NAME, &amp;greyc_params, sizeof(greyc_params));
+ 			break;
+ 			
+ 		case GIMP_RUN_NONINTERACTIVE:
+@@ -122,7 +133,7 @@
+ 			break;
+ 
+ 		case GIMP_RUN_WITH_LAST_VALS:
+-			gimp_get_data(&quot;plug_in_&quot; PLUG_IN_NAME, &amp;greyc_params);
++			gimp_get_data(&quot;plug_in_&quot; PLUGIN_NAME, &amp;greyc_params);
+ 			break;
+ 		default: return;
+ 	}
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000163.html">[Happyboom-svn] r256 - haypo/mediawiki
+</A></li>
+	<LI>Next message: <A HREF="000183.html">[Happyboom-svn] r258 - in greycstoration_gimp: . src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#164">[ date ]</a>
+              <a href="thread.html#164">[ thread ]</a>
+              <a href="subject.html#164">[ subject ]</a>
+              <a href="author.html#164">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

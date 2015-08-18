@@ -1,0 +1,1168 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r238 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-October/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r238%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200510310225.j9V2P8GX016135%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000144.html">
+   <LINK REL="Next"  HREF="000146.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r238 - in haypo/hachoir: . plugins</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r238%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200510310225.j9V2P8GX016135%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r238 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Mon Oct 31 03:25:08 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000144.html">[Happyboom-svn] r237 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000146.html">[Happyboom-svn] r239 - haypo/hachoir
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#145">[ date ]</a>
+              <a href="thread.html#145">[ thread ]</a>
+              <a href="subject.html#145">[ subject ]</a>
+              <a href="author.html#145">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-10-31 03:25:04 +0100 (Mon, 31 Oct 2005)
+New Revision: 238
+
+Added:
+   haypo/hachoir/default.py
+   haypo/hachoir/format.py
+   haypo/hachoir/ui_new_chunk.py
+   haypo/hachoir/ui_popup.py
+Modified:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/filter.py
+   haypo/hachoir/hachoir.glade
+   haypo/hachoir/hachoir.py
+   haypo/hachoir/plugins/gif.py
+   haypo/hachoir/plugins/png.py
+   haypo/hachoir/plugins/tar.py
+   haypo/hachoir/stream.py
+   haypo/hachoir/ui.py
+Log:
+New popup menu (right click) which allows to set chunk type and create new
+chunk.
+
+
+Modified: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-10-30 14:24:43 UTC (rev 237)
++++ haypo/hachoir/chunk.py	2005-10-31 02:25:04 UTC (rev 238)
+@@ -10,7 +10,11 @@
+         self._size = size
+         self._addr = addr
+         self._parent = parent
++        self._stream = stream
+ 
++    def update(self):
++        raise Exception(&quot;Chunk of type %s doesn't implement the method update()!&quot; % self.__class__)
++
+     def __str__(self):
+         return &quot;Chunk(%s) &lt;addr=%s, size=%s, id=%s, description=%s&gt;&quot; % \
+             (self.__class__, self._addr, self.size, self.id, self.description)
+@@ -18,16 +22,21 @@
+     def getRawData(self, max_size=None):
+         return None
+         
++    def getStream(self):
++        return self._stream
++
+     def getData(self, max_size=None):
+         return None
+ 
+     def getDisplayData(self):
+         return self.getData()
+ 
++    def getParent(self): return self._parent
++    def _setAddr(self, addr): self._addr = addr
+     def _getAddr(self): return self._addr
+     def _getSize(self):
+         return self._size
+-    addr = property(_getAddr)        
++    addr = property(_getAddr, _setAddr)        
+     size = property(_getSize)        
+     
+ class ArrayChunk(Chunk):
+@@ -35,6 +44,28 @@
+         Chunk.__init__(self, id, description, stream, stream.tell(), 0, parent)
+         self._array = array
+ 
++    def update(self):
++        prev_chunk = None
++        pos = 0
++        try:
++            for chunk in self._array:
++                if prev_chunk != None:
++                    chunk.addr = prev_chunk.addr + prev_chunk.size
++                else:
++                    chunk.addr = self.addr
++                chunk.update()
++                prev_chunk = chunk
++                pos = pos + 1
++        except Exception, msg:
++            print &quot;Exception while updating an array:\n%s&quot; % msg
++            chunk = self._array[pos]
++            addr = chunk.addr
++            size = self._stream.getSize() - addr
++            del self._array[pos:]
++            if size != 0:
++                chunk = FormatChunk(&quot;raw&quot;, &quot;Raw data&quot;, chunk.getStream(), addr, &quot;!%us&quot; % size, self)
++                self._array.append(chunk)
++
+     def _getSize(self):
+         size = 0
+         for item in self._array:
+@@ -52,7 +83,18 @@
+     def __init__(self, id, description, stream, filter):
+         Chunk.__init__(self, id, description, stream, filter.getAddr(), filter.getSize(), filter)
+         self._filter = filter
++
++    def update(self):
++        filter_class = self._filter.__class__
++        stream = self._filter.getStream()
++        stream.seek(self.addr)
++        self._filter = filter_class(stream, self._filter.getParent())
++        self._filter.updateParent(self)
+         
++    def _getSize(self):
++        return self._filter.getSize()
++    size = property(_getSize)        
++        
+     def getDisplayData(self):
+         return &quot;(...)&quot; 
+         
+@@ -70,18 +112,46 @@
+         self.__format = format
+         self.value = None
+ 
++    def update(self):
++        # Don't need to do anything
++        pass
++
+     def _getSize(self):
+-        return struct.calcsize(self._getRealFormat())
++        return struct.calcsize(self.getRealFormat())
+     size = property(_getSize)        
+ 
+-    def _getRealFormat(self):
++    def getRealFormat(self):
+         return re.sub(r'\{([^}]+)\}', self.__replaceFieldFormat, self.__format)
+ 
+     def getFormat(self): return self.__format
++    
++    def checkFormat(self, format):
++        m = re.compile(&quot;^[!&lt;&gt;]?([0-9]+|\{[a-z_]+\})?[BHLs]$&quot;).match(format)
++        return (m != None)
++        
++    def setFormat(self, format, method):
++        &quot;&quot;&quot; Method:
++        - split =&gt; create new raw array if chunk is smaller
++        - rescan =&gt; if size changed, rescan chunks&quot;&quot;&quot;
++        old_size = self.size
++        if not self.checkFormat(format):
++            print &quot;Wrong format: \&quot;%s\&quot;!&quot; % format
++            return
++        self.__format = format
++        new_size = self.size
++        diff_size = new_size - old_size
++        if diff_size != 0:
++            if method == &quot;split&quot; and diff_size &lt; 0:
++                self._parent.addRawChunk(self, -diff_size)
++            else:
++                self._parent.rescan(self)
++        self._parent.redisplay()
+ 
+     def isArray(self):
+         if self.isString(): return False
+-        return re.compile(&quot;^.?[0-9]+.*$&quot;).match(self.__format) != None
++        m = re.compile(&quot;^.?([0-9]+)[^0-9]+$&quot;).match(self.__format)
++        if m == None: return False
++        return m.group(1) != &quot;1&quot;
+         
+     def isString(self):
+         return self.__format[-1] == &quot;s&quot;
+@@ -103,7 +173,7 @@
+     def getData(self, max_size=None):
+         data, truncated = self.getRawData(max_size)
+         if not truncated:
+-            format = self._getRealFormat()
++            format = self.getRealFormat()
+             data = struct.unpack(format, data)
+             if not self.isArray():
+                 data = data[0]
+@@ -113,6 +183,8 @@
+ #        if self.id == None: return &quot;-&quot;
+         data = self.getData(20)
+         if type(data)==types.StringType:
++            if len(data) == 0:
++                return &quot;(empty)&quot;
+             display = &quot;&quot;
+             for c in data:
+                 if ord(c)&lt;32:
+
+Added: haypo/hachoir/default.py
+===================================================================
+--- haypo/hachoir/default.py	2005-10-30 14:24:43 UTC (rev 237)
++++ haypo/hachoir/default.py	2005-10-31 02:25:04 UTC (rev 238)
+@@ -0,0 +1,10 @@
++from filter import Filter
++
++def displayDefault(data):
++    pass
++
++class DefaultFilter(Filter):
++    def __init__(self, stream):
++        Filter.__init__(self, &quot;default&quot;, &quot;Default filter&quot;, stream, None)
++        size = stream.getSize()
++        self.read(&quot;data&quot;, &quot;!%us&quot; % size, &quot;Data&quot;, True)
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-10-30 14:24:43 UTC (rev 237)
++++ haypo/hachoir/filter.py	2005-10-31 02:25:04 UTC (rev 238)
+@@ -31,6 +31,58 @@
+         self._chunks_dict = {}
+         self._addr = self._stream.tell()
+ 
++    def getUniqChunkId(self, id):
++        if id not in self._chunks_dict: return id
++        m = re.compile(&quot;^(.*)([0-9]+)$&quot;).match(id)
++        if m != None:
++            root = m.group(1)
++            uniq = int(m.group(2))+1
++        else:
++            root = id
++            uniq = 2
++        new_id = &quot;%s%u&quot; % (root, uniq)
++        while new_id in self._chunks_dict:
++            uniq = uniq+1
++            new_id = &quot;%s%u&quot; % (root, uniq)
++        return new_id 
++
++    def addRawChunk(self, prev_chunk, size):
++        id = self.getUniqChunkId(&quot;raw&quot;)
++        addr = prev_chunk.addr + prev_chunk.size
++        chunk = FormatChunk(id, &quot;Raw data&quot;, self.getStream(), addr, &quot;!%us&quot; % size, self)
++        chunk_pos = self._chunks.index(prev_chunk)+1
++        self._appendChunk(chunk, position=chunk_pos)
++
++    def rescan(self, from_chunk):
++        print &quot;Rescan filter ...&quot;
++        if from_chunk != None:
++            start = self._chunks.index(from_chunk)+1
++            prev_chunk = from_chunk
++        else:
++            start = 0
++            prev_chunk = None
++        pos = start
++        try:
++            for chunk in self._chunks[start:]:
++                # Update start address
++                if prev_chunk != None:
++                    print &quot;New addr = %s + %s&quot; % (prev_chunk.addr, prev_chunk.size) 
++                    chunk.addr = prev_chunk.addr + prev_chunk.size
++                else:
++                    chunk.addr = self.addr
++                print &quot;Update chunk [addr=%s,id=%s]&quot; % (chunk.addr, chunk.id)
++                chunk.update()
++                prev_chunk = chunk
++                pos = pos + 1
++        except Exception, msg:
++            print &quot;Exception while updating a filter:\n%s&quot; % msg
++            chunk = self._chunks[pos]
++            size = self._stream.getSize() - chunk.addr
++            del self._chunks[pos:]
++            if size != 0:
++                chunk = FormatChunk(&quot;raw&quot;, &quot;Raw data&quot;, chunk.getStream(), chunk.addr, &quot;!%us&quot; % size, self)
++                self._appendChunk(chunk)
++
+     def getAddr(self):
+         return self._addr
+ 
+@@ -40,11 +92,17 @@
+             size = size + chunk.size
+         return size
+ 
+-    def updateParent(self, parent, chunk):
++    def updateParent(self, chunk):
+         pass
+ 
+     def getChunk(self, chunk_id):
+-        return self._chunks_dict.get(chunk_id, None)
++        m = re.compile(r&quot;^([^[]+)\[([0-9]+)\]$&quot;).match(chunk_id)
++        if m != None:
++            array = self._chunks_dict.get(m.group(1), None)
++            if array == None: return None
++            return array[int(m.group(2))]
++        else:
++            return self._chunks_dict.get(chunk_id, None)
+ 
+     def displayChunk(self, chunk):
+         type = chunk.__class__
+@@ -54,6 +112,9 @@
+             type = chunk.getFilter().id
+         ui.ui.add_table(self.table_parent, chunk.addr, chunk.size, type, chunk.id, chunk.description, chunk.getDisplayData())
+ 
++    def redisplay(self):  
++        self.display()
++
+     def display(self):  
+         # Update parent button
+         ui.ui.enableParentButton(self.getParent() != None)
+@@ -104,8 +165,11 @@
+         line = getattr(self, id)
+         setattr(self, id, line[:-len(eol)])
+ 
+-    def _appendChunk(self, chunk, can_truncate=False):
+-        self._chunks.append(chunk)
++    def _appendChunk(self, chunk, can_truncate=False, position=None):
++        if position != None:
++            self._chunks.insert(position, chunk)
++        else:
++            self._chunks.append(chunk)
+         id = chunk.id
+         if id != None:
+             m = re.compile(r&quot;^([^[]+)\[\]$&quot;).match(id)
+@@ -135,7 +199,7 @@
+         filter = filter_class(self._stream, self)
+         chunk = FilterChunk(id, filter.description, self._stream, filter)
+         self._appendChunk(chunk)
+-        filter.updateParent(self, chunk)
++        filter.updateParent(chunk)
+         self._stream.seek(chunk.addr + chunk.size)
+ 
+     def readArray(self, id, filter_class, description, end_func): 
+@@ -154,7 +218,7 @@
+             last_filter = filter
+ 
+         for chunk in array:
+-            chunk.getFilter().updateParent(self, chunk)
++            chunk.getFilter().updateParent(chunk)
+         self._stream.seek(array_chunk.addr + array_chunk.size)
+     
+     def read(self, id, format, description, can_truncate=True):
+@@ -178,4 +242,7 @@
+     def getParent(self):
+         return self._parent
+ 
++    def getStream(self):
++        return self._stream
++
+ display_filter_actions = 1
+
+Added: haypo/hachoir/format.py
+===================================================================
+--- haypo/hachoir/format.py	2005-10-30 14:24:43 UTC (rev 237)
++++ haypo/hachoir/format.py	2005-10-31 02:25:04 UTC (rev 238)
+@@ -0,0 +1,15 @@
++import re
++
++def checkFormat(format):
++    m = re.compile(&quot;^[!&lt;&gt;]?(?:[0-9]+|\{[a-z_]+\})?[BHLs]$&quot;).match(format)
++    return m != None
++
++def splitFormat(format):
++    m = re.compile(&quot;^([!&lt;&gt;]?)((?:[0-9]+|\{[a-z_]+\})?)([BHLs])$&quot;).match(format)
++    if m == None: return None
++    endian = m.group(1)
++    if endian==&quot;&quot;: endian=&quot;!&quot;
++    size = m.group(2)
++#    if size == &quot;&quot;: size = 1
++    type = m.group(3)
++    return (endian, size, type,)
+
+Modified: haypo/hachoir/hachoir.glade
+===================================================================
+--- haypo/hachoir/hachoir.glade	2005-10-30 14:24:43 UTC (rev 237)
++++ haypo/hachoir/hachoir.glade	2005-10-31 02:25:04 UTC (rev 238)
+@@ -166,64 +166,186 @@
+   &lt;/child&gt;
+ &lt;/widget&gt;
+ 
+-&lt;widget class=&quot;GtkWindow&quot; id=&quot;about_window&quot;&gt;
+-  &lt;property name=&quot;title&quot; translatable=&quot;yes&quot;&gt;About Hachoir&lt;/property&gt;
++&lt;widget class=&quot;GtkMenu&quot; id=&quot;table_popup&quot;&gt;
++
++  &lt;child&gt;
++    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;new_chunk&quot;&gt;
++      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;_New chunk&lt;/property&gt;
++      &lt;property name=&quot;use_underline&quot;&gt;True&lt;/property&gt;
++      &lt;signal name=&quot;activate&quot; handler=&quot;onNewChunk&quot; last_modification_time=&quot;Sun, 30 Oct 2005 23:08:19 GMT&quot;/&gt;
++
++      &lt;child internal-child=&quot;image&quot;&gt;
++	&lt;widget class=&quot;GtkImage&quot; id=&quot;image3&quot;&gt;
++	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	  &lt;property name=&quot;stock&quot;&gt;gtk-cut&lt;/property&gt;
++	  &lt;property name=&quot;icon_size&quot;&gt;1&lt;/property&gt;
++	  &lt;property name=&quot;xalign&quot;&gt;0.5&lt;/property&gt;
++	  &lt;property name=&quot;yalign&quot;&gt;0.5&lt;/property&gt;
++	  &lt;property name=&quot;xpad&quot;&gt;0&lt;/property&gt;
++	  &lt;property name=&quot;ypad&quot;&gt;0&lt;/property&gt;
++	&lt;/widget&gt;
++      &lt;/child&gt;
++    &lt;/widget&gt;
++  &lt;/child&gt;
++
++  &lt;child&gt;
++    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;join_chunks&quot;&gt;
++      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;_Join chunks&lt;/property&gt;
++      &lt;property name=&quot;use_underline&quot;&gt;True&lt;/property&gt;
++      &lt;signal name=&quot;activate&quot; handler=&quot;onJoinChunks&quot; last_modification_time=&quot;Sun, 30 Oct 2005 23:08:19 GMT&quot;/&gt;
++
++      &lt;child internal-child=&quot;image&quot;&gt;
++	&lt;widget class=&quot;GtkImage&quot; id=&quot;image4&quot;&gt;
++	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	  &lt;property name=&quot;stock&quot;&gt;gtk-go-up&lt;/property&gt;
++	  &lt;property name=&quot;icon_size&quot;&gt;1&lt;/property&gt;
++	  &lt;property name=&quot;xalign&quot;&gt;0.5&lt;/property&gt;
++	  &lt;property name=&quot;yalign&quot;&gt;0.5&lt;/property&gt;
++	  &lt;property name=&quot;xpad&quot;&gt;0&lt;/property&gt;
++	  &lt;property name=&quot;ypad&quot;&gt;0&lt;/property&gt;
++	&lt;/widget&gt;
++      &lt;/child&gt;
++    &lt;/widget&gt;
++  &lt;/child&gt;
++
++  &lt;child&gt;
++    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;set_chunk_format&quot;&gt;
++      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Set chunk _format&lt;/property&gt;
++      &lt;property name=&quot;use_underline&quot;&gt;True&lt;/property&gt;
++      &lt;signal name=&quot;activate&quot; handler=&quot;onSetFormat&quot; last_modification_time=&quot;Sun, 30 Oct 2005 23:27:49 GMT&quot;/&gt;
++
++      &lt;child internal-child=&quot;image&quot;&gt;
++	&lt;widget class=&quot;GtkImage&quot; id=&quot;image5&quot;&gt;
++	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	  &lt;property name=&quot;stock&quot;&gt;gtk-edit&lt;/property&gt;
++	  &lt;property name=&quot;icon_size&quot;&gt;1&lt;/property&gt;
++	  &lt;property name=&quot;xalign&quot;&gt;0.5&lt;/property&gt;
++	  &lt;property name=&quot;yalign&quot;&gt;0.5&lt;/property&gt;
++	  &lt;property name=&quot;xpad&quot;&gt;0&lt;/property&gt;
++	  &lt;property name=&quot;ypad&quot;&gt;0&lt;/property&gt;
++	&lt;/widget&gt;
++      &lt;/child&gt;
++    &lt;/widget&gt;
++  &lt;/child&gt;
++&lt;/widget&gt;
++
++&lt;widget class=&quot;GtkAboutDialog&quot; id=&quot;about_dialog&quot;&gt;
++  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++  &lt;property name=&quot;destroy_with_parent&quot;&gt;True&lt;/property&gt;
++  &lt;property name=&quot;name&quot; translatable=&quot;yes&quot;&gt;Hachoir version 2005-10-30&lt;/property&gt;
++  &lt;property name=&quot;copyright&quot; translatable=&quot;yes&quot;&gt;Copyright 2005 Victor Stinner&lt;/property&gt;
++  &lt;property name=&quot;comments&quot; translatable=&quot;yes&quot;&gt;Split binary stream into chunks ...&lt;/property&gt;
++  &lt;property name=&quot;license&quot; translatable=&quot;yes&quot;&gt;Under GNU GPL licence&lt;/property&gt;
++  &lt;property name=&quot;website&quot;&gt;<A HREF="http://www.haypocalc.com/wiki/Hachoir&lt;/property">http://www.haypocalc.com/wiki/Hachoir&lt;/property</A>&gt;
++  &lt;property name=&quot;website_label&quot; translatable=&quot;yes&quot;&gt;Website&lt;/property&gt;
++  &lt;property name=&quot;authors&quot;&gt;Victor Stinner &lt;victor.stinner AT haypocalc.com&gt;&lt;/property&gt;
++  &lt;property name=&quot;translator_credits&quot; translatable=&quot;yes&quot; comments=&quot;TRANSLATORS: Replace this string with your names, one name per line.&quot;&gt;translator-credits&lt;/property&gt;
++&lt;/widget&gt;
++
++&lt;widget class=&quot;GtkDialog&quot; id=&quot;new_chunk&quot;&gt;
++  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++  &lt;property name=&quot;title&quot; translatable=&quot;yes&quot;&gt;New chunk&lt;/property&gt;
+   &lt;property name=&quot;type&quot;&gt;GTK_WINDOW_TOPLEVEL&lt;/property&gt;
+   &lt;property name=&quot;window_position&quot;&gt;GTK_WIN_POS_NONE&lt;/property&gt;
+-  &lt;property name=&quot;modal&quot;&gt;True&lt;/property&gt;
++  &lt;property name=&quot;modal&quot;&gt;False&lt;/property&gt;
+   &lt;property name=&quot;resizable&quot;&gt;True&lt;/property&gt;
+   &lt;property name=&quot;destroy_with_parent&quot;&gt;False&lt;/property&gt;
+   &lt;property name=&quot;decorated&quot;&gt;True&lt;/property&gt;
+   &lt;property name=&quot;skip_taskbar_hint&quot;&gt;False&lt;/property&gt;
+   &lt;property name=&quot;skip_pager_hint&quot;&gt;False&lt;/property&gt;
+-  &lt;property name=&quot;type_hint&quot;&gt;GDK_WINDOW_TYPE_HINT_NORMAL&lt;/property&gt;
++  &lt;property name=&quot;type_hint&quot;&gt;GDK_WINDOW_TYPE_HINT_DIALOG&lt;/property&gt;
+   &lt;property name=&quot;gravity&quot;&gt;GDK_GRAVITY_NORTH_WEST&lt;/property&gt;
+   &lt;property name=&quot;focus_on_map&quot;&gt;True&lt;/property&gt;
++  &lt;property name=&quot;has_separator&quot;&gt;True&lt;/property&gt;
+ 
+-  &lt;child&gt;
+-    &lt;widget class=&quot;GtkVBox&quot; id=&quot;vbox3&quot;&gt;
++  &lt;child internal-child=&quot;vbox&quot;&gt;
++    &lt;widget class=&quot;GtkVBox&quot; id=&quot;dialog-vbox1&quot;&gt;
+       &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+       &lt;property name=&quot;homogeneous&quot;&gt;False&lt;/property&gt;
+       &lt;property name=&quot;spacing&quot;&gt;0&lt;/property&gt;
+ 
+-      &lt;child&gt;
+-	&lt;widget class=&quot;GtkNotebook&quot; id=&quot;notebook1&quot;&gt;
++      &lt;child internal-child=&quot;action_area&quot;&gt;
++	&lt;widget class=&quot;GtkHButtonBox&quot; id=&quot;dialog-action_area1&quot;&gt;
+ 	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-	  &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
+-	  &lt;property name=&quot;show_tabs&quot;&gt;True&lt;/property&gt;
+-	  &lt;property name=&quot;show_border&quot;&gt;True&lt;/property&gt;
+-	  &lt;property name=&quot;tab_pos&quot;&gt;GTK_POS_TOP&lt;/property&gt;
+-	  &lt;property name=&quot;scrollable&quot;&gt;False&lt;/property&gt;
+-	  &lt;property name=&quot;enable_popup&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;layout_style&quot;&gt;GTK_BUTTONBOX_END&lt;/property&gt;
+ 
+ 	  &lt;child&gt;
+-	    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label4&quot;&gt;
++	    &lt;widget class=&quot;GtkButton&quot; id=&quot;cancelbutton1&quot;&gt;
+ 	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-	      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Hachoir is a program of Victor Stinner, aka haypo.&lt;/property&gt;
+-	      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
+-	      &lt;property name=&quot;wrap&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;selectable&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;xalign&quot;&gt;0.5&lt;/property&gt;
+-	      &lt;property name=&quot;yalign&quot;&gt;0.5&lt;/property&gt;
+-	      &lt;property name=&quot;xpad&quot;&gt;10&lt;/property&gt;
+-	      &lt;property name=&quot;ypad&quot;&gt;10&lt;/property&gt;
+-	      &lt;property name=&quot;ellipsize&quot;&gt;PANGO_ELLIPSIZE_NONE&lt;/property&gt;
+-	      &lt;property name=&quot;width_chars&quot;&gt;-1&lt;/property&gt;
+-	      &lt;property name=&quot;single_line_mode&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;can_default&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;label&quot;&gt;gtk-cancel&lt;/property&gt;
++	      &lt;property name=&quot;use_stock&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;relief&quot;&gt;GTK_RELIEF_NORMAL&lt;/property&gt;
++	      &lt;property name=&quot;focus_on_click&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;response_id&quot;&gt;-6&lt;/property&gt;
++	      &lt;signal name=&quot;released&quot; handler=&quot;gtk_widget_hide&quot; after=&quot;yes&quot; last_modification_time=&quot;Mon, 31 Oct 2005 01:42:37 GMT&quot;/&gt;
+ 	    &lt;/widget&gt;
+-	    &lt;packing&gt;
+-	      &lt;property name=&quot;tab_expand&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;tab_fill&quot;&gt;True&lt;/property&gt;
+-	    &lt;/packing&gt;
+ 	  &lt;/child&gt;
+ 
+ 	  &lt;child&gt;
+-	    &lt;widget class=&quot;GtkLabel&quot; id=&quot;notebook_label1&quot;&gt;
++	    &lt;widget class=&quot;GtkButton&quot; id=&quot;okbutton1&quot;&gt;
+ 	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-	      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;About&lt;/property&gt;
++	      &lt;property name=&quot;can_default&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;label&quot;&gt;gtk-ok&lt;/property&gt;
++	      &lt;property name=&quot;use_stock&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;relief&quot;&gt;GTK_RELIEF_NORMAL&lt;/property&gt;
++	      &lt;property name=&quot;focus_on_click&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;response_id&quot;&gt;-5&lt;/property&gt;
++	      &lt;signal name=&quot;released&quot; handler=&quot;gtk_widget_hide&quot; last_modification_time=&quot;Mon, 31 Oct 2005 01:42:47 GMT&quot;/&gt;
++	    &lt;/widget&gt;
++	  &lt;/child&gt;
++	&lt;/widget&gt;
++	&lt;packing&gt;
++	  &lt;property name=&quot;padding&quot;&gt;0&lt;/property&gt;
++	  &lt;property name=&quot;expand&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;fill&quot;&gt;True&lt;/property&gt;
++	  &lt;property name=&quot;pack_type&quot;&gt;GTK_PACK_END&lt;/property&gt;
++	&lt;/packing&gt;
++      &lt;/child&gt;
++
++      &lt;child&gt;
++	&lt;widget class=&quot;GtkLabel&quot; id=&quot;label&quot;&gt;
++	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	  &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Choose new chunk format :&lt;/property&gt;
++	  &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
++	  &lt;property name=&quot;wrap&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;selectable&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;xalign&quot;&gt;0.5&lt;/property&gt;
++	  &lt;property name=&quot;yalign&quot;&gt;0.5&lt;/property&gt;
++	  &lt;property name=&quot;xpad&quot;&gt;0&lt;/property&gt;
++	  &lt;property name=&quot;ypad&quot;&gt;0&lt;/property&gt;
++	  &lt;property name=&quot;ellipsize&quot;&gt;PANGO_ELLIPSIZE_NONE&lt;/property&gt;
++	  &lt;property name=&quot;width_chars&quot;&gt;-1&lt;/property&gt;
++	  &lt;property name=&quot;single_line_mode&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
++	&lt;/widget&gt;
++	&lt;packing&gt;
++	  &lt;property name=&quot;padding&quot;&gt;6&lt;/property&gt;
++	  &lt;property name=&quot;expand&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;fill&quot;&gt;False&lt;/property&gt;
++	&lt;/packing&gt;
++      &lt;/child&gt;
++
++      &lt;child&gt;
++	&lt;widget class=&quot;GtkTable&quot; id=&quot;table1&quot;&gt;
++	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	  &lt;property name=&quot;n_rows&quot;&gt;3&lt;/property&gt;
++	  &lt;property name=&quot;n_columns&quot;&gt;2&lt;/property&gt;
++	  &lt;property name=&quot;homogeneous&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;row_spacing&quot;&gt;6&lt;/property&gt;
++	  &lt;property name=&quot;column_spacing&quot;&gt;6&lt;/property&gt;
++
++	  &lt;child&gt;
++	    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label4&quot;&gt;
++	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Format:&lt;/property&gt;
+ 	      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
+ 	      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
+ 	      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
+@@ -239,38 +361,39 @@
+ 	      &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
+ 	    &lt;/widget&gt;
+ 	    &lt;packing&gt;
+-	      &lt;property name=&quot;type&quot;&gt;tab&lt;/property&gt;
++	      &lt;property name=&quot;left_attach&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;right_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;top_attach&quot;&gt;2&lt;/property&gt;
++	      &lt;property name=&quot;bottom_attach&quot;&gt;3&lt;/property&gt;
++	      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
++	      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+ 	    &lt;/packing&gt;
+ 	  &lt;/child&gt;
+ 
+ 	  &lt;child&gt;
+-	    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label7&quot;&gt;
++	    &lt;widget class=&quot;GtkComboBoxEntry&quot; id=&quot;format&quot;&gt;
+ 	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-	      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;This program is licenced under GNU GPL licence.&lt;/property&gt;
+-	      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
+-	      &lt;property name=&quot;wrap&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;selectable&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;xalign&quot;&gt;0.5&lt;/property&gt;
+-	      &lt;property name=&quot;yalign&quot;&gt;0.5&lt;/property&gt;
+-	      &lt;property name=&quot;xpad&quot;&gt;10&lt;/property&gt;
+-	      &lt;property name=&quot;ypad&quot;&gt;10&lt;/property&gt;
+-	      &lt;property name=&quot;ellipsize&quot;&gt;PANGO_ELLIPSIZE_NONE&lt;/property&gt;
+-	      &lt;property name=&quot;width_chars&quot;&gt;-1&lt;/property&gt;
+-	      &lt;property name=&quot;single_line_mode&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;items&quot; translatable=&quot;yes&quot;&gt;s
++B
++L&lt;/property&gt;
++	      &lt;property name=&quot;add_tearoffs&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;has_frame&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;focus_on_click&quot;&gt;True&lt;/property&gt;
+ 	    &lt;/widget&gt;
+ 	    &lt;packing&gt;
+-	      &lt;property name=&quot;tab_expand&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;tab_fill&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;left_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;right_attach&quot;&gt;2&lt;/property&gt;
++	      &lt;property name=&quot;top_attach&quot;&gt;2&lt;/property&gt;
++	      &lt;property name=&quot;bottom_attach&quot;&gt;3&lt;/property&gt;
++	      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
++	      &lt;property name=&quot;y_options&quot;&gt;fill&lt;/property&gt;
+ 	    &lt;/packing&gt;
+ 	  &lt;/child&gt;
+ 
+ 	  &lt;child&gt;
+-	    &lt;widget class=&quot;GtkLabel&quot; id=&quot;notebook_label2&quot;&gt;
++	    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label5&quot;&gt;
+ 	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-	      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Licence&lt;/property&gt;
++	      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Endian:&lt;/property&gt;
+ 	      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
+ 	      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
+ 	      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
+@@ -286,44 +409,45 @@
+ 	      &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
+ 	    &lt;/widget&gt;
+ 	    &lt;packing&gt;
+-	      &lt;property name=&quot;type&quot;&gt;tab&lt;/property&gt;
++	      &lt;property name=&quot;left_attach&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;right_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;top_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;bottom_attach&quot;&gt;2&lt;/property&gt;
++	      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
++	      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+ 	    &lt;/packing&gt;
+ 	  &lt;/child&gt;
+ 
+ 	  &lt;child&gt;
+-	    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label6&quot;&gt;
++	    &lt;widget class=&quot;GtkComboBoxEntry&quot; id=&quot;endian&quot;&gt;
+ 	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-	      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;October 27, 2005: Creation of the program.&lt;/property&gt;
+-	      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
+-	      &lt;property name=&quot;wrap&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;selectable&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;xalign&quot;&gt;0.5&lt;/property&gt;
+-	      &lt;property name=&quot;yalign&quot;&gt;0.5&lt;/property&gt;
+-	      &lt;property name=&quot;xpad&quot;&gt;10&lt;/property&gt;
+-	      &lt;property name=&quot;ypad&quot;&gt;10&lt;/property&gt;
+-	      &lt;property name=&quot;ellipsize&quot;&gt;PANGO_ELLIPSIZE_NONE&lt;/property&gt;
+-	      &lt;property name=&quot;width_chars&quot;&gt;-1&lt;/property&gt;
+-	      &lt;property name=&quot;single_line_mode&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;items&quot; translatable=&quot;yes&quot;&gt;!
++&lt;
++&gt;&lt;/property&gt;
++	      &lt;property name=&quot;add_tearoffs&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;has_frame&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;focus_on_click&quot;&gt;True&lt;/property&gt;
+ 	    &lt;/widget&gt;
+ 	    &lt;packing&gt;
+-	      &lt;property name=&quot;tab_expand&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;tab_fill&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;left_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;right_attach&quot;&gt;2&lt;/property&gt;
++	      &lt;property name=&quot;top_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;bottom_attach&quot;&gt;2&lt;/property&gt;
++	      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
++	      &lt;property name=&quot;y_options&quot;&gt;fill&lt;/property&gt;
+ 	    &lt;/packing&gt;
+ 	  &lt;/child&gt;
+ 
+ 	  &lt;child&gt;
+-	    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label3&quot;&gt;
++	    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label6&quot;&gt;
+ 	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-	      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;History&lt;/property&gt;
++	      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Size:&lt;/property&gt;
+ 	      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
+ 	      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
+ 	      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
+ 	      &lt;property name=&quot;wrap&quot;&gt;False&lt;/property&gt;
+ 	      &lt;property name=&quot;selectable&quot;&gt;False&lt;/property&gt;
+-	      &lt;property name=&quot;xalign&quot;&gt;0.5&lt;/property&gt;
++	      &lt;property name=&quot;xalign&quot;&gt;0&lt;/property&gt;
+ 	      &lt;property name=&quot;yalign&quot;&gt;0.5&lt;/property&gt;
+ 	      &lt;property name=&quot;xpad&quot;&gt;0&lt;/property&gt;
+ 	      &lt;property name=&quot;ypad&quot;&gt;0&lt;/property&gt;
+@@ -333,32 +457,42 @@
+ 	      &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
+ 	    &lt;/widget&gt;
+ 	    &lt;packing&gt;
+-	      &lt;property name=&quot;type&quot;&gt;tab&lt;/property&gt;
++	      &lt;property name=&quot;left_attach&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;right_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;top_attach&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;bottom_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
++	      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+ 	    &lt;/packing&gt;
+ 	  &lt;/child&gt;
++
++	  &lt;child&gt;
++	    &lt;widget class=&quot;GtkEntry&quot; id=&quot;size&quot;&gt;
++	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;editable&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;visibility&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;max_length&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;text&quot; translatable=&quot;yes&quot;&gt;&lt;/property&gt;
++	      &lt;property name=&quot;has_frame&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;invisible_char&quot;&gt;*&lt;/property&gt;
++	      &lt;property name=&quot;activates_default&quot;&gt;False&lt;/property&gt;
++	    &lt;/widget&gt;
++	    &lt;packing&gt;
++	      &lt;property name=&quot;left_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;right_attach&quot;&gt;2&lt;/property&gt;
++	      &lt;property name=&quot;top_attach&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;bottom_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
++	    &lt;/packing&gt;
++	  &lt;/child&gt;
+ 	&lt;/widget&gt;
+ 	&lt;packing&gt;
+-	  &lt;property name=&quot;padding&quot;&gt;0&lt;/property&gt;
++	  &lt;property name=&quot;padding&quot;&gt;6&lt;/property&gt;
+ 	  &lt;property name=&quot;expand&quot;&gt;True&lt;/property&gt;
+ 	  &lt;property name=&quot;fill&quot;&gt;True&lt;/property&gt;
+ 	&lt;/packing&gt;
+       &lt;/child&gt;
+-
+-      &lt;child&gt;
+-	&lt;widget class=&quot;GtkButton&quot; id=&quot;button_close&quot;&gt;
+-	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-	  &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
+-	  &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Close&lt;/property&gt;
+-	  &lt;property name=&quot;use_underline&quot;&gt;True&lt;/property&gt;
+-	  &lt;property name=&quot;relief&quot;&gt;GTK_RELIEF_NORMAL&lt;/property&gt;
+-	  &lt;property name=&quot;focus_on_click&quot;&gt;True&lt;/property&gt;
+-	&lt;/widget&gt;
+-	&lt;packing&gt;
+-	  &lt;property name=&quot;padding&quot;&gt;0&lt;/property&gt;
+-	  &lt;property name=&quot;expand&quot;&gt;False&lt;/property&gt;
+-	  &lt;property name=&quot;fill&quot;&gt;False&lt;/property&gt;
+-	&lt;/packing&gt;
+-      &lt;/child&gt;
+     &lt;/widget&gt;
+   &lt;/child&gt;
+ &lt;/widget&gt;
+
+Modified: haypo/hachoir/hachoir.py
+===================================================================
+--- haypo/hachoir/hachoir.py	2005-10-30 14:24:43 UTC (rev 237)
++++ haypo/hachoir/hachoir.py	2005-10-31 02:25:04 UTC (rev 238)
+@@ -14,6 +14,7 @@
+ from stream import FileStream
+ from plugin import getPlugin
+ from chunk import FilterChunk
++from default import DefaultFilter, displayDefault
+ 
+ def usage(defval):
+     print &quot;%s version %s&quot; % (PROGRAM, VERSION)
+@@ -71,12 +72,7 @@
+         
+     def onRowClick(self, chunk_id):
+         if chunk_id == None: return
+-        m = re.compile(r&quot;^([^[]+)\[([0-9]+)\]$&quot;).match(chunk_id)
+-        if m != None:
+-            array = self.filter.getChunk(m.group(1))
+-            chunk = array[int(m.group(2))]
+-        else:
+-            chunk = self.filter.getChunk(chunk_id)
++        chunk = self.filter.getChunk(chunk_id)
+         if issubclass(chunk.__class__, FilterChunk):
+             self.filter = chunk.getFilter()
+             self.filter.display()
+@@ -86,9 +82,9 @@
+         # Look for a plugin
+         plugin = getPlugin(filename)
+         if plugin == None:
+-            print &quot;No suitable plugin for \&quot;%s\&quot;.&quot; % (filename)
+-            return False
+-        regex, plugin_name, split_func, display_func = plugin
++            regex, plugin_name, split_func, display_func = None, &quot;default&quot;, DefaultFilter, displayDefault 
++        else:
++            regex, plugin_name, split_func, display_func = plugin
+         if self.verbose:
+             print &quot;Split file \&quot;%s\&quot;: %s.&quot; % (filename, plugin_name)
+         
+@@ -108,6 +104,7 @@
+         if self.display:
+             print &quot;=== File %s data ===&quot; % filename
+             display_func(self.filter)
++
+         return True
+ 
+ def main():
+
+Modified: haypo/hachoir/plugins/gif.py
+===================================================================
+--- haypo/hachoir/plugins/gif.py	2005-10-30 14:24:43 UTC (rev 237)
++++ haypo/hachoir/plugins/gif.py	2005-10-31 02:25:04 UTC (rev 238)
+@@ -57,7 +57,8 @@
+             self._nb_colors = (1 &lt;&lt; parent.bits_per_pixel)
+         else:
+             assert issubclass(parent.__class__, GifFile)
+-            self._nb_colors = (1 &lt;&lt; parent.screen.bits_per_pixel)
++            screen = parent.getChunk(&quot;screen&quot;).getFilter()
++            self._nb_colors = (1 &lt;&lt; screen.bits_per_pixel)
+         self.readArray(&quot;map&quot;, GifColor, &quot;Color map&quot;, self.checkEndOfMap)
+ 
+     def checkEndOfMap(self, stream, array, color):
+
+Modified: haypo/hachoir/plugins/png.py
+===================================================================
+--- haypo/hachoir/plugins/png.py	2005-10-30 14:24:43 UTC (rev 237)
++++ haypo/hachoir/plugins/png.py	2005-10-31 02:25:04 UTC (rev 238)
+@@ -90,7 +90,7 @@
+             (self.year, self.month, self.day,
+              self.hour, self.minute, self.second)
+ 
+-class PngFilter(Filter):
++class PngFile(Filter):
+     &quot;&quot;&quot;
+     Split a PNG file into chunks.
+     &quot;&quot;&quot;
+@@ -125,11 +125,11 @@
+             self.read(None, &quot;!{size}s&quot;, &quot;Chunk data&quot;)
+         self.read(&quot;crc32&quot;, &quot;!L&quot;, &quot;Chunk CRC32&quot;)
+ 
+-    def updateParent(self, parent, chunk):
++    def updateParent(self, chunk):
+         self.description = &quot;PNG chunk (type %s)&quot; % self.type
+         chunk.description = &quot;PNG chunk (type %s)&quot; % self.type
+ 
+     def __str__(self):
+         return &quot;PngChunk &lt;size=%u, type=%s&gt;&quot; % (self.size, self.type)
+ 
+-registerPlugin(&quot;^.*\.(PNG|png)$&quot;, &quot;PNG picture&quot;, PngFilter, displayPng)
++registerPlugin(&quot;^.*\.(PNG|png)$&quot;, &quot;PNG picture&quot;, PngFile, displayPng)
+
+Modified: haypo/hachoir/plugins/tar.py
+===================================================================
+--- haypo/hachoir/plugins/tar.py	2005-10-30 14:24:43 UTC (rev 237)
++++ haypo/hachoir/plugins/tar.py	2005-10-31 02:25:04 UTC (rev 238)
+@@ -100,7 +100,7 @@
+         if self.type not in name: return &quot;Unknow type (%02X)&quot; % ord(self.type)
+         return name[self.type]
+ 
+-    def updateParent(self, parent, chunk):
++    def updateParent(self, chunk):
+         if not self.isEmpty():
+             text = &quot;Tar File (%s: %s)&quot; % (self.name, self.getType())
+         else:
+
+Modified: haypo/hachoir/stream.py
+===================================================================
+--- haypo/hachoir/stream.py	2005-10-30 14:24:43 UTC (rev 237)
++++ haypo/hachoir/stream.py	2005-10-31 02:25:04 UTC (rev 238)
+@@ -78,7 +78,8 @@
+     def seek(self, pos, where=0):
+         &quot;&quot;&quot; Read file seek document to understand where. &quot;&quot;&quot;
+         self.__file.seek(pos, where)
+-        assert self.tell() &lt;= self.__size
++        if self.__size &lt; self.tell():
++            raise Exception(&quot;Error when seek to (%s,%s) in a stream.&quot; % (pos, where))
+ 
+     def tell(self):
+         return self.__file.tell()
+@@ -125,7 +126,8 @@
+ 
+     def getN(self, size):
+         data = self.__file.read(size)
+-        assert len(data) == size
++        if len(data) != size:
++            raise Exception(&quot;Can't read %u bytes in a stream (get %u bytes).&quot; % (size, len(data)))
+         return data
+ 
+     def getEnd(self):
+
+Modified: haypo/hachoir/ui.py
+===================================================================
+--- haypo/hachoir/ui.py	2005-10-30 14:24:43 UTC (rev 237)
++++ haypo/hachoir/ui.py	2005-10-31 02:25:04 UTC (rev 238)
+@@ -3,6 +3,7 @@
+ pygtk.require ('2.0')
+ import gtk
+ import gtk.glade
++from ui_popup import TablePopup
+ 
+ def loadInterface(hachoir):
+     global ui 
+@@ -11,22 +12,31 @@
+ 
+ class GladeInterface:
+     def __init__(self, filename, hachoir):
++        self.hachoir = hachoir
++        self.glade_xml = filename
+         self.on_row_click = None # event(chunk_id)
+         self.on_go_parent = None # event(chunk_id)
+-        self.xml = gtk.glade.XML(filename)
+-        self.xml.signal_autoconnect(self)
+-        self.window = self.xml.get_widget('window')
+-        self.about_window = self.xml.get_widget('about_window')
+-        self.statusbar = self.xml.get_widget('statusbar')
+-        self.toolbar = self.xml.get_widget('toolbar')
+-        self.toolbutton_parent = self.xml.get_widget('toolbutton_parent')
+-        self.statusbar_state = self.statusbar.get_context_id(&quot;State&quot;)
+-        self.window.connect(&quot;key-press-event&quot;, self.onKeyUp)
+-        self.table = self.xml.get_widget('table')
+-        self.table_store = None
+-        self.hachoir = hachoir
+-        self.build_him()
++        self.about_dialog = None
++        self.build_ui()
+ 
++    def getTableChunk(self, col):
++        chunk_id = self.table_store[col][3]
++        if chunk_id == None: return None
++        return self.hachoir.filter.getChunk(chunk_id)
++
++    def on_treeview_button_press_event(self, treeview, event):
++        if event.button == 3:
++            x = int(event.x)
++            y = int(event.y)
++            time = event.time
++            pthinfo = treeview.get_path_at_pos(x, y)
++            if pthinfo != None:
++                path, col, cellx, celly = pthinfo
++                treeview.grab_focus()
++                treeview.set_cursor( path, col, 0)
++                self.table_popup.show(pthinfo, event)
++            return 1
++
+     def run(self):
+         try:
+             gtk.main()
+@@ -46,13 +56,28 @@
+         row = self.table_store[iter]
+         row[column] = value
+        
+-    def add_table_child(self, parent, addr, size, type, id, description):
+-        return self.table_store.append(parent, (&quot;%08X&quot; % addr, type, size, None, id, description, None,))
++    def add_table_child(self, parent, addr, size, format, id, description):
++        return self.table_store.append(parent, (addr, format, size, None, id, description, None,))
+        
+-    def add_table(self, parent, addr, size, type, id, description, value):
+-        self.table_store.append(parent, (&quot;%08X&quot; % addr, type, size, id, value, description, ))
++    def add_table(self, parent, addr, size, format, id, description, value):
++        self.table_store.append(parent, (addr, format, size, id, value, description, ))
+        
+-    def build_him(self):
++    def load_window (self):
++        xml = gtk.glade.XML(self.glade_xml, &quot;window&quot;)
++        self.window = xml.get_widget('window')
++        self.statusbar = xml.get_widget('statusbar')
++        self.toolbar = xml.get_widget('toolbar')
++        self.toolbutton_parent = xml.get_widget('toolbutton_parent')
++        self.statusbar_state = self.statusbar.get_context_id(&quot;State&quot;)
++        self.table = xml.get_widget('table')
++        self.table_store = None
++        xml.signal_autoconnect(self)
++        
++    def build_ui(self):
++        self.load_window()
++        self.table_popup = TablePopup(self, self.glade_xml)
++        self.window.connect(&quot;key-press-event&quot;, self.onKeyUp)
++        self.table.connect(&quot;button_press_event&quot;, self.on_treeview_button_press_event)
+         self.window.set_size_request(760,300)
+         self.build_table()
+ 
+@@ -69,7 +94,7 @@
+         self.table.set_model(self.table_store)
+         self.table.connect(&quot;row-activated&quot;, self.onTableClicked)
+         self.treeview_add_column(self.table, &quot;Address&quot;, 0)
+-        self.treeview_add_column(self.table, &quot;Type&quot;, 1)
++        self.treeview_add_column(self.table, &quot;Format&quot;, 1)
+         self.treeview_add_column(self.table, &quot;Size&quot;, 2)
+         self.treeview_add_column(self.table, &quot;Name&quot;, 3)
+         self.treeview_add_column(self.table, &quot;Value&quot;, 4)
+@@ -101,8 +126,10 @@
+         chooser.destroy()
+ 
+     def on_about_activate(self, widget):
+-        print &quot;About (do nothing yet)&quot;
+-        self.about_window.show()
++        if self.about_dialog == None:
++            self.about_xml = gtk.glade.XML(self.glade_xml, &quot;about_dialog&quot;)
++            self.about_dialog = self.about_xml.get_widget('about_dialog')
++        self.about_dialog.show()
+ 
+     def on_quit_activate(self, widget):
+         self.quit()
+
+Added: haypo/hachoir/ui_new_chunk.py
+===================================================================
+--- haypo/hachoir/ui_new_chunk.py	2005-10-30 14:24:43 UTC (rev 237)
++++ haypo/hachoir/ui_new_chunk.py	2005-10-31 02:25:04 UTC (rev 238)
+@@ -0,0 +1,45 @@
++import pygtk
++pygtk.require ('2.0')
++import gtk
++import gtk.glade
++from format import splitFormat
++
++class NewChunkDialog:
++    def __init__(self, filename):
++        xml = gtk.glade.XML(filename, &quot;new_chunk&quot;)
++        self.window = xml.get_widget('new_chunk')
++        self.window.hide()
++        xml.signal_autoconnect(self)
++        self.label_widget = xml.get_widget(&quot;label&quot;)
++        self.size_widget = xml.get_widget(&quot;size&quot;)
++        self.endian_widget = xml.get_widget(&quot;endian&quot;)
++        self.format_widget = xml.get_widget(&quot;format&quot;)
++        self.response = gtk.RESPONSE_CANCEL
++
++    def getFormat(self):
++        size = self.size_widget.get_text()
++        endian = self.endian_widget.child.get_text()
++        type = self.format_widget.child.get_text()
++        return &quot;%s%s%s&quot; % (endian, size, type)
++
++    def runNewChunk(self):
++        # TODO: i18n the text
++        self.window.set_title(&quot;New chunk&quot;)
++        self.label_widget.set_text(&quot;Choose a chunk format for the new chunk:&quot;)
++        r = self.window.run()
++        self.window.hide()
++        return r
++
++    def runSetFormat(self, chunk):
++        # TODO: i18n the text
++        self.window.set_title(&quot;Set chunk format&quot;)
++        self.label_widget.set_text(&quot;Set chunk %s format to:&quot; % chunk.id)
++        format = chunk.getFormat()
++        split = splitFormat(format)
++        if split != None:
++            self.size_widget.set_text(split[1])
++            self.endian_widget.child.set_text(split[0])
++            self.format_widget.child.set_text(split[2])
++        r = self.window.run()
++        self.window.hide()
++        return r
+
+Added: haypo/hachoir/ui_popup.py
+===================================================================
+--- haypo/hachoir/ui_popup.py	2005-10-30 14:24:43 UTC (rev 237)
++++ haypo/hachoir/ui_popup.py	2005-10-31 02:25:04 UTC (rev 238)
+@@ -0,0 +1,40 @@
++import pygtk
++pygtk.require ('2.0')
++import gtk
++import gtk.glade
++from chunk import FormatChunk
++from ui_new_chunk import NewChunkDialog
++
++class TablePopup:
++    def __init__(self, ui, filename):
++        self.ui = ui
++        xml = gtk.glade.XML(filename, &quot;table_popup&quot;)
++        self.popup = xml.get_widget('table_popup')
++        xml.signal_autoconnect(self)
++        self.chunk = None
++        self.new_chunk = NewChunkDialog(self.ui.glade_xml)
++
++    def show(self, path_info, event):
++        col = path_info[0][0]
++        self.chunk = self.ui.getTableChunk(col)
++        if self.chunk == None:
++            print &quot;Can't get chunk&quot;
++            return
++        self.popup.popup( None, None, None, event.button, event.time)
++
++    def onNewChunk(self, event):
++        if self.new_chunk.runNewChunk() == gtk.RESPONSE_CANCEL: return
++        assert issubclass(self.chunk.__class__, FormatChunk) and self.chunk.isString()
++        format = self.new_chunk.getFormat()
++        self.chunk.setFormat(format, &quot;split&quot;)
++
++    def onSetFormat(self, event):
++        if issubclass(self.chunk.__class__, FormatChunk):
++            if self.new_chunk.runSetFormat(self.chunk) == gtk.RESPONSE_CANCEL: return
++            format = self.new_chunk.getFormat()
++            self.chunk.setFormat(format, &quot;rescan&quot;)
++        else:
++            print &quot;Can't set format of chunk of type %s&quot; % self.chunk.__class__
++
++    def onJoinChunks(self, event):
++        print &quot;join chunk&quot;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000144.html">[Happyboom-svn] r237 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000146.html">[Happyboom-svn] r239 - haypo/hachoir
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#145">[ date ]</a>
+              <a href="thread.html#145">[ thread ]</a>
+              <a href="subject.html#145">[ subject ]</a>
+              <a href="author.html#145">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

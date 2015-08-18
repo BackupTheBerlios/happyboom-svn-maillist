@@ -1,0 +1,311 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r375 - in haypo/hachoir/trunk: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r375%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200512290049.jBT0neJc028089%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000276.html">
+   <LINK REL="Next"  HREF="000278.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r375 - in haypo/hachoir/trunk: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r375%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200512290049.jBT0neJc028089%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r375 - in haypo/hachoir/trunk: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Thu Dec 29 01:49:40 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000276.html">[Happyboom-svn] r374 - haypo/hachoir/trunk/ui
+</A></li>
+        <LI>Next message: <A HREF="000278.html">[Happyboom-svn] r376 - in haypo/hachoir/trunk: . generic plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#277">[ date ]</a>
+              <a href="thread.html#277">[ thread ]</a>
+              <a href="subject.html#277">[ subject ]</a>
+              <a href="author.html#277">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-29 01:49:11 +0100 (Thu, 29 Dec 2005)
+New Revision: 375
+
+Added:
+   haypo/hachoir/trunk/plugins/wav.py
+Modified:
+   haypo/hachoir/trunk/NEWS
+   haypo/hachoir/trunk/error.py
+   haypo/hachoir/trunk/plugins/gzip.py
+   haypo/hachoir/trunk/plugins/tar.py
+Log:
+- Create WAV plugin (based on AVI plugin)
+- Add NEWS of 2005-12-28 release
+- Fix Gzip plugin flags parser
+- Don't display message box for warnings
+
+
+Modified: haypo/hachoir/trunk/NEWS
+===================================================================
+--- haypo/hachoir/trunk/NEWS	2005-12-28 08:21:31 UTC (rev 374)
++++ haypo/hachoir/trunk/NEWS	2005-12-29 00:49:11 UTC (rev 375)
+@@ -1,3 +1,16 @@
++News in version 2005-12-28
++    o Create EnumChunk: associate a string to a key (useful in a lot of
++      binary formats)
++    o Create BitsChunks: it's now possible to split bytes in bits (useful
++      for 'flags' fields)
++    o Use new syntax for all plugins: only use read() and doRead() methods,
++      new FormatChunk syntax (eg. &quot;uint16&quot; instead of &quot;&lt;H&quot;), use OnDemandFilter
++      instead of Filter class (Filter was removed)
++    o Improve plugins display result using updateParent()
++    o Lot of small bugfixes in plugins
++    o Clean code (remove old useless code)
++    o Disable all operations (create / delete / edit) on filters and chunks
++
+ News in version 2005-12-26
+     o Some speed up:
+       - use more caches (eg. for format operations like getting format size)
+
+Modified: haypo/hachoir/trunk/error.py
+===================================================================
+--- haypo/hachoir/trunk/error.py	2005-12-28 08:21:31 UTC (rev 374)
++++ haypo/hachoir/trunk/error.py	2005-12-29 00:49:11 UTC (rev 375)
+@@ -9,15 +9,15 @@
+     if config.debug:
+         message = log_message
+     log.warning(log_message)   
+-    if ui.ui.ui != None:
+-        import gtk
+-        dlg = gtk.MessageDialog( \
+-            parent=ui.ui.ui.window.window,
+-            type=gtk.MESSAGE_WARNING,
+-            buttons=gtk.BUTTONS_OK,
+-            message_format=message)
+-        dlg.run()
+-        dlg.destroy()
++#    if ui.ui.ui != None:
++#        import gtk
++#        dlg = gtk.MessageDialog( \
++#            parent=ui.ui.ui.window.window,
++#            type=gtk.MESSAGE_WARNING,
++#            buttons=gtk.BUTTONS_OK,
++#            message_format=message)
++#        dlg.run()
++#        dlg.destroy()
+ 
+ def error(message, backtrace=None):
+     log_message = message + &quot;\n\n&quot; + getBacktrace()
+
+Modified: haypo/hachoir/trunk/plugins/gzip.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/gzip.py	2005-12-28 08:21:31 UTC (rev 374)
++++ haypo/hachoir/trunk/plugins/gzip.py	2005-12-29 00:49:11 UTC (rev 375)
+@@ -39,19 +39,26 @@
+         assert self[&quot;id&quot;] == (31, 139)
+         self.read(&quot;compression&quot;, &quot;Compression method&quot;, (FormatChunk, &quot;uint8&quot;), {&quot;post&quot;: self.getCompressionMethod})
+         bits = (
+-            (1, &quot;text&quot;, &quot;Text (?)&quot;),
+-            (1, &quot;crc16&quot;, &quot;CRC16&quot;),
++            (1, &quot;text&quot;, &quot;File content is probably ASCII text&quot;),
++            (1, &quot;crc16&quot;, &quot;Header CRC16&quot;),
+             (1, &quot;extra&quot;, &quot;Extra informations (variable size)&quot;),
+             (1, &quot;filename&quot;, &quot;Contains filename?&quot;),
+             (1, &quot;comment&quot;, &quot;Contains comment?&quot;),
+             (3, &quot;unused&quot;, &quot;Unused bits&quot;))
+         flags = self.doRead(&quot;flags&quot;, &quot;Flags&quot;, (BitsChunk, BitsStruct(bits)))
+         self.read(&quot;mtime&quot;, &quot;Modification time&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: unixTimestamp})
+-        self.read(&quot;extra&quot;, &quot;Extra flags&quot;, (FormatChunk, &quot;uint8&quot;))
++
++        bits = (
++            (1, &quot;unused&quot;, &quot;(unused)&quot;),
++            (1, &quot;slowest&quot;, &quot;Compressor used maximum compression (slowest)&quot;),
++            (1, &quot;fastest&quot;, &quot;Compressor used the fastest compression&quot;),
++            (5, &quot;unused2&quot;, &quot;(unused)&quot;))
++        extra_flags = self.doRead(&quot;extra_flags&quot;, &quot;Extra flags&quot;, (BitsChunk, BitsStruct(bits)))
++
+         self.read(&quot;os&quot;, &quot;Operating system&quot;, (EnumChunk, &quot;uint8&quot;, GzipFile.os_name))
+ 
+         # Optionnal fields
+-        if self[&quot;extra&quot;] &amp; 4 == 4:
++        if flags[&quot;extra&quot;] &amp; 4 == 4:
+             self.read(&quot;extra_length&quot;, &quot;Extra length&quot;, (FormatChunk, &quot;uint16&quot;))
+             self.read(&quot;extra&quot;, &quot;Extra&quot;, (FormatChunk, &quot;string[%u]&quot;  % self[&quot;extra_length&quot;]))
+         if flags[&quot;filename&quot;]:
+@@ -59,7 +66,7 @@
+         if flags[&quot;comment&quot;]:
+             self.read(&quot;comment&quot;, &quot;Comment&quot;, (StringChunk, &quot;C&quot;))
+         if flags[&quot;crc16&quot;]:
+-            self.read(&quot;crc16&quot;, &quot;CRC16&quot;, (FormatChunk, &quot;uint16&quot;), post=hexadecimal)
++            self.read(&quot;hdr_crc16&quot;, &quot;Header CRC16&quot;, (FormatChunk, &quot;uint16&quot;), post=hexadecimal)
+ 
+         # Read content           
+         oldpos = stream.tell()
+
+Modified: haypo/hachoir/trunk/plugins/tar.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/tar.py	2005-12-28 08:21:31 UTC (rev 374)
++++ haypo/hachoir/trunk/plugins/tar.py	2005-12-29 00:49:11 UTC (rev 375)
+@@ -16,37 +16,6 @@
+ from error import error
+ from tools import getBacktrace, humanFilesize
+ 
+-def displayModeItem(mode):
+-    if mode &amp; 4 == 4: r=&quot;r&quot;
+-    else: r=&quot;-&quot;
+-    if mode &amp; 2 == 2: w=&quot;w&quot;
+-    else: w=&quot;-&quot;
+-    if mode &amp; 1 == 1: x=&quot;x&quot;
+-    else: x=&quot;-&quot;
+-    return &quot;%c%c%c&quot; % (r, w, x)
+-
+-def displayMode(mode):
+-    owner = displayModeItem(mode &gt;&gt; 6 &amp; 7)
+-    group = displayModeItem(mode &gt;&gt; 3 &amp; 7)
+-    other = displayModeItem(mode &amp; 7)
+-    print &quot;Mode = %04o (%s%s%s)&quot; % (mode, owner, group, other)
+-    
+-def displayFile(tar):
+-    print &quot;name = \&quot;%s\&quot;&quot; % (tar.name)
+-    displayMode(tar.mode)
+-    print &quot;User = \&quot;%s\&quot; (id %s)&quot; % (tar.uname, tar.uid)
+-    print &quot;Group = \&quot;%s\&quot; (id %s)&quot; % (tar.gname, tar.gid)
+-    print &quot;Size = %s bytes&quot; % (tar.size)
+-    print &quot;Modification time = %s&quot; % (tar.mtime)
+-    print &quot;Magic = %s&quot; % (tar.magic)
+-    print &quot;Type = %s&quot; % (tar.getType())
+-    
+-def displayTar(tar):
+-    for file in tar.files:
+-        file = file.getFilter()
+-        print &quot;[ File %s ]&quot; % file.name
+-        displayFile(file)
+-
+ class FileEntry(OnDemandFilter):
+     type_name = {
+         0: &quot;Normal disk file (old format)&quot;,
+
+Added: haypo/hachoir/trunk/plugins/wav.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/wav.py	2005-12-28 08:21:31 UTC (rev 374)
++++ haypo/hachoir/trunk/plugins/wav.py	2005-12-29 00:49:11 UTC (rev 375)
+@@ -0,0 +1,86 @@
++&quot;&quot;&quot;
++WAV audio file parser
++
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from filter import OnDemandFilter
++from plugin import registerPlugin
++from chunk import FormatChunk, EnumChunk
++
++class WAV_Fact(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;fact&quot;, &quot;Stream length (\&quot;fact\&quot; chunk)&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;nb_samples&quot;, &quot;Number of samples in audio stream&quot;, (FormatChunk, &quot;int32&quot;))
++
++class WAV_Format(OnDemandFilter):
++    codec_name = {
++        1: &quot;Uncompressed&quot;
++    }
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;format&quot;, &quot;Audio format&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;codec&quot;, &quot;Audio codec&quot;, (EnumChunk, &quot;int16&quot;, WAV_Format.codec_name))
++        self.read(&quot;channels&quot;, &quot;Channels&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;sample_per_sec&quot;, &quot;Samples per second&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;byte_per_sec&quot;, &quot;Average bytes per second&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;block_align&quot;, &quot;Block align&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;bits_per_sample&quot;, &quot;Bits per sample&quot;, (FormatChunk, &quot;uint16&quot;))
++
++    def updateParent(self, chunk):
++        if self[&quot;channels&quot;] == 2:
++            channels = &quot;stereo&quot;
++        else:
++            channels = &quot;mono&quot;
++        chunk.description = &quot;Audio format: %u kHz, %s&quot; \
++            % (self[&quot;sample_per_sec&quot;], channels)
++
++class Chunk(OnDemandFilter):
++    handler = {
++        &quot;fmt &quot;: WAV_Format,
++        'fact': WAV_Fact
++    }
++
++    tag_name = {
++        &quot;fmt &quot;: &quot;format&quot;,
++        &quot;data&quot;: &quot;audio_data&quot;
++    }
++
++    tag_description = {
++        &quot;fmt&quot;: &quot;Audio format&quot;,
++        &quot;data&quot;: &quot;Audio stream data&quot;
++    }
++
++    def __init__(self, stream, parent=None):
++        OnDemandFilter.__init__(self, &quot;chunk&quot;, &quot;Chunk&quot;, stream, parent, &quot;&lt;&quot;)
++        tag = self.doRead(&quot;tag&quot;, &quot;Tag&quot;, (FormatChunk, &quot;string[4]&quot;)).value
++        size = self.doRead(&quot;size&quot;, &quot;Size&quot;, (FormatChunk, &quot;uint32&quot;)).value
++        if tag in Chunk.handler:
++            end = stream.tell() + size
++            sub = stream.createSub(size=size)
++            self.read(&quot;content&quot;, &quot;Data content&quot;, (Chunk.handler[tag],), {&quot;size&quot;: size, &quot;stream&quot;: sub})
++            assert stream.tell() == end
++        else:
++            self.read(&quot;content&quot;, &quot;Raw data content&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++    def updateParent(self, chunk):
++        tag = self[&quot;tag&quot;].strip(&quot;\0&quot;)
++        type = Chunk.tag_description.get(tag, &quot;\&quot;%s\&quot;&quot; % tag)
++        if tag in Chunk.tag_name:
++            chunk.id = Chunk.tag_name[tag]
++        chunk.description = &quot;Chunk: %s&quot; % type
++
++class WavFile(OnDemandFilter):
++    def __init__(self, stream, parent=None):
++        OnDemandFilter.__init__(self, &quot;wav_file&quot;, &quot;WAV audio file&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;header&quot;, &quot;RIFF header (\&quot;RIFF\&quot;)&quot;, (FormatChunk, &quot;string[4]&quot;))
++        assert self[&quot;header&quot;] == &quot;RIFF&quot;
++        self.read(&quot;filesize&quot;, &quot;File size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;wave&quot;, &quot;\&quot;WAVE\&quot; string&quot;, (FormatChunk, &quot;string[4]&quot;))
++        assert self[&quot;wave&quot;] == &quot;WAVE&quot;
++        self.format = None
++        while not stream.eof():
++            id = self.read(&quot;chunk[]&quot;, &quot;Chunk&quot;, (Chunk,))
++            if id == &quot;format&quot;:
++                self.format = self[&quot;format&quot;]
++
++registerPlugin(WavFile, &quot;audio/x-wav&quot;)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000276.html">[Happyboom-svn] r374 - haypo/hachoir/trunk/ui
+</A></li>
+	<LI>Next message: <A HREF="000278.html">[Happyboom-svn] r376 - in haypo/hachoir/trunk: . generic plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#277">[ date ]</a>
+              <a href="thread.html#277">[ thread ]</a>
+              <a href="subject.html#277">[ subject ]</a>
+              <a href="author.html#277">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

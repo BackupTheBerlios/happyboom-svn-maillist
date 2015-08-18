@@ -1,0 +1,226 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r436 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/parser/image
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r436%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/libhachoir%20branches/hachoir-yield/libhachoir/parser/image&In-Reply-To=%3C200603040030.k240UWoe002129%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000337.html">
+   <LINK REL="Next"  HREF="000339.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r436 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/parser/image</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r436%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/libhachoir%20branches/hachoir-yield/libhachoir/parser/image&In-Reply-To=%3C200603040030.k240UWoe002129%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r436 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/parser/image">haypo at berlios.de
+       </A><BR>
+    <I>Sat Mar  4 01:30:32 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000337.html">[Happyboom-svn] r435 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/doc
+</A></li>
+        <LI>Next message: <A HREF="000339.html">[Happyboom-svn] r437 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser branches/hachoir-yield/libhachoir/parser/3d branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/unit_test
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#338">[ date ]</a>
+              <a href="thread.html#338">[ thread ]</a>
+              <a href="subject.html#338">[ subject ]</a>
+              <a href="author.html#338">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-04 01:30:28 +0100 (Sat, 04 Mar 2006)
+New Revision: 436
+
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/hachoir.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/bmp.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/stream.py
+   haypo/hachoir/branches/hachoir-yield/metadata.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r30 at haypopc</A>:  haypo | 2006-03-03 20:52:55 +0100
+  * Create FileInputStream, it's constructor just takes a filename
+  * Improve metadata from PCX and BMP images
+  * MetaData.__str__() returns multi-line text
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:29
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:30
+
+Modified: haypo/hachoir/branches/hachoir-yield/hachoir.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:29:54 UTC (rev 435)
++++ haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:30:28 UTC (rev 436)
+@@ -1,6 +1,6 @@
+ #!/usr/bin/env python
+ 
+-VERSION = &quot;0.2veryalpha&quot;
++VERSION = &quot;0.2 (alpha)&quot;
+ 
+ import sys, os, getopt
+ 
+@@ -66,7 +66,7 @@
+     filename = parseArgs()
+ 
+     # Get tools that we need from libhachoir
+-    from libhachoir.stream import InputStream
++    from libhachoir.stream import FileInputStream
+     from text_ui import displayFieldSet
+     from libhachoir.plugin import loadParserPlugins, guessParser
+     from libhachoir.log import log
+@@ -76,7 +76,7 @@
+     import libhachoir.config as config
+ 
+     # Create input stream (read filename from command line first argument)
+-    stream = InputStream(open(filename, 'r'), filename)
++    stream = FileInputStream(filename)
+ 
+     # Load all parser plugings from 'file' directory
+     root_dir = libhachoir_path
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/bmp.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/bmp.py	2006-03-04 00:29:54 UTC (rev 435)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/bmp.py	2006-03-04 00:30:28 UTC (rev 436)
+@@ -6,11 +6,16 @@
+ Creation: 16 december 2005
+ &quot;&quot;&quot;
+ 
+-from field import FieldSet, Integer, String, ParserError
++from field import FieldSet, Integer, String, ParserError, Enum
+ 
+ class BmpFile(FieldSet):
+     mime_types = [&quot;image/x-ms-bmp&quot;, &quot;image/x-bmp&quot;]
+     endian = &quot;&lt;&quot;
++
++    compression_name = {
++        0: &quot;Uncopressed&quot;,
++        1: &quot;RLE&quot;
++    }        
+     
+     def createFields(self):
+         yield String(self, &quot;header&quot;, &quot;string[2]&quot;, &quot;Header (\&quot;BM\&quot;)&quot;)
+@@ -31,7 +36,7 @@
+         yield Integer(self, &quot;nb_plan&quot;, &quot;uint16&quot;, &quot;Number of plan (=1)&quot;)
+         yield Integer(self, &quot;bpp&quot;, &quot;uint16&quot;, &quot;Bits per pixel&quot;)
+         if self[&quot;header_size&quot;].value == 40:
+-            yield Integer(self, &quot;compression&quot;, &quot;uint32&quot;, &quot;Compression method&quot;)
++            yield Enum(self, &quot;compression&quot;, &quot;uint32&quot;, BmpFile.compression_name, &quot;Compression method&quot;)
+             yield Integer(self, &quot;image_size&quot;, &quot;uint32&quot;, &quot;Image size (bytes)&quot;)
+             yield Integer(self, &quot;horizontal_dpi&quot;, &quot;uint32&quot;, &quot;Horizontal DPI&quot;)
+             yield Integer(self, &quot;vertical_dpi&quot;, &quot;uint32&quot;, &quot;Vertical DPI&quot;)
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/stream.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/stream.py	2006-03-04 00:29:54 UTC (rev 435)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/stream.py	2006-03-04 00:30:28 UTC (rev 436)
+@@ -3,16 +3,16 @@
+ def getFileSize(stream):
+     &quot;&quot;&quot; Get file size in bits &quot;&quot;&quot;
+     oldpos = stream.tell()
+-    stream.seek(0,2)
+-    size = stream.tell() * 8
+-    stream.seek(oldpos)
+     return size
+ 
+ class InputStreamError(Exception):
+     pass
+ 
+-def FileInputStream(input, filename):
+-    size = getFileSize(input) * 8
++def FileInputStream(filename):
++    input = open(filename, 'r')
++    input.seek(0, 2)
++    size = input.tell() * 8
++    input.seek(0)
+     return InputStream(input, filename=filename, size=size)
+ 
+ def StringInputStream(content):
+
+Modified: haypo/hachoir/branches/hachoir-yield/metadata.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/metadata.py	2006-03-04 00:29:54 UTC (rev 435)
++++ haypo/hachoir/branches/hachoir-yield/metadata.py	2006-03-04 00:30:28 UTC (rev 436)
+@@ -18,16 +18,16 @@
+         self.format = kw.get(&quot;format&quot;, None)
+ 
+     def __str__(self):
+-        text = &quot;Image: &quot;
++        attributes = [&quot;&quot;]
+         if self.format != None:
+-            text += &quot;format=%s, &quot; % self.format 
+-        text += &quot;size=%sx%s, bpp=%s&quot; % \
+-            (self.width, self.height, self.bits_per_pixel)
++            attributes.append (&quot;format: %s, &quot; % self.format)
++        attributes.append (&quot;size: %sx%s (pixels)&quot; % (self.width, self.height))
++        attributes.append (&quot;bits/pixel: %s&quot; % self.bits_per_pixel)
+         if self.nb_colors != None:
+-            text += &quot;, nb_colors=%s&quot; % self.nb_colors
++            attributes.append(&quot;number of colors: %s&quot; % self.nb_colors)
+         if self.compression != None:
+-            text += &quot;, compression=%s&quot; % self.compression
+-        return text
++            attributes.append(&quot;compression: %s&quot; % self.compression)
++        return &quot;Image:&quot;+&quot;\n  - &quot;.join(attributes)
+ 
+ class BmpMetaData(ImageMetaData):
+     def __init__(self, bmp):
+@@ -37,17 +37,15 @@
+             nb_colors = bmp[&quot;used_colors&quot;].value 
+         else:
+             nb_colors = None
+-        if bmp[&quot;compression&quot;].value != 0:
+-            compression = &quot;(compressed)&quot;
+-        else:
+-            compression = &quot;No&quot;
+-        ImageMetaData.__init__(self, width, height, bpp, nb_colors=nb_colors)
++        compression = bmp[&quot;compression&quot;].display
++        ImageMetaData.__init__(self, width, height, bpp, nb_colors=nb_colors, compression=compression)
+ 
+ class PcxMetaData(ImageMetaData):
+     def __init__(self, pcx):
+         width, height = pcx[&quot;xmax&quot;].value+1, pcx[&quot;ymax&quot;].value+1
+         bpp = pcx[&quot;bpp&quot;].value
+-        ImageMetaData.__init__(self, width, height, bpp)
++        compression = &quot;RLE&quot;
++        ImageMetaData.__init__(self, width, height, bpp, compression=compression)
+ 
+ class PngMetaData(ImageMetaData):
+     def __init__(self, png):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000337.html">[Happyboom-svn] r435 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/doc
+</A></li>
+	<LI>Next message: <A HREF="000339.html">[Happyboom-svn] r437 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser branches/hachoir-yield/libhachoir/parser/3d branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/unit_test
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#338">[ date ]</a>
+              <a href="thread.html#338">[ thread ]</a>
+              <a href="subject.html#338">[ subject ]</a>
+              <a href="author.html#338">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

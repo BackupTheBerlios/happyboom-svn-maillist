@@ -1,0 +1,184 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r467 - haypo/lamer
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2007-June/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r467%20-%20haypo/lamer&In-Reply-To=%3C200706271707.l5RH7IGe021732%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000370.html">
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r467 - haypo/lamer</H1>
+    <B>haypo at mail.berlios.de</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r467%20-%20haypo/lamer&In-Reply-To=%3C200706271707.l5RH7IGe021732%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r467 - haypo/lamer">haypo at mail.berlios.de
+       </A><BR>
+    <I>Wed Jun 27 19:07:18 CEST 2007</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000370.html">[Happyboom-svn] r466 - haypo/lamer
+</A></li>
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#371">[ date ]</a>
+              <a href="thread.html#371">[ thread ]</a>
+              <a href="subject.html#371">[ subject ]</a>
+              <a href="author.html#371">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2007-06-27 19:07:14 +0200 (Wed, 27 Jun 2007)
+New Revision: 467
+
+Modified:
+   haypo/lamer/lamer.py
+   haypo/lamer/mod_gajim.py
+   haypo/lamer/mod_konversation.py
+   haypo/lamer/mod_ncftp.py
+   haypo/lamer/mod_svn.py
+Log:
+Add option to show account with no password
+
+
+Modified: haypo/lamer/lamer.py
+===================================================================
+--- haypo/lamer/lamer.py	2007-06-27 16:55:56 UTC (rev 466)
++++ haypo/lamer/lamer.py	2007-06-27 17:07:14 UTC (rev 467)
+@@ -7,6 +7,7 @@
+     def __init__(self, name, verbose):
+         self.name = name
+         self.verbose = verbose
++        self.skip_no_password = True
+         if self.verbose:
+             print &gt;&gt;stderr, &quot;[ Module %s ]&quot; % self.name
+ 
+
+Modified: haypo/lamer/mod_gajim.py
+===================================================================
+--- haypo/lamer/mod_gajim.py	2007-06-27 16:55:56 UTC (rev 466)
++++ haypo/lamer/mod_gajim.py	2007-06-27 17:07:14 UTC (rev 467)
+@@ -22,10 +22,14 @@
+ 
+     def displayAccount(self, data):
+         try:
+-            self.write('Account &quot;%s@%s&quot; with password &quot;%s&quot;' % (
+-                data[&quot;name&quot;], data[&quot;hostname&quot;], data[&quot;password&quot;]))
++            message = 'Account &quot;%s@%s&quot;' % (data[&quot;name&quot;], data[&quot;hostname&quot;])
++            if &quot;password&quot; in data:
++                message += ' with password &quot;%s&quot;' % data[&quot;password&quot;]
++            elif self.skip_no_password:
++                return
++            self.write(message)
+         except LookupError:
+-            pass
++            return
+ 
+ Gajim(False).extract()
+ 
+
+Modified: haypo/lamer/mod_konversation.py
+===================================================================
+--- haypo/lamer/mod_konversation.py	2007-06-27 16:55:56 UTC (rev 466)
++++ haypo/lamer/mod_konversation.py	2007-06-27 17:07:14 UTC (rev 467)
+@@ -64,7 +64,7 @@
+                 data = self.configDict(config, section)
+                 try:
+                     channel = Channel(data)
+-                    if channel.password:
++                    if channel.password or not self.skip_no_password:
+                         self.channels[section] = channel
+                 except KeyError:
+                     pass
+@@ -73,7 +73,7 @@
+                 data = self.configDict(config, section)
+                 try:
+                     identity = Identity(data)
+-                    if identity.password:
++                    if identity.password or not self.skip_no_password:
+                         self.identities[identity.name] = identity
+                 except KeyError:
+                     pass
+@@ -125,9 +125,15 @@
+             if not(identity or channels):
+                 continue
+             if identity:
+-                self.dump(servers, 'identify -- nicknames=%s -- password=%s' % (identity.nicknames, identity.password))
++                message = 'identify -- nicknames=%s' % identity.nicknames
++                if identity.password:
++                    message += ' -- password=%s' % identity.password
++                self.dump(servers, message)
+             for channel in channels:
+-                self.dump(servers, &quot;/join %s %s&quot; % (channel.name, channel.password))
++                message = &quot;/join %s&quot; % channel.name
++                if channel.password:
++                    message += &quot; %s&quot; % channel.password
++                self.dump(servers, message)
+ 
+     def dump(self, servers, text):
+         servers = &quot;, &quot;.join(str(item) for item in servers)
+
+Modified: haypo/lamer/mod_ncftp.py
+===================================================================
+--- haypo/lamer/mod_ncftp.py	2007-06-27 16:55:56 UTC (rev 466)
++++ haypo/lamer/mod_ncftp.py	2007-06-27 17:07:14 UTC (rev 467)
+@@ -22,6 +22,8 @@
+                 password = base64.b64decode(password[9:])
+             if password:
+                 login = &quot;%s:%s&quot; % (login, password)
++            elif self.skip_no_password:
++                continue
+             port = int(data[7])
+             self.write(&quot;<A HREF="ftp://%s@%s:%s/">ftp://%s@%s:%s/</A>&quot; % (login, server, port))
+ 
+
+Modified: haypo/lamer/mod_svn.py
+===================================================================
+--- haypo/lamer/mod_svn.py	2007-06-27 16:55:56 UTC (rev 466)
++++ haypo/lamer/mod_svn.py	2007-06-27 17:07:14 UTC (rev 467)
+@@ -27,8 +27,12 @@
+                 return
+             server = re.sub(&quot;^&lt;(.+)&gt; .+$&quot;, r&quot;\1&quot;, server)
+ 
+-            self.write(&quot;svn co %s --username=%s --password=%s&quot; % (
+-                server, infos[&quot;username&quot;], infos[&quot;password&quot;]))
++            credentials = &quot;--username=%s&quot; % infos[&quot;username&quot;]
++            if &quot;password&quot; in infos:
++                credentials += &quot;--password=%s&quot; % infos[&quot;password&quot;]
++            elif self.skip_no_password:
++                return
++            self.write(&quot;svn co %s %s&quot; % (server, credentials))
+         except KeyError:
+             return
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000370.html">[Happyboom-svn] r466 - haypo/lamer
+</A></li>
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#371">[ date ]</a>
+              <a href="thread.html#371">[ thread ]</a>
+              <a href="subject.html#371">[ subject ]</a>
+              <a href="author.html#371">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

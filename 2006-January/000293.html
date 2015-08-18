@@ -1,0 +1,1888 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r391 - in haypo/hachoir/tags: . 2005-12-26/plugins 2005-12-28
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r391%20-%20in%20haypo/hachoir/tags%3A%20.%202005-12-26/plugins%202005-12-28&In-Reply-To=%3C200601031639.k03GdAQ0002149%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000292.html">
+   <LINK REL="Next"  HREF="000294.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r391 - in haypo/hachoir/tags: . 2005-12-26/plugins 2005-12-28</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r391%20-%20in%20haypo/hachoir/tags%3A%20.%202005-12-26/plugins%202005-12-28&In-Reply-To=%3C200601031639.k03GdAQ0002149%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r391 - in haypo/hachoir/tags: . 2005-12-26/plugins 2005-12-28">haypo at berlios.de
+       </A><BR>
+    <I>Tue Jan  3 17:39:10 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000292.html">[Happyboom-svn] r390 - haypo
+</A></li>
+        <LI>Next message: <A HREF="000294.html">[Happyboom-svn] r392 - in haypo/hachoir/trunk: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#293">[ date ]</a>
+              <a href="thread.html#293">[ thread ]</a>
+              <a href="subject.html#293">[ subject ]</a>
+              <a href="author.html#293">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-03 17:39:09 +0100 (Tue, 03 Jan 2006)
+New Revision: 391
+
+Added:
+   haypo/hachoir/tags/2005-12-28/
+   haypo/hachoir/tags/2005-12-28/NEWS
+   haypo/hachoir/tags/2005-12-28/TODO
+   haypo/hachoir/tags/2005-12-28/chunk.py
+   haypo/hachoir/tags/2005-12-28/default.py
+   haypo/hachoir/tags/2005-12-28/error.py
+   haypo/hachoir/tags/2005-12-28/filter.py
+   haypo/hachoir/tags/2005-12-28/format.py
+   haypo/hachoir/tags/2005-12-28/generic/
+   haypo/hachoir/tags/2005-12-28/hachoir.py
+   haypo/hachoir/tags/2005-12-28/hachoir_class.py
+   haypo/hachoir/tags/2005-12-28/mime.py
+   haypo/hachoir/tags/2005-12-28/plugins/
+   haypo/hachoir/tags/2005-12-28/release.sh
+   haypo/hachoir/tags/2005-12-28/stream/
+   haypo/hachoir/tags/2005-12-28/text_handler.py
+   haypo/hachoir/tags/2005-12-28/tools.py
+   haypo/hachoir/tags/2005-12-28/ui/
+Removed:
+   haypo/hachoir/tags/2005-12-28/NEWS
+   haypo/hachoir/tags/2005-12-28/TODO
+   haypo/hachoir/tags/2005-12-28/broken_plugins/
+   haypo/hachoir/tags/2005-12-28/chunk.py
+   haypo/hachoir/tags/2005-12-28/default.py
+   haypo/hachoir/tags/2005-12-28/error.py
+   haypo/hachoir/tags/2005-12-28/filter.py
+   haypo/hachoir/tags/2005-12-28/format.py
+   haypo/hachoir/tags/2005-12-28/generic/
+   haypo/hachoir/tags/2005-12-28/hachoir.py
+   haypo/hachoir/tags/2005-12-28/hachoir_class.py
+   haypo/hachoir/tags/2005-12-28/mime.py
+   haypo/hachoir/tags/2005-12-28/plugins/
+   haypo/hachoir/tags/2005-12-28/release.sh
+   haypo/hachoir/tags/2005-12-28/stream/
+   haypo/hachoir/tags/2005-12-28/text_handler.py
+   haypo/hachoir/tags/2005-12-28/tools.py
+   haypo/hachoir/tags/2005-12-28/ui/
+Modified:
+   haypo/hachoir/tags/2005-12-26/plugins/exe.py
+Log:
+- Create 2005-12-26 release
+- Fix EXE plugin in 2005-12-26 release
+
+
+Modified: haypo/hachoir/tags/2005-12-26/plugins/exe.py
+===================================================================
+--- haypo/hachoir/tags/2005-12-26/plugins/exe.py	2006-01-03 16:36:03 UTC (rev 390)
++++ haypo/hachoir/tags/2005-12-26/plugins/exe.py	2006-01-03 16:39:09 UTC (rev 391)
+@@ -107,7 +107,7 @@
+         self.readArray(&quot;directories&quot;, PE_Directory, &quot;PE directories&quot;, self.checkEndOfDir)
+ 
+     def checkEndOfDir(self, stream, array, dir):
+-        return len(array) == self.nb_directories
++        return len(array) == self[&quot;nb_directories&quot;]
+ 
+ class PE_Filter(Filter):
+     def __init__(self, stream, parent):
+@@ -181,7 +181,7 @@
+             for section in self[&quot;pe_sections&quot;]:
+                 section = section.getFilter()
+                 if section.name == &quot;.rsrc&quot;:
+-                    offset_res_section = section.file_offset
++                    offset_res_section = section[&quot;file_offset&quot;]
+                     self.getStream().seek( offset_res_section )
+                     break
+             if offset_res_section != None:
+@@ -193,4 +193,4 @@
+     def checkEndOfSections(self, stream, array, section):
+         return len(array) == self[&quot;pe&quot;][&quot;nb_sections&quot;]
+ 
+-registerPlugin(ExeFile, &quot;application/x-dosexec&quot;)
++registerPlugin(ExeFile, [&quot;application/x-dosexec&quot;, &quot;application/x-ms-dos-executable&quot;])
+
+Copied: haypo/hachoir/tags/2005-12-28 (from rev 372, haypo/hachoir/trunk)
+
+Deleted: haypo/hachoir/tags/2005-12-28/NEWS
+===================================================================
+--- haypo/hachoir/trunk/NEWS	2005-12-28 05:45:55 UTC (rev 372)
++++ haypo/hachoir/tags/2005-12-28/NEWS	2006-01-03 16:39:09 UTC (rev 391)
+@@ -1,31 +0,0 @@
+-News in version 2005-12-26
+-    o Some speed up:
+-      - use more caches (eg. for format operations like getting format size)
+-      - merge FormatChunkCache and FormatChunk to limit function calls
+-    o New command line options: &quot;--use-profiler&quot; and &quot;--debug&quot;
+-    o Hide backtrace by default (need &quot;--debug&quot; command line option)
+-    o Delete ArrayFilter class, replace it with classical while Python
+-      structure.
+-    o Add &quot;copy to clipboard&quot; in user interface
+-    o Add AVI (written with a new author, Aur&#233;lien Jacobs), MP3, ID3, MBR,
+-      EXT2, PCX, BMP, WORMS2 plugins. RPM plugin can now read all headers
+-      and also file content.
+-    o Kill arbitrary limits (address/size) ;-) (in Chunk/Filter classes and in UI)
+-    o Don't support FormatChunk dynamic format (like &quot;{size}s&quot;),
+-      nor &quot;@end@&quot; keyword anymore
+-    o Start work on &quot;on demand filter&quot;: create OnlyFormatsChunkFilter class
+-      which only instanciate objects when needed. It's only used
+-      in EXT2 plugin yet.
+-
+-News in version 2005-12-11 (svn commit 314)
+-    o First public release
+-    o Use GTK+ interface with Glade XML files (dynamically loaded) 
+-    o Available plugins : jpeg, ar, email, bzip2, exif, elf, exe, gif,
+-      pdf, png, rpm, tar, xcf, zip, gzip, asn1, 3ds
+-    o Support three types of chunks: FormatChunk, FilterChunk, StringChunk.
+-      String format can be: C, UnixLine, WindowsLine, MacLine, AutoLine.
+-    o Use cache for FormatChunk value and FileStream access.
+-    o Use MIME type detection to choose the best filter.
+-    o Development features:
+-      - it's possible to edit chunks list: create, edit, remove chunk
+-      - it's possible to store and load a filter into/from XML file
+
+Copied: haypo/hachoir/tags/2005-12-28/NEWS (from rev 389, haypo/hachoir/trunk/NEWS)
+
+Deleted: haypo/hachoir/tags/2005-12-28/TODO
+===================================================================
+--- haypo/hachoir/trunk/TODO	2005-12-28 05:45:55 UTC (rev 372)
++++ haypo/hachoir/tags/2005-12-28/TODO	2006-01-03 16:39:09 UTC (rev 391)
+@@ -1,2 +0,0 @@
+-List of TODO can be found which following command:
+-  grep TODO -A3 $(find -name &quot;*.py&quot;)
+
+Copied: haypo/hachoir/tags/2005-12-28/TODO (from rev 389, haypo/hachoir/trunk/TODO)
+
+Deleted: haypo/hachoir/tags/2005-12-28/chunk.py
+===================================================================
+--- haypo/hachoir/trunk/chunk.py	2005-12-28 05:45:55 UTC (rev 372)
++++ haypo/hachoir/tags/2005-12-28/chunk.py	2006-01-03 16:39:09 UTC (rev 391)
+@@ -1,457 +0,0 @@
+-import struct, re, types
+-import config
+-from format import checkFormat, splitFormat, getFormatSize, getRealFormat, formatIsString, formatIsArray, formatIsInteger, formatIsArray
+-from error import warning, error
+-from tools import convertDataToPrintableString
+-
+-class Chunk(object):
+-    &quot;&quot;&quot;
+-    A chunk address is fixed. If you want to move the chunk, delete it :-P
+-    &quot;&quot;&quot;
+-    def __init__(self, id, description, stream, addr, size, parent):
+-        self._id = id
+-        self.description = description
+-        self._size = size
+-        self._addr = addr
+-        self._parent = parent
+-        self._stream = stream
+-        self.post_process = None
+-        self.display = None
+-
+-    def getStaticSize(stream, args):
+-        return None
+-    getStaticSize = staticmethod(getStaticSize)
+-
+-    def clone(self):
+-        raise Exception(&quot;%s doesn't implement clone() method!&quot; % self)
+-
+-    def postProcess(self):        
+-        if self.post_process != None:
+-            self.display = self.post_process(self)
+-
+-    def getFormat(self):
+-        return self.__class__.__name__
+-
+-    def getSmallFormat(self):
+-        return self.__class__.__name__
+-
+-    def getStream(self):
+-        return self._stream
+-
+-    def getStringValue(self):
+-        value = self.getDisplayData()
+-        if type(value) == types.TupleType:
+-            return &quot;(%s)&quot; % &quot;, &quot;.join( map(str,value) )
+-        else:
+-            return &quot;%s&quot; % value
+-
+-    def getRaw(self, max_size=None):
+-        oldpos = self._stream.tell()
+-        self._stream.seek(self.addr)
+-        size = self._size
+-        if max_size != None and max_size&lt;size:
+-            size = max_size
+-        data = self._stream.getN(size)
+-        self._stream.seek(oldpos)
+-        return data
+-
+-    def getValue(self, max_size=None):
+-        return self.getRaw(max_size)
+-
+-    def getDisplayData(self):
+-        if self.display != None:
+-            return self.display
+-        else:
+-            return self.getRaw(40)
+-
+-    def setParent(self, parent):
+-        self._parent = parent
+-    def getParent(self): return self._parent
+-    def _getAddr(self): return self._addr
+-    def _getSize(self): return self._size
+-    def _getId(self):
+-        return self._id
+-    def _setId(self, new_id):
+-        old_id = self.id
+-        if new_id == old_id:
+-            return
+-        self._id = new_id
+-        self._parent.updateChunkId(old_id, new_id)
+-    addr = property(_getAddr)
+-    size = property(_getSize)        
+-    id = property(_getId, _setId)
+-    value = property(getValue)
+-    raw = property(getRaw)
+-    
+-class FilterChunk(Chunk):
+-    def __init__(self, id, filter, parent, parent_addr):
+-        self._description = None
+-        self.parent_addr = parent_addr
+-        self._filter = filter
+-        self._filter.filter_chunk = self
+-        self._parent = None
+-        Chunk.__init__(self, id, \
+-            filter.getDescription(), filter.getStream(), filter.getAddr(), \
+-            filter.getSize(), parent)
+-        self._description = filter.getDescription()
+-    
+-    def getFormat(self):
+-        return self.__class__.__name__ + &quot; (%s)&quot; % self._filter.__class__.__name__
+-
+-    def getSmallFormat(self):
+-        return self._filter.__class__.__name__
+-
+-    def setFilter(self, filter):
+-        self._filter = filter
+-        self._filter.updateParent(self)
+-    
+-    def _getSize(self):
+-        return self._filter.getSize()
+-    size = property(_getSize)        
+-        
+-    def getDisplayData(self):
+-        return &quot;(...)&quot; 
+-        
+-    def getValue(self, max_size=None):
+-        return self._filter
+-    value = property(getValue)
+-
+-    def getFilter(self):
+-        return self._filter
+-
+-    def _setId(self, new_id):
+-        if new_id == self.id:
+-            return
+-        self._filter.setId(new_id)
+-        Chunk._setId(self, new_id)
+-    id = property(Chunk._getId, _setId)
+-
+-    def _getDescription(self):
+-        return self._description
+-    def _setDescription(self, description):
+-        if self._description != None:
+-            self._description = description
+-            self._filter.setDescription(description)
+-            self._parent.updateChunkDescription(self._id, description)
+-    description = property(_getDescription, _setDescription)
+-
+-class StringChunk(Chunk):
+-    regex_eol_nr = re.compile(&quot;[\n\r]&quot;)
+-    regex_not_ascii = re.compile(&quot;[^\x00-\x7F]&quot;)
+-    names = {
+-        &quot;C&quot;: &quot;c-string&quot;,
+-        &quot;MacLine&quot;: &quot;mac line&quot;,
+-        &quot;UnixLine&quot;: &quot;unix line&quot;,
+-        &quot;AutoLine&quot;: &quot;line&quot;,
+-        &quot;Pascal16&quot;: &quot;pascal16&quot;,
+-        &quot;Pascal32&quot;: &quot;pascal32&quot;,
+-        &quot;WindowsLine&quot;: &quot;windows line&quot;
+-    }
+-
+-    def __init__(self, id, description, stream, str_type, parent, strip=None, charset=&quot;ascii&quot;):
+-        &quot;&quot;&quot;
+-        Strip: if strip=None, call read text.strip()
+-               if strip is a string, call read text.strip(self.strip)
+-        &quot;&quot;&quot;
+-        assert str_type in StringChunk.names
+-        Chunk.__init__(self, id, description, stream, stream.tell(), 0, parent)
+-        self._str_type = str_type
+-        self.eol = None
+-        self._findSize()
+-        self.strip = strip
+-        self.charset = charset
+-
+-    def getFormat(self):
+-        return &quot;%s (%s)&quot; % (\
+-            StringChunk.names[self._str_type],
+-            self.charset)
+-    getSmallFormat = getFormat
+-
+-    def _findSize(self):
+-        self._stream.seek(self.addr)
+-        if self._str_type == &quot;Pascal16&quot;:
+-            self.length = self._stream.getFormat(&quot;!uint16&quot;)
+-            self._size = 2 + self.length
+-            self.eol = &quot;&quot;
+-        elif self._str_type == &quot;Pascal32&quot;:
+-            self.length = self._stream.getFormat(&quot;!uint32&quot;)
+-            self._size = 4 + self.length
+-            self.eol = &quot;&quot;
+-        elif self._str_type == &quot;AutoLine&quot;:
+-            self._size = self._stream.searchLength(StringChunk.regex_eol_nr, True)
+-            assert self._size != -1
+-            self._stream.seek(self.addr + self._size-1)
+-            self.eol = self._stream.getN(1)
+-            if self.eol == &quot;\r&quot; and self._stream.read(1) == &quot;\n&quot;:
+-                self.eol = &quot;\r\n&quot;
+-                self._size = self._size + 1
+-            self.length = self._size - len(self.eol)
+-        else:            
+-            if self._str_type == &quot;UnixLine&quot;:
+-                self.eol = &quot;\n&quot;
+-            elif self._str_type == &quot;WindowsLine&quot;:
+-                self.eol = &quot;\r\n&quot;
+-            elif self._str_type == &quot;MacLine&quot;:
+-                self.eol = &quot;\r&quot;
+-            else: 
+-                self.eol = &quot;\0&quot;
+-            self._size = self._stream.searchLength(self.eol, True)
+-            assert self._size != -1
+-            self.length = self._size - len(self.eol)
+-        self._stream.seek(self.addr + self._size)
+-        
+-    def _read(self, max_size):
+-        self._stream.seek(self.addr)
+-        if self._str_type == &quot;Pascal32&quot;:
+-            self._stream.seek(4,1)
+-            size = self.length
+-        elif self._str_type == &quot;Pascal16&quot;:
+-            self._stream.seek(2,1)
+-            size = self.length
+-        else:
+-            size = self._size - len(self.eol)
+-        if max_size != None and max_size&lt;size:
+-            text = self._stream.getN(max_size)+&quot;(...)&quot;
+-        else:
+-            text = self._stream.getN(size)
+-        self._stream.seek(self.addr + self._size)
+-        if self.strip != None:
+-            if self.strip == True:
+-                text = text.strip()
+-            else:
+-                text = text.strip(self.strip)
+-        if self.charset != &quot;ascii&quot;:
+-            try:                
+-                text = unicode(text, self.charset)
+-            except:
+-                self.charset = &quot;ascii&quot;
+-                text = StringChunk.regex_not_ascii.sub(&quot;.&quot;, text)
+-                text = unicode(text, &quot;ascii&quot;)
+-        return text
+-
+-    def getValue(self, max_size=None):
+-        return self._read(None)
+-    value = property(getValue)
+-
+-    def getDisplayData(self):
+-        if self.display != None:
+-            return self.display
+-        else:
+-            text = self._read(config.max_string_length)
+-            return convertDataToPrintableString(text)
+-
+-class FormatChunk(Chunk):
+-    def __init__(self, id, description, stream, format, parent):
+-        Chunk.__init__(self, id, description, stream, stream.tell(), None, parent)
+-        self._format = None
+-        self._doSetFormat(format)
+-        stream.seek(self.size, 1)
+-
+-    def getStaticSize(stream, args):
+-        return getFormatSize(args[0])
+-    getStaticSize = staticmethod(getStaticSize)
+-
+-    def _doSetFormat(self, format):
+-        if format == self._format:
+-            return
+-
+-        # Add endian if needed
+-        splited = splitFormat(format)
+-        if splited[0] == None and splited[2] not in &quot;scbB&quot;:
+-            endian = self._parent.endian
+-            assert endian != None
+-            format = endian + format
+-            
+-        self._format = format
+-        self._real_format = getRealFormat(format)
+-        self._is_string = formatIsString(self._format)
+-        self._is_array = formatIsArray(format)
+-        self._size = getFormatSize(self._format)
+-        self._value = {}
+-       
+-    def clone(self, addr=None):
+-        if addr == None:
+-            addr = self._addr
+-        return FormatChunk(self.id, self.description, self._stream, addr, self._format, self._parent)
+-
+-    def getFormat(self):
+-        return self.__class__.__name__ + &quot; (%s)&quot; % self._format
+-
+-    def getSmallFormat(self):
+-        return self._format
+-
+-    def convertToStringSize(self, size):
+-        self._doSetFormat(&quot;%us&quot; % size)
+-
+-    def setFormat(self, format, method, new_id=None, new_description=None):
+-        &quot;&quot;&quot; Method:
+-        - split =&gt; create new raw array if chunk is smaller
+-        - rescan =&gt; if size changed, rescan chunks&quot;&quot;&quot;
+-
+-        # Check format
+-        if not checkFormat(format):
+-            raise Exception(&quot;Invalid FormatChunk format: \&quot;%s\&quot;!&quot; % format)
+-        
+-        # Check new size
+-        size = getFormatSize(format)
+-        if self._stream.getLastPos() &lt; (self.addr + size - 1):
+-            raise Exception(&quot;Can't set chunk %s to format \&quot;%s\&quot;: size too big!&quot; % (self.id, format))
+-
+-        # Update format
+-        old_size = self._size
+-        self._doSetFormat(format)
+-        new_size = self._size
+-        diff_size = new_size - old_size
+-
+-        # Update id and description
+-        old_id = self.id
+-        if new_id != None:
+-            new_id = self.getParent().getUniqChunkId(new_id)
+-            self.id = new_id
+-        old_description = self.description
+-        if new_description != None:
+-            self.description = new_description
+-
+-        # Update filter if needed
+-        if diff_size != 0:
+-            if method == &quot;split&quot; and diff_size &lt; 0:
+-                self._parent.addRawChunk(self, old_id, -diff_size, old_description)
+-            else:
+-                self._parent.rescan(self, diff_size, new_id=old_id, new_description=old_description, truncate=True)
+-        self._parent.updateFormatChunk(self)
+-
+-    def _getRawData(self, max_size=None):
+-        oldpos = self._stream.tell()
+-        self._stream.seek(self._addr)
+-        if (max_size == None or self._size&lt;=max_size) or not self._is_string:
+-            data = self._stream.getN(self._size, False)
+-            self._stream.seek(oldpos)
+-            return data, False
+-        else:
+-            data = self._stream.getN(max_size, False)
+-            self._stream.seek(oldpos)
+-            return data, True
+-
+-    def getRaw(self, max_size=None):
+-        return self._getRawData(max_size)[0]
+-    raw = property(getRaw)
+-   
+-    def getValue(self, max_size=None):
+-        if max_size not in self._value:
+-            data, truncated = self._getRawData(max_size)
+-            if not truncated:
+-                data = struct.unpack(self._real_format, data)
+-                if not self._is_array:
+-                    data = data[0]
+-            else:
+-                data = data + &quot;(...)&quot;
+-            self._value[max_size] = data
+-        return self._value[max_size]
+-    value = property(getValue)
+-
+-    def getDisplayData(self):
+-        if self.display != None:
+-            return self.display
+-        data = self.getValue(config.max_string_length)
+-        if type(data)==types.StringType:
+-            return convertDataToPrintableString(data)
+-        else:
+-            return data 
+-
+-class EnumChunk(FormatChunk):
+-    def __init__(self, id, description, stream, format, dict, parent):
+-        assert not formatIsArray(format)
+-        FormatChunk.__init__(self, id, description, stream, format, parent)
+-        self._dict = dict
+-#        value = self.getValue()
+-#        self.description = self.description + &quot;: &quot; + self._dict.get(value, &quot;Unknow (%s)&quot; % value)
+-
+-    def getDisplayData(self):
+-        value = self.getValue()
+-        return self._dict.get(value, &quot;Unknow (%s)&quot; % value)
+-
+-class BitsStruct(object):
+-    def __init__(self, items=None):
+-        self._items_list = []
+-        self._items_dict = {}
+-        self._size = 0
+-        self._source = None
+-        if items != None:
+-            for item in items:
+-                if 3&lt;len(item):
+-                    type = item[3]
+-                else:
+-                    type = None
+-                self.add(item[0], item[1], item[2], type)
+-            assert self.isValid()
+-
+-    def isValid(self):
+-        return (0 &lt; self._size) and ((self._size % 8) == 0)
+-
+-    def add(self, bits, id, description, type=None):
+-        # TODO: (Maybe) Generate new id if another already exist
+-        assert id not in self._items_dict
+-        assert 0&lt;bits
+-        assert bits &lt;= 32
+-        if type == None:
+-            if 1&lt;bits:
+-                type = &quot;bits&quot;
+-            else:
+-                type = &quot;bit&quot;
+-        self._items_list.append(id)
+-        self._items_dict[id] = (self._size, bits, type, description)
+-        self._size += bits
+-
+-    def __getitem__(self, id):
+-        assert self.isValid() 
+-        item = self._items_dict[id]
+-        addr = item[0]
+-        size = item[1]
+-        data = self._source.getRaw()
+-        start = addr / 8
+-        mask = (1 &lt;&lt; size) - 1
+-        byte_size = (size + (addr % 8) + 7) / 8
+-        shift = (start+byte_size) * 8 - (size+addr)
+-        data = data[start:start+byte_size]
+-        value = 0
+-        for character in data:
+-            value &lt;&lt;= 8
+-            value += ord(character)
+-#        print &quot;%u..%u : &quot; % (addr, addr+size), &quot;bytes %u..%u : &quot; % (start, start+byte_size), &quot;shift=&quot;, shift, &quot;mask=&quot;, mask, &quot;value=&quot;, value, &quot;final=&quot;,(value &gt;&gt; shift) &amp; mask
+-        value = (value &gt;&gt; shift) &amp; mask
+-        if size == 1:
+-            return value == 1
+-        else:
+-            return value
+-
+-    def setSource(self, source):
+-        self._source = source
+-
+-    def _getSize(self):
+-        assert self.isValid() 
+-        return self._size / 8
+-    size = property(_getSize)
+-
+-    def display(self, ui, parent):
+-        for id in self._items_list:
+-            item = self._items_dict[id]
+-            addr = item[0]
+-            size = item[1]
+-            format = item[2]
+-            desc = item[3]
+-            display = self[id]
+-            ui.add_table(parent, addr, size, format, id, desc, display)
+-
+-class BitsChunk(Chunk):
+-    def __init__(self, id, description, stream, struct, parent):
+-        Chunk.__init__(self, id, description, stream, stream.tell(), struct.size, parent)
+-        self._struct = struct
+-        self._struct.setSource(self)
+-        stream.seek(self.size, 1)
+-
+-    def uiDisplay(self, ui):
+-        path = ui.add_table(None, self.addr, self.size, &quot;bits&quot;, self.id, self.description, &quot;*bits*&quot;)
+-        self._struct.display(ui, path)
+-
+-    def __getitem__(self, id):
+-        return self._struct[id]
+
+Copied: haypo/hachoir/tags/2005-12-28/chunk.py (from rev 389, haypo/hachoir/trunk/chunk.py)
+
+Deleted: haypo/hachoir/tags/2005-12-28/default.py
+===================================================================
+--- haypo/hachoir/trunk/default.py	2005-12-28 05:45:55 UTC (rev 372)
++++ haypo/hachoir/tags/2005-12-28/default.py	2006-01-03 16:39:09 UTC (rev 391)
+@@ -1,11 +0,0 @@
+-from filter import OnDemandFilter
+-from chunk import FormatChunk
+-
+-#class EmptyFilter(OnDemandFilter):
+-#    def __init__(self, stream, parent=None):
+-#        OnDemandFilter.__init__(self, &quot;empty&quot;, &quot;Empty filter&quot;, stream, parent)
+-
+-class DefaultFilter(OnDemandFilter):
+-    def __init__(self, stream, parent=None):
+-        OnDemandFilter.__init__(self, &quot;default&quot;, &quot;Default filter&quot;, stream, parent)
+-        self.read(&quot;data&quot;, &quot;Raw data&quot;, (FormatChunk, &quot;string[%u]&quot; % stream.getSize()))
+
+Copied: haypo/hachoir/tags/2005-12-28/default.py (from rev 389, haypo/hachoir/trunk/default.py)
+
+Deleted: haypo/hachoir/tags/2005-12-28/error.py
+===================================================================
+--- haypo/hachoir/trunk/error.py	2005-12-28 05:45:55 UTC (rev 372)
++++ haypo/hachoir/tags/2005-12-28/error.py	2006-01-03 16:39:09 UTC (rev 391)
+@@ -1,35 +0,0 @@
+-import os
+-import config
+-from log import log
+-import ui.ui
+-from tools import getBacktrace
+-
+-def warning(message):
+-    log_message = message + &quot;\n\n&quot; + getBacktrace()
+-    if config.debug:
+-        message = log_message
+-    log.warning(log_message)   
+-    if ui.ui.ui != None:
+-        import gtk
+-        dlg = gtk.MessageDialog( \
+-            parent=ui.ui.ui.window.window,
+-            type=gtk.MESSAGE_WARNING,
+-            buttons=gtk.BUTTONS_OK,
+-            message_format=message)
+-        dlg.run()
+-        dlg.destroy()
+-
+-def error(message, backtrace=None):
+-    log_message = message + &quot;\n\n&quot; + getBacktrace()
+-    if config.debug:
+-        message = log_message
+-    log.error(log_message)
+-    if ui.ui.ui != None:
+-        import gtk
+-        dlg = gtk.MessageDialog( \
+-            parent=ui.ui.ui.window.window,
+-            type=gtk.MESSAGE_ERROR,
+-            buttons=gtk.BUTTONS_OK,
+-            message_format=message)
+-        dlg.run()
+-        dlg.destroy()
+
+Copied: haypo/hachoir/tags/2005-12-28/error.py (from rev 389, haypo/hachoir/trunk/error.py)
+
+Deleted: haypo/hachoir/tags/2005-12-28/filter.py
+===================================================================
+--- haypo/hachoir/trunk/filter.py	2005-12-28 05:45:55 UTC (rev 372)
++++ haypo/hachoir/tags/2005-12-28/filter.py	2006-01-03 16:39:09 UTC (rev 391)
+@@ -1,306 +0,0 @@
+-&quot;&quot;&quot;
+-Base class for all splitter filters.
+-&quot;&quot;&quot;
+-
+-import struct, re, sys, string, types
+-import config
+-import ui.ui as ui
+-from chunk import Chunk, FormatChunk, FilterChunk, StringChunk, BitsChunk
+-from error import error
+-from format import getFormatSize, splitFormat
+-from cache import Cache
+-
+-class BasicFilter(object):
+-    regex_chunk_uniq_id = re.compile(&quot;^(.*?)([0-9]+)$&quot;)
+-
+-    def __init__(self, id, description, stream, parent, addr, endian):
+-        self._id = id
+-        self._description = description
+-        self._stream = stream
+-        self._parent = parent
+-        self._addr = addr 
+-        self._chunks_counter = {}
+-        self._chunks_dict = {}
+-        self._endian = endian
+-        self.filter_chunk = None
+-
+-    def getStaticSize(stream, args):
+-        return None
+-    getStaticSize = staticmethod(getStaticSize)
+-
+-    def updateParent(self, chunk): pass
+-    def getId(self): return self._id
+-    def setId(self, id):
+-        if self._id == id:
+-            return
+-        self._id = id
+-        if self.filter_chunk != None:
+-            self.filter_chunk.id = id
+-    def getDescription(self): return self._description
+-    def setDescription(self, description): self._description = description
+-    def getAddr(self): return self._addr
+-    def getParent(self): return self._parent
+-    def getStream(self): return self._stream
+-    def updateChunkId(self, old_id, new_id): pass
+-    def updateChunkDescription(self, id, desc): pass
+-    def __len__(self): return len(self._chunks_dict)
+-
+-    def getPath(self):
+-        &quot;&quot;&quot;
+-        Get path to the filter.
+-        Example: &quot;grandparent &gt; parent &gt; item&quot;
+-        &quot;&quot;&quot;
+-        text = &quot;&quot;
+-        current = self
+-        while current != None:
+-            if text != &quot;&quot;: text = &quot;/&quot; + text
+-            text = current.getId() + text
+-            current = current.getParent()
+-        return &quot;/&quot;+text
+-
+-    def _getUniqChunkId(self, root, index):
+-        if root in self._chunks_counter:
+-            self._chunks_counter[root] = self._chunks_counter[root] + 1
+-        else:
+-            self._chunks_counter[root] = index
+-        return self._chunks_counter[root]
+-
+-    def getUniqChunkId(self, id):
+-        # No collision
+-        if id not in self._chunks_dict and id[-2:] != &quot;[]&quot;:
+-            return id
+-
+-        # Pattern like &quot;block[]&quot;
+-        if id[-2:] == &quot;[]&quot;:
+-            root = id[:-2]
+-            start = 0
+-            pattern = &quot;%s[%u]&quot;
+-        else:
+-            # Manage id collision
+-            m = BasicFilter.regex_chunk_uniq_id.match(id)
+-            if m != None:
+-                root = m.group(1)
+-                start = int(m.group(2)) + 1
+-            else:
+-                root = id
+-                start = 2
+-            pattern = &quot;%s%u&quot;
+-        if root in self._chunks_counter:
+-            self._chunks_counter[root] = self._chunks_counter[root] + 1
+-        else:
+-            self._chunks_counter[root] = start 
+-        return pattern % (root, self._chunks_counter[root])
+-        
+-    def hasChunk(self, id):
+-        return id in self._chunks_dict
+-
+-    def _getEndian(self): return self._endian
+-    endian = property(_getEndian)
+-
+-    # --- Pure virtual methods -----------
+-    def getSize(self): todoWriteMethod(self, &quot;getSize&quot;) 
+-    def __getitem__(self, chunk_id): todoWriteMethod(self, &quot;__getitem__&quot;) 
+-    def getChunk(self, chunk_id): todoWriteMethod(self, &quot;getChunk&quot;)
+-    def display(self): todoWriteMethod(self, &quot;display&quot;)
+-
+-class OnDemandFilter(BasicFilter, Cache):
+-    def __init__(self, id, description, stream, parent, endian=None):
+-        BasicFilter.__init__(self, id, description, stream, parent, stream.tell(), endian)
+-        Cache.__init__(self, &quot;Filter %s&quot; % id)
+-        self._size = 0
+-        self._chunks = []
+-        self._chunks_cache = {}
+-   
+-    def getCacheSize(self):
+-        return len(self._chunks_cache)
+-
+-    def updateChunkId(self, old_id, new_id):
+-        # Update self._chunks
+-        pos = self._chunks.index(old_id)
+-        assert pos != -1
+-        self._chunks[pos] = new_id
+-
+-        # Update self._chunks_dict
+-        info = self._chunks_dict[old_id]
+-        info[0] = new_id
+-        del self._chunks_dict[old_id]
+-        self._chunks_dict[new_id] = info
+-        
+-        # Update self._chunks_dict
+-        if old_id in self._chunks_cache:
+-            cache = self._chunks_cache[old_id]
+-            del self._chunks_cache[old_id]
+-            self._chunks_cache[new_id] = cache
+-
+-        # Update display
+-        info = self.displayChunkInfo(new_id)
+-        ui.window.update_table(self, pos, *info)
+-
+-    def updateChunkDescription(self, id, desc):
+-        pos = self._chunks.index(id)
+-        assert pos != -1
+-        self._chunks_dict[id][1] = desc
+-
+-        info = self.displayChunkInfo(id)
+-        ui.window.update_table(self, pos, *info)
+-
+-    def purgeCache(self):
+-        if len(self._chunks_cache) != 0 and config.verbose:
+-            print &quot;Purge cache: destroy %s chunks&quot; % len(self._chunks_cache)
+-        self._chunks_cache = {}
+-        
+-    def read(self, id, description, info, optionnal={}): 
+-        chunk_class = info[0]
+-        id = self.getUniqChunkId(id)
+-        addr = self._stream.tell()
+-        if issubclass(chunk_class, BasicFilter):
+-            filter_stream = optionnal.get(&quot;stream&quot;, self._stream)
+-            size = optionnal.get(&quot;size&quot;, None)
+-            filter_addr = filter_stream.tell()
+-            args = info[1:]
+-            if size == None:
+-                size = chunk_class.getStaticSize(self._stream, info[1:])
+-            if size == None:
+-                filter = chunk_class(filter_stream, self, *args)
+-                description = filter.getDescription()
+-                filter.setId(id)
+-                chunk = FilterChunk(id, filter, self, addr)
+-                size = filter.getSize()
+-                if config.verbose:
+-                    print &quot;%s: Instanciate filter %s&quot; % (self.getPath(), id)
+-            else:
+-                chunk = None
+-
+-            chunk_info = [id, description, addr, size, \
+-                    (chunk_class, filter_stream, filter_addr, args), None, {}]
+-            self._chunks_dict[id] = chunk_info
+-            self._chunks.append(id)
+-            if chunk != None:
+-                filter.updateParent(chunk)
+-                self._chunks_cache[id] = chunk
+-            self._size = self._size + size
+-            self._stream.seek(addr + size)
+-            return id
+-
+-        else:
+-            post = optionnal.get(&quot;post&quot;, None)
+-            if &quot;post&quot; in optionnal:
+-                del optionnal[&quot;post&quot;]
+-            if isinstance(info, list):
+-                args = info[1:]
+-            else:
+-                args = [ i for i in info[1:] ]
+-            instance_info = [info[0], id, description, self._stream]+args+[self]
+-
+-            size = chunk_class.getStaticSize(self._stream, info[1:])
+-            if size != None:
+-                self._stream.seek(size, 1)
+-            else:
+-                # Instanciate the chunk
+-                seek = False
+-                chunk = info[0] (*instance_info[1:], **optionnal)
+-                size = chunk.size
+-                id = chunk.id
+-                self._chunks_cache[id] = chunk
+-            chunk_info = [id, description, addr, size, instance_info, post, optionnal]
+-#            else:       
+-#                assert chunk_class == StringChunk
+-#                strip = optionnal.get(&quot;strip&quot;, None)
+-#                chunk = chunk_class (id, description, self._stream, info[1:], self, strip=strip)
+-#                chunk_info = [id, description, addr, size, \
+-#                        (info[0], id, description, self._stream, info[1:], self,), post, optionnal]
+-#                self._chunks_cache[id] = chunk
+-            self._chunks_dict[id] = chunk_info
+-            self._chunks.append(id)
+-            self._size = self._size + size
+-            return id
+-
+-    def doRead(self, id, description, info, optionnal={}):
+-        id = self.read(id, description, info, optionnal)
+-        chunk = self.getChunk(id)
+-        if isinstance(chunk, FilterChunk):
+-            return chunk.getFilter()
+-        else:
+-            return chunk
+-
+-    def displayChunkInfo(self, id):
+-        info = self._chunks_dict[id]
+-        chunk_class = info[4][0]
+-        if issubclass(chunk_class, BasicFilter):
+-            display = &quot;(...)&quot;
+-            format = chunk_class.__name__
+-        else:
+-            chunk = self.getChunk(id)
+-            display = chunk.getDisplayData()
+-            format = chunk.getSmallFormat()
+-        addr = info[2]
+-        size = info[3]
+-        return (None, addr, size, format, info[0], info[1], display)
+-
+-    def display(self):
+-        ui.window.enableParentButton(self.getParent() != None)
+-        ui.window.clear_table()
+-        for id in self._chunks:
+-            info = self.displayChunkInfo(id)
+-            if self._chunks_dict[id][4][0] == BitsChunk:
+-                self.getChunk(id).uiDisplay(ui.window)
+-            else:
+-                ui.window.add_table(*info)
+- 
+-    def getSize(self): return self._size
+-
+-    def _createInstance(self, id):
+-        addr = self._chunks_dict[id][2]
+-        desc = self._chunks_dict[id][4]
+-        post = self._chunks_dict[id][5]
+-        chunks_kw = self._chunks_dict[id][6]
+-        oldpos = self._stream.tell()
+-        self._stream.seek(addr)
+-        if config.verbose:
+-            print &quot;%s: Instanciate %s (of type %s)&quot; % (self.getPath(), id, desc[0].__name__)
+-        if not issubclass(desc[0], BasicFilter):
+-            chunk_class = desc[0]
+-            chunk_args = desc[1:]
+-            chunk = chunk_class(*chunk_args, **chunks_kw)
+-            if post != None:
+-                chunk.display = post(chunk)
+-        else:
+-            filter_stream = desc[1]
+-            if filter_stream != self._stream:
+-                filter_stream.seek(desc[2])
+-            filter = desc[0] (filter_stream, self, *desc[3])
+-            filter.setId(id)
+-            chunk = FilterChunk(id, filter, self, addr)
+-            if filter.getDescription() != desc[1]:
+-                self.updateChunkDescription(id, filter.getDescription())
+-            filter.updateParent(chunk)
+-        self._stream.seek(oldpos)
+-        return chunk
+-
+-    def getChunk(self, id):
+-        if id not in self._chunks_dict:
+-            return None
+-        if id not in self._chunks_cache:
+-            chunk = self._createInstance(id) 
+-            self._chunks_cache[chunk.id] = chunk 
+-            return chunk
+-        else:
+-            return self._chunks_cache[id]
+-
+-    def __getitem__(self, id):
+-        assert id in self._chunks_dict
+-        chunk = self.getChunk(id)
+-        if isinstance(chunk.__class__, FilterChunk):
+-            return chunk.getFilter()
+-        else:
+-            return chunk.value
+-
+-class DeflateFilter(OnDemandFilter):
+-    def __init__(self, stream, parent, bz_stream, size, filter, *args):
+-        OnDemandFilter.__init__(self, &quot;deflate&quot;, &quot;Deflate&quot;, bz_stream, parent)
+-        self._addr = stream.tell()
+-        self.read(&quot;data&quot;, &quot;Data&quot;, [filter]+[i for i in args])
+-        self._compressed_size = size
+-
+-    def getSize(self):
+-        return self._compressed_size
+
+Copied: haypo/hachoir/tags/2005-12-28/filter.py (from rev 389, haypo/hachoir/trunk/filter.py)
+
+Deleted: haypo/hachoir/tags/2005-12-28/format.py
+===================================================================
+--- haypo/hachoir/trunk/format.py	2005-12-28 05:45:55 UTC (rev 372)
++++ haypo/hachoir/tags/2005-12-28/format.py	2006-01-03 16:39:09 UTC (rev 391)
+@@ -1,105 +0,0 @@
+-import re, struct
+-from cache import Cache
+-
+-class FormatCache(Cache):
+-    # Uniq instance of the class
+-    _instance = None
+-
+-    # Check if a format is an array or not
+-    # &quot;string[4]&quot; is an array, &quot;char&quot; isn't
+-    regex_array =  re.compile(&quot;^([a-z]+[0-9]*)\[([0-9]+)\]$&quot;)
+-
+-    # Convert Hachoir syntax to struct module syntax
+-    format_type = {
+-        &quot;string&quot;: &quot;s&quot;,
+-        &quot;char&quot;: &quot;c&quot;,
+-        &quot;float&quot;: &quot;f&quot;,
+-        &quot;double&quot;: &quot;d&quot;,
+-        &quot;int8&quot;: &quot;b&quot;,
+-        &quot;uint8&quot;: &quot;B&quot;,
+-        &quot;int16&quot;: &quot;h&quot;,
+-        &quot;uint16&quot;: &quot;H&quot;,
+-        &quot;int32&quot;: &quot;l&quot;,
+-        &quot;uint32&quot;: &quot;L&quot;
+-    }
+-    
+-    def __init__(self):
+-        assert FormatCache._instance == None
+-        Cache.__init__(self, &quot;FormatCache&quot;)
+-        self._dict = {}
+-
+-    def getCacheSize(self):
+-        return len(self._dict)
+-
+-    def purgeCache(self):
+-        self._dict = {}
+-
+-    def convertNewFormat(self, format):
+-        old_format = format
+-        if format[0] in &quot;!&lt;&gt;&quot;:
+-            endian = format[0]
+-            str_endian = format[0]
+-            format = format[1:]
+-        else:
+-            endian = None
+-            str_endian = &quot;&quot;
+-        m = FormatCache.regex_array.match(format)
+-        if m != None:
+-            format = m.group(1)
+-            str_count = m.group(2)
+-            count = int(str_count)
+-        else:
+-            str_count = &quot;&quot; 
+-            count = 1
+-        if format not in FormatCache.format_type:
+-            raise Exception(&quot;Format \&quot;%s\&quot; is invalid!&quot; % old_format)
+-        type = FormatCache.format_type[format]
+-        return (str_endian + str_count + type, endian, count, type)
+-
+-    def __getitem__(self, format):
+-        if format not in self._dict:
+-            real_format, endian, count, type = self.convertNewFormat(format)
+-            size = count * struct.calcsize(type)
+-            self._dict[format] = (real_format, endian, count, type, size)
+-        return self._dict[format]   
+-
+-    def getInstance():
+-        if FormatCache._instance == None:
+-            FormatCache._instance = FormatCache()
+-        return FormatCache._instance
+-    getInstance = staticmethod(getInstance)        
+-
+-_format_size_cache = {}
+-
+-def formatIsString(format):
+-    cache = FormatCache.getInstance()[format]
+-    return cache[3] == &quot;s&quot;
+-
+-def formatIsInteger(format):
+-    cache = FormatCache.getInstance()[format]
+-    return cache[3] in &quot;bBhHlL&quot;
+-
+-def getFormatSize(format):
+-    cache = FormatCache.getInstance()[format]
+-    return cache[4]   
+-
+-def getRealFormat(format):
+-    cache = FormatCache.getInstance()[format]
+-    return cache[0]   
+-
+-def checkFormat(format):
+-    # TODO: Don't use try/except, but something better
+-    try:
+-        cache = FormatCache.getInstance()
+-        conv = cache.convertNewFormat(format)
+-        return True
+-    except:
+-        return False
+-
+-def splitFormat(format):
+-    cache = FormatCache.getInstance()[format]
+-    return cache[1:4]   
+-
+-def formatIsArray(format):
+-    cache = FormatCache.getInstance()[format]
+-    return (1 &lt; cache[2]) and (cache[3] != &quot;s&quot;)
+
+Copied: haypo/hachoir/tags/2005-12-28/format.py (from rev 389, haypo/hachoir/trunk/format.py)
+
+Copied: haypo/hachoir/tags/2005-12-28/generic (from rev 389, haypo/hachoir/trunk/generic)
+
+Deleted: haypo/hachoir/tags/2005-12-28/hachoir.py
+===================================================================
+--- haypo/hachoir/trunk/hachoir.py	2005-12-28 05:45:55 UTC (rev 372)
++++ haypo/hachoir/tags/2005-12-28/hachoir.py	2006-01-03 16:39:09 UTC (rev 391)
+@@ -1,136 +0,0 @@
+-#!/usr/bin/python
+-&quot;&quot;&quot;
+-Hachoir: tool to split a binary file into human readable data.
+-Because it's written in Python, it would be easy to write new plugins
+-(supports new file format).
+-
+-Author: Victor Stinner
+-&quot;&quot;&quot;
+-
+-import sys, os, re, traceback
+-import config
+-from program import PROGRAM, VERSION, WEBSITE
+-from log import log
+-from error import error
+-from hachoir_class import Hachoir
+-import ui.ui as ui
+-
+-def usage(defval):
+-    print &quot;%s version %s&quot; % (PROGRAM, VERSION)
+-    print &quot;%s\n&quot; % WEBSITE
+-    print &quot;Usage: %s [options] file&quot; % (sys.argv[0])
+-    print &quot;&quot;
+-    print &quot;Options:&quot;
+-    print &quot;\t--script file.py  : Load python script&quot;
+-    print &quot;\t--no-ui           : Don't load user interface&quot;
+-    print &quot;\t--use-profiler    : Use profiler&quot;
+-    print &quot;\t--version         : Show the program version&quot;
+-    print &quot;\t--verbose         : Activate verbose mode&quot;
+-    print &quot;\t--help            : Show this help&quot;
+-    print &quot;\t--debug           : Enable debug mode (eg. display backtrace)&quot;
+-
+-def parseArgs(val):
+-    import getopt
+-    def_val = val.copy()
+-    
+-    try:
+-        short = &quot;&quot;
+-        long = [&quot;verbose&quot;, &quot;help&quot;, &quot;version&quot;, &quot;script=&quot;, &quot;no-ui&quot;, &quot;debug&quot;, &quot;use-profiler&quot;]
+-        opts, args = getopt.getopt(sys.argv[1:], short, long)
+-    except getopt.GetoptError:
+-        usage(def_val)
+-        sys.exit(2)
+-   
+-    if 1 &lt; len(args):
+-        usage(def_val)
+-        sys.exit(2)
+-    if len(args) == 1:
+-        filename = args[0]
+-    else:
+-        filename = None
+-        
+-    for o, a in opts:
+-        if o == &quot;--help&quot;:
+-            usage(def_val)
+-            sys.exit()
+-        elif o == &quot;--version&quot;:
+-            print &quot;%s version %s&quot; % (PROGRAM, VERSION)
+-            sys.exit()
+-        elif o == &quot;--no-ui&quot;:
+-            val[&quot;load_ui&quot;] = False
+-        elif o == &quot;--script&quot;:
+-            val[&quot;script&quot;] = a
+-        elif o == &quot;--verbose&quot;:
+-            config.verbose = True
+-        elif o == &quot;--debug&quot;:
+-            config.debug = True
+-        elif o == &quot;--use-profiler&quot;:
+-            val[&quot;use_profiler&quot;] = True
+-    return (val, filename,)
+-
+-def main():
+-    try:        
+-        print &quot;%s version %s&quot; % (PROGRAM, VERSION)
+-        print &quot;%s\n&quot; % WEBSITE
+-    
+-        import imp
+-        plugins_dir = os.path.join(os.path.dirname(__file__), &quot;plugins&quot;)
+-        plugins_files = os.listdir(plugins_dir)
+-        file_py = re.compile(&quot;^([a-z0-9_]+)\.py$&quot;)
+-        modules = []
+-        for file in plugins_files:
+-            m = file_py.match(file)
+-            if file != &quot;__init__.py&quot; and m != None:
+-                module = &quot;plugins.&quot;+m.group(1)
+-                __import__(module)
+-                modules.append(m.group(1))
+-        log.info(&quot;Loaded: %u plugings (%s)&quot; % (len(modules), &quot;, &quot;.join(modules)))
+-
+-        opt = {
+-            &quot;verbose&quot;: False,
+-            &quot;script&quot;: None,
+-            &quot;load_ui&quot;: True,
+-            &quot;use_profiler&quot;: False
+-        }
+-        opt, filename = parseArgs(opt)
+-        global hachoir 
+-        hachoir = Hachoir()
+-        for key in opt:
+-            setattr(hachoir, key, opt[key])
+-        if hachoir.load_ui:
+-            try:
+-                print &quot;Load user interface&quot;
+-                ui.loadInterface(hachoir)
+-            except ImportError, err:
+-                error(&quot;&quot;&quot;Error: a Python module is missing:
+-%s
+-
+-You can find PyGTK at: <A HREF="http://www.pygtk.org/">http://www.pygtk.org/</A>
+-and PyGlade at: <A HREF="http://glade.gnome.org/">http://glade.gnome.org/</A>
+-
+-Gentoo: emerge pytgtk
+-Debian: apt-get install python2.4-gtk python2.4-magic
+-Ubuntu: apt-get install python-gtk2 python-glade2
+-Mandriva: urpmi pygtk2.0-libglade-2.6.2-1mdk (or pygtk2.0-libglade?)&quot;&quot;&quot; % (err))
+-                sys.exit(1)
+-        if opt[&quot;use_profiler&quot;]:
+-            import profile, pstats
+-            stat_filename = 'hachoir.pystat'
+-            if filename != None:
+-                str_filename = &quot;\&quot;%s\&quot;&quot; % filename
+-            else:
+-                str_filename = &quot;None&quot;
+-            profile.run('global hachoir; hachoir.run(%s)' % str_filename, stat_filename)
+-            #pstats.Stats(stat_filename).sort_stats('cumulative').print_stats()
+-            pstats.Stats(stat_filename).sort_stats('time').print_stats()
+-            os.unlink(stat_filename)
+-        else:
+-            hachoir.run(filename)
+-
+-    except SystemExit:
+-        pass
+-    except Exception, err:
+-        error(&quot;Python Exception: %s&quot; % err)
+-	sys.exit(1)
+-
+-if __name__==&quot;__main__&quot;: main()    
+
+Copied: haypo/hachoir/tags/2005-12-28/hachoir.py (from rev 389, haypo/hachoir/trunk/hachoir.py)
+
+Deleted: haypo/hachoir/tags/2005-12-28/hachoir_class.py
+===================================================================
+--- haypo/hachoir/trunk/hachoir_class.py	2005-12-28 05:45:55 UTC (rev 372)
++++ haypo/hachoir/tags/2005-12-28/hachoir_class.py	2006-01-03 16:39:09 UTC (rev 391)
+@@ -1,142 +0,0 @@
+-from stream.file import FileStream
+-from plugin import getPluginByStream
+-from chunk import FilterChunk, FormatChunk
+-from default import DefaultFilter
+-from user_filter import UserFilterDescriptor, loadUserFilter
+-from error import error, warning
+-from mime import getStreamMime
+-
+-class Hachoir:
+-    instance = None
+-    
+-    def __init__(self):
+-        Hachoir.instance = self
+-        self.display = True
+-        self.depth = 5
+-        self.ui = None 
+-        self._main_filter = None
+-        self._filter = None
+-        self.script = None
+-        self.load_ui = True
+-
+-    def getFilter(self):
+-        return self._filter
+-
+-    def setFilter(self, filter):
+-#        if self._filter != None:
+-#            self._filter.purgeCache()
+-        self._main_filter = filter
+-        self._filter = filter
+-        if filter != None:
+-            if self.load_ui:
+-                self._filter.display()
+-                self.ui.window.info.updateFilter(filter)
+-        else:
+-            if self.load_ui:
+-                self.ui.window.clear_table()
+-        if self.load_ui:
+-            self.ui.window.updateToolbar()
+-
+-    def onGoParent(self):
+-        if self._filter.getParent() == None: return
+-        self._filter = self._filter.getParent()
+-        self.ui.window.info.updateFilter(self._filter)
+-        self._filter.display()
+-        
+-    def onRowClick(self, chunk_id):
+-        if chunk_id == None: return
+-        chunk = self._filter.getChunk(chunk_id)
+-        if issubclass(chunk.__class__, FilterChunk):
+-            filter = chunk.getFilter()
+-            self.setFilter (filter)
+-
+-    def loadUser(self, filename):
+-        try:
+-            old_filter = self._filter
+-            old_size = old_filter.getSize()
+-            user = UserFilterDescriptor(xml_file=filename)
+-            stream = self._filter.getStream()
+-            parent = self._filter.getParent()
+-            stream.seek(self._filter.getAddr())
+-            new_filter = loadUserFilter(user, stream, parent)
+-        except Exception, err:
+-            error(&quot;Error while loading user XML filter \&quot;%s\&quot;:\n%s&quot; % (filename, err))
+-            return
+-        self._filter = new_filter           
+-        if parent == None:
+-            self._main_filter = self._filter
+-            self._addPadding()
+-        else:
+-            chunk = old_filter.filter_chunk
+-            chunk.setFilter(self._filter)
+-            diff_size = self._filter.getSize() - old_size
+-            chunk.getParent().rescan(chunk, diff_size)
+-        if self.load_ui:
+-            self._filter.display()
+-        self.ui.window.updateToolbar()
+-    
+-    def saveUser(self, filename):
+-        my = UserFilterDescriptor(filter=self._filter)
+-        my.writeIntoXML(filename)
+-    
+-    def exportUser(self, filename):
+-        my = UserFilterDescriptor(filter=self._filter)
+-        my.exportPython(filename)
+-        
+-    def _addPadding(self):
+-        filter_size = self._main_filter.getSize()
+-        stream_size = self._main_filter.getStream().getSize()
+-        diff_size = filter_size - stream_size
+-        if diff_size &lt; 0:
+-            self._main_filter.read(&quot;end&quot;, &quot;Raw data&quot;, (FormatChunk, &quot;string[%u]&quot; % -diff_size))
+-
+-    def loadFile(self, filename):
+-        try:
+-            print &quot;Load file %s&quot; % filename
+-            file = open(filename, 'r')
+-            stream = FileStream(file, filename)
+-        except IOError, err:
+-            error(&quot;Can't load file %s:\n%s&quot; % (filename, err))
+-            return
+-        self.loadStream(stream, filename)
+-
+-    def loadStream(self, stream, filename=None):
+-        # Look for a plugin
+-        split_class = getPluginByStream(stream, filename, None)
+-        if split_class == None:
+-            mimes = [ item[0] for item in getStreamMime(stream, filename)]
+-            warning(&quot;Warning: No plugin found for MIME %s.&quot; % &quot;, &quot;.join(mimes))
+-            split_class = DefaultFilter
+-            
+-        # Split 
+-        try:
+-            stream.seek(0)
+-            filter = split_class(stream, None)
+-        except Exception, msg:
+-            error(&quot;Exception while processing file %s:\n%s&quot; \
+-                % (filename, msg))
+-            stream.seek(0)
+-            filter = DefaultFilter(stream)
+-        self._main_filter = filter
+-        self._addPadding()
+-        self.setFilter(filter)
+-
+-    def loadScript(self, filename):
+-        try:
+-            f = open(self.script, 'r')
+-            script = f.read()
+-            f.close()
+-            compiled = compile(script, self.script, 'exec')
+-            exec compiled
+-        except Exception, msg:
+-            error(&quot;Exception while loading script \&quot;%s\&quot;:\n%s\n%s&quot; \
+-                % (filename, msg))
+-
+-    def run(self, filename):
+-        if self.script:
+-            self.loadScript(self.script)
+-        elif filename != None:
+-            self.loadFile(filename)
+-        if self.load_ui:
+-            print &quot;Run user interface ...&quot;
+-            self.ui.run()      
+
+Copied: haypo/hachoir/tags/2005-12-28/hachoir_class.py (from rev 389, haypo/hachoir/trunk/hachoir_class.py)
+
+Deleted: haypo/hachoir/tags/2005-12-28/mime.py
+===================================================================
+--- haypo/hachoir/trunk/mime.py	2005-12-28 05:45:55 UTC (rev 372)
++++ haypo/hachoir/tags/2005-12-28/mime.py	2006-01-03 16:39:09 UTC (rev 391)
+@@ -1,141 +0,0 @@
+-#!/usr/bin/python
+-
+-&quot;&quot;&quot;
+-MIME type detection using libmagic library.
+-
+-See also:
+-- <A HREF="ftp://ftp.astron.com/pub/file/">ftp://ftp.astron.com/pub/file/</A> (libmagic)
+-- <A HREF="http://www.demonseed.net/~jp/code/magic.py">http://www.demonseed.net/~jp/code/magic.py</A> (100% Python)
+-- <A HREF="http://svn.gna.org/viewcvs/castor/trunk/lib/mime.php?view=markup">http://svn.gna.org/viewcvs/castor/trunk/lib/mime.php?view=markup</A> (PHP)
+-&quot;&quot;&quot;
+-
+-import os, sys, stat, string, re
+-from error import warning
+-
+-instance = None
+-
+-class GuessMime:
+-    def __init__(self):
+-        self.use_fallback = False
+-        self.func = None
+-        try:
+-            path = os.path.dirname(__file__)
+-            sys.path.append(path)
+-            import magic
+-            self.func = magic.open(magic.MAGIC_MIME)
+-            self.func.load()
+-        except ImportError:
+-            warning(&quot;Warning: The library libmagic for Python is unavailable. Using internal fallback engine.&quot;)
+-            self.use_fallback = True
+-        if self.use_fallback:
+-            from  fallback.magic import whatis
+-            self.func = whatis
+-
+-    def guess(self, buffer):
+-        if not self.use_fallback:
+-            return self.func.buffer(buffer)
+-        else:
+-            mime = self.func(buffer)
+-            return mime
+-
+-def getFileMime(realname, filename=None):
+-    if filename == None:
+-        filename = realname
+-    mode = os.stat(filename)[stat.ST_MODE]
+-    assert not stat.S_ISDIR(mode) and not stat.S_ISLNK(mode)
+-    
+-    f = file(filename, &quot;rb&quot;)
+-    buffer = f.read(4096)
+-    f.close()
+-    return getBufferMime(buffer, filename)
+-
+-def getMimeByExt(ext):    
+-    if ext == '.gz':
+-        return 'application/x-gzip'
+-    return None        
+-
+-def getStreamMime(stream, filename):
+-    oldpos = stream.tell()
+-    stream.seek(0)
+-    size = stream.getSize()
+-    if 4096&lt;size:
+-        size = 4096
+-    data = stream.getN(size)
+-    stream.seek(oldpos)
+-    return getBufferMime(data, filename)
+-
+-def getAnotherBufferMime(buffer):    
+-    if buffer[:2] == &quot;\x4d\x4d&quot; and buffer[6:12]==&quot;\x02\0\x0A\0\0\0&quot;:
+-        return &quot;image/x-3ds&quot;
+-    if 2&lt;=len(buffer) and ord(buffer[0])==31 and ord(buffer[1])==139:
+-        return &quot;application/x-gzip&quot;
+-    if buffer[:4] == &quot;%PDF&quot;:
+-        return &quot;application/pdf&quot;
+-    if buffer[:14] == &quot;gimp xcf file\0&quot;:
+-        return &quot;image/x-xcf&quot;
+-
+-    if buffer[0] == &quot;\x0A&quot; \
+-    and buffer[1] in &quot;\x00\x02\x03\x04\x05&quot; \
+-    and buffer[64] == &quot;\0&quot;:
+-        return &quot;image/x-pcx&quot;
+-        
+-    if 4096&lt;=len(buffer) \
+-    and buffer[1080:1082]==&quot;\x53\xEF&quot; \
+-    and buffer[1116:1120]==&quot;\x04\x00\x00\x00&quot;:
+-        return &quot;hachoir/fs-ext2&quot;
+-        
+-    if buffer[0:3] == &quot;DIR&quot;:
+-        return &quot;hachoir/worms2&quot;
+-        
+-    if 512&lt;=len(buffer) \
+-    and buffer[0] in &quot;\xEB\xFA&quot; \
+-    and buffer[510:512] == &quot;\x55\xAA&quot; \
+-    and buffer[446] in &quot;\x00\x80&quot; \
+-    and buffer[446+16*1] in &quot;\x00\x80&quot; \
+-    and buffer[446+16*2] in &quot;\x00\x80&quot; \
+-    and buffer[446+16*3] in &quot;\x00\x80&quot;:
+-        return &quot;hachoir/master-boot-record&quot;
+-    return None        
+-
+-def splitMimes(mimes):
+-    &quot;&quot;&quot;
+-    Split MIME types into a list.
+-    Examples:
+-    - &quot;text/plain; encoding=latin-1&quot; =&gt; [[&quot;text/plain&quot;, {&quot;encoding&quot;: latin-1&quot;}]
+-    - &quot;text/plain, text/xml&quot; =&gt; [[&quot;text/plain&quot;],[&quot;text/xml&quot;]]
+-    - &quot;text/plain; charset=ISO-8859-1; format=flowed&quot;
+-      =&gt; [['text/plain', {'charset': 'ISO-8859-1', 'format': 'flowed'}]]
+-    - &quot;application/x-archive application/x-debian-package&quot;
+-    &quot;&quot;&quot;
+-
+-    regex = re.compile(&quot;[^/]+/[^; ]+(?:;[^;]+)*&quot;)
+-    mimes = regex.findall(mimes)    
+-    
+-    list = []
+-    for mime in mimes:
+-        mime = mime.strip(&quot; ,&quot;)
+-        parts = mime.split(&quot;;&quot;)
+-        mime = parts[0]
+-        parts = map(string.strip, parts[1:])
+-        values = {}
+-        for part in parts:
+-            if part != &quot;&quot;:
+-                split_part = part.split(&quot;=&quot;, 1)             
+-                values[ split_part[0] ] = split_part[1]
+-        list.append([mime,values])
+-    return list
+-
+-def getBufferMime(buffer, filename):
+-    global instance
+-    if instance == None:
+-        instance = GuessMime()
+-    mimes = instance.guess(buffer)
+-    mimes = splitMimes(mimes)
+-    if len(mimes) == 0 or mimes[0][0] in ('application/octet-stream', 'image/tiff'):
+-        new_mime = getAnotherBufferMime(buffer)
+-        if new_mime == None and filename != None:
+-            ext = os.path.splitext(filename)[1]
+-            new_mime = getMimeByExt(ext)
+-        if new_mime != None:
+-            mimes = ((new_mime,),)
+-    return mimes
+
+Copied: haypo/hachoir/tags/2005-12-28/mime.py (from rev 389, haypo/hachoir/trunk/mime.py)
+
+Copied: haypo/hachoir/tags/2005-12-28/plugins (from rev 389, haypo/hachoir/trunk/plugins)
+
+Deleted: haypo/hachoir/tags/2005-12-28/release.sh
+===================================================================
+--- haypo/hachoir/trunk/release.sh	2005-12-28 05:45:55 UTC (rev 372)
++++ haypo/hachoir/tags/2005-12-28/release.sh	2006-01-03 16:39:09 UTC (rev 391)
+@@ -1,16 +0,0 @@
+-PACKAGE=hachoir
+-VERSION=20051115
+-ARCHIVE=$PACKAGE-$VERSION.tar.bz2
+-TMP_DIR=/tmp
+-DIR=$PWD
+-if [ -e $TMP_DIR/$PACKAGE ]; then
+-        rm -rf $TMP_DIR/$PACKAGE
+-fi
+-
+-echo &quot;* Export data&quot;
+-svn export . $TMP_DIR/$PACKAGE
+-
+-echo &quot;* Create $ARCHIVE&quot;
+-(cd $TMP_DIR &amp;&amp; tar cjf $DIR/$ARCHIVE $PACKAGE)
+-
+-echo &quot;$DIR/$ARCHIVE wrote.&quot;
+
+Copied: haypo/hachoir/tags/2005-12-28/release.sh (from rev 389, haypo/hachoir/trunk/release.sh)
+
+Copied: haypo/hachoir/tags/2005-12-28/stream (from rev 389, haypo/hachoir/trunk/stream)
+
+Deleted: haypo/hachoir/tags/2005-12-28/text_handler.py
+===================================================================
+--- haypo/hachoir/trunk/text_handler.py	2005-12-28 05:45:55 UTC (rev 372)
++++ haypo/hachoir/tags/2005-12-28/text_handler.py	2006-01-03 16:39:09 UTC (rev 391)
+@@ -1,32 +0,0 @@
+-import datetime
+-from tools import humanFilesize as doHumanFilesize, str2bin
+-
+-def msdosDatetime(chunk):
+-    assert chunk.size == 4
+-    val = chunk.value
+-    sec = 2 * (val &amp; 31)              # 5 bits: second
+-    min = (val &gt;&gt; 5) &amp; 63             # 6 bits: minute
+-    hour = (val &gt;&gt; 11) &amp; 31           # 5 bits: hour
+-    day = (val &gt;&gt; 16) &amp; 31            # 5 bits: day
+-    month = (val &gt;&gt; 21) &amp; 15          # 4 bits: month
+-    year = 1980 + ((val &gt;&gt; 25) &amp; 127) # 7 bits: year
+-    try:
+-        return str(datetime.datetime(year, month, day, hour, min, sec))
+-    except:
+-        return &quot;invalid msdos datetime (%s)&quot; % val
+-    
+-def humanFilesize(chunk):
+-    return doHumanFilesize(chunk.value)
+-
+-def unixTimestamp(chunk):
+-    timestamp = datetime.datetime.fromtimestamp(chunk.value)
+-    return str(timestamp) 
+-
+-def binary(chunk):
+-    return str2bin(chunk.getRaw()) + &quot; (%s)&quot; % chunk.value
+-
+-def hexadecimal(chunk):
+-    size = chunk.size
+-    assert size in (2, 4, 8)
+-    pattern = &quot;0x%0&quot; + str(2*size) + &quot;X&quot;
+-    return pattern % chunk.value
+
+Copied: haypo/hachoir/tags/2005-12-28/text_handler.py (from rev 389, haypo/hachoir/trunk/text_handler.py)
+
+Deleted: haypo/hachoir/tags/2005-12-28/tools.py
+===================================================================
+--- haypo/hachoir/trunk/tools.py	2005-12-28 05:45:55 UTC (rev 372)
++++ haypo/hachoir/tags/2005-12-28/tools.py	2006-01-03 16:39:09 UTC (rev 391)
+@@ -1,221 +0,0 @@
+-import traceback, sys, string, re
+-
+-def byte2bin(x):
+-    text = &quot;&quot;
+-    for i in range(0,8):
+-        mask = 1 &lt;&lt; (7-i)
+-        if (x &amp; mask) == mask:
+-            text += &quot;1&quot;
+-        else:
+-            text += &quot;0&quot;
+-    return text            
+-
+-def str2bin(value):
+-    text = &quot;&quot;
+-    for character in value:
+-        if text != &quot;&quot;:
+-            text += &quot; &quot;
+-        text += byte2bin(ord(character))
+-    return text
+-
+-def str2hex(value):
+-    text = &quot;(hex) &quot;
+-    for character in value:
+-        if text != &quot;&quot;:
+-            text += &quot; &quot;
+-        text += &quot;%02X&quot; % ord(character)
+-    return text
+-
+-def _regexMaxLength(pattern, in_parenthesis=False):
+-    &quot;&quot;&quot;
+-    Don't use this function directly, use regexMagLength!
+-    &quot;&quot;&quot;
+-
+-    re_letter = re.compile( r&quot;^[^][()|.?+*{}](.*)$&quot;)
+-    re_set = re.compile( r&quot;^\[&quot; + r&quot;[^]]*&quot; + r&quot;\](.*)$&quot; )
+-    re_min_repetition = re.compile( r&quot;^\{([0-9]+)\}(.*)$&quot; )
+-    re_min_max_repetition = re.compile( r&quot;^\{([0-9]+),([0-9]+)\}(.*)$&quot; )
+-
+-    size = 0
+-    atom_size = 0
+-    state = 0 # get atom
+-    is_end = len(pattern) == 0
+-    if in_parenthesis and not is_end:
+-        is_end = pattern[0] in (&quot;|&quot;, &quot;)&quot;)
+-    while not is_end:
+-        if state==0:
+-            size = size + atom_size
+-
+-            # Pattern: [...] =&gt; size=1
+-            if pattern[0] == '(':
+-                pattern = pattern[1:]
+-                atom_size = None
+-                while True:
+-                    tmp_atom_size, pattern = _regexMaxLength(pattern, True)
+-                    if tmp_atom_size == None:
+-                        return None, pattern
+-                    if atom_size==None or atom_size&lt;tmp_atom_size:
+-                        atom_size = tmp_atom_size
+-                    if pattern[0] == ')':
+-                        break
+-                    assert pattern[0] == '|'
+-                    pattern = pattern[1:]
+-                pattern = pattern[1:]
+-            else:
+-                m = re_set.match(pattern)
+-                if m != None:
+-                    pattern = m.group(1)
+-                    atom_size = 1
+-                else:
+-                    m = re_letter.match(pattern)
+-                    if m == None:
+-                        return (-1, pattern,)
+-                    atom_size = 1
+-                    pattern = m.group(1)
+-            state = 1                
+-        else:
+-            assert state==1
+-
+-            # Repetiton: + or * =&gt; no limit
+-            if pattern[0] in (&quot;*&quot;, &quot;+&quot;):
+-                return (None, pattern,)
+-            
+-            # Repetition: {2}
+-            m = re_min_repetition.match(pattern)
+-            if m != None:
+-                repetition = int(m.group(1))
+-                print &quot;(rep=%sx%s)&quot; % (atom_size, repetition)
+-                pattern = m.group(2)
+-                atom_size = atom_size * repetition
+-            else:
+-                # Repetition: {1,2}
+-                m = re_min_max_repetition.match(pattern)
+-                if m != None:
+-                    repetition = int(m.group(2))
+-                    pattern = m.group(3)
+-                    atom_size = atom_size * repetition
+-            state = 0
+-
+-        is_end = len(pattern) == 0
+-        if in_parenthesis and not is_end:
+-            is_end = pattern[0] in (&quot;|&quot;, &quot;)&quot;)
+-
+-    return (size + atom_size, pattern,)
+-
+-def regexMaxLength(pattern):
+-    &quot;&quot;&quot;
+-    Get maximum size of a regular expression pattern.
+-    Returns (size, pattern). If size=-1, an error occurs (pattern contains
+-    the buggy pattern). If size=-1, no limit does exist.
+-    &quot;&quot;&quot;
+-
+-    size, pattern = _regexMaxLength(pattern)
+-    if size == -1:
+-        raise &quot;Can't parse regular expression: %s&quot; % pattern 
+-    return size 
+-
+-def humanDuration(ms):
+-    # Milliseconds
+-    if ms &lt; 1000:
+-        return &quot;%u ms&quot; % ms
+-        
+-    # Seconds
+-    sec = ms/1000
+-    ms = ms%1000
+-    if sec &lt; 60:
+-        return  &quot;%u sec&quot; % sec
+-
+-    # Minutes
+-    min = sec/60
+-    sec = sec%60
+-    if min&lt;60:
+-        return &quot;%u min %u sec&quot; % (min, sec)
+-
+-    # Hours
+-    hour = min/60
+-    min = min/60
+-    if hour &lt; 24:
+-        return &quot;%u hour(s) %u min&quot; % (hour, min)
+-
+-    # Days
+-    day = hour/24
+-    hour = hour%24
+-    if day &lt; 365:
+-        return &quot;%u day(s) %u hour(s)&quot; % (day, hour)    
+-
+-    # Years
+-    # TODO: Better estimation !?
+-    year = day / 365
+-    day = day % 365
+-    if hour != 0:
+-        text = &quot;%u year(s) %u day(s)&quot; % (year, day)    
+-    else:
+-        text = &quot;%u year(s)&quot; % (year)
+-    return text
+-
+-def humanFilesize(size):
+-    if size &lt; 1000:
+-        return &quot;%u bytes&quot; % size
+-    units = [&quot;KB&quot;, &quot;MB&quot;, &quot;GB&quot;, &quot;TB&quot;]
+-    size = float(size)
+-    for unit in units:
+-        size = size / 1024
+-        if size &lt; 1024:
+-            return &quot;%.1f %s&quot; % (size, unit)
+-    return &quot;%u %s&quot; % (size, unit)
+-
+-def convertDataToPrintableString(data, keep_n=False):
+-    if len(data) == 0:
+-        return &quot;(empty)&quot;
+-    if not isinstance(data, unicode):
+-        data = re.sub(&quot;[^\x00-\x7F]&quot;, &quot;.&quot;, data)
+-        data = unicode(data, &quot;ascii&quot;)
+-    display = &quot;&quot;
+-    for c in data:
+-        if ord(c)&lt;32:
+-            know = { \
+-                &quot;\n&quot;: &quot;\\n&quot;,
+-                &quot;\r&quot;: &quot;\\r&quot;,
+-                &quot;\t&quot;: &quot;\\t&quot;,
+-                &quot;\0&quot;: &quot;\\0&quot;}
+-            if c in know:
+-                if not keep_n or c != &quot;\n&quot;:
+-                    display = display + know[c]
+-                else:
+-                    display = display + c
+-            else:
+-                display = display + &quot;.&quot;
+-        else:
+-            display = display + c
+-#            if is_8bit:
+-#                if ord(c) != 0xFF:
+-#                    display = display + c
+-#                else:
+-#                    display = display + &quot;.&quot;
+-#            else:                    
+-#                if c in string.printable:
+-#                    display = display + c
+-#                else:
+-#                    display = display + &quot;.&quot;
+-    return u&quot;\&quot;%s\&quot;&quot; % display
+-
+-def getBacktrace():
+-    try:
+-        bt = traceback.format_exception( \
+-            sys.exc_type, sys.exc_value, sys.exc_traceback)
+-        return &quot;&quot;.join(bt)
+-    except:
+-        return &quot;Error while trying to get backtrace&quot;
+-
+-def getUnixRWX(mode):
+-#-- TODO --
+-#EXT2_S_ISUID  0x0800  SUID
+-#EXT2_S_ISGID  0x0400  SGID
+-#EXT2_S_ISVTX  0x0200  sticky bit
+-    rwx = (&quot;---&quot;, &quot;rwx&quot;)
+-    text = &quot;&quot;
+-    for i in range(0,3):
+-        for j in range(0,3):
+-            mask = 1 &lt;&lt; (3*(2-i)) &lt;&lt; (2-j)
+-            text = text + rwx[int(mode &amp; mask == mask)][j]
+-    return text
+
+Copied: haypo/hachoir/tags/2005-12-28/tools.py (from rev 389, haypo/hachoir/trunk/tools.py)
+
+Copied: haypo/hachoir/tags/2005-12-28/ui (from rev 389, haypo/hachoir/trunk/ui)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000292.html">[Happyboom-svn] r390 - haypo
+</A></li>
+	<LI>Next message: <A HREF="000294.html">[Happyboom-svn] r392 - in haypo/hachoir/trunk: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#293">[ date ]</a>
+              <a href="thread.html#293">[ thread ]</a>
+              <a href="subject.html#293">[ subject ]</a>
+              <a href="author.html#293">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

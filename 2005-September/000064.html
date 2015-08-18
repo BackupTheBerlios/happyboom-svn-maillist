@@ -1,0 +1,252 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r157 - in happyboom/trunk: . client
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r157%20-%20in%20happyboom/trunk%3A%20.%20client&In-Reply-To=%3C200509140549.j8E5nUAR002221%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000063.html">
+   <LINK REL="Next"  HREF="000065.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r157 - in happyboom/trunk: . client</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r157%20-%20in%20happyboom/trunk%3A%20.%20client&In-Reply-To=%3C200509140549.j8E5nUAR002221%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r157 - in happyboom/trunk: . client">dboucard at berlios.de
+       </A><BR>
+    <I>Wed Sep 14 07:49:30 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000063.html">[Happyboom-svn] r156 - in happyboom/trunk: common server
+</A></li>
+        <LI>Next message: <A HREF="000065.html">[Happyboom-svn] r158 - boomboom happyboom/trunk happyboom/trunk/client
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#64">[ date ]</a>
+              <a href="thread.html#64">[ thread ]</a>
+              <a href="subject.html#64">[ subject ]</a>
+              <a href="author.html#64">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-14 07:49:28 +0200 (Wed, 14 Sep 2005)
+New Revision: 157
+
+Added:
+   happyboom/trunk/client/
+   happyboom/trunk/client/base_client.py
+Log:
+happyboom client core (unstable)
+
+
+Added: happyboom/trunk/client/base_client.py
+===================================================================
+--- happyboom/trunk/client/base_client.py	2005-09-14 05:47:50 UTC (rev 156)
++++ happyboom/trunk/client/base_client.py	2005-09-14 05:49:28 UTC (rev 157)
+@@ -0,0 +1,173 @@
++from net import io_udp
++import struct
++
++class HappyBoomClient(object):
++    
++    def __init__(self, args):
++        self.host = args.get(&quot;host&quot;, &quot;127.0.0.1&quot;)
++        self.port = args.get(&quot;port&quot;, &quot;12430&quot;)
++        self.verbose = args.get(&quot;verbose&quot;, False)
++        self.debug = args.get(&quot;debug&quot;, False)
++        protocol = args.get(&quot;protocol&quot;, None)
++        self.__io = io_udp.IO_UDP()
++        self.__verbose = verbose
++        self.__io.verbose = verbose
++        self.__debug = debug
++        self.__io.debug = debug
++        self.__stopped = False
++        self.__stoplock = thread.allocate_lock()
++        
++        self.signature = None
++        self.gateway = Gateway(self.__io, protocol)
++        
++    def start(self):
++        &quot;&quot;&quot; Starts the client : connection to the server, etc. &quot;&quot;&quot;
++        # Try to connect to server
++        if self.__verbose: print &quot;[HAPPYBOOM] Trying to connect to server %s:%u&quot; % (self.host, self.port)
++        self.__io.on_connect = self.onConnect
++        self.__io.on_connection_fails = self.onConnectionFails
++        self.__io.on_disconnect = self.onDisconnect
++        self.__io.on_new_packet = self.gateway.processPacket
++        self.__io.on_lost_connection = self.onLostConnection
++        self.__io.connect(self.host, self.port)
++        if not self.__io.is_ready: return
++        thread.start_new_thread(self.__io.run_thread, ())
++        
++    def stop(self):
++        &quot;&quot;&quot; Stops the display client : disconnection from the server, etc. &quot;&quot;&quot;
++        # Does not stop several times
++        self.__stoplock.acquire()
++        if self.__stopped:
++            self.__stoplock.release()
++            return
++        self.__stopped = True
++        self.__stoplock.release()
++        
++        self.send(&quot;quit&quot;)
++        self.__io.stop()
++        if self.__verbose: print &quot;[HAPPYBOOM] Stopped&quot;
++        
++    def __isStopped(self):
++        self.__stoplock.acquire()
++        stop = self.__stopped
++        self.__stoplock.release()
++        return stop
++    stopped = property(__isStopped)
++    
++    def onConnect(self):
++        &quot;&quot;&quot; Handler called on network connection. &quot;&quot;&quot;
++        if self.__verbose: print &quot;[HAPPYBOOM] Connected to server&quot;
++        
++    def onConnectionFails(self):
++        &quot;&quot;&quot; Handler called when network connection fails. &quot;&quot;&quot;
++        print &quot;[HAPPYBOOM] Fail to connect to the server&quot;
++
++    def onDisconnect(self):
++        &quot;&quot;&quot; Handler called on network disconnection. &quot;&quot;&quot;
++        print &quot;[HAPPYBOOM] Connection to server closed&quot;
++        self.launchEvent(&quot;happyboom&quot;, &quot;stop&quot;)
++
++    def onLostConnection(self):
++        &quot;&quot;&quot; Handler called on losting network connection. &quot;&quot;&quot;
++        print &quot;[HAPPYBOOM] Lost connection with server&quot;
++        self.launchEvent(&quot;happyboom&quot;, &quot;stop&quot;)
++        
++    def processPacket(self, new_packet):
++        &quot;&quot;&quot; Processes incomming network packets (converts and launches local event).
++        @param new_packet: incomming network packet.
++        @type new_packet: C{net.io.packet.Packet}
++        &quot;&quot;&quot;
++        event_type, arg = self.str2evt(new_packet.data)
++        if event_type != None: 
++            if self.__debug: print &quot;Received message: type=%s arg=%s&quot; %(event_type, arg)
++            self.launchEvent(event_type, arg)
++            
++    def send(self, str):
++        &quot;&quot;&quot; Sends a string to the network server.
++        @param str: String to send.
++        @type str: C{str}
++        &quot;&quot;&quot;
++        p = io.Packet()
++        p.writeStr(str)
++        self.__io.send(p)
++        
++
++class Gateway(EventLauncher, EventListener):
++    
++    CONNECTION    = 0x1
++    DISCONNECTION = 0x2
++    FEATURES      = 0x3
++    CREATE        = 0x4
++    DESTROY       = 0x5
++    EVENT         = 0x6
++    
++    def __init__(self, connection, protocol):
++        self.protocol = protocol
++        self.connection = connection
++        self.items = {}
++        
++    def processPacket(self, newPacket):
++        &quot;&quot;&quot; Processes incomming network packets (converts and launches local event).
++        @param new_packet: incomming network packet.
++        @type new_packet: C{net.io.packet.Packet}
++        &quot;&quot;&quot;
++        type, data = self.splitPacket(new_packtet.data)
++        if type == self.CONNECTION:
++            self.recvConnection(data)
++            self.sendFeatures()
++        elif type == self.DISCONNECTION:
++            print &quot;[happyboom] Disconnected from server : %s&quot; %(self.getReason(data))
++            self.launchEvent(&quot;happyboom&quot;, &quot;stop&quot;)
++        elif type == self.CREATE:
++            self.createItem(data)
++        elif type == self.DESTROY:
++            self.destroyItem(data)
++        elif type == self.EVENT:
++            self.processEvent(data)
++        else:
++            print &quot;ProtocoleWarning : received unexpected packet type %s&quot; %(type)
++            
++    def splitPacket(self, data):
++        fmt = &quot;!B&quot;
++        struct.calcsize(fmt)
++        return (struct.unpack(fmt, data[:i]), date[i:])
++        
++    def recvConnection(self, data):
++        fmt = &quot;!H&quot;
++        i = struct.calcsize(fmt)
++        version_len, data = (struct.unpack(fmt, data[:i]), data[i:])
++        fmt = &quot;!%us&quot; %(version_len)
++        i = struct.calcsize(fmt)
++        version, data = (struct.unpack(fmt, data[:i]), data[i:])
++        
++        fmt = &quot;!H&quot;
++        i = struct.calcsize(fmt)
++        sign_len, data = (struct.unpack(fmt, data[:i]), data[i:])
++        fmt = &quot;!%us&quot; %(version_len)
++        i = struct.calcsize(fmt)
++        signature, data = (struct.unpack(fmt, data[:i]), data[i:])
++        
++        if len(data) != 0:
++            raise TesUneGrosseMerdeError &quot;Received a message with an unexpected length.&quot;
++        
++        if version != protocole.version:
++            pass # TODO
++            
++        self.launchEvent(&quot;happyboom&quot;, &quot;signature&quot;, (signature,))
++            
++    def sendFeatures(self):
++        pass
++    
++    def getReason(self, data):
++        pass
++    
++    def createItem(self, data):
++        pass
++        
++    def destroyItem(self, data):
++        pass
++    
++    def processEvent(self, data):
++        packer.unpack(data, self.protocol)
++        if self.__debug: print &quot;Received message: feature=%s event=%s arguments=%s&quot; %(feat, evt, args)
++        self.launchEvent(feat, evt, args)
+\ No newline at end of file
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000063.html">[Happyboom-svn] r156 - in happyboom/trunk: common server
+</A></li>
+	<LI>Next message: <A HREF="000065.html">[Happyboom-svn] r158 - boomboom happyboom/trunk happyboom/trunk/client
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#64">[ date ]</a>
+              <a href="thread.html#64">[ thread ]</a>
+              <a href="subject.html#64">[ subject ]</a>
+              <a href="author.html#64">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

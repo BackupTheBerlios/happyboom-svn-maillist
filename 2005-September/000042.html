@@ -1,0 +1,1162 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r135 - boomboom boomboom/server happyboom/trunk/server poilu/trunk
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r135%20-%20boomboom%20boomboom/server%20happyboom/trunk/server%20poilu/trunk&In-Reply-To=%3C200509131300.j8DD09PX003349%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000041.html">
+   <LINK REL="Next"  HREF="000043.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r135 - boomboom boomboom/server happyboom/trunk/server poilu/trunk</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r135%20-%20boomboom%20boomboom/server%20happyboom/trunk/server%20poilu/trunk&In-Reply-To=%3C200509131300.j8DD09PX003349%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r135 - boomboom boomboom/server happyboom/trunk/server poilu/trunk">haypo at berlios.de
+       </A><BR>
+    <I>Tue Sep 13 15:00:09 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000041.html">[Happyboom-svn] r134 - poilu/trunk
+</A></li>
+        <LI>Next message: <A HREF="000043.html">[Happyboom-svn] r136 - languetudes/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#42">[ date ]</a>
+              <a href="thread.html#42">[ thread ]</a>
+              <a href="subject.html#42">[ subject ]</a>
+              <a href="author.html#42">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-13 15:00:06 +0200 (Tue, 13 Sep 2005)
+New Revision: 135
+
+Modified:
+   boomboom/boomboom_server.py
+   boomboom/server/bb_server.py
+   happyboom/trunk/server/base_server.py
+   poilu/trunk/dico.txt
+Log:
+Le code du serveur BoomBoom est deplace dans HappyBoom. Le serveur HappyBoom
+est decoupe est trois parties : Gateway, ClientManager, Server. Debut
+d'implementation du nouveau protocole.
+
+
+Modified: boomboom/boomboom_server.py
+===================================================================
+--- boomboom/boomboom_server.py	2005-09-10 00:19:03 UTC (rev 134)
++++ boomboom/boomboom_server.py	2005-09-13 13:00:06 UTC (rev 135)
+@@ -30,8 +30,8 @@
+     try:
+         short = &quot;hdv&quot;
+         long = [&quot;debug&quot;, &quot;verbose&quot;, &quot;help&quot;, &quot;version&quot;, \
+-            &quot;max-input=&quot;, &quot;max-display=&quot;, \
+-            &quot;display-port=&quot;, &quot;input-port=&quot;]
++            &quot;max-clients=&quot;,
++            &quot;client-port=&quot;]
+         opts, args = getopt.getopt(sys.argv[1:], short, long)
+     except getopt.GetoptError:
+         usage(def_val)
+@@ -48,32 +48,15 @@
+         if o == &quot;--version&quot;:
+             print &quot;%s server version %s&quot; % (PROGRAM, VERSION)
+             sys.exit()
+-        if o == &quot;--input-port&quot;:
++        if o == &quot;--client-port&quot;:
++            val[&quot;client_port&quot;] = int(a)
++        if o == &quot;--max-clients&quot;:
+             a = int(a)
+-            if a == val[&quot;displayPort&quot;]:
+-                print &quot;Sorry, input port should be different than display port!&quot;
+-            else:
+-                val[&quot;inputPort&quot;] = a             
+-        if o == &quot;--display-port&quot;:
+-            a = int(a)
+-            if a == val[&quot;inputPort&quot;]:
+-                print &quot;Sorry, display port should be different than input port!&quot;
+-            else:
+-                val[&quot;displayPort&quot;] = a 
+-        if o == &quot;--max-input&quot;:
+-            a = int(a)
+             if a &lt; 1: 
+-                a=1
++                a = 1
+             elif 100 &lt; a:
+                 a = 100
+-            val[&quot;maxInput&quot;] = a
+-        if o == &quot;--max-display&quot;:
+-            a = int(a)
+-            if a &lt; 1: 
+-                a=1
+-            elif 100 &lt; a:
+-                a = 100
+-            val[&quot;maxDisplay&quot;] = a
++            val[&quot;max_clients&quot;] = a
+         if o in (&quot;-v&quot;, &quot;--verbose&quot;):
+             val[&quot;verbose&quot;] = True
+         if o in (&quot;-d&quot;, &quot;--debug&quot;):
+@@ -81,23 +64,25 @@
+     return val
+ 
+ def run():
+-    # Add HappyBoom to PYTHONPATH (&quot;../&quot; today, but should be improved)
++    # Add HappyBoom to PYTHONPATH
+     import sys, os
+     file_dir = os.path.dirname(__file__)
+-    happyboomdir = os.path.join(file_dir, &quot;../happyboom/trunk&quot;)
++    happyboomdir = os.path.join(file_dir, &quot;..&quot;, &quot;happyboom&quot;, &quot;trunk&quot;)
+     sys.path.append(happyboomdir)
+     
++    # Add HappyBoom/server to PYTHONPATH
++    happyboomserverdir = os.path.join(happyboomdir, &quot;server&quot;)
++    sys.path.append(happyboomserverdir)
++    
+     val = { \
+-        &quot;displayPort&quot;: 12430, \
+-        &quot;inputPort&quot;: 12431, \
+-        &quot;maxInput&quot;: 4, \
+-        &quot;maxDisplay&quot;: 4, \
++        &quot;input_port&quot;: 12430,
++        &quot;max_clients&quot;: 4,
+         &quot;verbose&quot;: False,
+         &quot;debug&quot;: False}
+     arg = parseArgs(val)
+     
+     from server import BoomBoomServer
+-    server = BoomBoomServer(**arg)
++    server = BoomBoomServer(arg)
+ 
+     try:
+         server.start()
+
+Modified: boomboom/server/bb_server.py
+===================================================================
+--- boomboom/server/bb_server.py	2005-09-10 00:19:03 UTC (rev 134)
++++ boomboom/server/bb_server.py	2005-09-13 13:00:06 UTC (rev 135)
+@@ -1,326 +1,75 @@
+-from bb_agent import BoomBoomAgent, BoomBoomMessage
+ from agents import Character, Projectile, Weapon, World, Game
+-from net import io, io_udp, io_tcp, net_buffer
+-from pysma import Kernel, DummyScheduler
+-import re, random, thread, traceback, time
++from base_server import HappyBoomServer, HappyBoomGateway, HappyBoomMessage
++from pysma import Kernel
+ 
+-class BoomBoomServer(BoomBoomAgent):
+-	def __init__(self, maxDisplay=2, displayPort=12430, maxInput=2, inputPort=12431, verbose=False, debug=False):
+-		BoomBoomAgent.__init__(self, &quot;network&quot;)
+-		self.__display_io = io_tcp.IO_TCP(is_server=True)
+-		self.__input_io = io_tcp.IO_TCP(is_server=True)
+-		self.__input_buffer = net_buffer.NetBuffer()
+-		self.__display_buffer = net_buffer.NetBuffer()
+-		self.__input_protocol_version = &quot;0.1.4&quot;
+-		self.__display_protocol_version = &quot;0.1.4&quot;
+-		self.__debug = debug
+-		self.__display_io.debug = debug
+-		self.__input_io.debug = debug
+-		self.__verbose = verbose
+-		self.__display_io.verbose = verbose
+-		self.__input_io.verbose = verbose
+-		self.__inputs = []
+-		self.__items = []
+-		self.__stopped = False
+-		self.__stoplock = thread.allocate_lock()
+-		self.__supportedFeatures = {}
+-		self.maxDisplay = maxDisplay
+-		self.displayPort = displayPort
+-		self.maxInput = maxInput
+-		self.inputPort = inputPort
+-		self.started = False
+-		self.nextChar = None
+-		random.seed()
+-		Kernel().addAgent(DummyScheduler(sleep=0.01))
+-		
+-	def born(self):
+-		BoomBoomAgent.born(self)
+-		self.requestActions(&quot;game&quot;)
+-		self.requestActions(&quot;weapon&quot;)
+-		self.requestActions(&quot;character&quot;)
+-		self.requestActions(&quot;world&quot;)
+-		self.requestActions(&quot;projectile&quot;)
+-		
+-	def start(self):
+-		if self.__verbose: print &quot;[*] Starting server...&quot;
+-		self.initIO()
+-		self.createAgents()
+-		print &quot;[*] Server started&quot;
+-		
+-		self.__stoplock.acquire()
+-		running = not self.__stopped
+-		self.__stoplock.release()
+-		while running:
+-			self.processInputs()
+-			time.sleep(0.01)
+-			self.__stoplock.acquire()
+-			running = not self.__stopped
+-			self.__stoplock.release()
++class BoomBoomGateway(HappyBoomGateway):
++    def __init__(self, server, arg):
++        HappyBoomGateway.__init__(self, server, arg)
+ 
+-	def stop(self):
+-		self.__stoplock.acquire()
+-		if self.__stopped:
+-			self.__stoplock.release()
+-			return
+-		self.__stopped = True
+-		self.__stoplock.release()
+-		print &quot;[*] Stopping server...&quot;
+-		Kernel.instance.stopKernel()
+-		self.sendNetworkMessage(&quot;game&quot;, &quot;Stop&quot;, skippable=True)
+-		self.__display_io.stop()
+-		self.__input_io.stop()
+-		if self.__verbose: print &quot;[*] Server stopped&quot;
++    def born(self):
++        HappyBoomGateway.born(self)
++        self.requestActions(&quot;game&quot;)
++        self.requestActions(&quot;weapon&quot;)
++        self.requestActions(&quot;character&quot;)
++        self.requestActions(&quot;world&quot;)
++        self.requestActions(&quot;projectile&quot;)
+ 
+-	def initIO(self):
+-		if self.__verbose: print &quot;[*] Starting display server&quot;
+-		self.__display_io.name = &quot;display server&quot;
+-		self.__display_io.on_client_connect = self.openDisplay
+-		self.__display_io.on_client_disconnect = self.closeDisplay
+-		self.__display_io.on_new_packet = self.recvDisplayPacket
+-		self.__display_io.connect('', self.displayPort)
+-		if self.__verbose: print &quot;[*] Starting input server&quot;
+-		self.__input_io.name = &quot;input server&quot;
+-		self.__input_io.on_client_connect = self.openInput
+-		self.__input_io.on_client_disconnect = self.closeInput
+-		self.__input_io.on_new_packet = self.recvInputPacket
+-		self.__input_io.connect('', self.inputPort)
+-		thread.start_new_thread(self.run_io_thread, ())
+-		
+-	def createAgents(self):
+-		if self.__verbose: print &quot;[*] Creating agents&quot;
+-		Kernel.instance.addAgent(self)
+-		self.addAgent(Game(debug=self.__debug))
+-		self.addAgent(World(debug=self.__debug))
+-		self.addAgent(Character(100, 1, debug=self.__debug))
+-		self.addAgent(Character(-150, 2, debug=self.__debug))
+-		self.addAgent(Weapon(debug=self.__debug))
+-		self.addAgent(Projectile(debug=self.__debug))
+-		self.sendBroadcastMessage(BoomBoomMessage(&quot;start&quot;, ()), &quot;game&quot;)
+-		
+-	def openDisplay(self, client):
+-		thread.start_new_thread( self.__clientChallenge, (client,self.__do_openDisplay,&quot;DISPLAY&quot;,))
++    def start(self):
++        if self._verbose: print &quot;[*] Creating agents&quot;
++        self.addAgent(Game(debug=self._debug))
++        self.addAgent(World(debug=self._debug))
++        self.addAgent(Character(100, 1, debug=self._debug))
++        self.addAgent(Character(-150, 2, debug=self._debug))
++        self.addAgent(Weapon(debug=self._debug))
++        self.addAgent(Projectile(debug=self._debug))
++        self.sendBroadcastMessage(HappyBoomMessage(&quot;start&quot;, ()), &quot;game&quot;)
++                        
++    def msg_game_next_character(self, char, team):
++        if self._debug: print &quot;Next character : %s,%s&quot; %(char, team)
++        self.nextChar = char
++                        
++    def msg_game_next_turn(self):
++        if self._debug: print &quot;Next turn : %s&quot; %self.nextChar
++        self.sendNetworkMessage(&quot;game&quot;, &quot;next_turn&quot;)
++        self.sendNetworkMessage(&quot;game&quot;, &quot;active_character&quot;, self.nextChar)
++        
++    def msg_game_collision(self, x, y):
++        if self._debug: print &quot;Hit ground : %s,%s&quot; %(x, y)
++        self.sendNetworkMessage(&quot;projectile&quot;, &quot;hit_ground&quot;)
++    
++    def msg_projectile_move(self, x, y):
++        if self._debug: print &quot;Projectile move : %s,%s&quot; %(x, y)
++        self.sendNetworkMessage(&quot;projectile&quot;, &quot;move&quot;, &quot;%i,%i&quot; %(x,y), True)
++        
++    def msg_projectile_activate(self, flag):
++        if self._debug: print &quot;Projectile activate : %s&quot; %flag
++        self.sendNetworkMessage(&quot;projectile&quot;, &quot;activate&quot;, &quot;%u&quot; %(flag))
++        
++    def msg_weapon_angle(self, a):
++        if self._debug: print &quot;Weapon angle : %s&quot; %a
++        self.sendNetworkMessage(&quot;weapon&quot;, &quot;angle&quot;, a)
++        
++    def msg_weapon_strength(self, s):
++        if self._debug: print &quot;Weapon strength : %s&quot; %s
++        self.sendNetworkMessage(&quot;weapon&quot;, &quot;force&quot;, s)
++        
++    def msg_world_create(self, m):
++        if self._debug: print &quot;World create : %s&quot; %m
++        self.sendNetworkMessage(&quot;world&quot;, &quot;create&quot;, m)
++        
++    def msg_character_move(self, m):
++        if self._debug: print &quot;Character move : %s&quot; %m
++        self.sendNetworkMessage(&quot;character&quot;, &quot;move&quot;, m)
++        
++    def msg_new_item(self, type, id):
++        if self._debug: print &quot;New item : %s,%s&quot; %(type, id)
++        self.__items.append((type, id))
++        
++    def msg_game_current_character(self, char, team):
++        if self._debug: print &quot;Current character : %s,%s&quot; %(char, team)
++        self.sendNetworkMessage(&quot;game&quot;, &quot;active_character&quot;, char)
+ 
+-	def openInput(self, client):
+-		thread.start_new_thread( self.__clientChallenge, (client,self.__do_openInput,&quot;INPUT&quot;,))
+-		
+-	def closeInput(self, client):
+-		if self.__verbose: print &quot;[*] Input %s disconnected.&quot; % (client.name)
+-		if not (client in self.__inputs): return
+-		self.__inputs.remove (client)
+-		txt = &quot;Client %s (input) leave us.&quot; % (client.name)
+-		self.sendText(txt)
+-
+-	def closeDisplay(self, client):
+-		if self.__verbose: print &quot;[*] Display %s disconnected.&quot; % (client.name)
+-		txt = &quot;Client %s (display) leave us.&quot; % (client.name)
+-		self.sendText(txt)
+-		
+-	def __clientChallenge(self, client, func, client_type):
+-		try:
+-			func(client)
+-		except Exception, msg:
+-			print &quot;EXCEPTION WHEN %s TRY TO CONNECT :&quot; % (client_type)
+-			print msg
+-			print &quot;--&quot;
+-			traceback.print_exc()
+-			self.stop()
+-
+-	# Function which should be called in a thread
+-	def run_io_thread(self):
+-		try:
+-			while self.__input_io.isRunning() and self.__display_io.isRunning():
+-				self.__input_io.live()				
+-				self.__display_io.live()				
+-				time.sleep(0.001)
+-		except Exception, msg:
+-			print &quot;EXCEPTION IN IO THREAD :&quot;
+-			print msg
+-			print &quot;--&quot;			
+-			traceback.print_exc()
+-			self.stop()
+-
+-	def __do_openDisplay(self, client):
+-		if self.__verbose: print &quot;[*] Display %s try to connect ...&quot; % (client.name)
+-		
+-		self.__display_buffer.clear(client.addr)
+-		
+-		# Ask protocol version
+-		msg = self.createMsg(&quot;agent_manager&quot;, &quot;AskVersion&quot;)
+-		client.send(io.Packet(msg))
+-		answer = self.readDisplayAnswer(client)
+-		if answer != self.__display_protocol_version:
+-			txt = &quot;Sorry, you don't have same protocol version (%s VS %s)&quot; \
+-				% (answer, self.__display_protocol_version)
+-			self.sendText(txt)
+-			client.disconnect()
+-			return
+-		
+-		# ask client name
+-		msg = self.createMsg(&quot;agent_manager&quot;, &quot;AskName&quot;)
+-		client.send(io.Packet(msg))
+-		name = self.readDisplayAnswer(client)
+-		if name not in (&quot;-&quot;, &quot;&quot;): client.name = name
+-
+-		self.registerFeature(client, &quot;agent_manager&quot;)
+-		self.registerFeature(client, &quot;game&quot;)
+-		for type, id in self.__items:
+-			msg = self.createMsg(&quot;agent_manager&quot;, &quot;Create&quot;, &quot;%s:%u&quot; % (type, id))
+-			client.send (io.Packet(msg))
+-			answer = self.readDisplayAnswer(client)
+-			if answer == &quot;yes&quot;: 
+-				role = self.readDisplayAnswer(client)
+-				while role != &quot;.&quot;:
+-					self.registerFeature(client, role)
+-					role = self.readDisplayAnswer(client)
+-
+-		msg = self.createMsg(&quot;game&quot;, &quot;Start&quot;)
+-		client.send(io.Packet(msg))
+-			
+-		txt = &quot;Welcome to new (display) client : %s&quot; % (client.name)
+-		self.sendText(txt)
+-		if self.__verbose: print &quot;[*] Display %s connected&quot; % (client.name)
+-		self.sendBBMessage(&quot;sync&quot;)
+-
+-	def __do_openInput(self, client):
+-		if self.__verbose: print &quot;[*] Input %s try to connect ...&quot; % (client.name)
+-
+-		self.__input_buffer.clear(client.addr)
+-
+-		client.send(io.Packet(&quot;Version?&quot;))
+-		answer = self.readInputAnswer(client)
+-		if answer == None:
+-			if self.__verbose: print &quot;[*] Client doesn't sent version&quot;
+-			client.disconnect()
+-			return
+-		if answer != self.__input_protocol_version:
+-			txt = &quot;Sorry, you don't have same protocol version (%s VS %s)&quot; \
+-				% (answer, self.__input_protocol_version)
+-			self.sendText(txt, client)
+-			client.disconnect()
+-			return	
+-		client.send(io.Packet(&quot;OK&quot;))
+-		
+-		# ask client name
+-		client.send(io.Packet(&quot;Name?&quot;))
+-		name = self.readInputAnswer(client)
+-		if name == None:
+-			if self.__verbose: print &quot;[*] Client doesn't sent name&quot;
+-			client.disconnect()
+-			return
+-		if name not in (&quot;-&quot;, &quot;&quot;): client.name = name
+-		client.send(io.Packet(&quot;OK&quot;))
+-
+-		self.__inputs.append (client)
+-		if self.__verbose: print &quot;Input %s connected.&quot; % (client.name)
+-		txt = &quot;Welcome to new (input) client : %s&quot; % (client.name)
+-		self.sendText(txt)
+-		
+-	# Convert a (role,type,arg) to string (to be sent throw network)
+-	def createMsg(self, role, type, arg=None):
+-		if arg != None:
+-			return &quot;%s:%s:%s&quot; % (role, type, arg)
+-		else:
+-			return &quot;%s:%s&quot; % (role, type)
+-		
+-	def recvInputPacket(self, packet):
+-		self.__input_buffer.append(packet.recv_from.addr, packet)
+-		
+-	def recvDisplayPacket(self, packet):
+-		msg = packet.data
+-		self.__display_buffer.append(packet.recv_from.addr, packet)
+-
+-	def readDisplayAnswer(self, client):
+-		return self.__readClientAnswer(self.__display_buffer, client)
+-		
+-	def readInputAnswer(self, client):
+-		return self.__readClientAnswer(self.__input_buffer, client)
+-
+-	def __readClientAnswer(self, buffer, client, timeout=3.000):
+-		answer = buffer.readBlocking(client.addr, timeout)
+-		if answer==None: return None
+-		answer = answer.data
+-		return answer
+-
+-	def sendText(self, txt, client=None):
+-		if client != None:
+-			msg = self.createMsg(&quot;agent_manager&quot;, &quot;Text&quot;, txt)
+-			client.send(io.Packet(msg))
+-		else:
+-			self.sendNetworkMessage(&quot;agent_manager&quot;, &quot;Text&quot;, txt)
+-
+-	def processInputCmd(self, input, cmd):
+-		cmd_ok = (\
+-			&quot;move_left&quot;, &quot;move_right&quot;, &quot;move_up&quot;, &quot;move_down&quot;,
+-			&quot;shoot&quot;, )
+-		if self.__verbose and cmd != &quot;Ping?&quot;:
+-			print &quot;Command from %s: %s&quot; % (input.name, cmd)
+-		if re.compile(&quot;^chat:(.*)$&quot;).match(cmd) != None:
+-			print &quot;New chat message: %s&quot; % (r.group(1))
+-			self.sendNetworkMessage(&quot;chat_server&quot;, &quot;new&quot;, r.group(1))
+-		elif cmd in cmd_ok:	self.sendBroadcastMessage(BoomBoomMessage(&quot;new_command&quot;, (cmd,)), &quot;command_manager&quot;)
+-		
+-	def processInputs(self):
+-		inputs = self.__inputs[:]
+-		for client in inputs:
+-			packets = self.__input_buffer.readNonBlocking(client.addr)
+-
+-			for packet in packets:	
+-				self.processInputCmd (packet.recv_from, packet.data)
+-
+-	def registerFeature(self, client, role):
+-		if role in self.__supportedFeatures:
+-			if client not in self.__supportedFeatures[role]:
+-				self.__supportedFeatures[role].append(client)
+-		else:
+-			self.__supportedFeatures[role] = [client,]
+-
+-	def sendNetworkMessage(self, role, type, arg=None, skippable=False):
+-		msg = self.createMsg(role, type, arg)
+-		clients = self.__supportedFeatures.get(role, ())
+-		for client in clients:
+-			client.send (io.Packet(msg, skippable=skippable))
+-						
+-	def msg_game_next_character(self, char, team):
+-		if self.__debug: print &quot;Next character : %s,%s&quot; %(char, team)
+-		self.nextChar = char
+-						
+-	def msg_game_next_turn(self):
+-		if self.__debug: print &quot;Next turn : %s&quot; %self.nextChar
+-		self.sendNetworkMessage(&quot;game&quot;, &quot;next_turn&quot;)
+-		self.sendNetworkMessage(&quot;game&quot;, &quot;active_character&quot;, self.nextChar)
+-		
+-	def msg_game_collision(self, x, y):
+-		if self.__debug: print &quot;Hit ground : %s,%s&quot; %(x, y)
+-		self.sendNetworkMessage(&quot;projectile&quot;, &quot;hit_ground&quot;)
+-	
+-	def msg_projectile_move(self, x, y):
+-		if self.__debug: print &quot;Projectile move : %s,%s&quot; %(x, y)
+-		self.sendNetworkMessage(&quot;projectile&quot;, &quot;move&quot;, &quot;%i,%i&quot; %(x,y), True)
+-		
+-	def msg_projectile_activate(self, flag):
+-		if self.__debug: print &quot;Projectile activate : %s&quot; %flag
+-		self.sendNetworkMessage(&quot;projectile&quot;, &quot;activate&quot;, &quot;%u&quot; %(flag))
+-		
+-	def msg_weapon_angle(self, a):
+-		if self.__debug: print &quot;Weapon angle : %s&quot; %a
+-		self.sendNetworkMessage(&quot;weapon&quot;, &quot;angle&quot;, a)
+-		
+-	def msg_weapon_strength(self, s):
+-		if self.__debug: print &quot;Weapon strength : %s&quot; %s
+-		self.sendNetworkMessage(&quot;weapon&quot;, &quot;force&quot;, s)
+-		
+-	def msg_world_create(self, m):
+-		if self.__debug: print &quot;World create : %s&quot; %m
+-		self.sendNetworkMessage(&quot;world&quot;, &quot;create&quot;, m)
+-		
+-	def msg_character_move(self, m):
+-		if self.__debug: print &quot;Character move : %s&quot; %m
+-		self.sendNetworkMessage(&quot;character&quot;, &quot;move&quot;, m)
+-		
+-	def msg_new_item(self, type, id):
+-		if self.__debug: print &quot;New item : %s,%s&quot; %(type, id)
+-		self.__items.append((type, id))
+-		
+-	def msg_game_current_character(self, char, team):
+-		if self.__debug: print &quot;Current character : %s,%s&quot; %(char, team)
+-		self.sendNetworkMessage(&quot;game&quot;, &quot;active_character&quot;, char)
++class BoomBoomServer(HappyBoomServer):
++    def __init__(self, arg):
++        arg[&quot;gateway&quot;] = BoomBoomGateway(self, arg)
++        HappyBoomServer.__init__(self, arg)
+
+Modified: happyboom/trunk/server/base_server.py
+===================================================================
+--- happyboom/trunk/server/base_server.py	2005-09-10 00:19:03 UTC (rev 134)
++++ happyboom/trunk/server/base_server.py	2005-09-13 13:00:06 UTC (rev 135)
+@@ -1,327 +1,277 @@
+-from bb_agent import BoomBoomAgent, BoomBoomMessage
+-from agents import Character, Projectile, Weapon, World, Game
+ from net import io, io_udp, io_tcp, net_buffer
+-from pysma import Kernel, DummyScheduler
++from pysma import Kernel, DummyScheduler, ActionAgent, ActionMessage
+ import re, random, thread, traceback, time
+ 
+-class Gateway(BoomBoomAgent):
++class HappyBoomAgent(ActionAgent):
++	def __init__(self, type, **args):
++		ActionAgent.__init__(self, prefix=&quot;msg_&quot;)
++		self.type = type
++		self.__debug = args.get(&quot;debug&quot;, False)
++
++	def born(self):
++		self.requestRole(self.type)
++
++	def requestActions(self, type):
++		self.requestRole(&quot;%s_listener&quot; %type)
++		
++	def sendBBMessage(self, action, *arg, **kw):
++		message = BoomBoomMessage(&quot;%s_%s&quot; %(self.type, action), arg, kw)
++		self.sendBroadcastMessage(message, &quot;%s_listener&quot; %self.type)
++
++	def messageReceived(self, msg):
++		if self.__debug:
++			print &quot;Unhandled message : %s -- %s&quot; %(type(self), msg)
++
++class HappyBoomMessage(ActionMessage):
++	def __init__(self, action, arg, kw={}):
++		ActionMessage.__init__(self, action, arg, kw)
++
++# TODO: Use better name :-)
++class HappyBoomPackerException(Exception):
++    def __init__(self, msg):
++        Exception.__init__(self, msg)
++
++class HappyBoomPacker:
++    &quot;&quot;&quot;
++    Pack arguments to binary string.
++    &quot;&quot;&quot;
+     def __init__(self):
+-		BoomBoomAgent.__init__(self, &quot;gateway&quot;)
+-		self.nextChar = None
++        pass
+ 
+-class BaseServer:
+-	def __init__(self, maxDisplay=2, displayPort=12430, maxInput=2, inputPort=12431, verbose=False, debug=False):
+-		self.__protocol_version = &quot;0.1.4&quot;
+-		self.__debug = debug
+-		self.__verbose = verbose
+-		self.__inputs = []
+-		self.__items = []
+-		self.__stopped = False
+-		self.__stoplock = thread.allocate_lock()
+-		self.__supportedFeatures = {}
++    def packUtf8(self, data):
++        return data.encode(&quot;utf-8&quot;)
+ 
+-        # Create IO
+-		self.__io = io_tcp.IO_TCP(is_server=True)
+-		self.__io.debug = debug
+-		self.__io.verbose = verbose
+-		self.__io_buffer = net_buffer.NetBuffer()
++    def packBin(self, data):
++        return data
+ 
+-		self.maxDisplay = maxDisplay
+-		self.displayPort = displayPort
+-		self.maxInput = maxInput
+-		self.inputPort = inputPort
+-		self.started = False
+-		random.seed()
+-		Kernel().addAgent(DummyScheduler(sleep=0.01))
+-		
+-	def born(self):
+-		BoomBoomAgent.born(self)
+-		self.requestActions(&quot;game&quot;)
+-		self.requestActions(&quot;weapon&quot;)
+-		self.requestActions(&quot;character&quot;)
+-		self.requestActions(&quot;world&quot;)
+-		self.requestActions(&quot;projectile&quot;)
+-		
+-	def start(self):
+-		if self.__verbose: print &quot;[*] Starting server...&quot;
+-		self.initIO()
+-		self.createAgents()
+-		print &quot;[*] Server started&quot;
+-		
+-		self.__stoplock.acquire()
+-		running = not self.__stopped
+-		self.__stoplock.release()
+-		while running:
+-			self.processInputs()
+-			time.sleep(0.01)
+-			self.__stoplock.acquire()
+-			running = not self.__stopped
+-			self.__stoplock.release()
++    def pack(self, datalist):
++        out = &quot;&quot;
++        for type,data in datalist:
++            # TODO: Use dict instead of long if list
++            if type==&quot;bin&quot;:
++                data = self.packBin(data)
++            elif type==&quot;utf8&quot;:
++                data = self.packUtf8(data)
++            else:
++                raise HappyBoomPackerException(&quot;Wrong argument type: %s&quot; % type)
++            out = out + data
++        return out        
+ 
+-	def stop(self):
+-		self.__stoplock.acquire()
+-		if self.__stopped:
+-			self.__stoplock.release()
+-			return
+-		self.__stopped = True
+-		self.__stoplock.release()
+-		print &quot;[*] Stopping server...&quot;
+-		Kernel.instance.stopKernel()
+-		self.sendNetworkMessage(&quot;game&quot;, &quot;Stop&quot;, skippable=True)
+-		self.__display_io.stop()
+-		self.__input_io.stop()
+-		if self.__verbose: print &quot;[*] Server stopped&quot;
++class HappyBoomGateway(HappyBoomAgent):
++    def __init__(self, server, arg):
++        self.__server = server
++        HappyBoomAgent.__init__(self, &quot;gateway&quot;)
++        self.nextChar = None
++        self._debug = arg.get(&quot;debug&quot;, False)
++        self._verbose = arg.get(&quot;verbose&quot;, False)
++        Kernel().addAgent(DummyScheduler(sleep=0.01))
++        self.packer = HappyBoomPacker()
+ 
+-	def initIO(self):
+-		if self.__verbose: print &quot;[*] Starting display server&quot;
+-		self.__display_io.name = &quot;display server&quot;
+-		self.__display_io.on_client_connect = self.openDisplay
+-		self.__display_io.on_client_disconnect = self.closeDisplay
+-		self.__display_io.on_new_packet = self.recvDisplayPacket
+-		self.__display_io.connect('', self.displayPort)
+-		if self.__verbose: print &quot;[*] Starting input server&quot;
+-		self.__input_io.name = &quot;input server&quot;
+-		self.__input_io.on_client_connect = self.openInput
+-		self.__input_io.on_client_disconnect = self.closeInput
+-		self.__input_io.on_new_packet = self.recvInputPacket
+-		self.__input_io.connect('', self.inputPort)
+-		thread.start_new_thread(self.run_io_thread, ())
+-		
+-	def createAgents(self):
+-		if self.__verbose: print &quot;[*] Creating agents&quot;
+-		Kernel.instance.addAgent(self)
+-		self.addAgent(Game(debug=self.__debug))
+-		self.addAgent(World(debug=self.__debug))
+-		self.addAgent(Character(100, 1, debug=self.__debug))
+-		self.addAgent(Character(-150, 2, debug=self.__debug))
+-		self.addAgent(Weapon(debug=self.__debug))
+-		self.addAgent(Projectile(debug=self.__debug))
+-		self.sendBroadcastMessage(BoomBoomMessage(&quot;start&quot;, ()), &quot;game&quot;)
+-		
+-	def openDisplay(self, client):
+-		thread.start_new_thread( self.__clientChallenge, (client,self.__do_openDisplay,&quot;DISPLAY&quot;,))
++    # Convert a (role,type,arg) to string (to be sent throw network)
++    def createMsg(self, role, function, args=None):
++        if args != None:
++            return &quot;%s:%s:%s&quot; % (role, type, args)
++        else:
++            return &quot;%s:%s&quot; % (role, type)
+ 
+-	def openInput(self, client):
+-		thread.start_new_thread( self.__clientChallenge, (client,self.__do_openInput,&quot;INPUT&quot;,))
+-		
+-	def closeInput(self, client):
+-		if self.__verbose: print &quot;[*] Input %s disconnected.&quot; % (client.name)
+-		if not (client in self.__inputs): return
+-		self.__inputs.remove (client)
+-		txt = &quot;Client %s (input) leave us.&quot; % (client.name)
+-		self.sendText(txt)
++    def pack(self, datalist):
++        return self.packer.pack(datalist)
+ 
+-	def closeDisplay(self, client):
+-		if self.__verbose: print &quot;[*] Display %s disconnected.&quot; % (client.name)
+-		txt = &quot;Client %s (display) leave us.&quot; % (client.name)
+-		self.sendText(txt)
+-		
+-	def __clientChallenge(self, client, func, client_type):
+-		try:
+-			func(client)
+-		except Exception, msg:
+-			print &quot;EXCEPTION WHEN %s TRY TO CONNECT :&quot; % (client_type)
+-			print msg
+-			print &quot;--&quot;
+-			traceback.print_exc()
+-			self.stop()
++    def sendMsgToClient(self, msg, client):
++        client.send(io.Packet(msg))
+ 
+-	# Function which should be called in a thread
+-	def run_io_thread(self):
+-		try:
+-			while self.__input_io.isRunning() and self.__display_io.isRunning():
+-				self.__input_io.live()				
+-				self.__display_io.live()				
+-				time.sleep(0.001)
+-		except Exception, msg:
+-			print &quot;EXCEPTION IN IO THREAD :&quot;
+-			print msg
+-			print &quot;--&quot;			
+-			traceback.print_exc()
+-			self.stop()
++    def start(self):
++        Kernel.instance.addAgent(self)
++        
++    def stop(self):
++        Kernel.instance.stopKernel()
+ 
+-	def __do_openDisplay(self, client):
+-		if self.__verbose: print &quot;[*] Display %s try to connect ...&quot; % (client.name)
+-		
+-		self.__display_buffer.clear(client.addr)
+-		
+-		# Ask protocol version
+-		msg = self.createMsg(&quot;agent_manager&quot;, &quot;AskVersion&quot;)
+-		client.send(io.Packet(msg))
+-		answer = self.readDisplayAnswer(client)
+-		if answer != self.__display_protocol_version:
+-			txt = &quot;Sorry, you don't have same protocol version (%s VS %s)&quot; \
+-				% (answer, self.__display_protocol_version)
+-			self.sendText(txt)
+-			client.disconnect()
+-			return
+-		
+-		# ask client name
+-		msg = self.createMsg(&quot;agent_manager&quot;, &quot;AskName&quot;)
+-		client.send(io.Packet(msg))
+-		name = self.readDisplayAnswer(client)
+-		if name not in (&quot;-&quot;, &quot;&quot;): client.name = name
++    def sendText(self, txt, client=None):
++        if client != None:
++            msg = self.createMsg(&quot;agent_manager&quot;, &quot;Text&quot;, txt)
++            client.send(io.Packet(msg))
++        else:
++            self.sendNetworkMessage(&quot;agent_manager&quot;, &quot;Text&quot;, txt)
+ 
+-		self.registerFeature(client, &quot;agent_manager&quot;)
+-		self.registerFeature(client, &quot;game&quot;)
+-		for type, id in self.__items:
+-			msg = self.createMsg(&quot;agent_manager&quot;, &quot;Create&quot;, &quot;%s:%u&quot; % (type, id))
+-			client.send (io.Packet(msg))
+-			answer = self.readDisplayAnswer(client)
+-			if answer == &quot;yes&quot;: 
+-				role = self.readDisplayAnswer(client)
+-				while role != &quot;.&quot;:
+-					self.registerFeature(client, role)
+-					role = self.readDisplayAnswer(client)
++    def sendNetworkMessage(self, role, type, arg=None, skippable=False):
++        msg = self.createMsg(role, type, arg)
++        clients = self.__server.client_manager.supported_features.get(role, ())
++        for client in clients:
++            client.send (io.Packet(msg, skippable=skippable))
+ 
+-		msg = self.createMsg(&quot;game&quot;, &quot;Start&quot;)
+-		client.send(io.Packet(msg))
+-			
+-		txt = &quot;Welcome to new (display) client : %s&quot; % (client.name)
+-		self.sendText(txt)
+-		if self.__verbose: print &quot;[*] Display %s connected&quot; % (client.name)
+-		self.sendBBMessage(&quot;sync&quot;)
++class HappyBoomClientManager(object):
++    def __init__(self, server, gateway, arg): 
++        self.__server = server
++        self.__gateway = gateway
++        self.__io = io_tcp.IO_TCP(is_server=True)
++        self.__io.debug = arg.get(&quot;debug&quot;, False)
++        self.__io.verbose = arg.get(&quot;verbose&quot;, False)
++        self.__buffer = net_buffer.NetBuffer()
++        self.__debug = arg.get(&quot;debug&quot;, False)
++        self.__verbose = arg.get(&quot;verbose&quot;, False)
++        self.max_clients = arg.get(&quot;max_clients&quot;, 2)
++        self.client_port = arg.get(&quot;client_port&quot;, 12430)
++        self.__protocol_version = &quot;0.1.4&quot;
++        self.__supported_features = {}
++        
++    def recvClientPacket(self, packet):
++        self.__buffer.append(packet.recv_from.addr, packet)
+ 
+-	def __do_openInput(self, client):
+-		if self.__verbose: print &quot;[*] Input %s try to connect ...&quot; % (client.name)
++    def stop(self):
++        self.__gateway.sendNetworkMessage(&quot;game&quot;, &quot;Stop&quot;, skippable=True)
++        self.__io.stop()
+ 
+-		self.__input_buffer.clear(client.addr)
++    def process(self):
++        pass
++#        processInputs()
+ 
+-		client.send(io.Packet(&quot;Version?&quot;))
+-		answer = self.readInputAnswer(client)
+-		if answer == None:
+-			if self.__verbose: print &quot;[*] Client doesn't sent version&quot;
+-			client.disconnect()
+-			return
+-		if answer != self.__input_protocol_version:
+-			txt = &quot;Sorry, you don't have same protocol version (%s VS %s)&quot; \
+-				% (answer, self.__input_protocol_version)
+-			self.sendText(txt, client)
+-			client.disconnect()
+-			return	
+-		client.send(io.Packet(&quot;OK&quot;))
+-		
+-		# ask client name
+-		client.send(io.Packet(&quot;Name?&quot;))
+-		name = self.readInputAnswer(client)
+-		if name == None:
+-			if self.__verbose: print &quot;[*] Client doesn't sent name&quot;
+-			client.disconnect()
+-			return
+-		if name not in (&quot;-&quot;, &quot;&quot;): client.name = name
+-		client.send(io.Packet(&quot;OK&quot;))
++    def start(self):
++        if self.__verbose: print &quot;[*] Starting server&quot;
++        self.__io.name = &quot;server&quot;
++        self.__io.on_client_connect = self.openClient
++        self.__io.on_client_disconnect = self.closeClient
++        self.__io.on_new_packet = self.recvClientPacket
++        self.__io.connect('', self.client_port)
++        thread.start_new_thread(self.run_io_thread, ())
+ 
+-		self.__inputs.append (client)
+-		if self.__verbose: print &quot;Input %s connected.&quot; % (client.name)
+-		txt = &quot;Welcome to new (input) client : %s&quot; % (client.name)
+-		self.sendText(txt)
+-		
+-	# Convert a (role,type,arg) to string (to be sent throw network)
+-	def createMsg(self, role, type, arg=None):
+-		if arg != None:
+-			return &quot;%s:%s:%s&quot; % (role, type, arg)
+-		else:
+-			return &quot;%s:%s&quot; % (role, type)
+-		
+-	def recvInputPacket(self, packet):
+-		self.__input_buffer.append(packet.recv_from.addr, packet)
+-		
+-	def recvDisplayPacket(self, packet):
+-		msg = packet.data
+-		self.__display_buffer.append(packet.recv_from.addr, packet)
++    def readClientAnswer(self, client, timeout=1.000):
++        answer = self.__buffer.readBlocking(client.addr, timeout)
++        if answer==None: return None
++        return answer.data
+ 
+-	def readDisplayAnswer(self, client):
+-		return self.__readClientAnswer(self.__display_buffer, client)
+-		
+-	def readInputAnswer(self, client):
+-		return self.__readClientAnswer(self.__input_buffer, client)
++    def registerFeature(self, client, role):
++        if role in self.__supported_features:
++            if client not in self.__supported_features[role]:
++                self.__supported_features[role].append(client)
++        else:
++            self.__supported_features[role] = [client,]
++        
++    def openClient(self, client):
++        # TODO: Ne pas utiliser de thread ?!
++        thread.start_new_thread( self.__clientChallenge, (client,self.__do_openClient))
+ 
+-	def __readClientAnswer(self, buffer, client, timeout=3.000):
+-		answer = buffer.readBlocking(client.addr, timeout)
+-		if answer==None: return None
+-		answer = answer.data
+-		return answer
++    def closeClient(self, client):
++        if self.__verbose:
++            log.info(&quot;Client %s disconnected.&quot; % client.name)
++        
++        txt = &quot;Client %s (display) leave us.&quot; % (client.name)
++        self.__gateway.sendText(txt)
++        
++        arg = self.__gateway.pack(((&quot;utf8&quot;, u&quot;Lost connection&quot;),))
++        msg = self.__gateway.createMsg(&quot;presentation&quot;, &quot;bye&quot;, arg)
++        self.__gateway.sendMsgToClient(msg, client)
++        
++    def __clientChallenge(self, client, func):
++        try:
++            func(client)
++        except Exception, msg:
++            print &quot;EXCEPTION WHEN A CLIENT TRY TO CONNECT :&quot;
++            print msg
++            print &quot;--&quot;
++            traceback.print_exc()
++            self.stop()
+ 
+-	def sendText(self, txt, client=None):
+-		if client != None:
+-			msg = self.createMsg(&quot;agent_manager&quot;, &quot;Text&quot;, txt)
+-			client.send(io.Packet(msg))
+-		else:
+-			self.sendNetworkMessage(&quot;agent_manager&quot;, &quot;Text&quot;, txt)
++    # Function which should be called in a thread
++    # TODO: Pourquoi c'est utilis&#233; &#231;a ?
++    def run_io_thread(self):
++        try:
++            while self.__io.isRunning():
++                self.__io.live()                
++                time.sleep(0.001)
++        except Exception, msg:
++            print &quot;EXCEPTION IN IO THREAD :&quot;
++            print msg
++            print &quot;--&quot;            
++            traceback.print_exc()
++            self.stop()
+ 
+-	def processInputCmd(self, input, cmd):
+-		cmd_ok = (\
+-			&quot;move_left&quot;, &quot;move_right&quot;, &quot;move_up&quot;, &quot;move_down&quot;,
+-			&quot;shoot&quot;, )
+-		if self.__verbose and cmd != &quot;Ping?&quot;:
+-			print &quot;Command from %s: %s&quot; % (input.name, cmd)
+-		if re.compile(&quot;^chat:(.*)$&quot;).match(cmd) != None:
+-			print &quot;New chat message: %s&quot; % (r.group(1))
+-			self.sendNetworkMessage(&quot;chat_server&quot;, &quot;new&quot;, r.group(1))
+-		elif cmd in cmd_ok:	self.sendBroadcastMessage(BoomBoomMessage(&quot;new_command&quot;, (cmd,)), &quot;command_manager&quot;)
+-		
+-	def processInputs(self):
+-		inputs = self.__inputs[:]
+-		for client in inputs:
+-			packets = self.__input_buffer.readNonBlocking(client.addr)
++    def generateSignature(self, client):
++        import random
++        r = random.randint(0,1000000)
++        return r
+ 
+-			for packet in packets:	
+-				self.processInputCmd (packet.recv_from, packet.data)
++    def __do_openClient(self, client):
++        if self.__verbose: print &quot;[*] Display %s try to connect ...&quot; % (client.name)
++        
++#        self.__buffer.clear(client.addr)
++       
++        # Check protocol version (max: wait 200ms)
++        answer = self.readClientAnswer(client, 0.200)
++        if answer != self.__protocol_version:
++            # If it isn't the right version, send presention.bye(...)
++            txt = u&quot;Sorry, you don't have same protocol version (%s VS %s)&quot; \
++                % (answer, self.__protocol_version)
++            msg = self.__gateway.createMsg(&quot;presentation&quot;, &quot;bye&quot;, txt.encode(&quot;UTF-8&quot;))
++            self.__gateway.sendMsgToClient(msg, client)
+ 
+-	def registerFeature(self, client, role):
+-		if role in self.__supportedFeatures:
+-			if client not in self.__supportedFeatures[role]:
+-				self.__supportedFeatures[role].append(client)
+-		else:
+-			self.__supportedFeatures[role] = [client,]
++            # Wait 0.5s and then disconnect the client
++            time.sleep(0.500)
++            client.disconnect()
++            return
++            
++        # Send protocol version with &quot;hello()&quot;
++        signature = self.generateSignature()
++        arg = self.__gateway.pack(&quot;bin&quot;, self.__protocol_version,&quot;bin&quot;, signature)
++        msg = self.__gateway.createMsg(&quot;presentation&quot;, &quot;hello&quot;, arg)
++        self.__gateway.sendMsgToClient(msg, client)
++         
++        # Read features (max: wait 1sec)
++        answer = self.readClientAnswer(client, 1.0)
++        #TODO: do something with answer :-)
+ 
+-	def sendNetworkMessage(self, role, type, arg=None, skippable=False):
+-		msg = self.createMsg(role, type, arg)
+-		clients = self.__supportedFeatures.get(role, ())
+-		for client in clients:
+-			client.send (io.Packet(msg, skippable=skippable))
+-						
+-	def msg_game_next_character(self, char, team):
+-		if self.__debug: print &quot;Next character : %s,%s&quot; %(char, team)
+-		self.nextChar = char
+-						
+-	def msg_game_next_turn(self):
+-		if self.__debug: print &quot;Next turn : %s&quot; %self.nextChar
+-		self.sendNetworkMessage(&quot;game&quot;, &quot;next_turn&quot;)
+-		self.sendNetworkMessage(&quot;game&quot;, &quot;active_character&quot;, self.nextChar)
+-		
+-	def msg_game_collision(self, x, y):
+-		if self.__debug: print &quot;Hit ground : %s,%s&quot; %(x, y)
+-		self.sendNetworkMessage(&quot;projectile&quot;, &quot;hit_ground&quot;)
+-	
+-	def msg_projectile_move(self, x, y):
+-		if self.__debug: print &quot;Projectile move : %s,%s&quot; %(x, y)
+-		self.sendNetworkMessage(&quot;projectile&quot;, &quot;move&quot;, &quot;%i,%i&quot; %(x,y), True)
+-		
+-	def msg_projectile_activate(self, flag):
+-		if self.__debug: print &quot;Projectile activate : %s&quot; %flag
+-		self.sendNetworkMessage(&quot;projectile&quot;, &quot;activate&quot;, &quot;%u&quot; %(flag))
+-		
+-	def msg_weapon_angle(self, a):
+-		if self.__debug: print &quot;Weapon angle : %s&quot; %a
+-		self.sendNetworkMessage(&quot;weapon&quot;, &quot;angle&quot;, a)
+-		
+-	def msg_weapon_strength(self, s):
+-		if self.__debug: print &quot;Weapon strength : %s&quot; %s
+-		self.sendNetworkMessage(&quot;weapon&quot;, &quot;force&quot;, s)
+-		
+-	def msg_world_create(self, m):
+-		if self.__debug: print &quot;World create : %s&quot; %m
+-		self.sendNetworkMessage(&quot;world&quot;, &quot;create&quot;, m)
+-		
+-	def msg_character_move(self, m):
+-		if self.__debug: print &quot;Character move : %s&quot; %m
+-		self.sendNetworkMessage(&quot;character&quot;, &quot;move&quot;, m)
+-		
+-	def msg_new_item(self, type, id):
+-		if self.__debug: print &quot;New item : %s,%s&quot; %(type, id)
+-		self.__items.append((type, id))
+-		
+-	def msg_game_current_character(self, char, team):
+-		if self.__debug: print &quot;Current character : %s,%s&quot; %(char, team)
+-		self.sendNetworkMessage(&quot;game&quot;, &quot;active_character&quot;, char)
++        txt = &quot;Welcome to new (display) client : %s&quot; % (client.name)
++        self.__gateway.sendText(txt)
++        if self.__verbose: print &quot;[*] Display %s connected&quot; % (client.name)
++        self.sendBBMessage(&quot;sync&quot;)
++
++    def __getSupportedFeatures(self): return self.__supported_features
++    supported_features = property(__getSupportedFeatures)
++
++class HappyBoomServer(object):
++    def __init__(self, arg): #verbose=False, debug=False):
++        self.started = False
++        self.__debug = arg.get('debug', False)
++        self.__verbose = arg.get('verbose', False)
++        self.__stopped = False
++        self.__stoplock = thread.allocate_lock()
++        if arg.has_key(&quot;gateway&quot;):
++            self.__gateway = arg[&quot;gateway&quot;]
++        else:
++            self.__gateway = HappyBoomGateway(self, arg)
++        self.__client_manager = HappyBoomClientManager(self, self.__gateway, arg)
++        random.seed()
++        self.__items = []
++        
++    def born(self):
++        self.gateway.born()
++        
++    def start(self):
++        if self.__verbose: print &quot;[*] Starting server...&quot;
++        self.__client_manager.start()
++        self.__gateway.start()
++        print &quot;[*] Server started&quot;
++        
++        self.__stoplock.acquire()
++        running = not self.__stopped
++        self.__stoplock.release()
++        while running:
++            self.__client_manager.process()
++            time.sleep(0.01)
++            self.__stoplock.acquire()
++            running = not self.__stopped
++            self.__stoplock.release()
++
++    def stop(self):
++        self.__stoplock.acquire()
++        if self.__stopped:
++            self.__stoplock.release()
++            return
++        self.__stopped = True
++        self.__stoplock.release()
++        print &quot;[*] Stopping server...&quot;
++        self.__gateway.stop()
++        self.__client_manager.stop()
++        if self.__verbose: print &quot;[*] Server stopped&quot;
++
++    def __getClientManager(self): return self.__client_manager
++    client_manager = property(__getClientManager)
+
+Modified: poilu/trunk/dico.txt
+===================================================================
+--- poilu/trunk/dico.txt	2005-09-10 00:19:03 UTC (rev 134)
++++ poilu/trunk/dico.txt	2005-09-13 13:00:06 UTC (rev 135)
+@@ -33,7 +33,6 @@
+ genou
+ gland
+ gosier
+-gros zizi
+ jambon
+ kiki
+ loup
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000041.html">[Happyboom-svn] r134 - poilu/trunk
+</A></li>
+	<LI>Next message: <A HREF="000043.html">[Happyboom-svn] r136 - languetudes/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#42">[ date ]</a>
+              <a href="thread.html#42">[ thread ]</a>
+              <a href="subject.html#42">[ subject ]</a>
+              <a href="author.html#42">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

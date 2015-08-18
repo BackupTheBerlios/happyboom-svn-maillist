@@ -1,0 +1,259 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r221 - / haypo trouphp
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-October/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r221%20-%20/%20haypo%20trouphp&In-Reply-To=%3C200510031245.j93CjXjV016945%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="000130.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r221 - / haypo trouphp</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r221%20-%20/%20haypo%20trouphp&In-Reply-To=%3C200510031245.j93CjXjV016945%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r221 - / haypo trouphp">haypo at berlios.de
+       </A><BR>
+    <I>Mon Oct  3 14:45:33 CEST 2005</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="000130.html">[Happyboom-svn] r222 - / haypo haypo/hachoir haypo/hachoir/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#128">[ date ]</a>
+              <a href="thread.html#128">[ thread ]</a>
+              <a href="subject.html#128">[ subject ]</a>
+              <a href="author.html#128">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-10-03 14:45:32 +0200 (Mon, 03 Oct 2005)
+New Revision: 221
+
+Added:
+   trouphp/
+   trouphp/check_fct.sh
+   trouphp/file.regex
+   trouphp/include.regex
+   trouphp/mysql.regex
+   trouphp/session.regex
+Modified:
+   haypo/apache_log.py
+Log:
+Ajoute le script trouphp et met a jour apache_log.py
+
+
+Modified: haypo/apache_log.py
+===================================================================
+--- haypo/apache_log.py	2005-09-28 00:18:34 UTC (rev 220)
++++ haypo/apache_log.py	2005-10-03 12:45:32 UTC (rev 221)
+@@ -26,14 +26,14 @@
+         self._regex = re.compile(regex)
+         self.handler = self.processLine
+ 
+-    def processLine(self, line_number, line, info):
++    def processLine(self, filename, line_number, line, info):
+         print &quot;Line %u: %s %s&quot; % (line_number, info[&quot;method&quot;], info[&quot;url&quot;])
+ 
+-    def parseLine(self, line_number, line):
++    def parseLine(self, filename, line_number, line):
+         try:
+             m = self._regex.search(line)
+             if m == None:
+-                print &quot;Can't parse line %u:\n%s&quot; % (line_number, line)
++                print &quot;Can't parse %s:%u:\n%s&quot; % (filename, line_number, line)
+                 return
+             origin, host, user, date, method, url, code, size, referrer, browser = m.groups()
+             kw = { \
+@@ -47,7 +47,7 @@
+                 &quot;size&quot;: size,
+                 &quot;referrer&quot;: referrer,
+                 &quot;browser&quot;: browser}
+-            self.handler(line_number, line, kw)
++            self.handler(filename, line_number, line, kw)
+         except KeyboardInterrupt:
+             print &quot;Interrupt line: %s&quot; % line
+             raise
+@@ -69,7 +69,7 @@
+ #                    t = time.time()
+ #                    progress = int( (line_number-1)*100/nb_lines )
+ #                    print &quot;Progress: %s%%&quot; % (progress)
+-                self.parseLine(line_number, line)
++                self.parseLine(filename, line_number, line)
+                 line_number += 1
+             print &quot;File loaded.&quot;
+         except KeyboardInterrupt:
+@@ -95,11 +95,11 @@
+         else:
+             attr[key] = 1
+ 
+-    def processLine(self, line_number, line, info):
++    def processLine(self, filename, line_number, line, info):
+         url = info[&quot;url&quot;]
+         code = info[&quot;code&quot;]
+         referrer = info[&quot;referrer&quot;]
+-        
++
+         # Clean url (remove hostname)
+         m = self.regex_host.match(url)
+         if m != None:
+@@ -164,11 +164,23 @@
+ def googleHosts():        
+     return [&quot;216\.239\.59\.104&quot;, \
+         &quot;66\.249\.93\.104&quot;, &quot;66.102.9.104&quot;, \
+-        &quot;216.109.124.98&quot;, &quot;(images|www)\.google\.(fr|com)&quot;]
++        &quot;216.109.124.98&quot;, &quot;(images|www)\.google\.[a-z]{2,3}&quot;]
+ 
++def msnHosts():
++    return [&quot;search.msn.[a-z]{2,3}&quot;]
++
+ def yahooHosts():
+     return [&quot;[a-z]+.search.yahoo.com&quot;]
+ 
++def altavistaHosts():
++    return [&quot;www.altavista.com&quot;]
++
++def faiSearchHosts():
++    return [&quot;search[0-9]-[0-9].free.fr&quot;, &quot;search.ke.voila.fr&quot;]
++
++def searchEngineHosts():        
++    return googleHosts() + yahooHosts() + msnHosts() + altavistaHosts() + faiSearchHosts()
++
+ def printTopReferrer(r, max):
+     print &quot;=== Top referrer ===&quot;
+     pages = r.getTopReferrer(max)
+@@ -178,10 +190,9 @@
+ class HaypoCALC:
+     def __init__(self):
+         # Ignore referrer regex
+-        hosts = [&quot;(www\.)?haypocalc\.com&quot;] # Haypocalc
+-        hosts.append (&quot;exoscin\.free\.fr&quot;) # Exoscin.free.fr
+-        hosts += googleHosts()
+-        hosts += yahooHosts()
++        hosts = [&quot;(www\.)?haypocalc\.com&quot;] # Ignore Haypocalc
++        hosts.append (&quot;exoscin\.free\.fr&quot;) # Ignore exoscin.free.fr
++        hosts += searchEngineHosts()       # Ignore search engines
+         self.ignore_referrer = [ re.compile(r&quot;^<A HREF="http://(">http://(</A>&quot;+&quot;|&quot;.join(hosts)+&quot;)&quot;)  ]
+ 
+         # Ignore url regex
+@@ -215,9 +226,14 @@
+         filename = sys.argv[1]
+         r=ApacheLogParser_Stat(&quot;haypocalc.com&quot;)
+         r.ignore_handler = h.ignoreHandler
++
+         r.parseFile(filename)
+-        printTopPage(r, 10)
+-        printTopReferrer(r, 10)
++#        for month in range(1,31):
++#            filename = &quot;/mnt/media/log-haypocalc/logs-08-2005/haypocalc.com-%02u-08-2005.log&quot; % month
++#            r.parseFile(filename)
++        
++        printTopPage(r, 20)
++        printTopReferrer(r, 20)
+     except KeyboardInterrupt:
+         print &quot;Program interrupted (CTRL+C).&quot;
+         
+
+Added: trouphp/check_fct.sh
+===================================================================
+--- trouphp/check_fct.sh	2005-09-28 00:18:34 UTC (rev 220)
++++ trouphp/check_fct.sh	2005-10-03 12:45:32 UTC (rev 221)
+@@ -0,0 +1,32 @@
++#!/bin/sh
++
++DIR=$(dirname $0)
++
++# Check source file
++if [ $# -lt 2 ]; then
++  echo &quot;$(basename $0) file.php check1 check2 ... : List all functions with match with given regex&quot;
++  echo
++  echo &quot;Available checks :&quot;
++  for i in $(cd $DIR; ls *.regex); do
++     echo &quot;&#183; $i&quot;
++  done
++  exit 1
++fi
++SRC=$1
++shift
++
++if [ ! -e $SRC ]; then
++	echo &quot;PHP source file \&quot;$SRC\&quot; doesn't exist&quot;;
++fi
++
++GREP_OPT=&quot;-H -n&quot;
++
++for i in $*; do
++  FILE=&quot;$DIR/$i.regex&quot;
++  if [ -e $FILE ]; then
++    REGEX_FUNC=$(cat $FILE);
++    egrep $GREP_OPT &quot;$REGEX_FUNC&quot; $SRC;
++  else
++    echo &quot;File $FILE doesn't exist&quot;;
++  fi
++done
+
+
+Property changes on: trouphp/check_fct.sh
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: trouphp/file.regex
+===================================================================
+--- trouphp/file.regex	2005-09-28 00:18:34 UTC (rev 220)
++++ trouphp/file.regex	2005-10-03 12:45:32 UTC (rev 221)
+@@ -0,0 +1 @@
++\&lt;(chgrp|chmod|chown|copy|delete|file_exists|file_get_contents|file_put_contents|file|fileatime|filectime|filegroup|fileinode|filemtime|fileowner|fileperms|filesize|filetype|flock|fopen|fpassthru|fstat|glob|is_dir|is_executable|is_file|is_link|is_readable|is_uploaded_file|is_writable|is_writeable|link|linkinfo|lstat|mkdir|move_uploaded_file|pathinfo|popen|readfile|readlink|realpath|rename|rmdir|stat|symlink|tempnam|tmpfile|touch|umask|unlink)\&gt; *\(
+
+Added: trouphp/include.regex
+===================================================================
+--- trouphp/include.regex	2005-09-28 00:18:34 UTC (rev 220)
++++ trouphp/include.regex	2005-10-03 12:45:32 UTC (rev 221)
+@@ -0,0 +1 @@
++(include|include_once|require|require_once) *[\(&quot;]
+
+Added: trouphp/mysql.regex
+===================================================================
+--- trouphp/mysql.regex	2005-09-28 00:18:34 UTC (rev 220)
++++ trouphp/mysql.regex	2005-10-03 12:45:32 UTC (rev 221)
+@@ -0,0 +1 @@
++(mysql_change_user|mysql_client_encoding|mysql_connect|mysql_create_db|mysql_data_seek|mysql_drop_db|mysql_get_client_info|mysql_get_host_info|mysql_get_proto_info|mysql_get_server_info|mysql_info|mysql_insert_id|mysql_list_dbs|mysql_list_fields|mysql_list_processes|mysql_list_tables|mysql_pconnect|mysql_ping|mysql_query|mysql_select_db|mysql_stat|mysql_tablename|mysql_thread_id|mysql_unbuffered_query) *\(
+
+Added: trouphp/session.regex
+===================================================================
+--- trouphp/session.regex	2005-09-28 00:18:34 UTC (rev 220)
++++ trouphp/session.regex	2005-10-03 12:45:32 UTC (rev 221)
+@@ -0,0 +1 @@
++(session_cache_expire|session_cache_limiter|session_commit|session_decode|session_encode|session_get_cookie_params|session_id|session_is_registered|session_module_name|session_name|session_regenerate_id|session_register|session_save_path|session_set_cookie_params|session_set_save_handler|session_start|session_unregister|session_write_close) *\(
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="000130.html">[Happyboom-svn] r222 - / haypo haypo/hachoir haypo/hachoir/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#128">[ date ]</a>
+              <a href="thread.html#128">[ thread ]</a>
+              <a href="subject.html#128">[ subject ]</a>
+              <a href="author.html#128">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

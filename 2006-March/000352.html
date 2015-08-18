@@ -1,0 +1,135 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r448 - in haypo/hachoir: . branches/hachoir-yield/libhachoir/field
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r448%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield/libhachoir/field&In-Reply-To=%3C200603122004.k2CK4AVB023552%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000351.html">
+   <LINK REL="Next"  HREF="000354.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r448 - in haypo/hachoir: . branches/hachoir-yield/libhachoir/field</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r448%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield/libhachoir/field&In-Reply-To=%3C200603122004.k2CK4AVB023552%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r448 - in haypo/hachoir: . branches/hachoir-yield/libhachoir/field">haypo at berlios.de
+       </A><BR>
+    <I>Sun Mar 12 21:04:10 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000351.html">[Happyboom-svn] r447 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream
+</A></li>
+        <LI>Next message: <A HREF="000354.html">[Happyboom-svn] r449 - in haypo/hachoir: . branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/archive
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#352">[ date ]</a>
+              <a href="thread.html#352">[ thread ]</a>
+              <a href="subject.html#352">[ subject ]</a>
+              <a href="author.html#352">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-12 21:04:10 +0100 (Sun, 12 Mar 2006)
+New Revision: 448
+
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/field.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r62 at haypopc</A>:  haypo | 2006-03-09 23:20:32 +0100
+ Small changes about event and comment syntax ...
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:61
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:62
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/field.py	2006-03-12 20:03:49 UTC (rev 447)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/field.py	2006-03-12 20:04:10 UTC (rev 448)
+@@ -36,7 +36,7 @@
+         return self._value
+     def _setValue(self, new_value):
+         self._value = new_value
+-        self.parent.raiseEvent(&quot;value-changed&quot;, self)
++        self.parent.raiseEvent(&quot;field-value-changed&quot;, self)
+     value = property(_getValue, _setValue)
+ 
+     def _getDisplay(self):
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py	2006-03-12 20:03:49 UTC (rev 447)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py	2006-03-12 20:04:10 UTC (rev 448)
+@@ -41,14 +41,14 @@
+        * size: Size of field set in bits, may need to create field set
+ 
+     Event handling:
+-       * connect: Connect an handler to an event
++       * connectEvent: Connect an handler to an event
+        * raiseEvent: Raise an event 
+    
+     To implement a new field set, you need to:
+        * create a class which inherite from FieldSet
+        * write createFields() method using lines like:
+          &quot;yield &lt;field class&gt;(self, &lt;field name&gt;, ...)&quot;
+-       * and maybe set endian/static_size class attributes
++       * and maybe set endian and static_size class attributes
+     &quot;&quot;&quot;
+ 
+     is_field_set = True
+@@ -65,6 +65,7 @@
+             assert parent != None
+             self.stream = parent.stream
+         else:
++            # Disabled because document test doesn't work !?!?
+ #            assert isinstance(stream, InputStream)
+ #            assert issubclass(stream.__class__, InputStream)
+             self.stream = stream
+@@ -85,7 +86,8 @@
+         return &quot;(...)&quot; 
+     display = property(_getDisplay)
+ 
+-    def connect(self, event_name, handler):
++    def connectEvent(self, event_name, handler):
++        assert event_name in (&quot;field-value-changed&quot;,)
+         if self._event_handler == None:
+             self._event_handler = EventHandler()
+         self._event_handler.connect(event_name, handler)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000351.html">[Happyboom-svn] r447 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream
+</A></li>
+	<LI>Next message: <A HREF="000354.html">[Happyboom-svn] r449 - in haypo/hachoir: . branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/archive
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#352">[ date ]</a>
+              <a href="thread.html#352">[ thread ]</a>
+              <a href="subject.html#352">[ subject ]</a>
+              <a href="author.html#352">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

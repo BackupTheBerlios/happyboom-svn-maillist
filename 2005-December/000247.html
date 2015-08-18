@@ -1,0 +1,485 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r342 - haypo/hachoir/plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r342%20-%20haypo/hachoir/plugins&In-Reply-To=%3C200512201348.jBKDmxcV026258%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000246.html">
+   <LINK REL="Next"  HREF="000248.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r342 - haypo/hachoir/plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r342%20-%20haypo/hachoir/plugins&In-Reply-To=%3C200512201348.jBKDmxcV026258%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r342 - haypo/hachoir/plugins">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec 20 14:48:59 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000246.html">[Happyboom-svn] r341 - in haypo/hachoir: . fallback plugins ui
+</A></li>
+        <LI>Next message: <A HREF="000248.html">[Happyboom-svn] r343 - haypo/hachoir
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#247">[ date ]</a>
+              <a href="thread.html#247">[ thread ]</a>
+              <a href="subject.html#247">[ subject ]</a>
+              <a href="author.html#247">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-20 14:48:54 +0100 (Tue, 20 Dec 2005)
+New Revision: 342
+
+Added:
+   haypo/hachoir/plugins/bmp.py
+   haypo/hachoir/plugins/worms2.py
+Modified:
+   haypo/hachoir/plugins/id3.py
+   haypo/hachoir/plugins/pcx.py
+   haypo/hachoir/plugins/rpm.py
+Log:
+- Create plugins BMP and WORMS2.
+- Small bugfixes in plugins PCX and RPM.
+- RPM plugin can now read full signature and header data
+- RPM plugin can read file content using GZIP plugin
+
+
+Added: haypo/hachoir/plugins/bmp.py
+===================================================================
+--- haypo/hachoir/plugins/bmp.py	2005-12-20 13:45:51 UTC (rev 341)
++++ haypo/hachoir/plugins/bmp.py	2005-12-20 13:48:54 UTC (rev 342)
+@@ -0,0 +1,32 @@
++&quot;&quot;&quot;
++Microsoft Bitmap picture parseer.
++
++Author: Victor Stinner
++Creation: 16 december 2005
++&quot;&quot;&quot;
++
++from filter import Filter
++from plugin import registerPlugin
++
++class BitmapFile(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;bmp_file&quot;, &quot;Bitmap picture file (BMP)&quot;, stream, parent)
++        self.read(&quot;header&quot;, &quot;!2s&quot;, &quot;Header (\&quot;BM\&quot;)&quot;)
++        self.read(&quot;file_size&quot;, &quot;&lt;L&quot;, &quot;File size (bytes)&quot;)
++        self.read(&quot;notused&quot;, &quot;&lt;L&quot;, &quot;Reseved&quot;)
++        self.read(&quot;data_start&quot;, &quot;&lt;L&quot;, &quot;Data start position&quot;)
++        header_size = self.read(&quot;header_size&quot;, &quot;&lt;L&quot;, &quot;Header size&quot;).value
++        assert header_size in (12, 40)
++        self.read(&quot;width&quot;, &quot;&lt;L&quot;, &quot;Width (pixels)&quot;)
++        self.read(&quot;height&quot;, &quot;&lt;L&quot;, &quot;Height (pixels)&quot;)
++        self.read(&quot;nb_plan&quot;, &quot;&lt;H&quot;, &quot;Number of plan (=1)&quot;)
++        self.read(&quot;bits_pixel&quot;, &quot;&lt;H&quot;, &quot;Bits per pixel&quot;)
++        if header_size == 40:
++            self.read(&quot;compression&quot;, &quot;&lt;L&quot;, &quot;Compression method&quot;)
++            self.read(&quot;image_size&quot;, &quot;&lt;L&quot;, &quot;Image size (bytes)&quot;)
++            self.read(&quot;horizontal_dpi&quot;, &quot;&lt;L&quot;, &quot;Horizontal DPI&quot;)
++            self.read(&quot;vertical_dpi&quot;, &quot;&lt;L&quot;, &quot;Vertical DPI&quot;)
++            self.read(&quot;used_colors&quot;, &quot;&lt;L&quot;, &quot;Number of color used&quot;)
++            self.read(&quot;important_color&quot;, &quot;&lt;L&quot;, &quot;Number of import colors&quot;)
++
++registerPlugin(BitmapFile, &quot;image/x-ms-bmp&quot;)
+
+Modified: haypo/hachoir/plugins/id3.py
+===================================================================
+--- haypo/hachoir/plugins/id3.py	2005-12-20 13:45:51 UTC (rev 341)
++++ haypo/hachoir/plugins/id3.py	2005-12-20 13:48:54 UTC (rev 342)
+@@ -81,8 +81,9 @@
+         size = self[&quot;size&quot;]
+         if tag in ID3_Chunk.handler:
+             end = stream.tell() + size
+-            substream = stream.createLimited(size=size)
+-            self.readStreamChild(&quot;content&quot;, substream, ID3_Chunk.handler[tag])
++            if size != 0:
++                substream = stream.createLimited(size=size)
++                self.readStreamChild(&quot;content&quot;, substream, ID3_Chunk.handler[tag])
+             assert stream.tell() == end
+         else:
+             self.read(&quot;data&quot;, &quot;%us&quot; % size, &quot;Raw data&quot;)
+
+Modified: haypo/hachoir/plugins/pcx.py
+===================================================================
+--- haypo/hachoir/plugins/pcx.py	2005-12-20 13:45:51 UTC (rev 341)
++++ haypo/hachoir/plugins/pcx.py	2005-12-20 13:48:54 UTC (rev 342)
+@@ -9,10 +9,12 @@
+ 
+ class RGB(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;rgb_color&quot;, &quot;RGB color (8 bits/component)&quot;, stream, parent)
++        Filter.__init__(self, &quot;rgb_color&quot;, &quot;RGB color&quot;, stream, parent)
+         self.read(&quot;red&quot;, &quot;B&quot;, &quot;Red&quot;)
+         self.read(&quot;green&quot;, &quot;B&quot;, &quot;Green&quot;)
+         self.read(&quot;blue&quot;, &quot;B&quot;, &quot;Blue&quot;)
++    def updateParent(self, chunk):
++        chunk.description = &quot;RGB color: #%02X%02X%02X&quot; % (self[&quot;red&quot;], self[&quot;green&quot;], self[&quot;blue&quot;])
+ 
+ class Palette(Filter):
+     def __init__(self, stream, parent, count):
+
+Modified: haypo/hachoir/plugins/rpm.py
+===================================================================
+--- haypo/hachoir/plugins/rpm.py	2005-12-20 13:45:51 UTC (rev 341)
++++ haypo/hachoir/plugins/rpm.py	2005-12-20 13:48:54 UTC (rev 342)
+@@ -6,8 +6,23 @@
+ 
+ from filter import Filter
+ from plugin import registerPlugin
++from format import getFormatSize
++from gzip import GzipFile
+ 
+ class RpmItem(Filter):
++    format = {
++        #  (use FormatChunk? else use StringChunk, chunk format, count)
++        0: (True, &quot;B&quot;, 1),
++        1: (True, &quot;c&quot;, 1),
++        2: (True, &quot;B&quot;, 1),
++        3: (True, &quot;H&quot;, 1),
++        4: (True, &quot;L&quot;, 1),
++        5: (True, &quot;L&quot;, 2),
++        6: (False, &quot;C&quot;, 1),
++        7: (True, &quot;s&quot;, 1),
++        8: (True, &quot;s&quot;, 1),
++        9: (False, &quot;C&quot;, 1)
++    }
+     type_name = {
+         0: &quot;NULL&quot;,
+         1: &quot;CHAR&quot;,
+@@ -17,8 +32,24 @@
+         5: &quot;INT64&quot;,
+         6: &quot;STRING&quot;,
+         7: &quot;BIN&quot;,
+-        8: &quot;STRING_ARRAY&quot;
++        8: &quot;STRING_ARRAY&quot;,
++        9: &quot;STRING?&quot;
+     }
++    tag_name = {
++        1000: &quot;File size&quot;,
++        1001: &quot;(Broken) MD5 signature&quot;,
++        1002: &quot;PGP 2.6.3 signature&quot;,
++        1003: &quot;(Broken) MD5 signature&quot;,
++        1004: &quot;MD5 signature&quot;,
++        1005: &quot;GnuPG signature&quot;,
++        1006: &quot;PGP5 signature&quot;,
++        1007: &quot;Uncompressed payload size (bytes)&quot;,
++        256+8: &quot;Broken SHA1 header digest&quot;,
++        256+9: &quot;Broken SHA1 header digest&quot;,
++        256+13: &quot;Broken SHA1 header digest&quot;,
++        256+11: &quot;DSA header signature&quot;,
++        256+12: &quot;RSA header signature&quot;
++    }
+     
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;rpm_item&quot;, &quot;RPM item&quot;, stream, parent)
+@@ -32,11 +63,148 @@
+ 
+     def updateParent(self, chunk):
+         type = self.getType(self[&quot;type&quot;])
+-        chunk.description = &quot;RPM item (%s)&quot; % type
++        tag = self.getTagName()
++        chunk.description = &quot;RPM item: %s (%s)&quot; % (tag, type)
++        
++    def getTagName(self):
++        tag = self[&quot;tag&quot;]
++        return RpmItem.tag_name.get(tag, &quot;Unknow tag (%s)&quot; % tag)
+ 
++    def doRead(self, filter):
++        type = self[&quot;type&quot;]
++        desc = &quot;Value of item %s, %s&quot; % (self.getId(), self.getDescription())
++        if type != 8:
++            format = RpmItem.format[type]
++            if format[0]:
++                if 2 &lt; self[&quot;count&quot;] and format[1] != &quot;s&quot;:
++                    format = &quot;!&quot; + str(format[2] * self[&quot;count&quot;] * getFormatSize(format[1])) + &quot;s&quot;
++                else:
++                    format = &quot;!&quot; + str(format[2] * self[&quot;count&quot;]) + format[1]
++                filter.read(&quot;data[]&quot;, format, desc)
++            else:     
++                format = format[1]
++                filter.readString(&quot;data[]&quot;, format, desc)
++        else:
++            id = filter.getUniqChunkId(&quot;data[]&quot;)
++            for i in range(0, self[&quot;count&quot;]):
++                filter.readString(id+&quot;[]&quot;, &quot;C&quot;, desc)
++    
+     def getType(self, type):
+         return RpmItem.type_name.get(type, &quot;Unknow type (%s)&quot; % type)
+ 
++class RpmHeaderItem(RpmItem):
++    tag_name = {
++        61: &quot;Current image&quot;,
++        62: &quot;Signatures&quot;,
++        63: &quot;Immutable&quot;,
++        64: &quot;Regions&quot;,
++        100: &quot;I18N string locales&quot;,
++        1000: &quot;Name&quot;,
++        1001: &quot;Version&quot;,
++        1002: &quot;Release&quot;,
++        1003: &quot;Epoch&quot;,
++        1004: &quot;Summary&quot;,
++        1005: &quot;Description&quot;,
++        1006: &quot;Build time&quot;,
++        1007: &quot;Build host&quot;,
++        1008: &quot;Install time&quot;,
++        1009: &quot;Size&quot;,
++        1010: &quot;Distribution&quot;,
++        1011: &quot;Vendor&quot;,
++        1012: &quot;Gif&quot;,
++        1013: &quot;Xpm&quot;,
++        1014: &quot;Licence&quot;,
++        1015: &quot;Packager&quot;,
++        1016: &quot;Group&quot;,
++        1017: &quot;Changelog&quot;,
++        1018: &quot;Source&quot;,
++        1019: &quot;Patch&quot;,
++        1020: &quot;Url&quot;,
++        1021: &quot;OS&quot;,
++        1022: &quot;Arch&quot;,
++        1023: &quot;Prein&quot;,
++        1024: &quot;Postin&quot;,
++        1025: &quot;Preun&quot;,
++        1026: &quot;Postun&quot;,
++        1027: &quot;Old filenames&quot;,
++        1028: &quot;File sizes&quot;,
++        1029: &quot;File states&quot;,
++        1030: &quot;File modes&quot;,
++        1031: &quot;File uids&quot;,
++        1032: &quot;File gids&quot;,
++        1033: &quot;File rdevs&quot;,
++        1034: &quot;File mtimes&quot;,
++        1035: &quot;File MD5s&quot;,
++        1036: &quot;File link to's&quot;,
++        1037: &quot;File flags&quot;,
++        1038: &quot;Root&quot;,
++        1039: &quot;File username&quot;,
++        1040: &quot;File groupname&quot;,
++        1043: &quot;Icon&quot;,
++        1044: &quot;Source rpm&quot;,
++        1045: &quot;File verify flags&quot;,
++        1046: &quot;Archive size&quot;,
++        1047: &quot;Provide name&quot;,
++        1048: &quot;Require flags&quot;,
++        1049: &quot;Require name&quot;,
++        1050: &quot;Require version&quot;,
++        1051: &quot;No source&quot;,
++        1052: &quot;No patch&quot;,
++        1053: &quot;Conflict flags&quot;,
++        1054: &quot;Conflict name&quot;,
++        1055: &quot;Conflict version&quot;,
++        1056: &quot;Default prefix&quot;,
++        1057: &quot;Build root&quot;,
++        1058: &quot;Install prefix&quot;,
++        1059: &quot;Exclude arch&quot;,
++        1060: &quot;Exclude OS&quot;,
++        1061: &quot;Exclusive arch&quot;,
++        1062: &quot;Exclusive OS&quot;,
++        1064: &quot;RPM version&quot;,
++        1065: &quot;Trigger scripts&quot;,
++        1066: &quot;Trigger name&quot;,
++        1067: &quot;Trigger version&quot;,
++        1068: &quot;Trigger flags&quot;,
++        1069: &quot;Trigger index&quot;,
++        1079: &quot;Verify script&quot;,
++        #TODO: Finish the list (id 1070..1162 using rpm library source code)
++    }
++        
++    def getTagName(self):
++        tag = self[&quot;tag&quot;]
++        return RpmHeaderItem.tag_name.get(tag, &quot;Unknow tag (%s)&quot; % tag)
++            
++def sortRpmItem(a,b):
++    return int( a[&quot;offset&quot;] - b[&quot;offset&quot;] )
++
++class Header(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;header&quot;, &quot;Header&quot;, stream, parent)
++        id = self.read(&quot;id&quot;, &quot;4s&quot;, &quot;Identifier&quot;).value
++        assert id == &quot;\x8E\xAD\xE8\x01&quot;
++        self.read(&quot;padding&quot;, &quot;4s&quot;, &quot;Padding&quot;)
++        self.read(&quot;count&quot;, &quot;!L&quot;, &quot;Count&quot;)
++        self.read(&quot;size&quot;, &quot;!L&quot;, &quot;Store size&quot;)
++        items = []
++        for i in range(0, self[&quot;count&quot;]):
++            item = self.readChild(&quot;item[]&quot;, RpmHeaderItem).getFilter()
++            items.append(item)
++        items.sort( sortRpmItem )
++
++        start = stream.tell()
++        end = stream.tell() + self[&quot;size&quot;]
++        for item in items:
++            offset = item[&quot;offset&quot;]
++            diff = offset - (stream.tell() - start)
++            if 0 &lt; diff:
++                self.read(&quot;padding[]&quot;, &quot;%us&quot; % diff, &quot;Padding&quot;)
++
++            print &quot;Read %s&quot; % item.getId()                
++            item.doRead(self)
++        size = end - stream.tell()
++        if 0 &lt; size:    
++            self.read(&quot;padding[]&quot;, &quot;%us&quot; % size, &quot;Padding&quot;)
++
+ class RpmSignature(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;rpm_sig&quot;, &quot;RPM signature&quot;, stream, parent)
+@@ -46,9 +214,24 @@
+         self.read(&quot;reserved&quot;, &quot;4s&quot;, &quot;Reserved&quot;)
+         self.read(&quot;count&quot;, &quot;!L&quot;, &quot;Count&quot;)
+         self.read(&quot;size&quot;, &quot;!L&quot;, &quot;Size&quot;)
++        items = []
+         for i in range(0, self[&quot;count&quot;]):
+-            self.readChild(&quot;item[]&quot;, RpmItem)
++            item = self.readChild(&quot;item[]&quot;, RpmItem).getFilter()
++            items.append(item)
++        items.sort( sortRpmItem )
+ 
++        start = stream.tell()
++        end = stream.tell() + self[&quot;size&quot;]
++        for item in items:
++            offset = item[&quot;offset&quot;]
++            diff = offset - (stream.tell() - start)
++            if 0 &lt; diff:
++                self.read(&quot;padding[]&quot;, &quot;%us&quot; % diff, &quot;Padding&quot;)
++            item.doRead(self)
++        size = end - stream.tell()
++        if 0 &lt; size:    
++            self.read(&quot;padding[]&quot;, &quot;%us&quot; % size, &quot;Padding&quot;)
++
+ class RpmFile(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;rpm_file&quot;, &quot;RPM File&quot;, stream, parent)
+@@ -62,7 +245,10 @@
+         self.read(&quot;osnum&quot;, &quot;!H&quot;, &quot;OS&quot;)
+         self.read(&quot;signature_type&quot;, &quot;!H&quot;, &quot;Type of signature&quot;)
+         self.read(&quot;reserved&quot;, &quot;16s&quot;, &quot;Reserved&quot;)
+-        self.readChild(&quot;sig&quot;, RpmSignature)
++        self.readChild(&quot;signature&quot;, RpmSignature)
++        self.readChild(&quot;header&quot;, Header)
++        sub = stream.createSub()
++        self.readStreamChild(&quot;gz_content&quot;, sub, GzipFile)
+ 
+     def postType(self, chunk):
+         if chunk.value == 0:
+
+Added: haypo/hachoir/plugins/worms2.py
+===================================================================
+--- haypo/hachoir/plugins/worms2.py	2005-12-20 13:45:51 UTC (rev 341)
++++ haypo/hachoir/plugins/worms2.py	2005-12-20 13:48:54 UTC (rev 342)
+@@ -0,0 +1,83 @@
++&quot;&quot;&quot;
++Worms2 DIR file.
++&quot;&quot;&quot;
++
++from plugin import registerPlugin 
++from filter import Filter
++from plugin import registerPlugin
++from tools import humanFilesize
++
++class Worms2_Image(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;worms2_image&quot;, &quot;Worms2 image&quot;, stream, parent)
++        nb_color = 244/3
++        self.read(&quot;palette&quot;, &quot;%us&quot; % (nb_color*3), &quot;Palette (%u colors)&quot; % nb_color)
++        self.read(&quot;padding&quot;, &quot;B&quot;, &quot;Padding&quot;)
++        self.read(&quot;width&quot;, &quot;&lt;H&quot;, &quot;Width&quot;)
++        self.read(&quot;height&quot;, &quot;&lt;H&quot;, &quot;Height&quot;)
++        size = self[&quot;width&quot;] * self[&quot;height&quot;]
++        self.read(&quot;img_data&quot;, &quot;%us&quot; % size, &quot;Data&quot;)
++        size = stream.getSize() - stream.tell()
++        self.read(&quot;end&quot;, &quot;%us&quot; % size, &quot;Raw end&quot;)
++
++class Worms2_Sprite(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;worms2_sprite&quot;, &quot;Worms2 sprite&quot;, stream, parent)
++        # TODO ...
++        size = stream.getSize() - stream.tell()
++        self.read(&quot;end&quot;, &quot;%us&quot; % size, &quot;Raw end&quot;)
++
++class Worms2_Font(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;worms2_sprite&quot;, &quot;Worms2 sprite&quot;, stream, parent)
++        self.read(&quot;palette&quot;, &quot;%us&quot; % (244+33), &quot;Palette (?)&quot;)
++        self.read(&quot;charset&quot;, &quot;%us&quot; % (32), &quot;Charset&quot;)
++        self.read(&quot;data&quot;, &quot;%us&quot; % (32+30+4+136), &quot;Data&quot;)
++        # TODO ...
++        size = stream.getSize() - stream.tell()
++        self.read(&quot;end&quot;, &quot;%us&quot; % size, &quot;Raw end&quot;)
++
++class Worms2_Resource(Filter):
++    handler = {
++        &quot;IMG&quot;: Worms2_Image,
++        &quot;SPR&quot;: Worms2_Sprite,
++        &quot;FNT&quot;: Worms2_Font
++    }
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;worms2_res&quot;, &quot;Worms2 resource&quot;, stream, parent)
++        pos = stream.tell()
++        self.tag = self.read(&quot;tag&quot;, &quot;3s&quot;, &quot;Type&quot;).value.strip(&quot;\0\n&quot;)
++        self.valid = self.tag.strip(&quot;\0\n&quot;) != &quot;&quot;
++        self.read(&quot;tag_end&quot;, &quot;1s&quot;, &quot;Type end&quot;)
++        size = self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Size&quot;).value
++        if not self.valid:
++            return
++        self.readString(&quot;name&quot;, &quot;C&quot;, &quot;Name&quot;)
++        size = pos + size + 1 - stream.tell()
++        if self.tag in Worms2_Resource.handler:
++            sub = stream.createSub(size=size)
++            self.readStreamChild(&quot;data&quot;, sub, Worms2_Resource.handler[self.tag])
++        else:
++            self.read(&quot;data&quot;, &quot;%us&quot; % size, &quot;Data&quot;)
++
++    def updateParent(self, chunk):            
++        size = humanFilesize(self[&quot;size&quot;])
++        tag = self.tag
++        if tag != &quot;&quot;:
++            name = self[&quot;name&quot;]
++        else:
++            tag = &quot;(invalid)&quot;
++            name = &quot;(invalid)&quot;
++        chunk.description = &quot;Resource \&quot;%s\&quot; (type=%s, size=%s)&quot; % (name, tag, size)
++
++class Worms2_Dir_File(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;worms2_dir_file&quot;, &quot;Worms2 directory (.dir) file&quot;, stream, parent)
++        self.read(&quot;id&quot;, &quot;3s&quot;, &quot;Identifier (DIR)&quot;)
++        self.read(&quot;raw&quot;, &quot;%us&quot; % (12-stream.tell()), &quot;Raw data&quot;)
++        while stream.tell() &lt; 3432805:
++            file = self.readChild(&quot;file[]&quot;, Worms2_Resource).getFilter()
++            if not file.valid:
++                break
++         
++registerPlugin(Worms2_Dir_File, &quot;hachoir/worms2&quot;)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000246.html">[Happyboom-svn] r341 - in haypo/hachoir: . fallback plugins ui
+</A></li>
+	<LI>Next message: <A HREF="000248.html">[Happyboom-svn] r343 - haypo/hachoir
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#247">[ date ]</a>
+              <a href="thread.html#247">[ thread ]</a>
+              <a href="subject.html#247">[ subject ]</a>
+              <a href="author.html#247">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

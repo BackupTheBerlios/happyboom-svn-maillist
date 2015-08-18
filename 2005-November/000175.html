@@ -1,0 +1,255 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r270 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r270%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511270207.jAR27Q7G017539%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000174.html">
+   <LINK REL="Next"  HREF="000176.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r270 - in haypo/hachoir: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r270%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511270207.jAR27Q7G017539%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r270 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Sun Nov 27 03:07:26 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000174.html">[Happyboom-svn] r269 - in haypo/hachoir: . plugins stream
+</A></li>
+        <LI>Next message: <A HREF="000176.html">[Happyboom-svn] r271 - in haypo/hachoir: . plugins stream ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#175">[ date ]</a>
+              <a href="thread.html#175">[ thread ]</a>
+              <a href="subject.html#175">[ subject ]</a>
+              <a href="author.html#175">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-27 03:07:19 +0100 (Sun, 27 Nov 2005)
+New Revision: 270
+
+Modified:
+   haypo/hachoir/mime.py
+   haypo/hachoir/plugins/email.py
+Log:
+Email now support multipart email. Create splitMimes to parse MIME string.
+
+
+Modified: haypo/hachoir/mime.py
+===================================================================
+--- haypo/hachoir/mime.py	2005-11-26 18:43:46 UTC (rev 269)
++++ haypo/hachoir/mime.py	2005-11-27 02:07:19 UTC (rev 270)
+@@ -1,5 +1,5 @@
+ #!/usr/bin/python
+-import os, stat
++import os, stat, string
+ 
+ instance = None
+ 
+@@ -32,12 +32,38 @@
+         return &quot;application/x-gzip&quot;
+     return None        
+ 
++def splitMimes(mimes):
++    &quot;&quot;&quot;
++    Split MIME types into a list.
++    Examples:
++    - &quot;text/plain; encoding=latin-1&quot; =&gt; [[&quot;text/plain&quot;, {&quot;encoding&quot;: latin-1&quot;}]
++    - &quot;text/plain, text/xml&quot; =&gt; [[&quot;text/plain&quot;],[&quot;text/xml&quot;]]
++    - &quot;text/plain; charset=ISO-8859-1; format=flowed&quot;
++      =&gt; [['text/plain', {'charset': 'ISO-8859-1', 'format': 'flowed'}]]
++    &quot;&quot;&quot;
++
++    list = []
++    for mime in map(string.strip, mimes.split(&quot;,&quot;)):
++        parts = mime.split(&quot;;&quot;)
++        mime = parts[0]
++        parts = map(string.strip, parts[1:])
++        values = {}
++        for part in parts:
++            split_part = part.split(&quot;=&quot;, 1)             
++            values[ split_part[0] ] = split_part[1]
++        list.append([mime,values])
++    return list
++        
++    mimes = map(string.split, mimes, ';')
++    print mimes
++#    for key in mimes:
++#        mimes[key] = map(string.strip, mimes[key])    
++    return mimes
++
+ def getBufferMime(buffer, filename):
+     magic = getInstance()
+     mimes = magic.buffer(buffer)
+-    mimes = mimes.split(&quot;, &quot;)
+-    import string
+-    mimes = map(string.split, mimes, ';')
++    mimes = splitMimes(mimes)
+     if mimes[0][0] == 'application/octet-stream' and filename != None:
+         ext = os.path.splitext(filename)[1]
+         new_mime = _getBufferMime(buffer)
+
+Modified: haypo/hachoir/plugins/email.py
+===================================================================
+--- haypo/hachoir/plugins/email.py	2005-11-26 18:43:46 UTC (rev 269)
++++ haypo/hachoir/plugins/email.py	2005-11-27 02:07:19 UTC (rev 270)
+@@ -6,20 +6,113 @@
+ 
+ from filter import Filter
+ from plugin import registerPlugin
++from error import warning
++from mime import splitMimes
++import re
+ 
++class EmailHeader(Filter):
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;email_hdr&quot;, &quot;Email header&quot;, stream, parent)
++        self._dict = {}
++        regex_new = re.compile(&quot;^([A-Za-z-]+): (.*)$&quot;)
++        regex_continue = re.compile(&quot;^\t(.*)$&quot;)
++        linenb = 1
++        last_key = None
++        last_index = None
++        while True:
++            id = &quot;header[%u]&quot; % linenb
++            chunk = self.readString(id, &quot;AutoLine&quot;, &quot;Header line&quot;)
++            line = chunk.value
++            if len(line) == 0: return
++
++            m = regex_new.match(line)
++            if m != None:
++                last_key = m.group(1)
++                last_index = self._newHeader(last_key, m.group(2))
++            else:
++                m = regex_continue.match(line)
++                if m != None:
++                    assert last_key != None
++                    self._appendHeader(last_key, last_index, m.group(1))
++                else:
++                    warning(&quot;Can't parse line %u: %s&quot; % (linenb, line))
++
++            linenb = linenb + 1
++
++    def _appendHeader(self, key, index, value):
++        key = key.lower()
++        self._dict[key][index] = self._dict[key][index] + &quot; &quot; + value
++        
++    def _newHeader(self, key, value):
++        key = key.lower()
++        if key in self._dict:
++            index = len(self._dict[key])
++            self._dict[key].append(value)
++        else:
++            index = 0
++            self._dict[key] = [value]
++        return index
++
++    def __getitem__(self, index):
++        index = index.lower()
++        return self._dict[index]
++
++class EmailPart(Filter):
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;email_part&quot;, &quot;Email part&quot;, stream, parent)
++        self.readChild(&quot;header&quot;, EmailHeader)
++        linenb = 1 
++        nb_empty_line = 0
++        while not stream.eof():
++            id = &quot;header[%u]&quot; % linenb
++            chunk = self.readString(id, &quot;AutoLine&quot;, &quot;Header line&quot;)
++            linenb = linenb + 1
++
+ class EmailFilter(Filter):
+     def __init__(self, stream, parent=None):
+         Filter.__init__(self, &quot;email&quot;, &quot;Email parser&quot;, stream, parent)
+-        print &quot;OK&quot;
+-        id = &quot;header&quot;
+-        ok = True
+-        while ok:
+-            id = self.getUniqChunkId(id)
+-            chunk = self.readString(id, &quot;AutoLine&quot;, &quot;Header line&quot;)
+-            print &quot;+ %s&quot; % chunk.value
+-            ok = (0 &lt; len(chunk.value))
++        self.readString(&quot;id&quot;, &quot;AutoLine&quot;, &quot;Email identifier&quot;)
++        self.readChild(&quot;header&quot;, EmailHeader)
++        mime = self.getMime()
++        if mime[0] == &quot;multipart/mixed&quot;:
++            self.readMultipart(mime[1][&quot;boundary&quot;])
++        else:
++            # TODO :-)
++            pass
+ 
+-#    def checkEnd(self, stream, array, last):        
+-#        return stream.eof()
++    def readMultipart(self, boundary):
++        assert boundary[0] == '&quot;' and boundary[-1] == '&quot;'
++        boundary = &quot;--&quot; + boundary[1:-1]
++        end_boundary = boundary + &quot;--&quot;
++        count = 1
++        while True:
++            id = &quot;multipart_space[%u]&quot; % count
++            chunk = self.readString(id, &quot;AutoLine&quot;, &quot;Space before first email parts&quot;)
++            value = chunk.value
++            if value == boundary:
++                break
++            count = count + 1
+ 
++        part = 1
++        boundary_index = 1
++        stream = self.getStream()
++        while True:
++            start = stream.tell()
++            size = stream.searchLength(boundary, False)
++            sub = stream.createSub(start, size)
++            self.readStreamChild(&quot;part[%u]&quot; % part, sub, EmailPart)
++            stream.seek(start+size)
++            chunk = self.readString(&quot;boundary[%u]&quot; % boundary_index, &quot;AutoLine&quot;, &quot;Boundary&quot;)
++            part = part + 1
++            boundary_index = boundary_index + 1
++            if chunk.value == boundary+&quot;--&quot;:
++                break
++    
++    def getMime(self):
++        content_type = self.header[&quot;Content-Type&quot;]
++        assert len(content_type) == 1
++        mimes = splitMimes(content_type[0])
++        assert len(mimes) == 1
++        return mimes[0]
++
+ registerPlugin(EmailFilter, &quot;text/x-mail&quot;)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000174.html">[Happyboom-svn] r269 - in haypo/hachoir: . plugins stream
+</A></li>
+	<LI>Next message: <A HREF="000176.html">[Happyboom-svn] r271 - in haypo/hachoir: . plugins stream ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#175">[ date ]</a>
+              <a href="thread.html#175">[ thread ]</a>
+              <a href="subject.html#175">[ subject ]</a>
+              <a href="author.html#175">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

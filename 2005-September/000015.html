@@ -1,0 +1,87 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r112 - lamer
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r112%20-%20lamer&In-Reply-To=%3C200509021541.j82Ff6sv025481%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000018.html">
+   <LINK REL="Next"  HREF="000024.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r112 - lamer</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r112%20-%20lamer&In-Reply-To=%3C200509021541.j82Ff6sv025481%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r112 - lamer">haypo at berlios.de
+       </A><BR>
+    <I>Fri Sep  2 17:41:06 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000018.html">[Happyboom-svn] r111 - lamer/tool
+</A></li>
+        <LI>Next message: <A HREF="000024.html">[Happyboom-svn] r113 - in languetudes: . locale locale/en locale/en/LC_MESSAGES locale/eo locale/eo/LC_MESSAGES src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15">[ date ]</a>
+              <a href="thread.html#15">[ thread ]</a>
+              <a href="subject.html#15">[ subject ]</a>
+              <a href="author.html#15">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-02 17:41:06 +0200 (Fri, 02 Sep 2005)
+New Revision: 112
+
+Added:
+   lamer/Makefile
+Log:
+Oups, ajoute le Makefile oublie.
+
+
+Added: lamer/Makefile
+===================================================================
+--- lamer/Makefile	2005-09-02 15:38:38 UTC (rev 111)
++++ lamer/Makefile	2005-09-02 15:41:06 UTC (rev 112)
+@@ -0,0 +1,10 @@
++CC=gcc
++CFLAGS=-Wall
++IN=tool/src/gftp_descramble.c
++OUT=tool/gftp_descramble
++$(OUT): $(IN)
++	$(CC) $(IN) -o $(OUT) $(CFLAGS)
++exec: $(OUT)
++	./$(OUT)
++clean:
++	rm -f $(OUT)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000018.html">[Happyboom-svn] r111 - lamer/tool
+</A></li>
+	<LI>Next message: <A HREF="000024.html">[Happyboom-svn] r113 - in languetudes: . locale locale/en locale/en/LC_MESSAGES locale/eo locale/eo/LC_MESSAGES src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#15">[ date ]</a>
+              <a href="thread.html#15">[ thread ]</a>
+              <a href="subject.html#15">[ subject ]</a>
+              <a href="author.html#15">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

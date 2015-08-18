@@ -1,0 +1,302 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r439 - in haypo/hachoir: . branches/hachoir-yield/doc
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r439%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield/doc&In-Reply-To=%3C200603040251.k242pMAp006970%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000340.html">
+   <LINK REL="Next"  HREF="000344.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r439 - in haypo/hachoir: . branches/hachoir-yield/doc</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r439%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield/doc&In-Reply-To=%3C200603040251.k242pMAp006970%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r439 - in haypo/hachoir: . branches/hachoir-yield/doc">haypo at berlios.de
+       </A><BR>
+    <I>Sat Mar  4 03:51:22 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000340.html">[Happyboom-svn] r438 - in haypo/hachoir: . branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/3d branches/hachoir-yield/unit_test
+</A></li>
+        <LI>Next message: <A HREF="000344.html">[Happyboom-svn] r440 - haypo/hachoir/branches/hachoir-yield
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#341">[ date ]</a>
+              <a href="thread.html#341">[ thread ]</a>
+              <a href="subject.html#341">[ subject ]</a>
+              <a href="author.html#341">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-04 03:51:10 +0100 (Sat, 04 Mar 2006)
+New Revision: 439
+
+Added:
+   haypo/hachoir/branches/hachoir-yield/doc/Makefile
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/doc/1-basic.txt
+   haypo/hachoir/branches/hachoir-yield/doc/2-internals.txt
+Log:
+Update documentation
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:51
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:54
+
+Modified: haypo/hachoir/branches/hachoir-yield/doc/1-basic.txt
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/doc/1-basic.txt	2006-03-04 01:36:12 UTC (rev 438)
++++ haypo/hachoir/branches/hachoir-yield/doc/1-basic.txt	2006-03-04 02:51:10 UTC (rev 439)
+@@ -5,16 +5,14 @@
+ ------------
+ 
+ For different reasons (eg. addresses with bit granularity), Hachoir uses it's
+-own stream classes. The most interesting class is FileStream. It's constructor
+-need a file and a filename (optionnal, can be None).
++own stream classes: ``InputStream``. But don't use it directly, use
++``FileInputStream`` function (needs a filename) or ``StringInputStream``
++(needs a string). Here is a small example to create a stream:
+ 
+-Here is a small example to create a stream:
+-
+ &gt;&gt;&gt; from stream import StringInputStream
+ &gt;&gt;&gt; stream = StringInputStream(&quot;\x03abc&quot;)
+ 
+-StringIO is a class which works like a file object but using a string as input
+-data. Most interesting methods are:
++Most interesting methods are:
+ 
+ &gt;&gt;&gt; stream.size            # get size in bits
+ 32
+@@ -29,10 +27,10 @@
+ In the Hachoir, everything is stored in a field. The parent of all classes is
+ the class Field, but it can't be used directly. They are four different types
+ of fields:
+- * Bits: number with a size in bits ;
+- * Integer: number with a size in bytes ;
+- * String: string of characters with a size in bytes ;
+- * FieldSet: a ordered list of fields (contains other fields).
++* Bits: number with a size in bits ;
++* Integer: number with a size in bytes ;
++* String: string of characters with a size in bytes ;
++* FieldSet: a ordered list of fields (contains other fields).
+ 
+ A stream is splitted in several fields which are organised in a tree. So all
+ fields have a parent, except of the root. Small example which will be used to
+@@ -57,9 +55,10 @@
+ 
+ Prototype of field classes are almost different, but the two first parameters
+ are always the same:
+- * First one is the parent, of type FieldSet (is None for the root) ;
+- * The second is the name of the field.
+ 
++* First one is the parent, of type FieldSet (is None for the root) ;
++* The second is the name of the field.
++
+ Ok, let's play with our new field set:
+ 
+ &gt;&gt;&gt; format = MyFormat(None, &quot;myformat&quot;, stream)
+@@ -80,21 +79,22 @@
+ -------------------------
+ 
+ A field contains a lot of informations, attributes are:
+- * name: Field name, unique in his parent field set and can't be changed. It
++ * *name*: Field name, unique in his parent field set and can't be changed. It
+    is used as key to access to the field from the field set ;
+- * size: Size in bits, can't be changed ;
+- * address: Address in bits, relative to parent address, can't be changed ;
+- * absolute_address: Address in bits from the beginning of the stream ;
+- * parent: Parent of the field (is None for root field set) ;
+- * root: Root of all field sets ;
+- * value: Formatted value (integer, string, boolean, ...) value of the field.
++ * *size*: Size in bits, can't be changed ;
++ * *address*: Address in bits, relative to parent address, can't be changed ;
++ * *absolute_address*: Address in bits from the beginning of the stream ;
++ * *parent*: Parent of the field (is None for root field set) ;
++ * *root*: Root of all field sets ;
++ * *value*: Formatted value (integer, string, boolean, ...) value of the field.
+    Don't use this argument with print function, better use display attribute ;
+- * display: A string representing field value, has limited size ;
+- * path: Full &quot;path&quot; of the field from the root (eg. &quot;/png/header/content&quot;) ;
+- * is_field_set: If the value is True, the field contains other fields, it's
++ * *display*: A string representing field value, has limited size ;
++ * *path*: Full &quot;path&quot; of the field from the root (eg. &quot;/png/header/content&quot;) ;
++ * *is_field_set*: If the value is True, the field contains other fields, it's
+    a field set.
+ 
+ Examples:
++
+ &gt;&gt;&gt; field = format[&quot;text&quot;]
+ &gt;&gt;&gt; field.name
+ 'text'
+
+Modified: haypo/hachoir/branches/hachoir-yield/doc/2-internals.txt
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/doc/2-internals.txt	2006-03-04 01:36:12 UTC (rev 438)
++++ haypo/hachoir/branches/hachoir-yield/doc/2-internals.txt	2006-03-04 02:51:10 UTC (rev 439)
+@@ -6,9 +6,8 @@
+ 
+ A field is created when someone ask to access it, or when another field is
+ asked and the field is before it. So if you use a field in your field set
+-constructor, one or more fields will be created.
++constructor, one or more fields will be created. Example:
+ 
+-Example:
+ &gt;&gt;&gt; from field import FieldSet, Integer, String
+ &gt;&gt;&gt; class Point(FieldSet):
+ ...     def __init__(self, parent, name, stream, description=&quot;Point&quot;):
+@@ -27,36 +26,40 @@
+ 
+ In the constructor, the field &quot;color&quot; is asked. So the field list will
+ contains one field (color):
++
+ &gt;&gt;&gt; from stream import StringInputStream
+ &gt;&gt;&gt; stream = StringInputStream(&quot;\x2A\x00\x04\x05&quot;)
+ &gt;&gt;&gt; p = Point(None, &quot;point&quot;, stream)
+ &gt;&gt;&gt; len(p.fields)
+ 1
+ 
+-WARNING: Only access 'fields' attribute if you know what you are doing.
++.. WARNING::
++   Only access 'fields' attribute if you know what you are doing.
+ 
+ If you access another field, the field list will grow up until the requested
+ field is reached:
++
+ &gt;&gt;&gt; x = p[&quot;x&quot;].value
+ &gt;&gt;&gt; len(p.fields)
+ 3
+ 
+ Some field set methods which create new fields:
+- * __getitem__(): feed field list until requested field is reached
++ * ``__getitem__()``: feed field list until requested field is reached
+    (or raise MissingField exception) ;
+- * __len__(): create all fields ;
+- * __iter__(): begin to iterate in existing fields, and the iterate in new
++ * ``__len__()``: create all fields ;
++ * ``__iter__()``: begin to iterate in existing fields, and the iterate in new
+    fields until all fields are created ;
+- * __contains__(): feed field list until requested field is reached, may
++ * ``__contains__()``: feed field list until requested field is reached, may
+    create all fields if the field is missing.
+ 
+ The size attribute also interact with field list creation, but it's mechanism
+ is little bit more complex. By default, the whole field list have to be built
+ before size value can be read. But you can specify field list size:
+- * if field list is fixed, use class attribute static_size ;
+- * else you can set _size instance attribute in the constructor.
++* if field list is fixed, use class attribute static_size ;
++* else you can set _size instance attribute in the constructor.
+ 
+ Two examples:
++
+ &gt;&gt;&gt; class FourBytes(FieldSet):
+ ...     static_size = 32
+ ...     def createFields(self):
+@@ -97,9 +100,10 @@
+ 
+ The &quot;endian&quot; is the way in which ''bytes'' are stored. There are two important
+ orders:
+- * &#171; Big endian &#187; in which _big_ numbers are written first (Intel x86 CPU)
+- * &#171; Little endian &#187; in which _little_ numbers are written first (PowerPC CPU)
+ 
++* &#171; Big endian &#187; in which *big* numbers are written first (Intel x86 CPU) ;
++* &#171; Little endian &#187; in which *little* numbers are written first (PowerPC CPU).
++
+ The number 0x1020 whill be stored &quot;\x10\x20&quot; in big endian and &quot;\x20\x10&quot; in
+ little endian.
+ 
+@@ -108,28 +112,28 @@
+ international network order: &quot;&lt;&quot;, big endian.
+ 
+ Example to set endian:
++
+ &gt;&gt;&gt; class UseLittleEndian(FieldSet):
+ ...     endian = &quot;&gt;&quot;
+-...     # (...)
+ ...
+ 
+ Explore a field set using it's path
+ -----------------------------------
+ 
+ Fields are stored in a tree. To explore the tree you have differents tools:
+- * attribute root of a field which go to tree root ;
+- * attribute parent go to field parent (is None for tree root) ;
+- * and you can specify a path in __getitem__() argument.
++ * attribute *root* of a field which go to tree root ;
++ * attribute *parent* go to field parent (is None for tree root) ;
++ * and you can specify a path in *__getitem__()* argument.
+ 
+ There are differents valid syntax of a path:
+- * path to a child of current node: field[&quot;content&quot;] ;
+- * path to a child of the parent: field[&quot;../brother&quot;] ;
+- * path from the root: field[&quot;/header/key&quot;].
++ * path to a child of current node: ``field[&quot;content&quot;]`` ;
++ * path to a child of the parent: ``field[&quot;../brother&quot;]`` ;
++ * path from the root: ``field[&quot;/header/key&quot;]``.
+ 
+ Event handling
+ --------------
+ 
+ Code is not finished yet, so don't need documentation :-) See:
+- * FieldSet.connect(event, handler)
+- * FieldSet.raiseEvent(event,  arg1, arg2, ...)
++ * ``FieldSet.connect(event, handler)`` ;
++ * ``FieldSet.raiseEvent(event,  arg1, arg2, ...)``.
+ 
+
+Added: haypo/hachoir/branches/hachoir-yield/doc/Makefile
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/doc/Makefile	2006-03-04 01:36:12 UTC (rev 438)
++++ haypo/hachoir/branches/hachoir-yield/doc/Makefile	2006-03-04 02:51:10 UTC (rev 439)
+@@ -0,0 +1,13 @@
++SOURCES=$(wildcard *.txt)
++HTML=$(patsubst %.txt,%.html,$(SOURCES))
++
++all: $(HTML)
++	@echo &quot;Documentation updated.&quot;
++
++%.html: %.txt
++	@echo &quot;Compile documentation $&lt;&quot;
++	@rst2html.py &gt; $@ &lt; $&lt;
++
++clean:
++	@echo &quot;Clean (remove *.html)&quot;
++	@rm -f $(HTML)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000340.html">[Happyboom-svn] r438 - in haypo/hachoir: . branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/3d branches/hachoir-yield/unit_test
+</A></li>
+	<LI>Next message: <A HREF="000344.html">[Happyboom-svn] r440 - haypo/hachoir/branches/hachoir-yield
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#341">[ date ]</a>
+              <a href="thread.html#341">[ thread ]</a>
+              <a href="subject.html#341">[ subject ]</a>
+              <a href="author.html#341">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

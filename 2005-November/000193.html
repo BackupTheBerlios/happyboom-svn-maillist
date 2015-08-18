@@ -1,0 +1,265 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r286 - in haypo/hachoir: . ui
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r286%20-%20in%20haypo/hachoir%3A%20.%20ui&In-Reply-To=%3C200511290229.jAT2TeLL028151%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000192.html">
+   <LINK REL="Next"  HREF="000194.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r286 - in haypo/hachoir: . ui</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r286%20-%20in%20haypo/hachoir%3A%20.%20ui&In-Reply-To=%3C200511290229.jAT2TeLL028151%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r286 - in haypo/hachoir: . ui">haypo at berlios.de
+       </A><BR>
+    <I>Tue Nov 29 03:29:40 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000192.html">[Happyboom-svn] r285 - haypo/hachoir
+</A></li>
+        <LI>Next message: <A HREF="000194.html">[Happyboom-svn] r287 - in haypo/hachoir: . ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#193">[ date ]</a>
+              <a href="thread.html#193">[ thread ]</a>
+              <a href="subject.html#193">[ subject ]</a>
+              <a href="author.html#193">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-29 03:29:32 +0100 (Tue, 29 Nov 2005)
+New Revision: 286
+
+Modified:
+   haypo/hachoir/hachoir_class.py
+   haypo/hachoir/ui/hachoir.glade
+   haypo/hachoir/ui/ui_window.py
+Log:
+Add close button.
+
+
+Modified: haypo/hachoir/hachoir_class.py
+===================================================================
+--- haypo/hachoir/hachoir_class.py	2005-11-29 02:06:59 UTC (rev 285)
++++ haypo/hachoir/hachoir_class.py	2005-11-29 02:29:32 UTC (rev 286)
+@@ -26,8 +26,11 @@
+     def setFilter(self, filter):
+         self._main_filter = filter
+         self._filter = filter
+-        self._addPadding()
+-        self._filter.display()
++        if filter != None:
++            self._addPadding()
++            self._filter.display()
++        else:
++            self.ui.window.clear_table()
+         self.ui.window.updateToolbar()
+ 
+     def onGoParent(self):
+
+Modified: haypo/hachoir/ui/hachoir.glade
+===================================================================
+--- haypo/hachoir/ui/hachoir.glade	2005-11-29 02:06:59 UTC (rev 285)
++++ haypo/hachoir/ui/hachoir.glade	2005-11-29 02:29:32 UTC (rev 286)
+@@ -17,6 +17,7 @@
+   &lt;property name=&quot;type_hint&quot;&gt;GDK_WINDOW_TYPE_HINT_NORMAL&lt;/property&gt;
+   &lt;property name=&quot;gravity&quot;&gt;GDK_GRAVITY_NORTH_WEST&lt;/property&gt;
+   &lt;property name=&quot;focus_on_map&quot;&gt;True&lt;/property&gt;
++  &lt;property name=&quot;urgency_hint&quot;&gt;False&lt;/property&gt;
+   &lt;signal name=&quot;destroy&quot; handler=&quot;on_window_destroy&quot; last_modification_time=&quot;Sat, 29 Oct 2005 02:58:52 GMT&quot;/&gt;
+ 
+   &lt;child&gt;
+@@ -28,18 +29,20 @@
+       &lt;child&gt;
+ 	&lt;widget class=&quot;GtkMenuBar&quot; id=&quot;menubar&quot;&gt;
+ 	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	  &lt;property name=&quot;pack_direction&quot;&gt;GTK_PACK_DIRECTION_LTR&lt;/property&gt;
++	  &lt;property name=&quot;child_pack_direction&quot;&gt;GTK_PACK_DIRECTION_LTR&lt;/property&gt;
+ 
+ 	  &lt;child&gt;
+-	    &lt;widget class=&quot;GtkMenuItem&quot; id=&quot;file&quot;&gt;
++	    &lt;widget class=&quot;GtkMenuItem&quot; id=&quot;menu_file&quot;&gt;
+ 	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 	      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;_File&lt;/property&gt;
+ 	      &lt;property name=&quot;use_underline&quot;&gt;True&lt;/property&gt;
+ 
+ 	      &lt;child&gt;
+-		&lt;widget class=&quot;GtkMenu&quot; id=&quot;file_menu&quot;&gt;
++		&lt;widget class=&quot;GtkMenu&quot; id=&quot;menu_file_menu&quot;&gt;
+ 
+ 		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;open&quot;&gt;
++		    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;menu_open&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 		      &lt;property name=&quot;label&quot;&gt;gtk-open&lt;/property&gt;
+ 		      &lt;property name=&quot;use_stock&quot;&gt;True&lt;/property&gt;
+@@ -48,8 +51,17 @@
+ 		  &lt;/child&gt;
+ 
+ 		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;quit&quot;&gt;
++		    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;menu_close&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;label&quot;&gt;gtk-close&lt;/property&gt;
++		      &lt;property name=&quot;use_stock&quot;&gt;True&lt;/property&gt;
++		      &lt;signal name=&quot;activate&quot; handler=&quot;on_toolbutton_close&quot; last_modification_time=&quot;Tue, 29 Nov 2005 02:27:30 GMT&quot;/&gt;
++		    &lt;/widget&gt;
++		  &lt;/child&gt;
++
++		  &lt;child&gt;
++		    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;menu_quit&quot;&gt;
++		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 		      &lt;property name=&quot;label&quot;&gt;gtk-quit&lt;/property&gt;
+ 		      &lt;property name=&quot;use_stock&quot;&gt;True&lt;/property&gt;
+ 		      &lt;signal name=&quot;activate&quot; handler=&quot;on_quit_activate&quot; last_modification_time=&quot;Sun, 30 Oct 2005 02:19:54 GMT&quot;/&gt;
+@@ -61,16 +73,16 @@
+ 	  &lt;/child&gt;
+ 
+ 	  &lt;child&gt;
+-	    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;help&quot;&gt;
++	    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;menu_help&quot;&gt;
+ 	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 	      &lt;property name=&quot;label&quot;&gt;gtk-help&lt;/property&gt;
+ 	      &lt;property name=&quot;use_stock&quot;&gt;True&lt;/property&gt;
+ 
+ 	      &lt;child&gt;
+-		&lt;widget class=&quot;GtkMenu&quot; id=&quot;help_menu&quot;&gt;
++		&lt;widget class=&quot;GtkMenu&quot; id=&quot;menu_help_menu&quot;&gt;
+ 
+ 		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;about&quot;&gt;
++		    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;menu_about&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 		      &lt;property name=&quot;label&quot;&gt;gtk-about&lt;/property&gt;
+ 		      &lt;property name=&quot;use_stock&quot;&gt;True&lt;/property&gt;
+@@ -214,6 +226,21 @@
+ 		  &lt;property name=&quot;homogeneous&quot;&gt;True&lt;/property&gt;
+ 		&lt;/packing&gt;
+ 	      &lt;/child&gt;
++
++	      &lt;child&gt;
++		&lt;widget class=&quot;GtkToolButton&quot; id=&quot;toolbutton_close&quot;&gt;
++		  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++		  &lt;property name=&quot;stock_id&quot;&gt;gtk-close&lt;/property&gt;
++		  &lt;property name=&quot;visible_horizontal&quot;&gt;True&lt;/property&gt;
++		  &lt;property name=&quot;visible_vertical&quot;&gt;True&lt;/property&gt;
++		  &lt;property name=&quot;is_important&quot;&gt;False&lt;/property&gt;
++		  &lt;signal name=&quot;clicked&quot; handler=&quot;on_toolbutton_close&quot; last_modification_time=&quot;Tue, 29 Nov 2005 02:21:01 GMT&quot;/&gt;
++		&lt;/widget&gt;
++		&lt;packing&gt;
++		  &lt;property name=&quot;expand&quot;&gt;False&lt;/property&gt;
++		  &lt;property name=&quot;homogeneous&quot;&gt;True&lt;/property&gt;
++		&lt;/packing&gt;
++	      &lt;/child&gt;
+ 	    &lt;/widget&gt;
+ 	  &lt;/child&gt;
+ 	&lt;/widget&gt;
+@@ -426,6 +453,7 @@
+   &lt;property name=&quot;copyright&quot; translatable=&quot;yes&quot;&gt;Copyright 2005 Victor Stinner&lt;/property&gt;
+   &lt;property name=&quot;comments&quot; translatable=&quot;yes&quot;&gt;Split binary stream into filters and chunks ...&lt;/property&gt;
+   &lt;property name=&quot;license&quot; translatable=&quot;yes&quot;&gt;Under GNU GPL licence&lt;/property&gt;
++  &lt;property name=&quot;wrap_license&quot;&gt;False&lt;/property&gt;
+   &lt;property name=&quot;website&quot;&gt;<A HREF="http://www.haypocalc.com/wiki/Hachoir&lt;/property">http://www.haypocalc.com/wiki/Hachoir&lt;/property</A>&gt;
+   &lt;property name=&quot;website_label&quot; translatable=&quot;yes&quot;&gt;Website&lt;/property&gt;
+   &lt;property name=&quot;authors&quot;&gt;Victor Stinner &lt;victor.stinner AT haypocalc.com&gt;&lt;/property&gt;
+@@ -446,6 +474,7 @@
+   &lt;property name=&quot;type_hint&quot;&gt;GDK_WINDOW_TYPE_HINT_DIALOG&lt;/property&gt;
+   &lt;property name=&quot;gravity&quot;&gt;GDK_GRAVITY_NORTH_WEST&lt;/property&gt;
+   &lt;property name=&quot;focus_on_map&quot;&gt;True&lt;/property&gt;
++  &lt;property name=&quot;urgency_hint&quot;&gt;False&lt;/property&gt;
+   &lt;property name=&quot;has_separator&quot;&gt;True&lt;/property&gt;
+ 
+   &lt;child internal-child=&quot;vbox&quot;&gt;
+@@ -796,6 +825,7 @@
+   &lt;property name=&quot;type_hint&quot;&gt;GDK_WINDOW_TYPE_HINT_DIALOG&lt;/property&gt;
+   &lt;property name=&quot;gravity&quot;&gt;GDK_GRAVITY_NORTH_WEST&lt;/property&gt;
+   &lt;property name=&quot;focus_on_map&quot;&gt;True&lt;/property&gt;
++  &lt;property name=&quot;urgency_hint&quot;&gt;False&lt;/property&gt;
+   &lt;property name=&quot;has_separator&quot;&gt;True&lt;/property&gt;
+ 
+   &lt;child internal-child=&quot;vbox&quot;&gt;
+@@ -1058,6 +1088,7 @@
+   &lt;property name=&quot;type_hint&quot;&gt;GDK_WINDOW_TYPE_HINT_DIALOG&lt;/property&gt;
+   &lt;property name=&quot;gravity&quot;&gt;GDK_GRAVITY_NORTH_WEST&lt;/property&gt;
+   &lt;property name=&quot;focus_on_map&quot;&gt;True&lt;/property&gt;
++  &lt;property name=&quot;urgency_hint&quot;&gt;False&lt;/property&gt;
+   &lt;property name=&quot;has_separator&quot;&gt;True&lt;/property&gt;
+ 
+   &lt;child internal-child=&quot;vbox&quot;&gt;
+@@ -1236,6 +1267,7 @@
+   &lt;property name=&quot;type_hint&quot;&gt;GDK_WINDOW_TYPE_HINT_DIALOG&lt;/property&gt;
+   &lt;property name=&quot;gravity&quot;&gt;GDK_GRAVITY_NORTH_WEST&lt;/property&gt;
+   &lt;property name=&quot;focus_on_map&quot;&gt;True&lt;/property&gt;
++  &lt;property name=&quot;urgency_hint&quot;&gt;False&lt;/property&gt;
+   &lt;property name=&quot;has_separator&quot;&gt;True&lt;/property&gt;
+ 
+   &lt;child internal-child=&quot;vbox&quot;&gt;
+
+Modified: haypo/hachoir/ui/ui_window.py
+===================================================================
+--- haypo/hachoir/ui/ui_window.py	2005-11-29 02:06:59 UTC (rev 285)
++++ haypo/hachoir/ui/ui_window.py	2005-11-29 02:29:32 UTC (rev 286)
+@@ -15,6 +15,9 @@
+         self.toolbutton_open = xml.get_widget('toolbutton_open')
+         self.toolbutton_save = xml.get_widget('toolbutton_save')
+         self.toolbutton_property = xml.get_widget('toolbutton_property')
++        self.toolbutton_close = xml.get_widget('toolbutton_close')
++        self.toolbutton_export = xml.get_widget('toolbutton_export')
++        self.menu_close = xml.get_widget('menu_close')
+         self.statusbar_state = self.statusbar.get_context_id(&quot;State&quot;)
+         self.table = xml.get_widget('table')
+         self.table_store = None
+@@ -31,6 +34,9 @@
+         if not file_present:
+             self.toolbutton_parent.set_sensitive(False)
+         self.toolbutton_property.set_sensitive(file_present)
++        self.toolbutton_export.set_sensitive(file_present)
++        self.toolbutton_close.set_sensitive(file_present)
++        self.menu_close.set_sensitive(file_present)
+ 
+     def getTableChunk(self, col):
+         chunk_id = self.table_store[col][3]
+@@ -107,6 +113,9 @@
+     def on_toolbutton_new(self, widget):
+         self.on_open_activate(widget)
+ 
++    def on_toolbutton_close(self, widget):
++        self.ui.hachoir.setFilter(None)
++
+     def on_toolbutton_property(self, widget):
+         filter = self.ui.hachoir.getFilter()
+         dlg = self.ui.property_dialog
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000192.html">[Happyboom-svn] r285 - haypo/hachoir
+</A></li>
+	<LI>Next message: <A HREF="000194.html">[Happyboom-svn] r287 - in haypo/hachoir: . ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#193">[ date ]</a>
+              <a href="thread.html#193">[ thread ]</a>
+              <a href="subject.html#193">[ subject ]</a>
+              <a href="author.html#193">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

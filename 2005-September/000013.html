@@ -1,0 +1,960 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r106 - / happyboom/trunk/boomboom/client languetudes languetudes/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r106%20-%20/%20happyboom/trunk/boomboom/client%20languetudes%20languetudes/src&In-Reply-To=%3C200509021338.j82DcJjO016047%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="000014.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r106 - / happyboom/trunk/boomboom/client languetudes languetudes/src</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r106%20-%20/%20happyboom/trunk/boomboom/client%20languetudes%20languetudes/src&In-Reply-To=%3C200509021338.j82DcJjO016047%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r106 - / happyboom/trunk/boomboom/client languetudes languetudes/src">dboucard at berlios.de
+       </A><BR>
+    <I>Fri Sep  2 15:38:19 CEST 2005</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="000014.html">[Happyboom-svn] r107 - languetudes
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13">[ date ]</a>
+              <a href="thread.html#13">[ thread ]</a>
+              <a href="subject.html#13">[ subject ]</a>
+              <a href="author.html#13">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-02 15:38:18 +0200 (Fri, 02 Sep 2005)
+New Revision: 106
+
+Added:
+   languetudes/
+   languetudes/languetudes.conf
+   languetudes/languetudes.py
+   languetudes/src/
+   languetudes/src/__init__.py
+   languetudes/src/common.py
+   languetudes/src/console.py
+   languetudes/src/ncurses.py
+   languetudes/src/tkinter.py
+Modified:
+   happyboom/trunk/boomboom/client/bb_display.py
+   happyboom/trunk/boomboom/client/bb_input.py
+Log:
+projet perso pour aider l'apprentissage de vocabulaire etranger
+
+Modified: happyboom/trunk/boomboom/client/bb_display.py
+===================================================================
+--- happyboom/trunk/boomboom/client/bb_display.py	2005-08-14 20:54:15 UTC (rev 105)
++++ happyboom/trunk/boomboom/client/bb_display.py	2005-09-02 13:38:18 UTC (rev 106)
+@@ -10,7 +10,7 @@
+ from bb_drawer import BoomBoomDrawer
+ from bb_constructor import BoomBoomConstructor
+ from net import io
+-from net import io_udp
++from net import io_udp, io_tcp
+ import thread
+ 
+ class BoomBoomDisplay(EventLauncher, EventListener):
+@@ -60,7 +60,7 @@
+         self.port = port
+         self.name = name
+         self.__protocol_version = &quot;0.1.4&quot;
+-        self.__io = io_udp.IO_UDP()
++        self.__io = io_tcp.IO_TCP()
+         self.__verbose = verbose
+         self.__io.verbose = verbose
+         self.__debug = debug
+
+Modified: happyboom/trunk/boomboom/client/bb_input.py
+===================================================================
+--- happyboom/trunk/boomboom/client/bb_input.py	2005-08-14 20:54:15 UTC (rev 105)
++++ happyboom/trunk/boomboom/client/bb_input.py	2005-09-02 13:38:18 UTC (rev 106)
+@@ -8,7 +8,7 @@
+ from common.simple_event import EventLauncher
+ import bb_events
+ from net import io
+-from net import io_udp
++from net import io_udp, io_tcp
+ from net import net_buffer
+ import thread, time, pygame
+ 
+@@ -53,7 +53,7 @@
+         self.host = host
+         self.port = port
+         self.name = name
+-        self.__io = io_udp.IO_UDP()
++        self.__io = io_tcp.IO_TCP()
+         self.__recv_buffer = net_buffer.NetBuffer()
+         self.__verbose = verbose
+         self.__io.verbose = verbose
+
+Added: languetudes/languetudes.conf
+===================================================================
+--- languetudes/languetudes.conf	2005-08-14 20:54:15 UTC (rev 105)
++++ languetudes/languetudes.conf	2005-09-02 13:38:18 UTC (rev 106)
+@@ -0,0 +1,15 @@
++################################
++# CONFIGURATION DE LANGUETUDES #
++#               Version Python #
++################################
++
++# Configuration base de donnees
++# #############################
++# &quot;type&quot; est le nom du module python utilise
++# ce module doit respecter le standard API-DB
++[Base]
++type=MySQLdb
++hote=localhost
++utilisateur=languetudes
++#motpasse=prout
++nombase=languetudes
+
+Added: languetudes/languetudes.py
+===================================================================
+--- languetudes/languetudes.py	2005-08-14 20:54:15 UTC (rev 105)
++++ languetudes/languetudes.py	2005-09-02 13:38:18 UTC (rev 106)
+@@ -0,0 +1,40 @@
++import sys, getopt
++
++usage = &quot;&quot;&quot;
++USAGE:
++    %s [--ihm &lt;interface&gt;]
++    %s -h | --help
++
++Les IHM disponibles sont :
++ ** console : mode interactif dans un terminal texte.
++ ** ncurses : interface graphique dans un terminal texte.
++ ** tkinter : interface graphique utilisant la bibiotheque TK.
++&quot;&quot;&quot; % (sys.argv[0], sys.argv[0])
++
++ihm = (&quot;console&quot;, &quot;ncurse&quot;, &quot;tkinter&quot;)
++
++def main():
++    ihmModule = &quot;tkinter&quot;
++    try:
++        opts, args = getopt.getopt(sys.argv[1:], &quot;h&quot;, &quot;help, ihm=&quot;)
++    except getopt.GetoptError:
++        print &quot;ERREUR: usage incorrect.&quot;
++        print usage
++        sys.exit(1)
++    for o, a in opts:
++        if o in (&quot;-h&quot;, &quot;--help&quot;):
++            print usage
++            sys.exit()
++        elif o == &quot;--ihm&quot;:
++            if a in ihm:
++                ihmModule = a
++            else:
++                print &quot;ERREUR: ihm incorrect.&quot;
++                print usage
++                sys.exit(2)
++    src = __import__(&quot;src&quot;, globals(),  locals(), [ihmModule])
++    mod = getattr(src, ihmModule)
++    mod.Application()
++
++if __name__ == &quot;__main__&quot;:
++    main()
+\ No newline at end of file
+
+Added: languetudes/src/__init__.py
+===================================================================
+
+Added: languetudes/src/common.py
+===================================================================
+--- languetudes/src/common.py	2005-08-14 20:54:15 UTC (rev 105)
++++ languetudes/src/common.py	2005-09-02 13:38:18 UTC (rev 106)
+@@ -0,0 +1,182 @@
++import ConfigParser
++
++class Application:
++    dico_id_sql = &quot;&quot;&quot;SELECT __dictionnaire.id AS id
++FROM __langue, __dictionnaire
++WHERE __dictionnaire.langue=__langue.id
++  AND __langue.intitule='%s'
++  AND __dictionnaire.intitule='%s'&quot;&quot;&quot;
++    
++    def __init__(self):
++        # Chargement du fichier de configuration
++        self.conf = ConfigParser.ConfigParser()
++        #fichConf = __file__[:-2] + &quot;conf&quot;
++        self.conf.read(&quot;languetudes.conf&quot;)
++        # import de module de base de donnees compatible API-DB
++        bdd = __import__(self.conf.get(&quot;Base&quot;,&quot;type&quot;), globals())
++        bdd = __import__(self.conf.get(&quot;Base&quot;,&quot;type&quot;)+&quot;.cursors&quot;, globals())
++        
++        # recuperation des parametres de connexion
++        params = {&quot;host&quot;:&quot;&quot;, &quot;user&quot;:&quot;&quot;, &quot;passwd&quot;:&quot;&quot;, &quot;db&quot;:&quot;&quot;, &quot;port&quot;:0}
++        if self.conf.has_option(&quot;Base&quot;,&quot;hote&quot;):
++                params[&quot;host&quot;] = self.conf.get(&quot;Base&quot;,&quot;hote&quot;)
++        if self.conf.has_option(&quot;Base&quot;,&quot;utilisateur&quot;):
++                params[&quot;user&quot;] = self.conf.get(&quot;Base&quot;,&quot;utilisateur&quot;)
++        if self.conf.has_option(&quot;Base&quot;,&quot;motpasse&quot;):
++                params[&quot;passwd&quot;] = self.conf.get(&quot;Base&quot;,&quot;motpasse&quot;)
++        if self.conf.has_option(&quot;Base&quot;,&quot;nombase&quot;):
++                params[&quot;db&quot;] = self.conf.get(&quot;Base&quot;,&quot;nombase&quot;)
++        if self.conf.has_option(&quot;Base&quot;,&quot;port&quot;):
++                params[&quot;port&quot;] = int(self.conf.get(&quot;Base&quot;,&quot;port&quot;))
++        # connexion a la base de donnees
++        self.connexion = bdd.connect(**params)
++        # creation d'un curseur de parcours de resultat SQL
++        self.curseur = self.connexion.cursor(bdd.cursors.DictCursor)
++        self.curseur.execute(&quot;SHOW tables&quot;)
++        result = []
++        for i in self.curseur.fetchall():
++            result.extend(i.values())
++        # Creation des tables
++        if &quot;__langue&quot; not in result:
++            self.curseur.execute(&quot;&quot;&quot;CREATE TABLE __dictionnaire (
++    id INT(9) primary key auto_increment,
++    intitule VARCHAR(63),
++    langue INT(9) REFERENCES __langue(id),
++    INDEX(langue, intitule)
++    )&quot;&quot;&quot;)
++            self.curseur.execute(&quot;&quot;&quot;CREATE TABLE __langue (
++    id INT(9) PRIMARY KEY AUTO_INCREMENT,
++    intitule VARCHAR(31) NOT NULL,
++    INDEX(intitule)
++    )&quot;&quot;&quot;)
++        
++    def getLangues(self):
++        self.curseur.execute(&quot;SELECT intitule FROM __langue ORDER BY intitule&quot;)
++        result = []
++        for i in self.curseur.fetchall():
++            result.append(i[&quot;intitule&quot;])
++        return result
++        
++    def addLangue(self, langue):
++        self.curseur.execute(&quot;INSERT INTO __langue(intitule) VALUES('%s')&quot; %langue.lower())
++
++    def getDictionnaires(self, langue):
++        self.curseur.execute(&quot;SELECT __dictionnaire.intitule FROM __langue, __dictionnaire WHERE __dictionnaire.langue = __langue.id AND __langue.intitule = '%s' ORDER BY __dictionnaire.intitule&quot; %langue)
++        result = []
++        for i in self.curseur.fetchall():
++            result.append(i[&quot;intitule&quot;].replace(&quot;\\\\&quot;, &quot;\\&quot;).replace(&quot;\\'&quot;, &quot;'&quot;).replace('\\&quot;', '&quot;'))
++        return result
++        
++    def addDictionnaire(self, nom, langue):
++        self.curseur.execute(&quot;SELECT id FROM __langue WHERE intitule='%s'&quot; %langue)
++        langue_id = self.curseur.fetchall()[0][&quot;id&quot;]
++        nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        self.curseur.execute(&quot;INSERT INTO __dictionnaire(intitule, langue) VALUES('%s', %s)&quot; %(nom, langue_id))
++        self.curseur.execute(&quot;SELECT id FROM __dictionnaire WHERE langue=%s AND intitule='%s'&quot; %(langue_id, nom))
++        dico_id = self.curseur.fetchall()[0][&quot;id&quot;]
++        self.curseur.execute(&quot;&quot;&quot;CREATE TABLE dico%s(
++id INT(9) PRIMARY KEY AUTO_INCREMENT,
++francais VARCHAR(63) NOT NULL,
++etranger VARCHAR(63) NOT NULL,
++INDEX(francais, etranger),
++INDEX(etranger, francais)
++)&quot;&quot;&quot; %dico_id)
++        
++    def delDictionnaire(self, nom, langue):
++        nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        self.curseur.execute(self.dico_id_sql %(langue, nom))
++        dico_id = self.curseur.fetchall()[0][&quot;id&quot;]
++        self.curseur.execute(&quot;DELETE FROM __dictionnaire WHERE id=%s&quot; %dico_id)
++        self.curseur.execute(&quot;DROP TABLE dico%s&quot; %dico_id)
++        
++    def verifierDoublons(self, langue, nom, francais, etranger):
++        nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        francais = francais.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        etranger = etranger.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        self.curseur.execute(self.dico_id_sql %(langue, nom))
++        dico_id = self.curseur.fetchall()[0][&quot;id&quot;]
++        self.curseur.execute(&quot;SELECT francais, etranger FROM dico%s WHERE francais='%s' OR etranger='%s'&quot; %(dico_id, francais, etranger))
++        f, e = (False, False)
++        for i in self.curseur.fetchall():
++            if i[&quot;francais&quot;] == francais and i[&quot;etranger&quot;] == etranger:
++                return (True, True, True)
++            if i[&quot;francais&quot;] == francais:
++                f = True
++            if i[&quot;etranger&quot;] == etranger:
++                e = True
++        return (f, e, False)
++        
++    def addCouple(self, langue, nom, francais, etranger):
++        nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        francais = francais.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        etranger = etranger.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        self.curseur.execute(self.dico_id_sql %(langue, nom))
++        dico_id = self.curseur.fetchall()[0][&quot;id&quot;]
++        self.curseur.execute(&quot;INSERT INTO dico%s(francais, etranger) VALUES ('%s', '%s')&quot; %(dico_id, francais, etranger))
++        
++    def delCouple(self, langue, nom, francais, etranger):
++        nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        francais = francais.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        etranger = etranger.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        self.curseur.execute(self.dico_id_sql %(langue, nom))
++        dico_id = self.curseur.fetchall()[0][&quot;id&quot;]
++        self.curseur.execute(&quot;DELETE FROM dico%s WHERE francais='%s' AND etranger='%s'&quot; %(dico_id, francais, etranger))
++        
++    def getCouples(self, langue, nom, ordre=&quot;francais ASC&quot;, longueur=None, debut=0):
++        nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        self.curseur.execute(self.dico_id_sql %(langue, nom))
++        dico_id = self.curseur.fetchall()[0][&quot;id&quot;]
++        limit = &quot;&quot;
++        if longueur != None:
++            limit = &quot; LIMIT %s, %s&quot; %(debut, longueur)
++        self.curseur.execute(&quot;SELECT francais, etranger FROM dico%s ORDER BY %s%s&quot; %(dico_id, ordre, limit))
++        result = self.curseur.fetchall()
++        for i in range(len(result)):
++            result[i][&quot;francais&quot;] = result[i][&quot;francais&quot;].replace(&quot;\\\\&quot;, &quot;\\&quot;).replace(&quot;\\'&quot;, &quot;'&quot;).replace('\\&quot;', '&quot;')
++            result[i][&quot;etranger&quot;] = result[i][&quot;etranger&quot;].replace(&quot;\\\\&quot;, &quot;\\&quot;).replace(&quot;\\'&quot;, &quot;'&quot;).replace('\\&quot;', '&quot;')
++        return result
++        
++    def getAleatoire(self, langue, dicos):
++        requete = &quot;&quot;
++        for nom in dicos:
++            nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++            self.curseur.execute(self.dico_id_sql %(langue, nom))
++            dico_id = self.curseur.fetchall()[0][&quot;id&quot;]
++            requete = requete + &quot;SELECT francais, etranger FROM dico%s UNION &quot; %dico_id
++        self.curseur.execute(&quot;%s ORDER BY RAND() LIMIT 1&quot; %(requete[:-7]))
++        result = self.curseur.fetchall()[0]
++        result[&quot;francais&quot;] = result[&quot;francais&quot;].replace(&quot;\\\\&quot;, &quot;\\&quot;).replace(&quot;\\'&quot;, &quot;'&quot;).replace('\\&quot;', '&quot;')
++        result[&quot;etranger&quot;] = result[&quot;etranger&quot;].replace(&quot;\\\\&quot;, &quot;\\&quot;).replace(&quot;\\'&quot;, &quot;'&quot;).replace('\\&quot;', '&quot;')
++        return (result[&quot;francais&quot;], result[&quot;etranger&quot;])
++        
++    def corriger(self, langue, dicos, francais, etranger, type):
++        francais = francais.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        etranger = etranger.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++        if type == &quot;version&quot;:
++            test = &quot;etranger='%s'&quot; %etranger
++        else:
++            test = &quot;francais='%s'&quot; %francais
++        requete = &quot;&quot;
++        for nom in dicos:
++            nom = nom.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;).replace('&quot;', '\\&quot;')
++            self.curseur.execute(self.dico_id_sql %(langue, nom))
++            dico_id = self.curseur.fetchall()[0][&quot;id&quot;]
++            requete = requete + &quot;SELECT francais, etranger FROM dico%s WHERE %s UNION &quot; %(dico_id, test)
++        self.curseur.execute(requete[:-7])
++        result = self.curseur.fetchall()
++        if type == &quot;version&quot;:
++            for i in result:
++                if i[&quot;francais&quot;] == francais:
++                    return True
++            return False
++        else:
++            for i in result:
++                if i[&quot;etranger&quot;] == etranger:
++                    return True
++            return False
++        
++    def __del__(self):
++        # fermeture du curseur
++        self.curseur.close()
++        # fermeture de la connexion
++        self.connexion.close()
+\ No newline at end of file
+
+Added: languetudes/src/console.py
+===================================================================
+--- languetudes/src/console.py	2005-08-14 20:54:15 UTC (rev 105)
++++ languetudes/src/console.py	2005-09-02 13:38:18 UTC (rev 106)
+@@ -0,0 +1,5 @@
++import common
++
++class Application(common.Application):
++    def __init__(self):
++        print &quot;Pas encore implemente&quot;
+\ No newline at end of file
+
+Added: languetudes/src/ncurses.py
+===================================================================
+--- languetudes/src/ncurses.py	2005-08-14 20:54:15 UTC (rev 105)
++++ languetudes/src/ncurses.py	2005-09-02 13:38:18 UTC (rev 106)
+@@ -0,0 +1,5 @@
++import common
++
++class Application(common.Application):
++    def __init__(self):
++        print &quot;Pas encore implemente&quot;
+\ No newline at end of file
+
+Added: languetudes/src/tkinter.py
+===================================================================
+--- languetudes/src/tkinter.py	2005-08-14 20:54:15 UTC (rev 105)
++++ languetudes/src/tkinter.py	2005-09-02 13:38:18 UTC (rev 106)
+@@ -0,0 +1,544 @@
++from Tkinter import *
++import tkMessageBox
++import common
++    
++class Application(common.Application, Frame, object):
++    def __init__(self):
++        common.Application.__init__(self)
++        Frame.__init__(self)
++        self.master.title(&quot;Languetudes&quot;)
++        self.__langue = &quot;aucune&quot;
++        self.dico = []
++        self.pack()
++        self.createWidgets()
++        self.mainloop()
++    
++    def getLangue(self):
++        return self.__langue
++    def setLangue(self, langue):
++        if langue != self.__langue:
++            self.dico = []
++        self.__langue = langue
++        self.btnLangue[&quot;text&quot;] = &quot;Langue : %s&quot; %self.__langue
++    langue = property(getLangue, setLangue)
++    
++    def createWidgets(self):
++        self.btnLangue = Button(self)
++        self.btnLangue[&quot;text&quot;] = &quot;Langue : %s&quot; %self.__langue
++        self.btnLangue[&quot;command&quot;] = self.choisirLangue
++        self.btnLangue[&quot;fg&quot;]   = &quot;blue&quot;
++        self.btnLangue.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
++        
++        self.btnDico = Button(self)
++        self.btnDico[&quot;text&quot;] = &quot;Dictionnaires&quot;
++        self.btnDico[&quot;command&quot;] = self.dictionnaire
++        self.btnDico[&quot;fg&quot;]   = &quot;darkgreen&quot;
++        self.btnDico.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
++        
++        self.btnVersion = Button(self)
++        self.btnVersion[&quot;text&quot;] = &quot;Version&quot;
++        self.btnVersion[&quot;command&quot;] = self.version
++        self.btnVersion.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
++        
++        self.btnTheme = Button(self)
++        self.btnTheme[&quot;text&quot;] = &quot;Theme&quot;
++        self.btnTheme[&quot;command&quot;] = self.theme
++        self.btnTheme.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
++        
++        self.btnQuit = Button(self)
++        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 15 + &quot;Sortie&quot; + &quot; &quot; * 15
++        self.btnQuit[&quot;fg&quot;]   = &quot;red&quot;
++        self.btnQuit[&quot;command&quot;] =  self.quit
++        self.btnQuit.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
++        
++    def choisirLangue(self):
++        Langue(self)
++        
++    def dictionnaire(self):
++        if self.langue == &quot;aucune&quot;:
++            tkMessageBox.showinfo(&quot;Aucune langue selectionnee&quot;, &quot;Veuillez d'abord choisir une langue.&quot;)
++            Langue(self)
++        else:
++            Dictionnaire(self, self.langue)
++        
++    def version(self):
++        if self.langue == &quot;aucune&quot;:
++            tkMessageBox.showinfo(&quot;Aucune langue selectionnee&quot;, &quot;Veuillez d'abord choisir une langue.&quot;)
++            Langue(self)
++        elif self.dico == []:
++            tkMessageBox.showinfo(&quot;Aucun dictionnaire selectionne&quot;, &quot;Veuillez d'abord choisir un ou plusieurs dictionnaires.&quot;)
++            Dictionnaire(self, self.langue)
++        else:
++            Version(self, self.langue, self.dico)
++    
++    def theme(self):
++        if self.langue == &quot;aucune&quot;:
++            tkMessageBox.showinfo(&quot;Aucune langue selectionnee&quot;, &quot;Veuillez d'abord choisir une langue.&quot;)
++            Langue(self)
++        elif self.dico == []:
++            tkMessageBox.showinfo(&quot;Aucun dictionnaire selectionne&quot;, &quot;Veuillez d'abord choisir un ou plusieurs dictionnaires.&quot;)
++            Dictionnaire(self, self.langue)
++        else:
++            Theme(self, self.langue, self.dico)
++        
++class Langue(Toplevel):
++    def __init__(self, master):
++        Toplevel.__init__(self, master)
++        self.title(&quot;Choisir une langue&quot;)
++        self.createWidgets()
++        
++    def createWidgets(self):
++        self.btnQuit = Button(self)
++        self.btnQuit[&quot;text&quot;] = &quot;Annuler&quot;
++        self.btnQuit[&quot;fg&quot;]   = &quot;red&quot;
++        self.btnQuit[&quot;command&quot;] =  self.destroy
++        self.btnQuit.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
++        
++        self.btn = []
++        for langue in self.master.getLangues():
++            button = Button(self)
++            button[&quot;text&quot;] = langue
++            button.bind(&quot;&lt;Button-1&gt;&quot;, self.choisirLangue)
++            button.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
++            self.btn.append(button)
++        
++        self.txtAjouter = Entry(self)
++        self.txtAjouter[&quot;text&quot;] = &quot;&quot;
++        self.txtAjouter[&quot;fg&quot;]   = &quot;blue&quot;
++        self.txtAjouter.bind(&quot;&lt;Return&gt;&quot;, self.addLangue)
++        self.txtAjouter.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
++        
++        self.btnAjouter = Button(self)
++        self.btnAjouter[&quot;text&quot;] = &quot;Ajouter&quot;
++        self.btnAjouter[&quot;fg&quot;]   = &quot;blue&quot;
++        self.btnAjouter[&quot;command&quot;] =  self.addLangue
++        self.btnAjouter.pack({&quot;side&quot;: &quot;top&quot;, &quot;fill&quot;: X})
++        
++    def choisirLangue(self, event):
++        self.master.langue = event.widget[&quot;text&quot;]
++        self.destroy()
++        
++    def addLangue(self, event=None):
++        txt = self.txtAjouter.get().strip().lower()
++        if txt == &quot;&quot;:
++            tkMessageBox.showwarning(&quot;Nom de langue incorrect&quot;, &quot;Veuillez indiquer un nom de langue dans le champ de texte.&quot;)
++            self.txtAjouter.focus()
++            return
++        self.master.addLangue(txt)
++        self.master.langue = txt
++        self.destroy()
++        
++class Dictionnaire(Toplevel):
++    def __init__(self, master, langue):
++        Toplevel.__init__(self, master)
++        self.title(&quot;%s : dictionnaires&quot; %langue)
++        self.langue = langue
++        self.createWidgets()
++        
++    def createWidgets(self):  
++        self.btnQuit = Button(self)
++        self.defCouleur = self.btnQuit[&quot;bg&quot;]
++        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 30 + &quot;Fermer&quot; + &quot; &quot; * 30
++        self.btnQuit[&quot;fg&quot;]   = &quot;red&quot;
++        self.btnQuit[&quot;command&quot;] =  self.destroy
++        self.btnQuit.grid(row=0, columnspan=5)
++        
++        cptrow = 0
++        self.dicos = []
++        for dico in self.master.getDictionnaires(self.langue):
++            cptrow = cptrow + 1
++            label = Label(self)
++            label[&quot;text&quot;] = dico
++            label.grid(row=cptrow, column=0)
++            
++            btnSelect = Button(self)
++            btnSelect[&quot;text&quot;] = &quot;Sel&quot;
++            if dico in self.master.dico:
++                btnSelect[&quot;bg&quot;] = &quot;green&quot;
++            btnSelect.bind(&quot;&lt;Button-1&gt;&quot;, self.choisirDico)
++            btnSelect.grid(row=cptrow, column=1)
++            
++            btnEdit = Button(self)
++            btnEdit[&quot;text&quot;] = &quot;Edit&quot;
++            btnEdit.bind(&quot;&lt;Button-1&gt;&quot;, self.editerDico)
++            btnEdit.grid(row=cptrow, column=2)
++            
++            btnVoir = Button(self)
++            btnVoir[&quot;text&quot;] = &quot;Voir&quot;
++            btnVoir.bind(&quot;&lt;Button-1&gt;&quot;, self.voirDico)
++            btnVoir.grid(row=cptrow, column=3)
++            
++            btnSuppr = Button(self)
++            btnSuppr[&quot;text&quot;] = &quot;Supp&quot;
++            btnSuppr.bind(&quot;&lt;Button-1&gt;&quot;, self.supprimerDico)
++            btnSuppr.grid(row=cptrow, column=4)
++            
++            self.dicos.append((label, btnSelect, btnEdit, btnVoir, btnSuppr))
++            
++        self.txtAjouter = Entry(self)
++        self.txtAjouter[&quot;text&quot;] = &quot;&quot;
++        self.txtAjouter[&quot;fg&quot;]   = &quot;blue&quot;
++        self.txtAjouter.bind(&quot;&lt;Return&gt;&quot;, self.ajouterDico)
++        self.txtAjouter.grid(row=cptrow+1, columnspan=3)
++        
++        self.btnAjouter = Button(self)
++        self.btnAjouter[&quot;text&quot;] = &quot;Ajouter&quot;
++        self.btnAjouter[&quot;fg&quot;]   = &quot;blue&quot;
++        self.btnAjouter[&quot;command&quot;] =  self.ajouterDico
++        self.btnAjouter.grid(row=cptrow+1, column=3, columnspan=2)
++        
++    def choisirDico(self, event):
++        self.master.langue = self.langue
++        for i in self.dicos:
++            if i[1] == event.widget:
++                if i[1][&quot;bg&quot;] == &quot;green&quot;:
++                    i[1][&quot;bg&quot;] = self.defCouleur
++                else:
++                    i[1][&quot;bg&quot;] = &quot;green&quot;
++            if i[1][&quot;bg&quot;] == &quot;green&quot;:
++                    self.master.dico.append(i[0][&quot;text&quot;])
++                
++    def editerDico(self, event):
++        for i in self.dicos:
++            if i[2] == event.widget:
++                Editer(self, self.langue, i[0][&quot;text&quot;])
++                return
++                
++    def voirDico(self, event):
++        for i in self.dicos:
++            if i[3] == event.widget:
++                Voir(self, self.langue, i[0][&quot;text&quot;])
++                return
++                
++    def supprimerDico(self, event):
++        for i in self.dicos:
++            if i[4] == event.widget:
++                if tkMessageBox.askquestion(&quot;Confirmation de la suppression&quot;, &quot;Etes-vous certain de vouloir supprimer le dictionnaire intitule \&quot;%s\&quot; ?&quot; %i[0][&quot;text&quot;])==&quot;yes&quot;:
++                    self.master.delDictionnaire(i[0][&quot;text&quot;], self.langue)
++                    Dictionnaire(self.master, self.langue)
++                    self.destroy()
++                return
++        
++    def ajouterDico(self, event=None):
++        txt = self.txtAjouter.get().strip().lower()
++        if txt == &quot;&quot;:
++            tkMessageBox.showwarning(&quot;Nom de dictionnaire incorrect&quot;, &quot;Veuillez indiquer un nom au dictionnaire dans le champ de texte.&quot;)
++            self.txtAjouter.focus()
++            return
++        for b in self.dicos:
++            if b[0][&quot;text&quot;] == txt:
++                tkMessageBox.showwarning(&quot;Nom de dictionnaire incorrect&quot;, &quot;Un dictionnaire existant porte deja ce nom. Veuillez en taper un autre.&quot;)
++                self.txtAjouter.delete(0)
++                self.txtAjouter.focus()
++                return
++        self.master.addDictionnaire(txt, self.langue)
++        Dictionnaire(self.master, self.langue)
++        Editer(self, self.langue, txt)
++        self.destroy()
++        
++class Editer(Toplevel):
++    def __init__(self, master, langue, dico):
++        Toplevel.__init__(self, master)
++        self.langue = langue
++        self.dico = dico
++        self.title(&quot;%s : %s&quot; %(langue, dico))
++        self.createWidgets()
++        
++    def createWidgets(self):
++        self.btnQuit = Button(self)
++        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 15 + &quot;Fermer&quot; + &quot; &quot; * 15
++        self.btnQuit[&quot;fg&quot;]   = &quot;red&quot;
++        self.btnQuit[&quot;command&quot;] =  self.destroy
++        self.btnQuit.grid(row=0, columnspan=2)
++        
++        self.lblFrancais = Label(self)
++        self.lblFrancais[&quot;text&quot;] = &quot;francais&quot;
++        self.lblFrancais.grid(row=1, column=0)
++        
++        self.txtFrancais = Entry(self)
++        self.txtFrancais[&quot;text&quot;] = &quot;&quot;
++        self.txtFrancais[&quot;fg&quot;]   = &quot;blue&quot;
++        self.txtFrancais.bind(&quot;&lt;Return&gt;&quot;, self.valider)
++        self.txtFrancais.grid(row=1, column=1)
++        
++        self.lblEtranger = Label(self)
++        self.lblEtranger[&quot;text&quot;] = self.langue
++        self.lblEtranger.grid(row=2, column=0)
++        
++        self.txtEtranger = Entry(self)
++        self.txtEtranger[&quot;text&quot;] = &quot;&quot;
++        self.txtEtranger[&quot;fg&quot;]   = &quot;blue&quot;
++        self.txtEtranger.bind(&quot;&lt;Return&gt;&quot;, self.valider)
++        self.txtEtranger.grid(row=2, column=1)
++        
++        self.btnAjouter = Button(self)
++        self.btnAjouter[&quot;text&quot;] = &quot;Ajouter&quot;
++        self.btnAjouter[&quot;fg&quot;]   = &quot;blue&quot;
++        self.btnAjouter[&quot;command&quot;] =  self.valider
++        self.btnAjouter.grid(row=3, columnspan=2)    
++        
++    def valider(self, event=None):
++        francais = self.txtFrancais.get().strip().lower()
++        etranger = self.txtEtranger.get().strip().lower()
++        if francais==&quot;&quot;:
++            tkMessageBox.showwarning(&quot;Libelle incorrect&quot;, &quot;Veuillez remplir tous les champs de cette boite de dialogue.&quot;)
++            self.txtFrancais.focus()
++            return
++        if etranger==&quot;&quot;:
++            tkMessageBox.showwarning(&quot;Libelle incorrect&quot;, &quot;Veuillez remplir tous les champs de cette boite de dialogue.&quot;)
++            self.txtEtranger.focus()
++            return
++        (f, e, d) = self.master.master.verifierDoublons(self.langue, self.dico, francais, etranger)
++        if d == True:
++            tkMessageBox.showwarning(&quot;Doublons detectes&quot;, &quot;Ce couple a deja ete entre. Vous ne pouvez pas faire de doublons.&quot;)
++            self.txtEtranger.delete(0)
++            self.txtFrancais.delete(0)
++            self.txtFrancais.focus()
++            return
++        if f == True:
++            if tkMessageBox.askquestion(&quot;Doublons detectes&quot;, &quot;Le mot francais \&quot;%s\&quot; est deja dans le dictionnaire. Etes-vous certain de l'associer a un second mot %s ?&quot; %(francais, self.langue))==&quot;no&quot;:
++                self.txtFrancais.delete(0)
++                self.txtFrancais.focus()
++                return
++        if e == True:
++            if tkMessageBox.askquestion(&quot;Doublons detectes&quot;, &quot;Le mot %s \&quot;%s\&quot; est deja dans le dictionnaire. Etes-vous certain de l'associer a un second mot francais ?&quot; %(self.langue, etranger))==&quot;no&quot;:
++                self.txtEtranger.delete(0)
++                self.txtEtranger.focus()
++                return
++        self.master.master.addCouple(self.langue, self.dico, francais, etranger)
++        Editer(self.master, self.langue, self.dico)
++        self.destroy()
++        
++class Voir(Toplevel):
++    def __init__(self, master, langue, dico, ordre=&quot;francais ASC&quot;, debut=0):
++        Toplevel.__init__(self, master)
++        self.langue = langue
++        self.dico = dico
++        self.ordre = ordre
++        self.debut = debut
++        self.longueur = 20
++        self.title(&quot;%s : %s&quot; %(langue, dico))
++        self.createWidgets()
++        
++    def createWidgets(self):
++        self.btnQuit = Button(self)
++        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 15 + &quot;Fermer&quot; + &quot; &quot; * 15
++        self.btnQuit[&quot;fg&quot;]   = &quot;red&quot;
++        self.btnQuit[&quot;command&quot;] =  self.destroy
++        self.btnQuit.grid(row=0, columnspan=4)
++        
++        self.btnFrancais = Button(self)
++        self.btnFrancais[&quot;text&quot;] = &quot;francais&quot;
++        self.btnFrancais[&quot;fg&quot;]   = &quot;blue&quot;
++        self.btnFrancais.bind(&quot;&lt;Button-1&gt;&quot;, self.changerOrdre)
++        self.btnFrancais.grid(row=1, column=0, columnspan=2)
++        
++        self.btnEtranger = Button(self)
++        self.btnEtranger[&quot;text&quot;] = self.langue
++        self.btnEtranger[&quot;fg&quot;]   = &quot;blue&quot;
++        self.btnEtranger.bind(&quot;&lt;Button-1&gt;&quot;, self.changerOrdre)
++        self.btnEtranger.grid(row=1, column=2, columnspan=2)
++        
++        rowcpt = 1
++        self.couples = []
++        for i in self.master.master.getCouples(self.langue, self.dico, self.ordre, self.longueur, self.debut):
++            rowcpt = rowcpt + 1
++            
++            lblFr = Label(self)
++            lblFr[&quot;text&quot;] = i[&quot;francais&quot;]
++            lblFr.grid(row=rowcpt, column=0, columnspan=2)
++            
++            lblEtr = Label(self)
++            lblEtr[&quot;text&quot;] = i[&quot;etranger&quot;]
++            lblEtr.grid(row=rowcpt, column=2, columnspan=2)
++            
++            btnSuppr = Button(self)
++            btnSuppr[&quot;text&quot;] = &quot;x&quot;
++            btnSuppr[&quot;fg&quot;]   = &quot;red&quot;
++            btnSuppr.bind(&quot;&lt;Button-1&gt;&quot;, self.supprimerCouple)
++            btnSuppr.grid(row=rowcpt, column=4)
++        
++            self.couples.append((lblFr, lblEtr, btnSuppr))
++        
++        self.btnRAZ = Button(self)
++        self.btnRAZ[&quot;text&quot;] = &quot;| &lt;&quot;
++        self.btnRAZ[&quot;fg&quot;]   = &quot;blue&quot;
++        self.btnRAZ[&quot;command&quot;] = self.remettreAZero
++        self.btnRAZ.grid(row=rowcpt+1, column=0)
++        
++        self.btnPrec = Button(self)
++        self.btnPrec[&quot;text&quot;] = &quot;&lt; &lt;&quot;
++        self.btnPrec[&quot;fg&quot;]   = &quot;blue&quot;
++        self.btnPrec[&quot;command&quot;] = self.precedent
++        self.btnPrec.grid(row=rowcpt+1, column=1)
++        
++        self.btnSuiv = Button(self)
++        self.btnSuiv[&quot;text&quot;] = &quot;&gt; &gt;&quot;
++        self.btnSuiv[&quot;fg&quot;]   = &quot;blue&quot;
++        self.btnSuiv[&quot;command&quot;] = self.suivant
++        self.btnSuiv.grid(row=rowcpt+1, column=2)
++        
++        self.btnMAJ = Button(self)
++        self.btnMAJ[&quot;text&quot;] = &quot;M.A.J&quot;
++        self.btnMAJ[&quot;fg&quot;]   = &quot;blue&quot;
++        self.btnMAJ[&quot;command&quot;] = self.mettreAJour
++        self.btnMAJ.grid(row=rowcpt+1, column=3)
++        
++    def changerOrdre(self, event):
++        nvOrdre = self.ordre
++        if event.widget == self.btnFrancais:
++            if self.ordre in (&quot;francais ASC&quot;, &quot;etranger DESC&quot;):
++                nvOrdre = &quot;francais DESC&quot;
++            else:
++                nvOrdre = &quot;francais ASC&quot;
++        if event.widget == self.btnEtranger:
++            if self.ordre in (&quot;etranger ASC&quot;, &quot;francais DESC&quot;):
++                nvOrdre = &quot;etranger DESC&quot;
++            else:
++                nvOrdre = &quot;etranger ASC&quot;
++        Voir(self.master, self.langue, self.dico, ordre=nvOrdre, debut=self.debut)
++        self.destroy()
++
++    def supprimerCouple(self, event):
++        for i in self.couples:
++            if i[2] == event.widget:
++                if tkMessageBox.askquestion(&quot;Confirmation suppression&quot;, &quot;Etes-vous certain de vouloir supprimer le couple de mot \&quot;%s\&quot; / \&quot;%s\&quot;&quot; %(i[0][&quot;text&quot;], i[1][&quot;text&quot;]))==&quot;yes&quot;:
++                    self.master.master.delCouple(self.langue, self.dico, i[0][&quot;text&quot;], i[1][&quot;text&quot;])
++                self.mettreAJour()
++                break
++        
++    def remettreAZero(self):
++        Voir(self.master, self.langue, self.dico, ordre=self.ordre)
++        self.destroy()
++        
++    def precedent(self):
++        nvDebut = self.debut - self.longueur
++        if nvDebut &lt; 0:
++            nvDebut = 0
++        Voir(self.master, self.langue, self.dico, ordre=self.ordre, debut=nvDebut)
++        self.destroy()
++        
++    def suivant(self):
++        nvDebut = self.debut + self.longueur
++        Voir(self.master, self.langue, self.dico, ordre=self.ordre, debut=nvDebut)
++        self.destroy()
++        
++    def mettreAJour(self):
++        Voir(self.master, self.langue, self.dico, ordre=self.ordre, debut=self.debut)
++        self.destroy()
++        
++class Version(Toplevel):
++    def __init__(self, master, langue, dicos, total=0, points=0):
++        Toplevel.__init__(self, master)
++        self.langue = langue
++        self.dicos = dicos
++        self.total = total
++        self.points = points
++        self.title(&quot;%s : version&quot; %(langue))
++        self.createWidgets()
++        
++    def createWidgets(self):
++        self.btnQuit = Button(self)
++        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 15 + &quot;Terminer&quot; + &quot; &quot; * 15
++        self.btnQuit[&quot;fg&quot;]   = &quot;red&quot;
++        self.btnQuit[&quot;command&quot;] =  self.terminer
++        self.btnQuit.grid(row=0, columnspan=2)
++        
++        self.lblScore = Label(self)
++        self.lblScore[&quot;text&quot;] = &quot;Score : %s / %s&quot; %(self.points, self.total)
++        self.lblScore[&quot;fg&quot;] = &quot;blue&quot;
++        self.lblScore.grid(row=1, columnspan=2)
++        
++        self.lblEtranger = Label(self)
++        self.lblEtranger[&quot;text&quot;] = self.langue
++        self.lblEtranger.grid(row=2, column=0)
++        
++        self.txtEtranger = Label(self)
++        self.reponse, self.txtEtranger[&quot;text&quot;] = self.master.getAleatoire(self.langue, self.dicos)
++        self.txtEtranger[&quot;bg&quot;]   = &quot;green&quot;
++        self.txtEtranger.grid(row=2, column=1, sticky=W+E)
++        
++        self.lblFrancais = Label(self)
++        self.lblFrancais[&quot;text&quot;] = &quot;francais&quot;
++        self.lblFrancais.grid(row=3, column=0)
++        
++        self.txtFrancais = Entry(self)
++        self.txtFrancais[&quot;text&quot;] = &quot;&quot;
++        self.txtFrancais[&quot;fg&quot;]   = &quot;darkgreen&quot;
++        self.txtFrancais.bind(&quot;&lt;Return&gt;&quot;, self.valider)
++        self.txtFrancais.grid(row=3, column=1)
++        
++        self.btnAjouter = Button(self)
++        self.btnAjouter[&quot;text&quot;] = &quot;Valider&quot;
++        self.btnAjouter[&quot;fg&quot;]   = &quot;blue&quot;
++        self.btnAjouter[&quot;command&quot;] =  self.valider
++        self.btnAjouter.grid(row=4, columnspan=2)
++        
++    def valider(self, event=None):
++        if self.master.corriger(self.langue, self.dicos, self.txtFrancais.get(), self.txtEtranger[&quot;text&quot;], &quot;version&quot;):
++            Version(self.master, self.langue, self.dicos, self.total+1, self.points+1)
++        else:
++            tkMessageBox.showinfo(&quot;Mauvaise reponse&quot;, &quot;Faux. La bonne traduction est : \&quot;%s\&quot;&quot; %self.reponse)
++            Version(self.master, self.langue, self.dicos, self.total+1, self.points)
++        self.destroy()
++        
++    def terminer(self):
++        self.destroy()
++        
++class Theme(Toplevel):
++    def __init__(self, master, langue, dicos, total=0, points=0):
++        Toplevel.__init__(self, master)
++        self.langue = langue
++        self.dicos = dicos
++        self.total = total
++        self.points = points
++        self.title(&quot;%s : theme&quot; %(langue))
++        self.createWidgets()
++        
++    def createWidgets(self):
++        self.btnQuit = Button(self)
++        self.btnQuit[&quot;text&quot;] = &quot; &quot; * 15 + &quot;Terminer&quot; + &quot; &quot; * 15
++        self.btnQuit[&quot;fg&quot;]   = &quot;red&quot;
++        self.btnQuit[&quot;command&quot;] =  self.terminer
++        self.btnQuit.grid(row=0, columnspan=2)
++        
++        self.lblScore = Label(self)
++        self.lblScore[&quot;text&quot;] = &quot;Score : %s / %s&quot; %(self.points, self.total)
++        self.lblScore[&quot;fg&quot;] = &quot;blue&quot;
++        self.lblScore.grid(row=1, columnspan=2)
++        
++        self.lblFrancais = Label(self)
++        self.lblFrancais[&quot;text&quot;] = &quot;francais&quot;
++        self.lblFrancais.grid(row=2, column=0)
++        
++        self.txtFrancais = Label(self)
++        self.txtFrancais[&quot;text&quot;], self.reponse = self.master.getAleatoire(self.langue, self.dicos)
++        self.txtFrancais[&quot;bg&quot;]   = &quot;green&quot;
++        self.txtFrancais.grid(row=2, column=1, sticky=W+E)
++        
++        self.lblEtranger = Label(self)
++        self.lblEtranger[&quot;text&quot;] = self.langue
++        self.lblEtranger.grid(row=3, column=0)
++        
++        self.txtEtranger = Entry(self)
++        self.txtEtranger[&quot;text&quot;] = &quot;&quot;
++        self.txtEtranger[&quot;fg&quot;]   = &quot;darkgreen&quot;
++        self.txtEtranger.bind(&quot;&lt;Return&gt;&quot;, self.valider)
++        self.txtEtranger.grid(row=3, column=1)
++        
++        self.btnAjouter = Button(self)
++        self.btnAjouter[&quot;text&quot;] = &quot;Valider&quot;
++        self.btnAjouter[&quot;fg&quot;]   = &quot;blue&quot;
++        self.btnAjouter[&quot;command&quot;] =  self.valider
++        self.btnAjouter.grid(row=4, columnspan=2)
++        
++    def valider(self, event=None):
++        if self.master.corriger(self.langue, self.dicos, self.txtFrancais[&quot;text&quot;], self.txtEtranger.get(), &quot;theme&quot;):
++            Theme(self.master, self.langue, self.dicos, self.total+1, self.points+1)
++        else:
++            tkMessageBox.showinfo(&quot;Mauvaise reponse&quot;, &quot;Faux. La bonne traduction est : \&quot;%s\&quot;&quot; %self.reponse)
++            Theme(self.master, self.langue, self.dicos, self.total+1, self.points)
++        self.destroy()
++        
++    def terminer(self):
++        self.destroy()
+\ No newline at end of file
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="000014.html">[Happyboom-svn] r107 - languetudes
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13">[ date ]</a>
+              <a href="thread.html#13">[ thread ]</a>
+              <a href="subject.html#13">[ subject ]</a>
+              <a href="author.html#13">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,160 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r201 - in boomboom/client: . items
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r201%20-%20in%20boomboom/client%3A%20.%20items&In-Reply-To=%3C200509180746.j8I7kYaQ004022%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000107.html">
+   <LINK REL="Next"  HREF="000109.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r201 - in boomboom/client: . items</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r201%20-%20in%20boomboom/client%3A%20.%20items&In-Reply-To=%3C200509180746.j8I7kYaQ004022%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r201 - in boomboom/client: . items">dboucard at berlios.de
+       </A><BR>
+    <I>Sun Sep 18 09:46:34 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000107.html">[Happyboom-svn] r200 - boomboom/curses_client/items
+</A></li>
+        <LI>Next message: <A HREF="000109.html">[Happyboom-svn] r202 - in boomboom: . curses_client curses_client/items
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#108">[ date ]</a>
+              <a href="thread.html#108">[ thread ]</a>
+              <a href="subject.html#108">[ subject ]</a>
+              <a href="author.html#108">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-18 09:46:31 +0200 (Sun, 18 Sep 2005)
+New Revision: 201
+
+Modified:
+   boomboom/client/item.py
+   boomboom/client/items/character.py
+   boomboom/client/items/projectile.py
+   boomboom/client/items/sun.py
+   boomboom/client/items/weapon.py
+   boomboom/client/items/world.py
+Log:
+revert pygame interface modifications
+
+
+Modified: boomboom/client/item.py
+===================================================================
+--- boomboom/client/item.py	2005-09-18 07:41:48 UTC (rev 200)
++++ boomboom/client/item.py	2005-09-18 07:46:31 UTC (rev 201)
+@@ -5,6 +5,7 @@
+ @version: 0.2
+ &quot;&quot;&quot;
+ from happyboom.common.event import EventListener, EventLauncher
++import pygame
+ 
+ class Item(EventListener, EventLauncher):
+     &quot;&quot;&quot; Generic class for representing graphical items.
+
+Modified: boomboom/client/items/character.py
+===================================================================
+--- boomboom/client/items/character.py	2005-09-18 07:41:48 UTC (rev 200)
++++ boomboom/client/items/character.py	2005-09-18 07:46:31 UTC (rev 201)
+@@ -4,7 +4,7 @@
+ @contact: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+ @version: 0.2
+ &quot;&quot;&quot;
+-from client.item import Item
++from client.item import Item, VisualObject
+ import os.path
+ 
+ class Character(Item):
+
+Modified: boomboom/client/items/projectile.py
+===================================================================
+--- boomboom/client/items/projectile.py	2005-09-18 07:41:48 UTC (rev 200)
++++ boomboom/client/items/projectile.py	2005-09-18 07:46:31 UTC (rev 201)
+@@ -5,7 +5,7 @@
+ @version: 0.2
+ &quot;&quot;&quot;
+ #from client import bb_events
+-from client.item import Item
++from client.item import Item, VisualObject
+ import os.path
+ 
+ class Projectile(Item):
+
+Modified: boomboom/client/items/sun.py
+===================================================================
+--- boomboom/client/items/sun.py	2005-09-18 07:41:48 UTC (rev 200)
++++ boomboom/client/items/sun.py	2005-09-18 07:46:31 UTC (rev 201)
+@@ -4,8 +4,8 @@
+ @contact: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+ @version: 0.2
+ &quot;&quot;&quot;
+-from client.item import Item
+-import os.path
++from client.item import Item, VisualObject
++import os.path, pygame
+ 
+ class Sun(Item):
+     &quot;&quot;&quot; Represents a smiling sun which makes &quot;oh&quot; when collided.
+
+Modified: boomboom/client/items/weapon.py
+===================================================================
+--- boomboom/client/items/weapon.py	2005-09-18 07:41:48 UTC (rev 200)
++++ boomboom/client/items/weapon.py	2005-09-18 07:46:31 UTC (rev 201)
+@@ -5,6 +5,7 @@
+ @version: 0.2
+ &quot;&quot;&quot;
+ from client.item import Item
++import pygame
+ 
+ class Weapon(Item):
+     &quot;&quot;&quot; Represents the weapon parameters controlled by the player.
+
+Modified: boomboom/client/items/world.py
+===================================================================
+--- boomboom/client/items/world.py	2005-09-18 07:41:48 UTC (rev 200)
++++ boomboom/client/items/world.py	2005-09-18 07:46:31 UTC (rev 201)
+@@ -5,7 +5,7 @@
+ @version: 0.2
+ &quot;&quot;&quot;
+ from client.item import Item
+-import random
++import random, pygame
+ 
+ class Building:
+     &quot;&quot;&quot; Represents a building which is used as plat-form in the game.
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000107.html">[Happyboom-svn] r200 - boomboom/curses_client/items
+</A></li>
+	<LI>Next message: <A HREF="000109.html">[Happyboom-svn] r202 - in boomboom: . curses_client curses_client/items
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#108">[ date ]</a>
+              <a href="thread.html#108">[ thread ]</a>
+              <a href="subject.html#108">[ subject ]</a>
+              <a href="author.html#108">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

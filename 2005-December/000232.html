@@ -1,0 +1,172 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r326 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r326%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200512132059.jBDKxWeg030583%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000231.html">
+   <LINK REL="Next"  HREF="000233.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r326 - in haypo/hachoir: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r326%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200512132059.jBDKxWeg030583%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r326 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec 13 21:59:32 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000231.html">[Happyboom-svn] r325 - haypo/hachoir/plugins
+</A></li>
+        <LI>Next message: <A HREF="000233.html">[Happyboom-svn] r327 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#232">[ date ]</a>
+              <a href="thread.html#232">[ thread ]</a>
+              <a href="subject.html#232">[ subject ]</a>
+              <a href="author.html#232">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-13 21:59:32 +0100 (Tue, 13 Dec 2005)
+New Revision: 326
+
+Added:
+   haypo/hachoir/plugins/mbr.py
+Modified:
+   haypo/hachoir/mime.py
+Log:
+Add MBR plugin.
+
+
+Modified: haypo/hachoir/mime.py
+===================================================================
+--- haypo/hachoir/mime.py	2005-12-13 17:20:58 UTC (rev 325)
++++ haypo/hachoir/mime.py	2005-12-13 20:59:32 UTC (rev 326)
+@@ -73,6 +73,14 @@
+         return &quot;application/pdf&quot;
+     if buffer[:14] == &quot;gimp xcf file\0&quot;:
+         return &quot;image/x-xcf&quot;
++    if 512&lt;=len(buffer) \
++    and buffer[0]==&quot;\xEB&quot; \
++    and buffer[510:512] == &quot;\x55\xAA&quot; \
++    and buffer[446] in &quot;\x00\x80&quot; \
++    and buffer[446+16*1] in &quot;\x00\x80&quot; \
++    and buffer[446+16*2] in &quot;\x00\x80&quot; \
++    and buffer[446+16*3] in &quot;\x00\x80&quot;:
++        return &quot;hachoir/master-boot-record&quot;
+     return None        
+ 
+ def splitMimes(mimes):
+@@ -86,9 +94,6 @@
+     - &quot;application/x-archive application/x-debian-package&quot;
+     &quot;&quot;&quot;
+ 
+-
+-    #mimes = map(string.strip, mimes.split(&quot;,&quot;))
+-    
+     regex = re.compile(&quot;[^/]+/[^; ]+(?:;[^;]+)*&quot;)
+     mimes = regex.findall(mimes)    
+     
+
+Added: haypo/hachoir/plugins/mbr.py
+===================================================================
+--- haypo/hachoir/plugins/mbr.py	2005-12-13 17:20:58 UTC (rev 325)
++++ haypo/hachoir/plugins/mbr.py	2005-12-13 20:59:32 UTC (rev 326)
+@@ -0,0 +1,63 @@
++&quot;&quot;&quot;
++Master Boot Record.
++
++
++&quot;&quot;&quot;
++
++from filter import Filter
++from plugin import registerPlugin
++
++class PartitionEntry(Filter):
++    system_name = {
++        0x00: &quot;Unused&quot;,
++        0x05: &quot;Extended&quot;,
++        0x06: &quot;FAT16&quot;,
++        0x0E: &quot;FAT16&quot;,
++        0x0B: &quot;FAT32&quot;,
++        0x0C: &quot;FAT32&quot;,
++        0x82: &quot;Linux swap&quot;,
++        0x83: &quot;Linux&quot;
++    }
++    
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;default&quot;, &quot;Default filter&quot;, stream, parent)
++        bootable = self.read(&quot;bootable&quot;, &quot;B&quot;, &quot;Bootable flag (true if equals to 0x80)&quot;).value
++        assert bootable in (0x00, 0x80)
++        self.read(&quot;start_head&quot;, &quot;B&quot;, &quot;Starting head number of the partition&quot;)
++        self.read(&quot;start_sector&quot;, &quot;B&quot;, &quot;Starting sector number of the partition&quot;)
++        self.read(&quot;start_low_cylinder&quot;, &quot;B&quot;, &quot;Lower 8 bits of starting cylinder number of the partition&quot;)
++        self.read(&quot;system&quot;, &quot;B&quot;, &quot;System indicator&quot;, post=self.postSystem)
++        self.read(&quot;end_head&quot;, &quot;B&quot;, &quot;Ending head number of the partition&quot;)
++        self.read(&quot;end_sector&quot;, &quot;B&quot;, &quot;Ending sector number of the partition&quot;)
++        self.read(&quot;end_low_cylinder&quot;, &quot;B&quot;, &quot;Lower 8 bits of ending cylinder number of the partition&quot;)
++        self.read(&quot;sector_before&quot;, &quot;&lt;L&quot;, &quot;Number of sectors before this partition&quot;)
++        self.read(&quot;sector_after&quot;, &quot;&lt;L&quot;, &quot;Number of sectors in this partition&quot;)
++        assert self.getSize() == 16
++
++    def updateParent(self, parent):
++        desc = &quot;Partition entry (%s)&quot; % self.type
++        parent.description = desc
++        self.setDescription(desc)        
++
++    def postSystem(self, chunk):
++        type = chunk.value
++        self.type = PartitionEntry.system_name.get(type, &quot;Unknow (%02X)&quot; % type)
++        return self.type      
++
++class MasterBootRecordFilter(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;default&quot;, &quot;Default filter&quot;, stream, parent)
++        assert 512&lt;=stream.getSize()
++        jmp = self.read(&quot;jmp&quot;, &quot;!1B&quot;, &quot;Long jump (x86 assembler: EA)&quot;).value
++        assert jmp == 0xEB
++        self.read(&quot;to&quot;, &quot;&lt;H&quot;, &quot;(Jump to) address&quot;)
++        size = 446 - stream.tell()
++        self.read(&quot;data&quot;, &quot;%us&quot; % size, &quot;Raw data&quot;)
++        self.readChild(&quot;partition[]&quot;, PartitionEntry)
++        self.readChild(&quot;partition[]&quot;, PartitionEntry)
++        self.readChild(&quot;partition[]&quot;, PartitionEntry)
++        self.readChild(&quot;partition[]&quot;, PartitionEntry)
++        id = self.read(&quot;id&quot;, &quot;&lt;H&quot;, &quot;Identifier (0xAA55)&quot;).value
++        assert id == 0xAA55
++
++registerPlugin(MasterBootRecordFilter, &quot;hachoir/master-boot-record&quot;)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000231.html">[Happyboom-svn] r325 - haypo/hachoir/plugins
+</A></li>
+	<LI>Next message: <A HREF="000233.html">[Happyboom-svn] r327 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#232">[ date ]</a>
+              <a href="thread.html#232">[ thread ]</a>
+              <a href="subject.html#232">[ subject ]</a>
+              <a href="author.html#232">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

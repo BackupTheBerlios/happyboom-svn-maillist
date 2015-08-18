@@ -1,0 +1,133 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r175 - happyboom/trunk/common
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r175%20-%20happyboom/trunk/common&In-Reply-To=%3C200509152214.j8FMEGQE006150%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000081.html">
+   <LINK REL="Next"  HREF="000083.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r175 - happyboom/trunk/common</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r175%20-%20happyboom/trunk/common&In-Reply-To=%3C200509152214.j8FMEGQE006150%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r175 - happyboom/trunk/common">haypo at berlios.de
+       </A><BR>
+    <I>Fri Sep 16 00:14:16 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000081.html">[Happyboom-svn] r174 - in happyboom/trunk: common server
+</A></li>
+        <LI>Next message: <A HREF="000083.html">[Happyboom-svn] r176 - happyboom/trunk/server
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#82">[ date ]</a>
+              <a href="thread.html#82">[ thread ]</a>
+              <a href="subject.html#82">[ subject ]</a>
+              <a href="author.html#82">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-16 00:14:15 +0200 (Fri, 16 Sep 2005)
+New Revision: 175
+
+Modified:
+   happyboom/trunk/common/happyboom_protocol.py
+   happyboom/trunk/common/presentation.py
+Log:
+Nettoie presentation.
+
+
+Modified: happyboom/trunk/common/happyboom_protocol.py
+===================================================================
+--- happyboom/trunk/common/happyboom_protocol.py	2005-09-15 22:05:45 UTC (rev 174)
++++ happyboom/trunk/common/happyboom_protocol.py	2005-09-15 22:14:15 UTC (rev 175)
+@@ -49,3 +49,19 @@
+ 
+         self.gateway.recvNetMsg(feature, event, args)
+         return &quot;&quot;
++
++    def unpackConnection(self, ioclient, data):
++        version, data = unpackBin(data)
++        signature, data = unpackBin(data) 
++        
++        if self._on_connection != None:
++            self._on_connection(ioclient, version, signature)
++#        if version != self.protocol.version:
++#            # TODO: send presentation bye(&lt;why&gt;)
++#            raise PresentationException(&quot;Wrong protocol version.&quot;)
++#        else:
++#            if not self.is_server:
++#                self.launchEvent(&quot;signature&quot;, (signature,))
++#                packet = self.featuresPacket()
++#                ioclient.send(packet)
++        return data
+
+Modified: happyboom/trunk/common/presentation.py
+===================================================================
+--- happyboom/trunk/common/presentation.py	2005-09-15 22:05:45 UTC (rev 174)
++++ happyboom/trunk/common/presentation.py	2005-09-15 22:14:15 UTC (rev 175)
+@@ -2,6 +2,7 @@
+ from happyboom.common.log import log
+ from happyboom.net.io.packet import Packet
+ from happyboom.server.client import Client
++from happyboom.common.packer import packUtf8, packBin
+ import struct
+ 
+ class PresentationException(Exception):
+@@ -78,22 +79,6 @@
+         @type reason Unicode
+         &quot;&quot;&quot;
+         self.evt_happyboom_disconnection(ioclient, reason)
+-
+-    def unpackConnection(self, ioclient, data):
+-        version, data = unpackBin(data)
+-        signature, data = unpackBin(data) 
+-        
+-        if self._on_connection != None:
+-            self._on_connection(ioclient, version, signature)
+-#        if version != self.protocol.version:
+-#            # TODO: send presentation bye(&lt;why&gt;)
+-#            raise PresentationException(&quot;Wrong protocol version.&quot;)
+-#        else:
+-#            if not self.is_server:
+-#                self.launchEvent(&quot;signature&quot;, (signature,))
+-#                packet = self.featuresPacket()
+-#                ioclient.send(packet)
+-        return data
+             
+     def featuresPacket(self, features=&quot;TODO: Feed me!&quot;):
+         data = struct.pack(&quot;!B&quot;, self.FEATURES)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000081.html">[Happyboom-svn] r174 - in happyboom/trunk: common server
+</A></li>
+	<LI>Next message: <A HREF="000083.html">[Happyboom-svn] r176 - happyboom/trunk/server
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#82">[ date ]</a>
+              <a href="thread.html#82">[ thread ]</a>
+              <a href="subject.html#82">[ subject ]</a>
+              <a href="author.html#82">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

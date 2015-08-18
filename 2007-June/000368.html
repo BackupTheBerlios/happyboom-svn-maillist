@@ -1,0 +1,87 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r464 - haypo/lamer
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2007-June/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r464%20-%20haypo/lamer&In-Reply-To=%3C200706270101.l5R11jvk005095%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000367.html">
+   <LINK REL="Next"  HREF="000369.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r464 - haypo/lamer</H1>
+    <B>haypo at mail.berlios.de</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r464%20-%20haypo/lamer&In-Reply-To=%3C200706270101.l5R11jvk005095%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r464 - haypo/lamer">haypo at mail.berlios.de
+       </A><BR>
+    <I>Wed Jun 27 03:01:45 CEST 2007</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000367.html">[Happyboom-svn] r463 - in haypo/lamer: . tool
+</A></li>
+        <LI>Next message: <A HREF="000369.html">[Happyboom-svn] r465 - haypo/lamer
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#368">[ date ]</a>
+              <a href="thread.html#368">[ thread ]</a>
+              <a href="subject.html#368">[ subject ]</a>
+              <a href="author.html#368">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2007-06-27 03:01:44 +0200 (Wed, 27 Jun 2007)
+New Revision: 464
+
+Modified:
+   haypo/lamer/mod_gajim.py
+Log:
+gajim module use new write() method
+
+
+Modified: haypo/lamer/mod_gajim.py
+===================================================================
+--- haypo/lamer/mod_gajim.py	2007-06-27 00:59:47 UTC (rev 463)
++++ haypo/lamer/mod_gajim.py	2007-06-27 01:01:44 UTC (rev 464)
+@@ -22,8 +22,8 @@
+ 
+     def displayAccount(self, data):
+         try:
+-            print &quot;Jabber: login=%s@%s -- password=%s&quot; % (
+-                data[&quot;name&quot;], data[&quot;hostname&quot;], data[&quot;password&quot;])
++            self.write('Account &quot;%s@%s&quot; with password &quot;%s&quot;' % (
++                data[&quot;name&quot;], data[&quot;hostname&quot;], data[&quot;password&quot;]))
+         except LookupError:
+             pass
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000367.html">[Happyboom-svn] r463 - in haypo/lamer: . tool
+</A></li>
+	<LI>Next message: <A HREF="000369.html">[Happyboom-svn] r465 - haypo/lamer
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#368">[ date ]</a>
+              <a href="thread.html#368">[ thread ]</a>
+              <a href="subject.html#368">[ subject ]</a>
+              <a href="author.html#368">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

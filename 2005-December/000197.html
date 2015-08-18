@@ -1,0 +1,571 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r290 - in haypo/hachoir: . plugins stream ui
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r290%20-%20in%20haypo/hachoir%3A%20.%20plugins%20stream%20ui&In-Reply-To=%3C200512010254.jB12sCqT027309%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="000198.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r290 - in haypo/hachoir: . plugins stream ui</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r290%20-%20in%20haypo/hachoir%3A%20.%20plugins%20stream%20ui&In-Reply-To=%3C200512010254.jB12sCqT027309%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r290 - in haypo/hachoir: . plugins stream ui">haypo at berlios.de
+       </A><BR>
+    <I>Thu Dec  1 03:54:12 CET 2005</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="000198.html">[Happyboom-svn] r291 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#197">[ date ]</a>
+              <a href="thread.html#197">[ thread ]</a>
+              <a href="subject.html#197">[ subject ]</a>
+              <a href="author.html#197">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-01 03:53:31 +0100 (Thu, 01 Dec 2005)
+New Revision: 290
+
+Modified:
+   haypo/hachoir/config.py
+   haypo/hachoir/filter.py
+   haypo/hachoir/hachoir_class.py
+   haypo/hachoir/plugins/deb.py
+   haypo/hachoir/plugins/elf.py
+   haypo/hachoir/plugins/tar.py
+   haypo/hachoir/stream/file.py
+   haypo/hachoir/tools.py
+   haypo/hachoir/ui/hachoir.glade
+   haypo/hachoir/ui/ui_window.py
+Log:
+- UI: Add &quot;read ASCII&quot; tab in information notebook.
+- Fix DEB filter (supports space between lines)
+- FileStream use it's own seed instead calling always seek()/tell()
+
+
+Modified: haypo/hachoir/config.py
+===================================================================
+--- haypo/hachoir/config.py	2005-11-30 05:55:11 UTC (rev 289)
++++ haypo/hachoir/config.py	2005-12-01 02:53:31 UTC (rev 290)
+@@ -1,2 +1,3 @@
+ max_string_length = 30
+ max_hexa_length = 4096 
++max_ascii_length = 4096 
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-11-30 05:55:11 UTC (rev 289)
++++ haypo/hachoir/filter.py	2005-12-01 02:53:31 UTC (rev 290)
+@@ -77,7 +77,7 @@
+ 
+     def getUniqChunkId(self, id):
+         if id[-2:] == &quot;[]&quot;:
+-            return self._getUniqChunkId(&quot;%s[%u]&quot;, id[:-2], 1)
++            return self._getUniqChunkId(&quot;%s[%u]&quot;, id[:-2], 0)
+ 
+         if id in self._chunks_dict:
+             m = re.compile(&quot;^(.*?)([0-9]+)$&quot;).match(id)
+
+Modified: haypo/hachoir/hachoir_class.py
+===================================================================
+--- haypo/hachoir/hachoir_class.py	2005-11-30 05:55:11 UTC (rev 289)
++++ haypo/hachoir/hachoir_class.py	2005-12-01 02:53:31 UTC (rev 290)
+@@ -83,7 +83,7 @@
+     def _addPadding(self):
+         filter_size = self._filter.getSize()
+         stream_size = self._filter.getStream().getSize()
+-        diff_size = filter_size - stream_size
++        diff_size = filter_size - stream_size + 1
+         if diff_size &lt; 0:
+             chunks = self._filter.getChunks()
+             if len(chunks) != 0:
+
+Modified: haypo/hachoir/plugins/deb.py
+===================================================================
+--- haypo/hachoir/plugins/deb.py	2005-11-30 05:55:11 UTC (rev 289)
++++ haypo/hachoir/plugins/deb.py	2005-12-01 02:53:31 UTC (rev 290)
+@@ -9,15 +9,18 @@
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;file_entry&quot;, &quot;File entry&quot;, stream, parent)
+         self.readString(&quot;header&quot;, &quot;UnixLine&quot;, &quot;Header&quot;)
+-#        info = re.split(&quot; +&quot;, self.header)
+         info = self[&quot;header&quot;].split()
+-        filename = info[0]
+-        size = int(info[5])
+-        dataio = stream.createSub(stream.tell(), size)
+-        plugin = guessPlugin(dataio, filename)
+-#        self.readStreamChild(&quot;data&quot;, dataio, plugin)
+-#        self.read(&quot;data&quot;, &quot;%us&quot; % size, &quot;Data&quot;)
+-        self.readChild(&quot;data&quot;, DeflateFilter, dataio, size, plugin)
++        assert len(info) == 7
++        self.filename = info[0]
++        self.size = int(info[5])
++        dataio = stream.createSub(stream.tell(), self.size)
++        plugin = guessPlugin(dataio, self.filename)
++        self.readChild(&quot;data&quot;, DeflateFilter, dataio, self.size, plugin)
++
++    def updateParent(self, chunk):
++        desc = &quot;File entry (%s)&quot; % self.filename
++        chunk.description = desc
++        self.setDescription(desc)
+         
+ class DebianFile(Filter):
+     def __init__(self, stream, parent):
+@@ -25,10 +28,13 @@
+         self.readString(&quot;id&quot;, &quot;UnixLine&quot;, &quot;Debian archive identifier&quot;)
+         self.readString(&quot;header&quot;, &quot;UnixLine&quot;, &quot;Header&quot;)
+         self.readString(&quot;version&quot;, &quot;UnixLine&quot;, &quot;Version&quot;)
+-        self.readArray(&quot;file&quot;, DebianFileEntry, &quot;Files&quot;, self.checkEnd)
+-
+-    def checkEnd(self, stream, array, last):
+-#        if len(array)==1: return True
+-        return stream.eof()
++        while not stream.eof():
++            while True:
++                data = stream.read(1, False)
++                if data == &quot;\n&quot;:
++                    self.readString(&quot;empty_line[]&quot;, &quot;UnixLine&quot;, &quot;Empty line&quot;)
++                else:
++                    break
++            self.readChild(&quot;file[]&quot;, DebianFileEntry)
+         
+ registerPlugin(DebianFile, &quot;application/x-debian-package&quot;)
+
+Modified: haypo/hachoir/plugins/elf.py
+===================================================================
+--- haypo/hachoir/plugins/elf.py	2005-11-30 05:55:11 UTC (rev 289)
++++ haypo/hachoir/plugins/elf.py	2005-12-01 02:53:31 UTC (rev 290)
+@@ -152,28 +152,17 @@
+             section = self.readChild(&quot;prg_header[]&quot;, ProgramHeader32)
+             sections.append(section.getFilter())
+ 
+-        i = 1
+-        for section in sections:
+-            print &quot;Section %u: type %u, data in %u..%u &quot; % (i, section[&quot;type&quot;], section[&quot;offset&quot;], section[&quot;offset&quot;]+section[&quot;file_size&quot;])
+-            i = i + 1
++#        i = 1
++#        for section in sections:
++#            print &quot;Section %u: type %u, data in %u..%u &quot; % (i, section[&quot;type&quot;], section[&quot;offset&quot;], section[&quot;offset&quot;]+section[&quot;file_size&quot;])
++#            i = i + 1
+             
+-        if False:
+-            sections.sort( sortSection )
+-            for section in sections:
+-                if section[&quot;type&quot;] != 6 and section[&quot;offset&quot;] != 0:
+-                    print &quot;  DO Section: %u..%u&quot; % (section[&quot;offset&quot;], section[&quot;offset&quot;]+section[&quot;file_size&quot;])
+-                    seek(self, stream, section[&quot;offset&quot;])
+-                    print stream.tell(), section[&quot;offset&quot;]
+-#                    assert stream.tell() == section[&quot;offset&quot;]
+-                    self.read(&quot;section[]&quot;, &quot;%us&quot; % section[&quot;file_size&quot;], &quot;&quot;)
+-            seek(self, stream, elf[&quot;shoff&quot;])
+-            assert stream.tell() == elf[&quot;shoff&quot;]            
+-        else:
+-            size = elf[&quot;shoff&quot;] - stream.tell()
+-            newstream = stream.clone()
+-            chunk = self.readChild(&quot;data&quot;, DeflateFilter, newstream, size, Sections, sections) 
+-            chunk.description = &quot;Sections (use an evil hack to manage share same data on differents parts)&quot;
+-            assert stream.tell() == elf[&quot;shoff&quot;]
++        size = elf[&quot;shoff&quot;] - stream.tell()
++        newstream = stream.clone()
++        chunk = self.readChild(&quot;data&quot;, DeflateFilter, newstream, size, Sections, sections) 
++        chunk.description = &quot;Sections (use an evil hack to manage share same data on differents parts)&quot;
++        assert stream.tell() == elf[&quot;shoff&quot;]
++
+         for i in range(0, elf[&quot;shnum&quot;]):
+             chunk = self.readChild(&quot;section_header[]&quot;, SectionHeader32)
+             assert chunk.size == 40
+
+Modified: haypo/hachoir/plugins/tar.py
+===================================================================
+--- haypo/hachoir/plugins/tar.py	2005-11-30 05:55:11 UTC (rev 289)
++++ haypo/hachoir/plugins/tar.py	2005-12-01 02:53:31 UTC (rev 290)
+@@ -153,16 +153,12 @@
+ class TarFile(Filter):
+     def __init__(self, stream, parent=None):
+         Filter.__init__(self, &quot;tar_file&quot;, &quot;TAR archive file&quot;, stream, parent)
+-
+-        self.readArray(&quot;files&quot;, TarFileEntry, &quot;Tar Files&quot;, self.checkEndOfChunks)
++        while not stream.eof():
++            chunk = self.readChild(&quot;file[]&quot;, TarFileEntry)
++            if chunk.getFilter().isEmpty():
++                break
+         
+-#        padding = 4096 - stream.tell() % 4096
+-#        self.read(&quot;padding&quot;, &quot;!%ss&quot; % padding, &quot;Padding (4096 align)&quot;)
+-#        assert stream.eof()
+-
+-    def checkEndOfChunks(self, stream, array, file):
+-        if file != None:
+-            if file.isEmpty(): return True
+-        return stream.eof()
++        padding = stream.getSize() - stream.tell()
++        self.read(&quot;padding&quot;, &quot;!%ss&quot; % padding, &quot;Padding (4096 align)&quot;)
+         
+ registerPlugin(TarFile, [&quot;application/x-gtar&quot;, &quot;application/x-tar&quot;])
+
+Modified: haypo/hachoir/stream/file.py
+===================================================================
+--- haypo/hachoir/stream/file.py	2005-11-30 05:55:11 UTC (rev 289)
++++ haypo/hachoir/stream/file.py	2005-12-01 02:53:31 UTC (rev 290)
+@@ -3,53 +3,67 @@
+ import os
+ 
+ class FileStream(Stream):
+-    def __init__(self, file, filename=None):
++    def __init__(self, file, filename=None, copy=None):
+         &quot;&quot;&quot;
+         Endian: See setEndian function. 
+         &quot;&quot;&quot;
+ 
+         Stream.__init__(self, filename)
+-        self.__file = file 
+-        self.__file.seek(0,2) # Seek to end
+-        self.__size = self.__file.tell()
+-        self.__file.seek(0,0) # Seel to beginning
++        self._file = file 
++        if copy != None:
++            self._size = copy._size
++            self._seed = copy._seed
++        else:
++            self._file.seek(0,2) # Seek to end
++            self._size = self._file.tell()
++            self._file.seek(0,0) # Seel to beginning
++            self._seed = 0
+ 
+     def getType(self):
+         return &quot;%s (%s)&quot; % \
+             (self.__class__.__name__, self.filename)
+         
+     def read(self, size, seek=True):
+-        data = self.__file.read(size)
+-        if seek==False:
+-            self.seek(-len(data), 1)
++        self._file.seek(self._seed)
++        data = self._file.read(size)
++        if seek:
++            self._seed = self._seed + len(data)
++            assert self._seed == self._file.tell()
+         return data            
+ 
+     def clone(self):
+         #&#160;TODO: Don't copy low-level file IO,
+         # but only copy seed :-)
+         # =&gt; use internal&#160;seed + cache
+-        file_copy = open(self.filename)
+-        return FileStream(file_copy, self.filename)
++        return FileStream(self._file, self.filename, copy=self)
+ 
+     def seek(self, pos, where=0):
+         &quot;&quot;&quot; Read file seek document to understand where. &quot;&quot;&quot;
+-        self.__file.seek(pos, where)
+-        if self.__size &lt; self.tell():
++        #&#160;TODO: Don't really seek
++        if where==0:
++            self._seed = pos
++        elif where==1:
++            self._seed = self._seed + pos
++        else:
++            self._seed = self._size - pos
++        if self._size &lt; self._seed:
+             raise StreamError(&quot;Error when seek to (%s,%s) in a stream.&quot; % (pos, where))
+ 
+     def tell(self):
+-        return self.__file.tell()
++        return self._seed
+ 
+     def getN(self, size, seek=True):
+-        data = self.__file.read(size)
++        self._file.seek(self._seed)
++        data = self._file.read(size)
+         if len(data) != size:
+             raise StreamError(&quot;Can't read %u bytes in a stream (get %u bytes).&quot; % (size, len(data)))
+-        if not seek:
+-            self.__file.seek(-size, 1)
++        if seek:
++            self._seed = self._seed + size
++            assert self._seed == self._file.tell()
+         return data
+ 
+     def getSize(self):
+-        return self.__size
++        return self._size
+ 
+     def getLastPos(self):
+-        return self.__size-1
++        return self._size-1
+
+Modified: haypo/hachoir/tools.py
+===================================================================
+--- haypo/hachoir/tools.py	2005-11-30 05:55:11 UTC (rev 289)
++++ haypo/hachoir/tools.py	2005-12-01 02:53:31 UTC (rev 290)
+@@ -102,7 +102,7 @@
+         last_unit = unit
+     return &quot;%u %s&quot; % (size, unit)
+ 
+-def convertDataToPrintableString(data):
++def convertDataToPrintableString(data, keep_n=False):
+     if len(data) == 0:
+         return &quot;(empty)&quot;
+     display = &quot;&quot;
+@@ -114,7 +114,10 @@
+                 &quot;\t&quot;: &quot;\\t&quot;,
+                 &quot;\0&quot;: &quot;\\0&quot;}
+             if c in know:
+-                display = display + know[c]
++                if not keep_n or c != &quot;\n&quot;:
++                    display = display + know[c]
++                else:
++                    display = display + c
+             else:
+ #                display = display + &quot;\\x%02X&quot; % ord(c)
+                 display = display + &quot;.&quot;
+
+Modified: haypo/hachoir/ui/hachoir.glade
+===================================================================
+--- haypo/hachoir/ui/hachoir.glade	2005-11-30 05:55:11 UTC (rev 289)
++++ haypo/hachoir/ui/hachoir.glade	2005-12-01 02:53:31 UTC (rev 290)
+@@ -1060,6 +1060,151 @@
+ 	      &lt;property name=&quot;type&quot;&gt;tab&lt;/property&gt;
+ 	    &lt;/packing&gt;
+ 	  &lt;/child&gt;
++
++	  &lt;child&gt;
++	    &lt;widget class=&quot;GtkVBox&quot; id=&quot;vbox6&quot;&gt;
++	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;homogeneous&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;spacing&quot;&gt;0&lt;/property&gt;
++
++	      &lt;child&gt;
++		&lt;widget class=&quot;GtkHBox&quot; id=&quot;hbox3&quot;&gt;
++		  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++		  &lt;property name=&quot;homogeneous&quot;&gt;False&lt;/property&gt;
++		  &lt;property name=&quot;spacing&quot;&gt;0&lt;/property&gt;
++
++		  &lt;child&gt;
++		    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label44&quot;&gt;
++		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Path:&lt;/property&gt;
++		      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
++		      &lt;property name=&quot;wrap&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;selectable&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;xalign&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;yalign&quot;&gt;0.5&lt;/property&gt;
++		      &lt;property name=&quot;xpad&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;ypad&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;ellipsize&quot;&gt;PANGO_ELLIPSIZE_NONE&lt;/property&gt;
++		      &lt;property name=&quot;width_chars&quot;&gt;-1&lt;/property&gt;
++		      &lt;property name=&quot;single_line_mode&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
++		    &lt;/widget&gt;
++		    &lt;packing&gt;
++		      &lt;property name=&quot;padding&quot;&gt;6&lt;/property&gt;
++		      &lt;property name=&quot;expand&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;fill&quot;&gt;False&lt;/property&gt;
++		    &lt;/packing&gt;
++		  &lt;/child&gt;
++
++		  &lt;child&gt;
++		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;ascii_path&quot;&gt;
++		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;editable&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;visibility&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;max_length&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;text&quot; translatable=&quot;yes&quot;&gt;&lt;/property&gt;
++		      &lt;property name=&quot;has_frame&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;invisible_char&quot;&gt;*&lt;/property&gt;
++		      &lt;property name=&quot;activates_default&quot;&gt;False&lt;/property&gt;
++		    &lt;/widget&gt;
++		    &lt;packing&gt;
++		      &lt;property name=&quot;padding&quot;&gt;6&lt;/property&gt;
++		      &lt;property name=&quot;expand&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;fill&quot;&gt;True&lt;/property&gt;
++		    &lt;/packing&gt;
++		  &lt;/child&gt;
++		&lt;/widget&gt;
++		&lt;packing&gt;
++		  &lt;property name=&quot;padding&quot;&gt;0&lt;/property&gt;
++		  &lt;property name=&quot;expand&quot;&gt;False&lt;/property&gt;
++		  &lt;property name=&quot;fill&quot;&gt;False&lt;/property&gt;
++		&lt;/packing&gt;
++	      &lt;/child&gt;
++
++	      &lt;child&gt;
++		&lt;widget class=&quot;GtkScrolledWindow&quot; id=&quot;scrolledwindow3&quot;&gt;
++		  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++		  &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
++		  &lt;property name=&quot;hscrollbar_policy&quot;&gt;GTK_POLICY_AUTOMATIC&lt;/property&gt;
++		  &lt;property name=&quot;vscrollbar_policy&quot;&gt;GTK_POLICY_AUTOMATIC&lt;/property&gt;
++		  &lt;property name=&quot;shadow_type&quot;&gt;GTK_SHADOW_IN&lt;/property&gt;
++		  &lt;property name=&quot;window_placement&quot;&gt;GTK_CORNER_TOP_LEFT&lt;/property&gt;
++
++		  &lt;child&gt;
++		    &lt;widget class=&quot;GtkTextView&quot; id=&quot;ascii_content&quot;&gt;
++		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;editable&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;overwrite&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;accepts_tab&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;justification&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
++		      &lt;property name=&quot;wrap_mode&quot;&gt;GTK_WRAP_NONE&lt;/property&gt;
++		      &lt;property name=&quot;cursor_visible&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;pixels_above_lines&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;pixels_below_lines&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;pixels_inside_wrap&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;left_margin&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;right_margin&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;indent&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;text&quot; translatable=&quot;yes&quot;&gt;&lt;/property&gt;
++		    &lt;/widget&gt;
++		  &lt;/child&gt;
++		&lt;/widget&gt;
++		&lt;packing&gt;
++		  &lt;property name=&quot;padding&quot;&gt;12&lt;/property&gt;
++		  &lt;property name=&quot;expand&quot;&gt;True&lt;/property&gt;
++		  &lt;property name=&quot;fill&quot;&gt;True&lt;/property&gt;
++		&lt;/packing&gt;
++	      &lt;/child&gt;
++
++	      &lt;child&gt;
++		&lt;widget class=&quot;GtkButton&quot; id=&quot;button4&quot;&gt;
++		  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++		  &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
++		  &lt;property name=&quot;label&quot;&gt;gtk-refresh&lt;/property&gt;
++		  &lt;property name=&quot;use_stock&quot;&gt;True&lt;/property&gt;
++		  &lt;property name=&quot;relief&quot;&gt;GTK_RELIEF_NORMAL&lt;/property&gt;
++		  &lt;property name=&quot;focus_on_click&quot;&gt;True&lt;/property&gt;
++		  &lt;signal name=&quot;clicked&quot; handler=&quot;on_ascii_clicked&quot; last_modification_time=&quot;Thu, 01 Dec 2005 02:02:30 GMT&quot;/&gt;
++		&lt;/widget&gt;
++		&lt;packing&gt;
++		  &lt;property name=&quot;padding&quot;&gt;0&lt;/property&gt;
++		  &lt;property name=&quot;expand&quot;&gt;False&lt;/property&gt;
++		  &lt;property name=&quot;fill&quot;&gt;False&lt;/property&gt;
++		&lt;/packing&gt;
++	      &lt;/child&gt;
++	    &lt;/widget&gt;
++	    &lt;packing&gt;
++	      &lt;property name=&quot;tab_expand&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;tab_fill&quot;&gt;True&lt;/property&gt;
++	    &lt;/packing&gt;
++	  &lt;/child&gt;
++
++	  &lt;child&gt;
++	    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label43&quot;&gt;
++	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;ASCII&lt;/property&gt;
++	      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
++	      &lt;property name=&quot;wrap&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;selectable&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;xalign&quot;&gt;0.5&lt;/property&gt;
++	      &lt;property name=&quot;yalign&quot;&gt;0.5&lt;/property&gt;
++	      &lt;property name=&quot;xpad&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;ypad&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;ellipsize&quot;&gt;PANGO_ELLIPSIZE_NONE&lt;/property&gt;
++	      &lt;property name=&quot;width_chars&quot;&gt;-1&lt;/property&gt;
++	      &lt;property name=&quot;single_line_mode&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
++	    &lt;/widget&gt;
++	    &lt;packing&gt;
++	      &lt;property name=&quot;type&quot;&gt;tab&lt;/property&gt;
++	    &lt;/packing&gt;
++	  &lt;/child&gt;
+ 	&lt;/widget&gt;
+ 	&lt;packing&gt;
+ 	  &lt;property name=&quot;padding&quot;&gt;0&lt;/property&gt;
+
+Modified: haypo/hachoir/ui/ui_window.py
+===================================================================
+--- haypo/hachoir/ui/ui_window.py	2005-11-30 05:55:11 UTC (rev 289)
++++ haypo/hachoir/ui/ui_window.py	2005-12-01 02:53:31 UTC (rev 290)
+@@ -3,6 +3,7 @@
+ import gtk
+ import gtk.glade
+ import config
++from tools import convertDataToPrintableString
+ 
+ class InfoNotebook:
+     def __init__(self, xml):
+@@ -50,6 +51,8 @@
+         self.toolbutton_property = xml.get_widget('toolbutton_property')
+         self.toolbutton_close = xml.get_widget('toolbutton_close')
+         self.toolbutton_export = xml.get_widget('toolbutton_export')
++        self.ascii_path = xml.get_widget('ascii_path')
++        self.ascii_content = xml.get_widget('ascii_content')
+         self.hexa_path = xml.get_widget('hexa_path')
+         self.hexa_content = xml.get_widget('hexa_content')
+         self.menu_close = xml.get_widget('menu_close')
+@@ -212,6 +215,34 @@
+             self.ui.hachoir.saveUser(filename)
+         chooser.destroy()
+ 
++    def on_ascii_clicked(self, widget):
++        chunk = self.getActiveChunk()
++        if chunk == None:
++            return
++        path = chunk.getParent().getPath()+&quot;/&quot;+chunk.id
++        self.ascii_path.set_text(path)
++        raw = chunk.getRaw(config.max_ascii_length)
++        # TODO: Remove old code
++        if False:
++            # TODO: Use better str=&gt;ascii code ...
++            content = &quot;&quot;
++            wrap = 16
++            while len(raw) != 0:
++                if len(content) != 0:
++                    content = content + &quot;\n&quot;
++                content = content + convertDataToPrintableString(raw[:wrap])
++                raw = raw[wrap:]
++        else:
++            content = convertDataToPrintableString(raw, True)
++        if config.max_hexa_length &lt; chunk.size:
++            if len(content) != 0:
++                content = content + &quot;\n&quot;
++            content = content + &quot; (...)&quot;
++        # TODO: Write new TextBuffer!?
++        buffer = gtk.TextBuffer()
++        buffer.set_text(content)
++        self.ascii_content.set_buffer(buffer)
++
+     def on_hexadecimal_clicked(self, widget):
+         chunk = self.getActiveChunk()
+         if chunk == None:
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="000198.html">[Happyboom-svn] r291 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#197">[ date ]</a>
+              <a href="thread.html#197">[ thread ]</a>
+              <a href="subject.html#197">[ subject ]</a>
+              <a href="author.html#197">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

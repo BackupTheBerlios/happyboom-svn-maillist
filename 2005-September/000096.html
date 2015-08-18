@@ -1,0 +1,729 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r189 - boomboom/client
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r189%20-%20boomboom/client&In-Reply-To=%3C200509180548.j8I5muBV022297%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000095.html">
+   <LINK REL="Next"  HREF="000097.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r189 - boomboom/client</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r189%20-%20boomboom/client&In-Reply-To=%3C200509180548.j8I5muBV022297%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r189 - boomboom/client">dboucard at berlios.de
+       </A><BR>
+    <I>Sun Sep 18 07:48:56 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000095.html">[Happyboom-svn] r188 - in boomboom/client: . items
+</A></li>
+        <LI>Next message: <A HREF="000097.html">[Happyboom-svn] r190 - boomboom
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#96">[ date ]</a>
+              <a href="thread.html#96">[ thread ]</a>
+              <a href="subject.html#96">[ subject ]</a>
+              <a href="author.html#96">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-18 07:48:54 +0200 (Sun, 18 Sep 2005)
+New Revision: 189
+
+Added:
+   boomboom/client/display.py
+   boomboom/client/generic_input.py
+   boomboom/client/input.py
+   boomboom/client/item.py
+Removed:
+   boomboom/client/bb_constructor.py
+   boomboom/client/bb_display.py
+   boomboom/client/bb_drawer.py
+   boomboom/client/bb_events.py
+   boomboom/client/bb_input.py
+   boomboom/client/bb_input_pygame.py
+   boomboom/client/bb_item.py
+Log:
+renaming file names
+
+
+Deleted: boomboom/client/bb_constructor.py
+===================================================================
+--- boomboom/client/bb_constructor.py	2005-09-18 05:37:58 UTC (rev 188)
++++ boomboom/client/bb_constructor.py	2005-09-18 05:48:54 UTC (rev 189)
+@@ -1,71 +0,0 @@
+-&quot;&quot;&quot;
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at author</A>: Victor Stinner and Damien Boucard
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at license</A>: Gnu/GPL v2 or later, see LICENSE file.
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at contact</A>: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at version</A>: 0.2
+-&quot;&quot;&quot;
+-from happyboom.common.event import EventListener
+-from happyboom.common.log import log
+-import bb_events
+-
+-class BoomBoomConstructor(EventListener):
+-    &quot;&quot;&quot; Constructs visual items when server requires creation. &quot;&quot;&quot;
+-    def __init__(self, arg):
+-        &quot;&quot;&quot; BoomBoomConstructor constructor. &quot;&quot;&quot;
+-        EventListener.__init__(self, prefix=&quot;evt_&quot;)
+-        self.verbose = arg.get(&quot;verbose&quot;, False)
+-        self.registerEvent(&quot;happyboom&quot;)
+-        self.registerEvent(&quot;game&quot;)
+-        self.textmode = arg[&quot;textmode&quot;]
+-        self.args = arg
+-        
+-    def evt_happyboom_doCreateItem(self, type, id):
+-        &quot;&quot;&quot; Create event handler.
+-        @param event: Event with &quot;agent_manager_Create&quot; type.
+-        @type event: C{L{common.event.Event}}
+-        &quot;&quot;&quot;
+-        if self.verbose:
+-            log.info(&quot;Try to create object %s ...&quot; % type)
+-        if type==&quot;projectile&quot;:
+-            if self.textmode:
+-                from items.projectile_curses import Projectile
+-            else:
+-                from items.projectile import Projectile
+-            Projectile(self.args)
+-        if type==&quot;weapon&quot;:
+-            if self.textmode:
+-                from items.weapon_curses import Weapon 
+-            else:
+-                from items.weapon import Weapon
+-            Weapon(self.args)
+-        if type==&quot;log&quot;:
+-            from items import LogItem
+-            LogItem()
+-        if type==&quot;world&quot;:
+-            if self.textmode:
+-                from items.world_curses import World
+-            else:
+-                from items.world import World
+-            World(self.args)
+-        if type==&quot;character&quot;:
+-            if self.textmode:
+-                from items.character_curses import Character
+-            else:
+-                from items.character import Character
+-            Character(id, &quot;foo&quot;, self.args)
+-        
+-    def evt_game_start(self):
+-        &quot;&quot;&quot; Start event handler.
+-        @param event: Event with &quot;game_Start&quot; type.
+-        @type event: C{L{common.event.Event}}
+-        &quot;&quot;&quot;
+-        if not self.textmode:
+-            from items import Sun
+-            Sun()
+-        
+-    def evt_agent_manager_Text(self, event):
+-        &quot;&quot;&quot; Text event handler.
+-        @param event: Event with &quot;agent_manager_Text&quot; type.
+-        @type event: C{L{common.event.Event}}
+-        &quot;&quot;&quot;
+-        print &quot;[CLIENT] Server message: %s&quot; %(event.content)
+
+Deleted: boomboom/client/bb_display.py
+===================================================================
+--- boomboom/client/bb_display.py	2005-09-18 05:37:58 UTC (rev 188)
++++ boomboom/client/bb_display.py	2005-09-18 05:48:54 UTC (rev 189)
+@@ -1,137 +0,0 @@
+-&quot;&quot;&quot;
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at author</A>: Victor Stinner and Damien Boucard
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at license</A>: Gnu/GPL v2 or later, see LICENSE file.
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at contact</A>: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at version</A>: 0.2
+-&quot;&quot;&quot;
+-from happyboom.common.happyboom_protocol import HappyboomProtocol as Presentation
+-from happyboom.common.log import log
+-from happyboom.common.event import EventListener
+-import thread, pygame, time
+-
+-class Display(EventListener):
+-    &quot;&quot;&quot; Class which manages &quot;display&quot; part of the network connections.
+-    Also creates a drawer and a constuctor for &quot;display&quot; management.
+-    @ivar drawer: instance which draws screen game.
+-    @type drawer: C{L{BoomBoomDrawer}}
+-    @ivar host: Server hostname.
+-    @type host: C{str}
+-    @ivar port: Server port for &quot;display&quot;/&quot;view&quot; connection.
+-    @type port: C{int}
+-    @ivar name: Name of the client (as known by the server).
+-    @type name: C{str}
+-    &quot;&quot;&quot;
+-    
+-    def __init__(self, args):
+-        &quot;&quot;&quot; BoomBoomDisplay constructor.
+-        @param host: Server hostname.
+-        @type host: C{str}
+-        @param port: Server port for &quot;display&quot;/&quot;view&quot; connection.
+-        @type port: C{int}
+-        @param name: Name of the client (as known by the server).
+-        @type name: C{string}
+-        @param verbose: Verbose mode flag.
+-        @type verbose: C{bool}
+-        @param debug: Debug mode flag.
+-        @type debug: C{bool}
+-        @param max_fps: Maximal number of frames per second, for optimization.
+-        @type max_fps: C{int}
+-        &quot;&quot;&quot;
+-
+-        EventListener.__init__(self)
+-        self.registerEvent(&quot;graphical&quot;)
+-        # Current offscreen
+-        self._screen = None
+-        max_fps = args.get(&quot;max_fps&quot;, 25)
+-        self._frameTime = 1.0 / max_fps
+-        self._items = []
+-        self.__stopped = False
+-        self.__stoplock = thread.allocate_lock()
+-
+-    def start(self):
+-        &quot;&quot;&quot; Creates game window and starts display loop. &quot;&quot;&quot;
+-        self._screen = Window(640, 350)
+-        self._screen.background_color = (0, 0, 168)
+-        self.mainLoop()
+-        
+-    def stop(self):
+-        &quot;&quot;&quot; Stops the display loop. &quot;&quot;&quot;
+-        # Does not stop several times
+-        self.__stoplock.acquire()
+-        if self.__stopped:
+-            self.__stoplock.release()
+-            return False
+-        self.__stopped = True
+-        self.__stoplock.release()
+-        
+-    def mainLoop(self):
+-        &quot;&quot;&quot; Display loop. &quot;&quot;&quot;
+-        while not self.stopped:
+-            live_begin = time.time()
+-            
+-            # Clearing screen
+-            self._screen.surface.fill(self._screen.background_color)
+-            # Drawing each items
+-            if len(self._items) == 0:
+-                fontname = pygame.font.get_default_font()
+-                font = pygame.font.SysFont(fontname, 64)
+-                font_color = (255,255,0,255)
+-                #font_background = (0,0,0,0)
+-                surface = font.render(&quot; Not connected to server...&quot;, True, font_color)
+-                self._screen.blit(surface, (0,0))
+-            for item in self._items:
+-                item.draw(self._screen)
+-            # Displaying offscreen
+-            pygame.display.flip()
+-            
+-            delay = time.time() - live_begin
+-            if delay &lt; self._frameTime:
+-                delay = self._frameTime - delay
+-                time.sleep(delay)
+-        
+-    def evt_graphical_item(self, item):
+-        &quot;&quot;&quot; active item event handler.
+-        @param event: Event with &quot;graphical_item&quot; type.
+-        @type event: C{L{common.simple_event.Event}}
+-        &quot;&quot;&quot;
+-        if item not in self._items:
+-            self._items.append(item)
+-    
+-    def __isStopped(self):
+-        self.__stoplock.acquire()
+-        stop = self.__stopped
+-        self.__stoplock.release()
+-        return stop
+-    stopped = property(__isStopped)
+-        
+-class Window:
+-    &quot;&quot;&quot; Represents a GUI window or surface using pygame.
+-    @ivar type: Type of pygame surface : &quot;window&quot; or &quot;surface&quot; (panel into another window).
+-    @type type: C{str}
+-    @ivar surface: pygame surface object.
+-    @type surface: C{pygame.Surface}
+-    &quot;&quot;&quot;
+-    def __init__(self, width, height, type=&quot;window&quot;):
+-        &quot;&quot;&quot; Window constructor.
+-        @param width: Width of the window.
+-        @type width: C{int}
+-        @param height: Height of the window.
+-        @type height: C{int}
+-        @param type: Type of pygame surface : &quot;window&quot; (by default) or &quot;surface&quot;.
+-        @type type: C{str}
+-        &quot;&quot;&quot;
+-        if type==&quot;surface&quot;:
+-            self.type = &quot;surface&quot; 
+-            self.surface = pygame.Surface((width,height))
+-        else:
+-            self.type = &quot;window&quot;
+-            self.surface = pygame.display.set_mode((width,height), pygame.HWSURFACE | pygame.DOUBLEBUF)
+-        self.pos = (0,0)
+-        self.view_pos = (0,0)
+-        self.scale = 1
+-        self.border_color = (255, 255, 255)
+-        self.background_color = (0, 0, 0)
+-
+-    def blit(self, surface, pos):
+-        new_pos = (pos[0] - self.view_pos[0], pos[1] - self.view_pos[1],)
+-        self.surface.blit(surface, new_pos)
+\ No newline at end of file
+
+Deleted: boomboom/client/bb_drawer.py
+===================================================================
+--- boomboom/client/bb_drawer.py	2005-09-18 05:37:58 UTC (rev 188)
++++ boomboom/client/bb_drawer.py	2005-09-18 05:48:54 UTC (rev 189)
+@@ -1,96 +0,0 @@
+-&quot;&quot;&quot;
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at author</A>: Victor Stinner and Damien Boucard
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at license</A>: Gnu/GPL v2 or later, see LICENSE file.
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at contact</A>: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at version</A>: 0.2
+-&quot;&quot;&quot;
+-from happyboom.common.event import EventListener
+-import bb_events
+-import pygame, time
+-
+-class BoomBoomDrawer(EventListener):
+-    &quot;&quot;&quot; Manages the drawing of the screen game (double buffered) in a display loop.
+-    @ivar __screen: Current drawed offscreen.
+-    @type __screen: C{{Window}}
+-    @ivar __frameTime: Minimum time to draw a frame.
+-    @type __frameTime: C{float}
+-    @ivar __items: Objects which have graphical content to draw (visual items) genered by visible item events.
+-    @type __items: C{list&lt;L{BoomBoomItem}&gt;}
+-    &quot;&quot;&quot;
+-    
+-    def __init__(self, args):
+-        &quot;&quot;&quot; BoomBoomDrawer constructor.
+-        @param max_fps: Maximal number of frames per second, for optimization.
+-        @type max_fps: C{int}
+-        &quot;&quot;&quot;
+-        EventListener.__init__(self, prefix=&quot;evt_&quot;)
+-        # Current offscreen
+-        self.__screen = None
+-        max_fps = args.get(&quot;max_fps&quot;, 25)
+-        self.__frameTime = 1.0 / max_fps
+-        self.__items = []
+-        self.registerEvent(&quot;graphical&quot;)
+-    
+-    def start(self):
+-        &quot;&quot;&quot; Creates game window and starts display loop. &quot;&quot;&quot;
+-        self.__screen = Window(640, 350)
+-        self.__screen.background_color = (0, 0, 168)
+-        
+-    def mainLoop(self):
+-        &quot;&quot;&quot; Display loop. &quot;&quot;&quot;
+-        while True:
+-            live_begin = time.time()
+-            
+-            # Clearing screen
+-            self.__screen.surface.fill(self.__screen.background_color)
+-            # Drawing each items
+-            for item in self.__items:
+-                item.draw(self.__screen)
+-            # Displaying offscreen 
+-            pygame.display.flip()
+-            
+-            delay = time.time() - live_begin
+-            if delay &lt; self.__frameTime:
+-                delay = self.__frameTime - delay
+-                time.sleep(delay)
+-        
+-    def evt_graphical_item(self, item):
+-        &quot;&quot;&quot; active item event handler.
+-        @param event: Event with &quot;graphical_item&quot; type.
+-        @type event: C{L{common.simple_event.Event}}
+-        &quot;&quot;&quot;
+-        if item not in self.__items:
+-            self.__items.append(item)
+-        
+-        
+-class Window:
+-    &quot;&quot;&quot; Represents a GUI window or surface using pygame.
+-    @ivar type: Type of pygame surface : &quot;window&quot; or &quot;surface&quot; (panel into another window).
+-    @type type: C{str}
+-    @ivar surface: pygame surface object.
+-    @type surface: C{pygame.Surface}
+-    &quot;&quot;&quot;
+-    def __init__(self, width, height, type=&quot;window&quot;):
+-        &quot;&quot;&quot; Window constructor.
+-        @param width: Width of the window.
+-        @type width: C{int}
+-        @param height: Height of the window.
+-        @type height: C{int}
+-        @param type: Type of pygame surface : &quot;window&quot; (by default) or &quot;surface&quot;.
+-        @type type: C{str}
+-        &quot;&quot;&quot;
+-        if type==&quot;surface&quot;:
+-            self.type = &quot;surface&quot; 
+-            self.surface = pygame.Surface((width,height))
+-        else:
+-            self.type = &quot;window&quot;
+-            self.surface = pygame.display.set_mode((width,height), pygame.HWSURFACE | pygame.DOUBLEBUF)
+-        self.pos = (0,0)
+-        self.view_pos = (0,0)
+-        self.scale = 1
+-        self.border_color = (255, 255, 255)
+-        self.background_color = (0, 0, 0)
+-
+-    def blit(self, surface, pos):
+-        new_pos = (pos[0] - self.view_pos[0], pos[1] - self.view_pos[1],)
+-        self.surface.blit(surface, new_pos)
+
+Deleted: boomboom/client/bb_events.py
+===================================================================
+--- boomboom/client/bb_events.py	2005-09-18 05:37:58 UTC (rev 188)
++++ boomboom/client/bb_events.py	2005-09-18 05:48:54 UTC (rev 189)
+@@ -1,20 +0,0 @@
+-nextTurn = &quot;game_next_turn&quot;
+-activeCharacter = &quot;game_active_character&quot;
+-
+-create = &quot;agent_manager_Create&quot;
+-text = &quot;agent_manager_Text&quot;
+-askVersion = &quot;agent_manager_AskVersion&quot;
+-askName = &quot;agent_manager_AskName&quot;
+-
+-projectileMove = &quot;projectile_move&quot;
+-projectileHitGround = &quot;projectile_hit_ground&quot;
+-projectileActivate = &quot;projectile_activate&quot;
+-
+-weaponStrength = &quot;weapon_force&quot;
+-weaponAngle = &quot;weapon_angle&quot;
+-
+-worldCreate = &quot;world_create&quot;
+-
+-characterMove = &quot;character_move&quot;
+-
+-activeCharAbs = &quot;active_character_abscisse&quot;
+
+Deleted: boomboom/client/bb_input.py
+===================================================================
+--- boomboom/client/bb_input.py	2005-09-18 05:37:58 UTC (rev 188)
++++ boomboom/client/bb_input.py	2005-09-18 05:48:54 UTC (rev 189)
+@@ -1,69 +0,0 @@
+-&quot;&quot;&quot;
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at author</A>: Victor Stinner and Damien Boucard
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at license</A>: Gnu/GPL v2 or later, see LICENSE file.
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at contact</A>: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at version</A>: 0.2
+-&quot;&quot;&quot;
+-from happyboom.common.event import EventLauncher, EventListener
+-import thread, time
+-
+-class Input(EventLauncher, EventListener):
+-    &quot;&quot;&quot; Class which manages &quot;input&quot; part of the network connections.
+-    @ivar host: Server hostname.
+-    @type host: C{str}
+-    @ivar port: Server port for &quot;input&quot; connection.
+-    @type port: C{int}
+-    @ivar name: Name of the client (as known by the server).
+-    @type name: C{str}
+-    @ivar __protocol_version: Current version of the protocol used by the client.
+-    @type __protocol_version: C{str}
+-    @ivar __io: Network input/output object using UDP protocole.
+-    @type __io: C{net.io_udp.IO_UDP}
+-    @ivar __recv_buffer: Network data reception buffer.
+-    @type __recv_buffer: C{net.net_buffer.NetBuffer}
+-    @ivar __verbose: Verbose mode flag.
+-    @type __verbose: C{bool}
+-    @ivar __debug: Debug mode flag.
+-    @type __debug: C{bool}
+-    @ivar __stopped: Stopped input client flag.
+-    @type __stopped: C{bool}
+-    @ivar __stoplock: Mutex for synchronizing __stopped.
+-    @type __stoplock: C{thread.lock}
+-    &quot;&quot;&quot;
+-    
+-    def __init__(self, arg):
+-        &quot;&quot;&quot; BoomBoomInput constructor.
+-        @param host: Server hostname.
+-        @type host: C{str}
+-        @param port: Server port for &quot;input&quot; connection.
+-        @type port: C{int}
+-        @param name: Name of the client (as known by the server).
+-        @type name: C{string}
+-        @param verbose: Verbose mode flag.
+-        @type verbose: C{bool}
+-        @param debug: Debug mode flag.
+-        @type debug: C{bool}
+-        &quot;&quot;&quot;
+-
+-        EventLauncher.__init__(self)
+-        EventListener.__init__(self)
+-        self.weapon_angle = None
+-        self.weapon_strength = None
+-        self.registerEvent(&quot;weapon&quot;)
+-
+-    def evt_weapon_setStrength(self, strength):
+-        self.weapon_strength = strength
+-        
+-    def evt_weapon_setAngle(self, angle):
+-        self.weapon_angle = angle
+-
+-    def weapon_setStrengthDelta(self, delta):
+-        self.launchEvent(&quot;happyboom&quot;, &quot;network&quot;, \
+-            &quot;weapon&quot;, &quot;askSetStrength&quot;, self.weapon_strength + delta)
+-
+-    def weapon_setAngleDelta(self, delta):
+-        self.launchEvent(&quot;happyboom&quot;, &quot;network&quot;, \
+-            &quot;weapon&quot;, &quot;askSetAngle&quot;, self.weapon_angle + delta)
+-
+-    def process(self):
+-        pass
+
+Deleted: boomboom/client/bb_input_pygame.py
+===================================================================
+--- boomboom/client/bb_input_pygame.py	2005-09-18 05:37:58 UTC (rev 188)
++++ boomboom/client/bb_input_pygame.py	2005-09-18 05:48:54 UTC (rev 189)
+@@ -1,47 +0,0 @@
+-from generic_input import Input as BaseInput
+-import pygame                
+-
+-class Input(BaseInput):
+-    def __init__(self, arg):
+-        BaseInput.__init__(self, arg)
+-#        import pygame
+-
+-    def process(self):
+-        for input_event in pygame.event.get():
+-            self.process_event(input_event)
+-           
+-    def process_event(self, event):
+-        &quot;&quot;&quot; Manages when a pygame event is caught.
+-        @param event: Pygame event.
+-        @type event: C{pygame.Event}
+-        &quot;&quot;&quot;
+-        if event.type == pygame.KEYDOWN: 
+-            # q, Q or escape: quit
+-            if event.unicode in (u'q', u'Q') or event.key == 27:
+-                self.launchEvent(&quot;happyboom&quot;, &quot;stop&quot;)
+-        # Quit event: quit
+-        elif event.type in (pygame.QUIT, ):
+-            self.launchEvent(&quot;happyboom&quot;, &quot;stop&quot;)
+-    
+-        #character = self.client.view.getActiveCharacter()
+-        #if character != None: self.process_event_active(character, event)
+-        self.process_event_active(event)
+-
+-    def process_event_active(self, event):
+-        &quot;&quot;&quot; Manages when a pygame event is caught and interact with the server.
+-        @param event: Pygame event.
+-        @type event: C{pygame.Event}
+-        &quot;&quot;&quot;
+-        #delta_angle = -30
+-        if event.type == pygame.KEYDOWN: 
+-            # arrow keys: move character
+-            if event.key == 32:
+-                self.launchEvent(&quot;happyboom&quot;, &quot;network&quot;, &quot;weapon&quot;, &quot;shoot&quot;)
+-            elif event.key == 275:
+-                self.weapon_setStrengthDelta(10) # RIGHT 
+-            elif event.key == 273:
+-                self.weapon_setAngleDelta(10) # UP
+-            elif event.key == 274:
+-                self.weapon_setAngleDelta(-10) # DOWN
+-            elif event.key == 276:
+-                self.weapon_setStrengthDelta(-10) # LEFT
+
+Deleted: boomboom/client/bb_item.py
+===================================================================
+--- boomboom/client/bb_item.py	2005-09-18 05:37:58 UTC (rev 188)
++++ boomboom/client/bb_item.py	2005-09-18 05:48:54 UTC (rev 189)
+@@ -1,156 +0,0 @@
+-&quot;&quot;&quot;
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at author</A>: Victor Stinner and Damien Boucard
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at license</A>: Gnu/GPL v2 or later, see LICENSE file.
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at contact</A>: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at version</A>: 0.2
+-&quot;&quot;&quot;
+-from happyboom.common.event import EventListener, EventLauncher
+-import pygame
+-
+-class Item(EventListener, EventLauncher):
+-    &quot;&quot;&quot; Generic class for representing graphical items.
+-    @ivar visual: Graphical object containing data and transformations
+-    @type visual: C{L{VisualObject}}
+-    &quot;&quot;&quot;
+-    
+-    feature = None
+-    
+-    def __init__(self, id=None):
+-        &quot;&quot;&quot; BoomBoomItem constructor. &quot;&quot;&quot;
+-        EventListener.__init__(self, &quot;evt_&quot;)
+-        EventLauncher.__init__(self)
+-        self.visual = None
+-        self.launchEvent(&quot;graphical&quot;, &quot;item&quot;, self)
+-        self.id = id
+-        
+-    def draw(self, screen):
+-        &quot;&quot;&quot; Drawing method called by C{BoomBoomDrawer}
+-        @param screen: Offscreen to draw in.
+-        @type screen: C{L{Window&lt;bb_drawer.Window&gt;}}
+-        &quot;&quot;&quot;
+-        if self.visual == None: return
+-        self.visual.draw(screen)
+-    
+-    def sendNetMsg(self, feature, event, *args):
+-        print &quot;SEND NET %s&quot; % (feature)
+-        self.launchEvent(&quot;happyboom&quot;, &quot;network&quot;, \
+-            feature, event, *args)
+-
+-class VisualObject(object):
+-    &quot;&quot;&quot; Manage representation and transformation of an external image to be drawn into game screen.
+-    @ivar visible: Visibility item flag (Default: C{True}).
+-    @type visible: C{bool}
+-    @ivar surface: Pygame item surface object.
+-    @type surface: C{pygame.Surface}
+-    @type rect: C{pygame.Rect}
+-    @type x: C{int}
+-    @type y: C{int}
+-    @type width: C{int}
+-    @type height: C{int}
+-    @ivar __x: Item top-left abcsisse.
+-    @type __x: C{int}
+-    @ivar __y: Item top-left ordonnee.
+-    @type __y: C{int}
+-    @ivar __width: Item width.
+-    @type __width: C{int}
+-    @ivar __height: Item height.
+-    @type __height. C{int}
+-    @ivar __rect: Including box of the item for collide detection.
+-    @type __rect: C{pygame.Rect}
+-    &quot;&quot;&quot;
+-    def __init__(self, file):
+-        &quot;&quot;&quot; VisualObject constructor.
+-        @param file: Path of the external image.
+-        @type file: C{str}
+-        &quot;&quot;&quot;
+-        self.__x, self.__y = (0,0)
+-        self.loadImage(file)
+-        self.visible = True
+-
+-    def loadImage(self, file):
+-        &quot;&quot;&quot; Loads external image with pygame.
+-        @param file: Path of the external image.
+-        @type file: C{str}
+-        &quot;&quot;&quot;
+-        self.surface = pygame.image.load(file).convert_alpha()
+-        self.__width = self.surface.get_width()
+-        self.__height = self.surface.get_height()
+-        self.__rect = pygame.Rect( [self.__x, self.__y, self.__width, self.__height] )
+-
+-    def move(self, x, y):
+-        &quot;&quot;&quot; Moves the items in absolute coordinates.
+-        @param x: New abcsisse.
+-        @type x: C{int}
+-        @param y: New ordonnee.
+-        @type y: C{int}
+-        &quot;&quot;&quot;
+-        self.__x = x
+-        self.__y = y
+-        self.__rect = pygame.Rect( [self.__x, self.__y, self.__width, self.__height] )
+-
+-    def __getRect(self):
+-        &quot;&quot;&quot; C{L{rect}} property getter.
+-        @return: The including box of the item.
+-        @rtype: C{pygame.Rect}
+-        &quot;&quot;&quot;
+-        return self.__rect
+-    rect = property(__getRect, doc=&quot;Including box of the item for collide detection (read only).&quot;)
+-    
+-    def __getHeight(self):
+-        &quot;&quot;&quot; C{L{height}} property getter.
+-        @return: The height of the item.
+-        @rtype: C{int}
+-        &quot;&quot;&quot;
+-        return self.__height
+-    height = property(__getHeight, doc=&quot;Item height (read only).&quot;)
+-    
+-    def __getWidth(self):
+-        &quot;&quot;&quot; C{L{width}} property getter.
+-        @return: The width of the item.
+-        @rtype: C{int}
+-        &quot;&quot;&quot;
+-        return self.__width
+-    width = property(__getWidth, doc=&quot;Item width (read only).&quot;)
+-    
+-    def __getX(self):
+-        &quot;&quot;&quot; C{L{x}} property getter.
+-        @return: The left abcsisse ot the item.
+-        @rtype: C{int}
+-        &quot;&quot;&quot;
+-        return self.__x
+-    def __setX(self, x):
+-        &quot;&quot;&quot; C{L{x}} property setter.
+-        @param x: New item abcsisse.
+-        @type x: C{int}
+-        &quot;&quot;&quot;
+-        self.move(x, self.__y)
+-    x = property(__getX, __setX, doc=&quot;Item top-left abcsisse.&quot;)
+-    
+-    def __getY(self):
+-        &quot;&quot;&quot; C{L{y}} property getter.
+-        @return: The top ordonnee ot the item.
+-        @rtype: C{int}
+-        &quot;&quot;&quot;
+-        return self.__y
+-    def __setY(self, y):
+-        &quot;&quot;&quot; C{L{y}} property setter.
+-        @param y: New item ordonnee.
+-        @type y: C{int}
+-        &quot;&quot;&quot;
+-        self.move(self.__x, y)
+-    y = property(__getY, __setY, doc=&quot;Item top-left ordonnee.&quot;)
+-
+-    def setVisibility(self, visible):
+-        &quot;&quot;&quot; Sets the visibility of the item.
+-        @param visible: New visible flag value.
+-        @type visible: C{bool}
+-        &quot;&quot;&quot;
+-        self.visible = visible
+-        
+-    def draw(self, screen):
+-        &quot;&quot;&quot; Draws the image (if visible) into the game offscreen.
+-        @param screen: Current game offscreen to draw in.
+-        @type screen: C{L{Window&lt;bb_drawer.Window&gt;}}
+-        &quot;&quot;&quot;
+-        if not self.visible: return
+-        screen.blit(self.surface, (self.x, self.y))
+
+Copied: boomboom/client/display.py (from rev 188, boomboom/client/bb_display.py)
+
+Copied: boomboom/client/generic_input.py (from rev 188, boomboom/client/bb_input.py)
+
+Copied: boomboom/client/input.py (from rev 188, boomboom/client/bb_input_pygame.py)
+
+Copied: boomboom/client/item.py (from rev 188, boomboom/client/bb_item.py)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000095.html">[Happyboom-svn] r188 - in boomboom/client: . items
+</A></li>
+	<LI>Next message: <A HREF="000097.html">[Happyboom-svn] r190 - boomboom
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#96">[ date ]</a>
+              <a href="thread.html#96">[ thread ]</a>
+              <a href="subject.html#96">[ subject ]</a>
+              <a href="author.html#96">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

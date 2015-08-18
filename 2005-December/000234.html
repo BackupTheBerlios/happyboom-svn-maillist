@@ -1,0 +1,269 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r328 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r328%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200512150108.jBF18mhN004990%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000233.html">
+   <LINK REL="Next"  HREF="000235.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r328 - in haypo/hachoir: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r328%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200512150108.jBF18mhN004990%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r328 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Thu Dec 15 02:08:48 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000233.html">[Happyboom-svn] r327 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000235.html">[Happyboom-svn] r329 - haypo/hachoir/stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#234">[ date ]</a>
+              <a href="thread.html#234">[ thread ]</a>
+              <a href="subject.html#234">[ subject ]</a>
+              <a href="author.html#234">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-15 02:08:03 +0100 (Thu, 15 Dec 2005)
+New Revision: 328
+
+Added:
+   haypo/hachoir/plugins/ext2.py
+Modified:
+   haypo/hachoir/format.py
+   haypo/hachoir/mime.py
+   haypo/hachoir/tools.py
+Log:
+Add EXT2 parser. Supports FormatChunk of type 'signed 16 bits'. humanDuration
+can returns number of hours and days too.
+
+
+Modified: haypo/hachoir/format.py
+===================================================================
+--- haypo/hachoir/format.py	2005-12-13 21:39:45 UTC (rev 327)
++++ haypo/hachoir/format.py	2005-12-15 01:08:03 UTC (rev 328)
+@@ -1,7 +1,7 @@
+ import re
+ 
+-_regex_format1 = re.compile(&quot;^[!&lt;&gt;]?(?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?[BHLscfd]$&quot;)
+-_regex_format2 = re.compile(&quot;^([!&lt;&gt;]?)((?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?)([BHLscfd])$&quot;)
++_regex_format1 = re.compile(&quot;^[!&lt;&gt;]?(?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?[BHLhscfd]$&quot;)
++_regex_format2 = re.compile(&quot;^([!&lt;&gt;]?)((?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?)([BHLhscfd])$&quot;)
+ 
+ def checkFormat(format):
+     m = _regex_format1.match(format)
+
+Modified: haypo/hachoir/mime.py
+===================================================================
+--- haypo/hachoir/mime.py	2005-12-13 21:39:45 UTC (rev 327)
++++ haypo/hachoir/mime.py	2005-12-15 01:08:03 UTC (rev 328)
+@@ -73,6 +73,10 @@
+         return &quot;application/pdf&quot;
+     if buffer[:14] == &quot;gimp xcf file\0&quot;:
+         return &quot;image/x-xcf&quot;
++    if 4096&lt;=len(buffer) \
++    and buffer[1080:1082]==&quot;\x53\xEF&quot; \
++    and buffer[1116:1120]==&quot;\x04\x00\x00\x00&quot;:
++        return &quot;hachoir/fs-ext2&quot;
+     if 512&lt;=len(buffer) \
+     and buffer[0] in &quot;\xEB\xFA&quot; \
+     and buffer[510:512] == &quot;\x55\xAA&quot; \
+
+Added: haypo/hachoir/plugins/ext2.py
+===================================================================
+--- haypo/hachoir/plugins/ext2.py	2005-12-13 21:39:45 UTC (rev 327)
++++ haypo/hachoir/plugins/ext2.py	2005-12-15 01:08:03 UTC (rev 328)
+@@ -0,0 +1,114 @@
++&quot;&quot;&quot;
++EXT2 (Linux) file system parser.
++
++Sources:
++- EXT2FS source code -&gt; <A HREF="http://ext2fsd.sourceforge.net/">http://ext2fsd.sourceforge.net/</A>
++&quot;&quot;&quot;
++
++from datetime import datetime
++from filter import Filter
++from plugin import registerPlugin
++from tools import humanDuration
++
++class EXT2_SuperBlock(Filter):
++    error_handling = {
++        1: &quot;Continue&quot;
++    }
++    os_name = {
++        0: &quot;Linux&quot;,
++        1: &quot;Hurd&quot;,
++        2: &quot;Masix&quot;,
++        3: &quot;FreeBSD&quot;,
++        4: &quot;Lites&quot;,
++        5: &quot;WinNT&quot;
++    }
++    
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;ext2&quot;, &quot;EXT2 file system&quot;, stream, parent)
++        self.read(&quot;inodes_count&quot;, &quot;&lt;L&quot;, &quot;Inodes count&quot;)
++        self.read(&quot;blocks_count&quot;, &quot;&lt;L&quot;, &quot;Blocks count&quot;)
++        self.read(&quot;r_blocks_count&quot;, &quot;&lt;L&quot;, &quot;Reserved blocks count&quot;)
++        self.read(&quot;free_blocks_count&quot;, &quot;&lt;L&quot;, &quot;Free blocks count&quot;)
++        self.read(&quot;free_inodes_count&quot;, &quot;&lt;L&quot;, &quot;Free inodes count&quot;)
++        self.read(&quot;first_data_block&quot;, &quot;&lt;L&quot;, &quot;First data block&quot;)
++        self.read(&quot;log_block_size&quot;, &quot;&lt;L&quot;, &quot;Block size&quot;)
++        self.read(&quot;log_frag_size&quot;, &quot;&lt;L&quot;, &quot;Fragment size&quot;)
++        self.read(&quot;blocks_per_group&quot;, &quot;&lt;L&quot;, &quot;Blocks per group&quot;)
++        self.read(&quot;frags_per_group&quot;, &quot;&lt;L&quot;, &quot;Fragments per group&quot;)
++        self.read(&quot;inodes_per_group&quot;, &quot;&lt;L&quot;, &quot;Inodes per group&quot;)
++        self.read(&quot;mtime&quot;, &quot;&lt;L&quot;, &quot;Mount time&quot;, post=self.getTime)
++        self.read(&quot;wtime&quot;, &quot;&lt;L&quot;, &quot;Write time&quot;, post=self.getTime)
++        self.read(&quot;mnt_count&quot;, &quot;&lt;H&quot;, &quot;Mount count&quot;)
++        self.read(&quot;max_mnt_count&quot;, &quot;&lt;h&quot;, &quot;Max mount count&quot;)
++        id = self.read(&quot;magic&quot;, &quot;&gt;H&quot;, &quot;Magic number (0x53EF)&quot;).value
++        assert id == 0x53EF
++
++        self.read(&quot;state&quot;, &quot;&lt;H&quot;, &quot;File system state&quot;)
++
++        # Read error handling
++        chunk = self.read(&quot;errors&quot;, &quot;&lt;H&quot;, &quot;&quot;)
++        desc = &quot;Behaviour when detecting errors&quot;
++        if chunk.value in EXT2_SuperBlock.error_handling:
++            desc = &quot;%s: %s&quot; % (desc, EXT2_SuperBlock.error_handling[chunk.value])
++        chunk.description = desc
++        
++        self.read(&quot;minor_rev_level&quot;, &quot;&lt;H&quot;, &quot;Minor revision level&quot;)
++        self.read(&quot;last_check&quot;, &quot;&lt;L&quot;, &quot;Time of last check&quot;, post=self.getTime)
++        self.read(&quot;check_interval&quot;, &quot;&lt;L&quot;, &quot;Maximum time between checks&quot;, post=self.postMaxTime)
++        
++        chunk = self.read(&quot;creator_os&quot;, &quot;&lt;L&quot;, &quot;&quot;)
++        desc = &quot;Creator OS&quot;
++        if chunk.value in EXT2_SuperBlock.os_name:
++            desc = &quot;%s: %s&quot; % (desc, EXT2_SuperBlock.os_name[chunk.value])
++        chunk.description = desc
++        
++        self.read(&quot;rev_level&quot;, &quot;&lt;L&quot;, &quot;Revision level&quot;)
++        self.read(&quot;def_resuid&quot;, &quot;&lt;H&quot;, &quot;Default uid for reserved blocks&quot;)
++        self.read(&quot;def_resgid&quot;, &quot;&lt;H&quot;, &quot;Default guid for reserverd blocks&quot;)
++
++        # ---------
++
++        self.read(&quot;first_ino&quot;, &quot;&lt;L&quot;, &quot;First non-reserved inode&quot;)
++        self.read(&quot;inode_size&quot;, &quot;&lt;H&quot;, &quot;Size of inode structure&quot;)
++        self.read(&quot;block_group_nr&quot;, &quot;&lt;H&quot;, &quot;Block group # of this superblock&quot;)
++        self.read(&quot;feature_compat&quot;, &quot;&lt;L&quot;, &quot;Compatible feature set&quot;)
++        self.read(&quot;feature_incompat&quot;, &quot;&lt;L&quot;, &quot;Incompatible feature set&quot;)
++        self.read(&quot;feature_ro_compat&quot;, &quot;&lt;L&quot;, &quot;Read-only compatible feature set&quot;)
++        self.read(&quot;uuid&quot;, &quot;16s&quot;, &quot;128-bit uuid for volume&quot;)
++        self.read(&quot;volume_name&quot;, &quot;16s&quot;, &quot;Volume name&quot;)
++        self.read(&quot;last_mounted&quot;, &quot;64s&quot;, &quot;Directory where last mounted&quot;)
++        self.read(&quot;compression&quot;, &quot;&lt;L&quot;, &quot;For compression (algorithm usage bitmap)&quot;)
++        
++        self.read(&quot;prealloc_blocks&quot;, &quot;B&quot;, &quot;Number of blocks to try to preallocate&quot;)
++        self.read(&quot;prealloc_dir_blocks&quot;, &quot;B&quot;, &quot;Number to preallocate for directories&quot;)
++        self.read(&quot;padding&quot;, &quot;H&quot;, &quot;Padding&quot;)
++        
++        self.read(&quot;journal_uuid&quot;, &quot;16s&quot;, &quot;uuid of journal superblock&quot;)
++        self.read(&quot;journal_inum&quot;, &quot;&lt;L&quot;, &quot;inode number of journal file&quot;)
++        self.read(&quot;journal_dev&quot;, &quot;&lt;L&quot;, &quot;device number of journal file&quot;)
++        self.read(&quot;last_orphan&quot;, &quot;&lt;L&quot;, &quot;start of list of inodes to delete&quot;)
++        
++        self.read(&quot;reserved&quot;, &quot;197s&quot;, &quot;Padding to the end of the block&quot;)
++
++    def updateParent(self, chunk):
++        if self[&quot;feature_compat&quot;] &amp; 4 == 4:
++            type = &quot;ext3&quot;
++        else:
++            type = &quot;ext2&quot;
++        desc = &quot;EXT2 Superblock: %s file system&quot; % type
++        self.setDescription(desc)
++        chunk.description = desc
++
++    def postMaxTime(self, chunk):
++        return humanDuration(chunk.value * 1000)
++
++    def getTime(self, chunk):
++        return datetime.fromtimestamp(chunk.value)
++
++class EXT2_FS(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;ext2&quot;, &quot;EXT2 file system&quot;, stream, parent)
++        self.read(&quot;raw[]&quot;, &quot;1024s&quot;, &quot;Raw data&quot;)
++        self.readChild(&quot;superblock&quot;, EXT2_SuperBlock)
++
++registerPlugin(EXT2_FS, &quot;hachoir/fs-ext2&quot;)
+
+Modified: haypo/hachoir/tools.py
+===================================================================
+--- haypo/hachoir/tools.py	2005-12-13 21:39:45 UTC (rev 327)
++++ haypo/hachoir/tools.py	2005-12-15 01:08:03 UTC (rev 328)
+@@ -89,15 +89,35 @@
+     return size 
+ 
+ def humanDuration(ms):
++    # Milliseconds
+     if ms &lt; 1000:
+         return &quot;%u ms&quot; % ms
++        
++    # Seconds
+     sec = ms/1000
+     ms = ms%1000
+     if sec &lt; 60:
+         return  &quot;%u sec&quot; % sec
++
++    #&#160;Minutes
+     min = sec/60
+     sec = sec%60
+-    text = &quot;%u min %u sec&quot; % (min, sec)
++    if min&lt;60:
++        text = &quot;%u min %u sec&quot; % (min, sec)
++
++    # Hours
++    hour = min/60
++    min = min/60
++    if hour &lt; 24:
++        text = &quot;%u hour(s) %u min&quot; % (hour, min)
++
++    # Days
++    day = hour/24
++    hour = hour%24
++    if hour != 0:
++        text = &quot;%u day(s) %u hour(s)&quot; % (day, hour)    
++    else:
++        text = &quot;%u day(s)&quot; % (day)
+     return text
+ 
+ def humanFilesize(size):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000233.html">[Happyboom-svn] r327 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000235.html">[Happyboom-svn] r329 - haypo/hachoir/stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#234">[ date ]</a>
+              <a href="thread.html#234">[ thread ]</a>
+              <a href="subject.html#234">[ subject ]</a>
+              <a href="author.html#234">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

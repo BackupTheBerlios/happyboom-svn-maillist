@@ -1,0 +1,460 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r444 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/file_system branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r444%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/libhachoir%20branches/hachoir-yield/libhachoir/field%20branches/hachoir-yield/libhachoir/parser/file_system%20branches/hachoir-yield/libhachoir/parser/image%20branches/hachoir-yield/libhachoir/stream&In-Reply-To=%3C200603122002.k2CK2vF6022758%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000347.html">
+   <LINK REL="Next"  HREF="000349.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r444 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/file_system branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r444%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/libhachoir%20branches/hachoir-yield/libhachoir/field%20branches/hachoir-yield/libhachoir/parser/file_system%20branches/hachoir-yield/libhachoir/parser/image%20branches/hachoir-yield/libhachoir/stream&In-Reply-To=%3C200603122002.k2CK2vF6022758%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r444 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/file_system branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream">haypo at berlios.de
+       </A><BR>
+    <I>Sun Mar 12 21:02:57 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000347.html">[Happyboom-svn] r443 - in haypo/hachoir: . branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/3d
+</A></li>
+        <LI>Next message: <A HREF="000349.html">[Happyboom-svn] r445 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser branches/hachoir-yield/libhachoir/parser/3d branches/hachoir-yield/libhachoir/parser/archive branches/hachoir-yield/libhachoir/parser/file_system branches/hachoir-yield/libhachoir/parser/image
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#348">[ date ]</a>
+              <a href="thread.html#348">[ thread ]</a>
+              <a href="subject.html#348">[ subject ]</a>
+              <a href="author.html#348">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-12 21:02:54 +0100 (Sun, 12 Mar 2006)
+New Revision: 444
+
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/hachoir.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/field.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/file_system/ext2.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/common.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/pcx.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/png.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/stream/input.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/text_handler.py
+   haypo/hachoir/branches/hachoir-yield/text_ui.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r58 at haypopc</A>:  haypo | 2006-03-04 18:55:41 +0100
+  * Field.description becomes a property
+  * RGB field set create it's description on demand
+  * stream argument in FieldSet constructor becomes optionnal (use parent's one
+    by default)
+  * Continue to fix EXT2/EXT3 parser
+  * displayFieldSet() function display parent description instead of it's size
+    by default
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:57
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:58
+
+Modified: haypo/hachoir/branches/hachoir-yield/hachoir.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-12 20:02:39 UTC (rev 443)
++++ haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-12 20:02:54 UTC (rev 444)
+@@ -58,7 +58,7 @@
+         elif option == &quot;--debug&quot;:
+             config.debug = True
+         elif option == &quot;--metadata&quot;:
+-            options[&quot;metadata&quot;] = value
++            options[&quot;metadata&quot;] = True 
+         elif option == &quot;--max-depth&quot;:   
+             try:
+                 options[&quot;max-depth&quot;] = int(value)
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/field.py	2006-03-12 20:02:39 UTC (rev 443)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/field.py	2006-03-12 20:02:54 UTC (rev 444)
+@@ -16,8 +16,14 @@
+                 address = 0
+         self.address = address
+         self._size = size 
+-        self.description = description
++        self._description = description
+ 
++    def _getDescription(self):
++        return self._description
++    def _setDescription(self, description):
++        self._description = description
++    description = property(_getDescription, _setDescription)
++
+     def readRawContent(self):
+         stream = self.parent.stream
+         stream.seek(self.absolute_address)
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py	2006-03-12 20:02:39 UTC (rev 443)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py	2006-03-12 20:02:54 UTC (rev 444)
+@@ -53,14 +53,18 @@
+     is_field_set = True
+     endian = &quot;!&quot;
+ 
+-    def __init__(self, parent, name, stream, description=None, size=None):
++    def __init__(self, parent, name, stream=None, description=None, size=None):
+         if hasattr(self, &quot;static_size&quot;):
+             self._size = self.static_size
+         else:
+             self._size = size 
+         assert self.endian in (&quot;!&quot;, &quot;&lt;&quot;, &quot;&gt;&quot;)
+         Field.__init__(self, parent, name, self, size=self._size, description=description)
+-        self.stream = stream
++        if stream == None:
++            assert parent != None
++            self.stream = parent.stream
++        else:
++            self.stream = stream
+         self.fields = IndexedDict()
+         self._event_handler = None
+         self._field_generator = self.createFields()
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/file_system/ext2.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/parser/file_system/ext2.py	2006-03-12 20:02:39 UTC (rev 443)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/parser/file_system/ext2.py	2006-03-12 20:02:54 UTC (rev 444)
+@@ -49,18 +49,18 @@
+         if size != 0:
+             yield String(self, &quot;padding&quot;, &quot;string[%u]&quot; % size, &quot;Padding&quot;)
+ 
+-#  TODO: Re-enable that, maybe using event 'all fields are read'
+-#    def updateParent(self, chunk):        
+-#        name = self[&quot;name&quot;].strip(&quot;\0&quot;)
+-#        if name != &quot;&quot;:
+-#            desc = &quot;Directory entry: %s&quot; % name
+-#        else:
+-#            desc = &quot;Directory entry (empty)&quot;
+-#        chunk.description = desc
+-#        self.setDescription(desc)
++    def _getDescription(self):
++        if self._description == None:
++            name = self[&quot;name&quot;].value.strip(&quot;\0&quot;)
++            if name != &quot;&quot;:
++                self._description = &quot;Directory entry: %s&quot; % name
++            else:
++                self._description = &quot;Directory entry (empty)&quot;
++        return self._description
++    description = property(_getDescription, FieldSet._getDescription)
+ 
+ class Inode(FieldSet):
+-    name = {
++    type_name = {
+         1: &quot;list of bad blocks&quot;,
+         2: &quot;Root directory&quot;,
+         3: &quot;ACL inode&quot;,
+@@ -73,9 +73,9 @@
+     endian = &quot;&lt;&quot;
+     static_size = (68 + 15*4)*8
+ 
+-    def __init__(self, parent, name, stream, index, description=None):
++    def __init__(self, parent, name, index, description=None):
+         self.index = index
+-        FieldSet.__init__(self, parent, name, stream, description)
++        FieldSet.__init__(self, parent, name, parent.stream, description)
+         
+         if self.description == None:
+             desc = &quot;Inode %s: &quot; % self.index
+@@ -84,8 +84,8 @@
+                 size = humanFilesize(self[&quot;size&quot;].value)
+                 desc += &quot;file, size=%s, mode=%s&quot; % (size, self[&quot;mode&quot;].display)
+             else:
+-                if self.index in Inode.name:
+-                    desc += Inode.name[self.index]
++                if self.index in Inode.type_name:
++                    desc += Inode.type_name[self.index]
+                     if self.index == 2:
+                         desc += &quot; (%s)&quot; % getUnixRWX(self[&quot;mode&quot;].value)
+                 else:
+@@ -98,17 +98,17 @@
+         yield Integer(self, &quot;mode&quot;, &quot;uint16&quot;, &quot;Mode&quot;) # {&quot;post&quot;: self.postMode}
+         yield Integer(self, &quot;uid&quot;, &quot;uint16&quot;, &quot;User ID&quot;)
+         yield Integer(self, &quot;size&quot;, &quot;uint32&quot;, &quot;File size (in bytes)&quot;)
+-        yield Integer(self, &quot;atime&quot;, &quot;uint32&quot;, &quot;Last access time&quot;) # {&quot;post&quot;: unixTimestamp}
+-        yield Integer(self, &quot;ctime&quot;, &quot;uint32&quot;, &quot;Creation time&quot;) # {&quot;post&quot;: unixTimestamp}
+-        yield Integer(self, &quot;mtime&quot;, &quot;uint32&quot;, &quot;Last modification time&quot;) # {&quot;post&quot;: unixTimestamp}
+-        yield Integer(self, &quot;dtime&quot;, &quot;uint32&quot;, &quot;Delete time&quot;) #  {&quot;post&quot;: unixTimestamp}
++        yield Integer(self, &quot;atime&quot;, &quot;uint32&quot;, &quot;Last access time&quot;, text_handler=unixTimestamp)
++        yield Integer(self, &quot;ctime&quot;, &quot;uint32&quot;, &quot;Creation time&quot;, text_handler=unixTimestamp)
++        yield Integer(self, &quot;mtime&quot;, &quot;uint32&quot;, &quot;Last modification time&quot;, text_handler=unixTimestamp)
++        yield Integer(self, &quot;dtime&quot;, &quot;uint32&quot;, &quot;Delete time&quot;, text_handler=unixTimestamp)
+         yield Integer(self, &quot;gid&quot;, &quot;uint16&quot;, &quot;Group ID&quot;)
+         yield Integer(self, &quot;links_count&quot;, &quot;uint16&quot;, &quot;Links count&quot;)
+         yield Integer(self, &quot;blocks&quot;, &quot;uint32&quot;, &quot;Number of blocks&quot;)
+         yield Integer(self, &quot;flags&quot;, &quot;uint32&quot;, &quot;Flags&quot;)
+         yield Integer(self, &quot;reserved1&quot;, &quot;uint32&quot;, &quot;Reserved&quot;)
+         for i in range(0,15):
+-            yield Integer(self, &quot;block[]&quot;, &quot;uint32&quot;, &quot;Block %i&quot; % i)
++            yield Integer(self, &quot;block[]&quot;, &quot;uint32&quot;)
+         yield Integer(self, &quot;version&quot;, &quot;uint32&quot;, &quot;Version&quot;)
+         yield Integer(self, &quot;file_acl&quot;, &quot;uint32&quot;, &quot;File ACL&quot;)
+         yield Integer(self, &quot;dir_acl&quot;, &quot;uint32&quot;, &quot;Directory ACL&quot;)
+@@ -230,7 +230,7 @@
+     static_size = 433*8
+     endian = &quot;&lt;&quot;
+  
+-    def __init__(self, parent, name, stream, description=&quot;Super block&quot;):
++    def __init__(self, parent, name, stream=None, description=&quot;Super block&quot;):
+         FieldSet.__init__(self, parent, name, stream, description)
+         if self[&quot;feature_compat&quot;].value &amp; 4 == 4:
+             type = &quot;ext3&quot;
+@@ -256,8 +256,8 @@
+         yield Integer(self, &quot;blocks_per_group&quot;, &quot;uint32&quot;, &quot;Blocks per group&quot;)
+         yield Integer(self, &quot;frags_per_group&quot;, &quot;uint32&quot;, &quot;Fragments per group&quot;)
+         yield Integer(self, &quot;inodes_per_group&quot;, &quot;uint32&quot;, &quot;Inodes per group&quot;)
+-        yield Integer(self, &quot;mtime&quot;, &quot;uint32&quot;, &quot;Mount time&quot;) #  {&quot;post&quot;: unixTimestamp}
+-        yield Integer(self, &quot;wtime&quot;, &quot;uint32&quot;, &quot;Write time&quot;) #  {&quot;post&quot;: unixTimestamp}
++        yield Integer(self, &quot;mtime&quot;, &quot;uint32&quot;, &quot;Mount time&quot;, text_handler=unixTimestamp)
++        yield Integer(self, &quot;wtime&quot;, &quot;uint32&quot;, &quot;Write time&quot;, text_handler=unixTimestamp)
+         yield Integer(self, &quot;mnt_count&quot;, &quot;uint16&quot;, &quot;Mount count&quot;)
+         yield Integer(self, &quot;max_mnt_count&quot;, &quot;int16&quot;, &quot;Max mount count&quot;)
+         yield String(self, &quot;magic&quot;, &quot;string[2]&quot;, &quot;Magic number (0x53EF)&quot;)
+@@ -341,13 +341,6 @@
+         index = index - self.start - 1
+         return self.getChunk(&quot;inode[%u]&quot; % index).getFilter()
+ 
+-def testSuperblock(stream):
+-    oldpos = stream.tell()
+-    stream.seek(56*8, 1)
+-    magic = stream.getN(2)    
+-    stream.seek(oldpos)
+-    return (magic == &quot;\x53\xEF&quot;)
+-
+ class Group(FieldSetWithSeek):
+     def __init__(self, parent, name, stream, index, description=None):
+         if description == None:
+@@ -368,9 +361,9 @@
+         block_size = self[&quot;/&quot;].block_size
+     
+         # Read block bitmap
+-        self.superblock_copy = False
+-        if testSuperblock(self.stream):
+-            self.superblock_copy = True
++#        addr = self.absolute_address + 56*8
++        self.superblock_copy = False #(self.stream.getBytes(addr, 2) == &quot;\x53\xEF&quot;)
++        if self.superblock_copy:
+             yield SuperBlock(self, &quot;superblock_copy&quot;, self.stream, &quot;Superblock&quot;)
+         field = self.seekField(group[&quot;block_bitmap&quot;].value * block_size * 8)
+         if field != None:
+@@ -395,8 +388,8 @@
+         yield InodeTable(self, &quot;inode_table[]&quot;, self.stream, inode_index, count)
+ 
+         size = (self.index+1) * superblock[&quot;blocks_per_group&quot;].value * block_size
+-        if self.stream.getSize() &lt; size:
+-            size = self.stream.getSize()
++        if self.stream.size &lt; size:
++            size = self.stream.size
+         assert (self._total_field_size % 8) == 0
+         size = size - self._total_field_size / 8
+         yield String(self, &quot;data&quot;, &quot;string[%u]&quot; % size, &quot;Data&quot;)
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/common.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/common.py	2006-03-12 20:02:39 UTC (rev 443)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/common.py	2006-03-12 20:02:54 UTC (rev 444)
+@@ -7,24 +7,22 @@
+     }
+     static_size = 3*8
+     
+-    def __init__(self, parent, name, stream, description=None):
+-        FieldSet.__init__(self, parent, name, stream, description)
+-        if self.description == None:
+-            self.description = self.getColorName()
++    def _getDescription(self):
++        if self._description == None:
++            value = (self[&quot;red&quot;].value &lt;&lt; 16) + (self[&quot;green&quot;].value &lt;&lt; 8) + self[&quot;blue&quot;].value
++            if value in RGB.color_name:
++                self._description = &quot;RGB color: &quot;+RGB.color_name[value]
++            else:
++                self._description = &quot;RGB color: #%02X%02X%02X&quot; % \
++                    (self[&quot;red&quot;].value, self[&quot;green&quot;].value, self[&quot;blue&quot;].value)
++        return self._description
++    description = property(_getDescription, FieldSet._getDescription)
+ 
+     def createFields(self):
+         yield Integer(self, &quot;red&quot;, &quot;uint8&quot;, &quot;Red&quot;)
+         yield Integer(self, &quot;green&quot;, &quot;uint8&quot;, &quot;Green&quot;)
+         yield Integer(self, &quot;blue&quot;, &quot;uint8&quot;, &quot;Blue&quot;)
+ 
+-    def getColorName(self):
+-        value = (self[&quot;red&quot;].value &lt;&lt; 16) + (self[&quot;green&quot;].value &lt;&lt; 8) + self[&quot;blue&quot;].value
+-        if value in RGB.color_name:
+-            return &quot;RGB color: &quot;+RGB.color_name[value]
+-        else:
+-            return &quot;RGB color: #%02X%02X%02X&quot; % \
+-                (self[&quot;red&quot;].value, self[&quot;green&quot;].value, self[&quot;blue&quot;].value)
+-
+ class Palette(FieldSet):
+     def __init__(self, parent, name, nb_colors, description=None):
+         self.nb_colors = nb_colors
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/pcx.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/pcx.py	2006-03-12 20:02:39 UTC (rev 443)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/pcx.py	2006-03-12 20:02:54 UTC (rev 444)
+@@ -31,11 +31,12 @@
+         yield Integer(self, &quot;color_mode&quot;, &quot;uint16&quot;, &quot;Color mode&quot;)
+         yield RawBytes(self, &quot;reserved2&quot;, 58, &quot;Reserved&quot;)
+ 
+-        size = self.stream.getSize() - self.stream.tell()
++        size = self.stream.size - self.newFieldAskAddress()
+         has_palette = (self[&quot;bpp&quot;].value == 8)
+         if has_palette:
+             size -= 256*3*8            
+-        yield RawBytes(self, &quot;data&quot;, size, &quot;Image data&quot;)
++        assert (size % 8) == 0
++        yield RawBytes(self, &quot;data&quot;, size/8, &quot;Image data&quot;)
+ 
+         if has_palette:
+             yield Palette(self, &quot;palette_8bits&quot;, 256, &quot;Palette (8 bit)&quot;)
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/png.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/png.py	2006-03-12 20:02:39 UTC (rev 443)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/png.py	2006-03-12 20:02:54 UTC (rev 444)
+@@ -20,9 +20,12 @@
+         yield Integer(self, &quot;filter&quot;, &quot;uint8&quot;, &quot;Filter method&quot;)
+         yield Integer(self, &quot;interlace&quot;, &quot;uint8&quot;, &quot;Interlace method&quot;)
+ 
+-    def updateParent(self, chunk):
+-        chunk.description = &quot;Header: %ux%u pixels and %u bits/pixel&quot; \
+-            % (self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;bpp&quot;])
++    def _getDescription(self):
++        if self._description == None:
++            self._description = &quot;Header: %ux%u pixels and %u bits/pixel&quot; \
++                % (self[&quot;width&quot;].value, self[&quot;height&quot;].value, self[&quot;bpp&quot;].value)
++        return self._description
++    description = property(_getDescription, FieldSet._getDescription)
+ 
+ class Palette(FieldSet):
+     def __init__(self, parent, name, stream, description=None):
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/stream/input.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/stream/input.py	2006-03-12 20:02:39 UTC (rev 443)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/stream/input.py	2006-03-12 20:02:54 UTC (rev 444)
+@@ -67,9 +67,9 @@
+             value = value &amp; mask
+         return value
+ 
+-    def getBytes(self, address, nbytes):
++    def getBytes(self, address, nb_bytes):
+         if address % 8 != 0:
+-            data = self._getRawBits(address, nbytes*8)
++            data = self._getRawBits(address, nb_bytes*8)
+             nbits = address % 8
+             shift1 = nbits
+             shift2 = 8 - nbits
+@@ -82,7 +82,7 @@
+                 newdata += new 
+             data = newdata
+         else:
+-            data = self._getRawBits(address, nbytes*8)
++            data = self._getRawBits(address, nb_bytes*8)
+         return data
+     
+     def _getRawBits(self, address, nb_bits):
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/text_handler.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/text_handler.py	2006-03-12 20:02:39 UTC (rev 443)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/text_handler.py	2006-03-12 20:02:54 UTC (rev 444)
+@@ -19,8 +19,8 @@
+ def humanFilesize(chunk):
+     return doHumanFilesize(chunk.value)
+ 
+-def unixTimestamp(chunk):
+-    timestamp = datetime.datetime.fromtimestamp(chunk.value)
++def unixTimestamp(field):
++    timestamp = datetime.datetime.fromtimestamp(field.value)
+     return str(timestamp) 
+ 
+ def binary(chunk):
+
+Modified: haypo/hachoir/branches/hachoir-yield/text_ui.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-03-12 20:02:39 UTC (rev 443)
++++ haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-03-12 20:02:54 UTC (rev 444)
+@@ -1,6 +1,7 @@
+ def displayFieldSet(field_set, max_depth=2, depth=0, options={}):
+     display_parent_addr = options.get(&quot;parent-addr&quot;, False)
+-    display_parent_size = options.get(&quot;parent-size&quot;, True)
++    display_parent_size = options.get(&quot;parent-size&quot;, False)
++    display_parent_desc = options.get(&quot;parent-desc&quot;, True)
+     indent = &quot; &quot; * (3*depth)
+     addr = field_set.absolute_address
+     text = &quot;%s--- %s ---&quot; % (indent, field_set.name) 
+@@ -20,6 +21,8 @@
+             if display_parent_size:
+                 info.append( &quot;size=%s bytes&quot; % (field_set.size/8) )
+         text += &quot; (%s)&quot; % (&quot;, &quot;.join(info))
++    if display_parent_desc:
++        text += &quot; (%s)&quot; % field_set.description
+     print text
+     if max_depth == None or max_depth &lt; 0 or depth &lt; max_depth:
+         for field in field_set:
+@@ -31,13 +34,15 @@
+                 else:
+                     assert (field.address % 8) == 0
+                     text += &quot;%u&quot; % (field.address/8)
+-                text += &quot;) %s = %s: %s &quot; % \
+-                    (field._name, field.display, field.description)
++                text += &quot;) %s = %s&quot; % \
++                    (field._name, field.display)
++                if field.description != None:
++                    text += &quot;: %s&quot; % field.description
+                 if display_bits:
+-                    text += &quot;(size=%s bits)&quot; % field.size
++                    text += &quot; (size=%s bits)&quot; % field.size
+                 else:
+                     assert (field.size % 8) == 0
+-                    text += &quot;(size=%s bytes)&quot; % (field.size / 8)
++                    text += &quot; (size=%s bytes)&quot; % (field.size / 8)
+                 print text
+             else:
+                 displayFieldSet(field, max_depth, depth+1, options)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000347.html">[Happyboom-svn] r443 - in haypo/hachoir: . branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/3d
+</A></li>
+	<LI>Next message: <A HREF="000349.html">[Happyboom-svn] r445 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser branches/hachoir-yield/libhachoir/parser/3d branches/hachoir-yield/libhachoir/parser/archive branches/hachoir-yield/libhachoir/parser/file_system branches/hachoir-yield/libhachoir/parser/image
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#348">[ date ]</a>
+              <a href="thread.html#348">[ thread ]</a>
+              <a href="subject.html#348">[ subject ]</a>
+              <a href="author.html#348">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

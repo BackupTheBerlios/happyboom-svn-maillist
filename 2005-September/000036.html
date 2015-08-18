@@ -1,0 +1,205 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r130 - poilu/trunk
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r130%20-%20poilu/trunk&In-Reply-To=%3C200509090120.j891K4G9017993%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000035.html">
+   <LINK REL="Next"  HREF="000037.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r130 - poilu/trunk</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r130%20-%20poilu/trunk&In-Reply-To=%3C200509090120.j891K4G9017993%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r130 - poilu/trunk">haypo at berlios.de
+       </A><BR>
+    <I>Fri Sep  9 03:20:04 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000035.html">[Happyboom-svn] r129 - poilu/trunk
+</A></li>
+        <LI>Next message: <A HREF="000037.html">[Happyboom-svn] r131 - poilu/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#36">[ date ]</a>
+              <a href="thread.html#36">[ thread ]</a>
+              <a href="subject.html#36">[ subject ]</a>
+              <a href="author.html#36">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-09 03:20:01 +0200 (Fri, 09 Sep 2005)
+New Revision: 130
+
+Modified:
+   poilu/trunk/dico.txt
+   poilu/trunk/dico_poilu.py
+   poilu/trunk/pypoil.py
+   poilu/trunk/terminaison.txt
+Log:
+Permet de quitter un chan. Ajoute la commande &quot;aide&quot;.
+
+
+Modified: poilu/trunk/dico.txt
+===================================================================
+--- poilu/trunk/dico.txt	2005-09-09 00:36:43 UTC (rev 129)
++++ poilu/trunk/dico.txt	2005-09-09 01:20:01 UTC (rev 130)
+@@ -60,6 +60,7 @@
+ cakos
+ blaireaux
+ chalumeau
++dinosaures
+ pieds
+ nez
+ n&#195;&#169;n&#195;&#169;
+@@ -75,4 +76,5 @@
+ toutou
+ minou
+ roudoudou
+-dinosaures
++orteils
++oreilles
+
+Modified: poilu/trunk/dico_poilu.py
+===================================================================
+--- poilu/trunk/dico_poilu.py	2005-09-09 00:36:43 UTC (rev 129)
++++ poilu/trunk/dico_poilu.py	2005-09-09 01:20:01 UTC (rev 130)
+@@ -5,7 +5,8 @@
+ import random
+ 
+ def unicode2term(str): 
+-	return str.encode(&quot;latin-1&quot;)
++    import sys
++    return str.encode(sys.stdout.encoding)
+ 
+ class dico_poilu:
+     def __init__(self, bot):
+@@ -20,7 +21,7 @@
+     def echo(self, message):
+         print message
+ #        self.bot.echo(message)
+-		
++        
+     def ajoute_terme(self, terme):
+         cle = self.terminaison(terme)
+         if cle==None: return None
+
+Modified: poilu/trunk/pypoil.py
+===================================================================
+--- poilu/trunk/pypoil.py	2005-09-09 00:36:43 UTC (rev 129)
++++ poilu/trunk/pypoil.py	2005-09-09 01:20:01 UTC (rev 130)
+@@ -69,6 +69,23 @@
+             cmd=unicode(cmd, &quot;iso-8859-1&quot;)
+         return cmd.strip() 
+ 
++    def aide(self):
++        self.echou(u&quot;Commandes :&quot;)
++        self.echou(u&quot;- liste rimes &lt;mot&gt;    : liste des rimes pour la terminaison du mot sp&#233;cifi&#233;&quot;)
++        self.echou(u&quot;- rime mot / derime mot : ajoute/supprime un mot du dictinnaire&quot;)
++        self.echou(u&quot;- dit #chan (...)      : fait parler le bot&quot;)
++        self.echou(u&quot;- recharge_muet        : recharge muet.txt&quot;)
++        self.echou(u&quot;- recharge_terminaison : recharge terminaison.txt&quot;)
++        self.echou(u&quot;- recharge_insult      : charge insulte.txt&quot;)
++        self.echou(u&quot;- recharge_motcle      : charge motcle_regex.txt&quot;)
++        self.echou(u&quot;- join #chan / leave #chan : joint/quitte le canal #&lt;chan&gt;&quot;)
++        self.echou(u&quot;- backup               : sauve toutes les donn&#233;es sur le disque dur&quot;)
++        self.echou(u&quot;- utf-8 / iso          : passe en UTF-8 / iso-8859-1&quot;)
++        self.echou(u&quot;- muet                 : liste des caract&#232;res muets&quot;)
++        self.echou(u&quot;- taux_reponse         : affiche le taux de r&#233;ponse&quot;)
++        self.echou(u&quot;- taux_reponse xxx     : fixe le taux de r&#233;ponse (en pourcent)&quot;)
++
++
+     def on_privmsg(self, c, e):
+         cmd = self.get_command(e)
+         self.do_priv_command(cmd) 
+@@ -112,11 +129,10 @@
+             self.connection.privmsg(nick, message.encode(&quot;iso-8859-1&quot;))
+ 
+     def echo(self, message):
+-        print &quot;%s&quot; %( message )
+-        self.send_privmsg(self.god, message)
++        self.echou(message.decode(&quot;iso-8859-1&quot;))
+     
+     def echou(self, message):
+-        print &quot;%s&quot; %( unicode2term(message) )
++        print unicode2term(message)
+         self.send_privmsgu(self.god, message)
+ 
+     def before_dying(self):
+@@ -135,6 +151,10 @@
+     def do_priv_command(self, cmd):
+         c = self.connection
+ 
++        if cmd == &quot;aide&quot;:
++            self.aide()
++            return True
++            
+         if cmd == &quot;disconnect&quot;:
+             self.disconnect()
+             return True
+@@ -237,6 +257,12 @@
+             self.dico.sauve()
+             self.echo(&quot;backup done.&quot;)
+             return True
++            
++        regs = re.compile(&quot;^leave (#.*)$&quot;, re.IGNORECASE).search(cmd)
++        if regs != None:
++            self.channel = regs.group(1) 
++            self.connection.leave(self.channel)
++            return True
+              
+         regs = re.compile(&quot;^join (#.*)$&quot;, re.IGNORECASE).search(cmd)
+         if regs != None:
+
+Modified: poilu/trunk/terminaison.txt
+===================================================================
+--- poilu/trunk/terminaison.txt	2005-09-09 00:36:43 UTC (rev 129)
++++ poilu/trunk/terminaison.txt	2005-09-09 01:20:01 UTC (rev 130)
+@@ -9,12 +9,13 @@
+ &#195;&#169;:(ied[s]?|&#195;&#169;e?s?|ez)$
+ an:(en(s|ts?)?|an([dg]|ts?)?)$
+ is:is$
++ou:(oo|ou[setx]?)$
+ o:(au[xt]?|o[st]?|eaux?)$
+-ou:ou[setx]?$
+ on:on([st]?|ds?)$
+ in:(in[ts]?|ein|ains?)$
+ eu:eu[xs]?$
+ u:[u&#195;&#187;][slt]?$
++eil:(eil(le)?s?|a[i&#195;&#175;]e)$
+ i:i([et]|ls?)?$
+ el:el(le)?s?$
+ ic:i(c|ke?|que)s?$
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000035.html">[Happyboom-svn] r129 - poilu/trunk
+</A></li>
+	<LI>Next message: <A HREF="000037.html">[Happyboom-svn] r131 - poilu/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#36">[ date ]</a>
+              <a href="thread.html#36">[ thread ]</a>
+              <a href="subject.html#36">[ subject ]</a>
+              <a href="author.html#36">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

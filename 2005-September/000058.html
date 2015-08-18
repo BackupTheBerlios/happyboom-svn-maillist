@@ -1,0 +1,263 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r151 - in boomboom: . server server/agents
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r151%20-%20in%20boomboom%3A%20.%20server%20server/agents&In-Reply-To=%3C200509140417.j8E4HXX9006446%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000057.html">
+   <LINK REL="Next"  HREF="000059.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r151 - in boomboom: . server server/agents</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r151%20-%20in%20boomboom%3A%20.%20server%20server/agents&In-Reply-To=%3C200509140417.j8E4HXX9006446%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r151 - in boomboom: . server server/agents">haypo at berlios.de
+       </A><BR>
+    <I>Wed Sep 14 06:17:33 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000057.html">[Happyboom-svn] r150 - in happyboom/trunk: common server
+</A></li>
+        <LI>Next message: <A HREF="000059.html">[Happyboom-svn] r152 - in happyboom/trunk: common net/io net/io_tcp net/io_udp server
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#58">[ date ]</a>
+              <a href="thread.html#58">[ thread ]</a>
+              <a href="subject.html#58">[ subject ]</a>
+              <a href="author.html#58">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-14 06:17:31 +0200 (Wed, 14 Sep 2005)
+New Revision: 151
+
+Modified:
+   boomboom/protocol.xml
+   boomboom/server/agents/character.py
+   boomboom/server/agents/game.py
+   boomboom/server/agents/projectile.py
+   boomboom/server/agents/weapon.py
+   boomboom/server/bb_server.py
+Log:
+Update BoomBoom protocol and agents send events to network.
+
+
+Modified: boomboom/protocol.xml
+===================================================================
+--- boomboom/protocol.xml	2005-09-14 04:16:04 UTC (rev 150)
++++ boomboom/protocol.xml	2005-09-14 04:17:31 UTC (rev 151)
+@@ -1,14 +1,34 @@
+ &lt;?xml version=&quot;1.0&quot;?&gt;
+-&lt;protocol game=&quot;BoomBoom&quot; version=&quot;0.2&quot;&gt;
+-  &lt;func name=&quot;game&quot; id=&quot;1&quot;&gt;
++&lt;protocol name=&quot;BoomBoom&quot; version=&quot;0.2&quot;&gt;
++  &lt;feature name=&quot;game&quot; id=&quot;1&quot;&gt;
+     &lt;event name=&quot;start&quot; id=&quot;1&quot; /&gt;
+     &lt;event name=&quot;stop&quot; id=&quot;2&quot; /&gt;
+-  &lt;/func&gt;
+-  &lt;func name=&quot;character&quot; id=&quot;4&quot;&gt;
++    &lt;event name=&quot;setActiveCharacter&quot; id=&quot;3&quot;&gt;
++      &lt;param type=&quot;int&quot; name=&quot;player&quot; /&gt;
++    &lt;/event&gt;
++    &lt;event name=&quot;nextTurn&quot; id=&quot;4&quot; /&gt;
++  &lt;/feature&gt;
++  
++  &lt;feature name=&quot;character&quot; id=&quot;2&quot;&gt;
+     &lt;event name=&quot;move&quot; id=&quot;1&quot;&gt;
+-      &lt;param name=&quot;id&quot; type=&quot;int&quot; /&gt;
+-      &lt;param name=&quot;x&quot; type=&quot;int&quot; /&gt;
+-      &lt;param name=&quot;y&quot; type=&quot;int&quot; /&gt;
++      &lt;param type=&quot;int&quot; name=&quot;id&quot; /&gt;
++      &lt;param type=&quot;int&quot; name=&quot;x&quot; /&gt;
++      &lt;param type=&quot;int&quot;  name=&quot;y&quot;/&gt;
+     &lt;/event&gt;
+-  &lt;/func&gt;
++  &lt;/feature&gt;
++  
++  &lt;feature name=&quot;projectile&quot; id=&quot;3&quot;&gt;
++    &lt;event name=&quot;activate&quot; id=&quot;1&quot;&gt;
++      &lt;param type=&quot;int&quot; name=&quot;on&quot; /&gt;
++    &lt;/event&gt;
++  &lt;/feature&gt;
++  
++  &lt;feature name=&quot;weapon&quot; id=&quot;4&quot;&gt;
++    &lt;event name=&quot;setAngle&quot; id=&quot;1&quot;&gt;
++      &lt;param type=&quot;int&quot; name=&quot;angle&quot; /&gt;
++    &lt;/event&gt;
++    &lt;event name=&quot;setStrength&quot; id=&quot;2&quot;&gt;
++      &lt;param type=&quot;int&quot; name=&quot;angle&quot; /&gt;
++    &lt;/event&gt;
++  &lt;/feature&gt;
+ &lt;/protocol&gt;
+
+Modified: boomboom/server/agents/character.py
+===================================================================
+--- boomboom/server/agents/character.py	2005-09-14 04:16:04 UTC (rev 150)
++++ boomboom/server/agents/character.py	2005-09-14 04:17:31 UTC (rev 151)
+@@ -16,7 +16,7 @@
+         self.requestActions(&quot;game&quot;)
+         self.requestActions(&quot;network&quot;)
+         self.sendBroadcast(Message(&quot;character_search_place&quot;, (self.x, self.width, self.height)), &quot;world&quot;)
+-        self.sendBroadcast(Message(&quot;new_character&quot;, (self.id, self.team)), &quot;game&quot;)
++        self.sendBroadcast(Message(&quot;new_character&quot;, (self,)), &quot;game&quot;)
+         self.sendBroadcast(Message(&quot;new_item&quot;, (self.type, self.id)), &quot;network&quot;)
+ 
+     def move(self, x, y, force=False):
+
+Modified: boomboom/server/agents/game.py
+===================================================================
+--- boomboom/server/agents/game.py	2005-09-14 04:16:04 UTC (rev 150)
++++ boomboom/server/agents/game.py	2005-09-14 04:17:31 UTC (rev 151)
+@@ -17,30 +17,32 @@
+ 
+     def msg_new_character(self, character):
+         self.characters.append(character)
+-        if self.current == None: self.current = 0 
++        if self.current == None:
++            self.setCurrent(0)
+ 
+     def sync(self):
+         self.sendBroadcast(Message(&quot;game_current_character&quot;, self.current), &quot;network&quot;)
+ 
+-    def incCharacter(self):
+-        tpos = (self.next_team_pos + 1) % 2
+-        cpos = (self.next_char_pos[self.teams[tpos]] + 1) % len(self.characters[self.teams[tpos]])
+-        self.sendNextCharacter(cpos, tpos)
++    def setCurrent(self, current):
++        self.current = current
++        self.sendNetMsg(&quot;game&quot;, &quot;setActiveCharacter&quot;, current)
+ 
++    def nextCharacter(self):
++        new = (self.current + 1) % len(self.characters)
++        self.setCurrent(new)
++
+     def nextTurn(self):
+         self.send(&quot;next_turn&quot;)
+-        self.sendNetMsg(&quot;game&quot;, &quot;next_turn&quot;)
+-        self.sendNetMsg(&quot;game&quot;, &quot;active_character&quot;, \
+-            &quot;int&quot;, self.current)
++        self.sendNetMsg(&quot;game&quot;, &quot;nextTurn&quot;)
++        self.sendNetMsg(&quot;game&quot;, &quot;setActiveCharacter&quot;, self.current)
+ 
+     def msg_world_collision(self, x, y):
+         self.nextTurn()
+-        self.incCharacter()
++        self.nextCharacter()
+         
+     def msg_start(self):
+         self.launchGame()
+ 
+     def launchGame(self):    
+-        self.sendNextCharacter(0, 0)
++        self.setCurrent(self.current)
+         self.nextTurn()
+-        self.incCharacter()
+
+Modified: boomboom/server/agents/projectile.py
+===================================================================
+--- boomboom/server/agents/projectile.py	2005-09-14 04:16:04 UTC (rev 150)
++++ boomboom/server/agents/projectile.py	2005-09-14 04:17:31 UTC (rev 151)
+@@ -43,6 +43,7 @@
+     def setActive(self, active):
+         self.active = active
+         self.sendBBMessage(&quot;activate&quot;, active)
++        self.sendNetMsg(&quot;projectile&quot;, &quot;activate&quot;, 0) 
+ 
+     def shoot(self):
+         if self.weapon_angle==None: return
+@@ -60,6 +61,7 @@
+         self.x = x
+         self.y = y
+         self.sendBBMessage(&quot;move&quot;, x, y)
++        self.sendNetMsg(&quot;projectile&quot;, &quot;move&quot;, x, y)
+ 
+     def live(self):
+         Agent.live(self)
+
+Modified: boomboom/server/agents/weapon.py
+===================================================================
+--- boomboom/server/agents/weapon.py	2005-09-14 04:16:04 UTC (rev 150)
++++ boomboom/server/agents/weapon.py	2005-09-14 04:17:31 UTC (rev 151)
+@@ -41,12 +41,14 @@
+         elif 80 &lt; angle: angle = 80
+         self.angle = angle 
+         self.send(&quot;angle&quot;, angle)
++        self.sendNetMsg(&quot;weapon&quot;, &quot;setAngle&quot;, angle)
+ 
+     def updateStrength(self, strength):
+         if strength &lt; 10: strength = 10
+         elif 100 &lt; strength: strength = 100
+         self.strength = strength
+         self.send(&quot;strength&quot;, strength)
++        self.sendNetMsg(&quot;weapon&quot;, &quot;setStrength&quot;, strength)
+ 
+     def sync(self):
+         self.updateStrength(self.strength)
+
+Modified: boomboom/server/bb_server.py
+===================================================================
+--- boomboom/server/bb_server.py	2005-09-14 04:16:04 UTC (rev 150)
++++ boomboom/server/bb_server.py	2005-09-14 04:17:31 UTC (rev 151)
+@@ -33,29 +33,10 @@
+         if self._debug: print &quot;Next character : %s,%s&quot; %(char, team)
+         self.nextChar = char
+                         
+-    def msg_game_next_turn(self):
+-        if self._debug: print &quot;Next turn : %s&quot; %self.nextChar
+-        
+     def msg_game_collision(self, x, y):
+         if self._debug: print &quot;Hit ground : %s,%s&quot; %(x, y)
+         self.sendNetMsg(&quot;projectile&quot;, &quot;hit_ground&quot;)
+     
+-    def msg_projectile_move(self, x, y):
+-        if self._debug: print &quot;Projectile move : %s,%s&quot; %(x, y)
+-        self.sendNetMsg(&quot;projectile&quot;, &quot;move&quot;, &quot;%i,%i&quot; %(x,y), True)
+-        
+-    def msg_projectile_activate(self, flag):
+-        if self._debug: print &quot;Projectile activate : %s&quot; %flag
+-        self.sendNetMsg(&quot;projectile&quot;, &quot;activate&quot;, &quot;%u&quot; %(flag))
+-        
+-    def msg_weapon_angle(self, a):
+-        if self._debug: print &quot;Weapon angle : %s&quot; %a
+-        self.sendNetMsg(&quot;weapon&quot;, &quot;angle&quot;, a)
+-        
+-    def msg_weapon_strength(self, s):
+-        if self._debug: print &quot;Weapon strength : %s&quot; %s
+-        self.sendNetMsg(&quot;weapon&quot;, &quot;force&quot;, s)
+-        
+     def msg_world_create(self, m):
+         if self._debug: print &quot;World create : %s&quot; %m
+         self.sendNetMsg(&quot;world&quot;, &quot;create&quot;, m)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000057.html">[Happyboom-svn] r150 - in happyboom/trunk: common server
+</A></li>
+	<LI>Next message: <A HREF="000059.html">[Happyboom-svn] r152 - in happyboom/trunk: common net/io net/io_tcp net/io_udp server
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#58">[ date ]</a>
+              <a href="thread.html#58">[ thread ]</a>
+              <a href="subject.html#58">[ subject ]</a>
+              <a href="author.html#58">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

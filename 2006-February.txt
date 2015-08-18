@@ -1,0 +1,3083 @@
+From haypo at berlios.de  Sat Feb 11 03:36:04 2006
+From: haypo at berlios.de (haypo at BerliOS)
+Date: Sat, 11 Feb 2006 03:36:04 +0100
+Subject: [Happyboom-svn] r412 - haypo/hachoir/trunk
+Message-ID: <200602110236.k1B2a4ZV026700@sheep.berlios.de>
+
+Author: haypo
+Date: 2006-02-11 03:35:49 +0100 (Sat, 11 Feb 2006)
+New Revision: 412
+
+Modified:
+   haypo/hachoir/trunk/hachoir.py
+   haypo/hachoir/trunk/mime.py
+   haypo/hachoir/trunk/text_handler.py
+Log:
+Add some documents
+
+
+Modified: haypo/hachoir/trunk/hachoir.py
+===================================================================
+--- haypo/hachoir/trunk/hachoir.py	2006-01-25 03:46:07 UTC (rev 411)
++++ haypo/hachoir/trunk/hachoir.py	2006-02-11 02:35:49 UTC (rev 412)
+@@ -7,7 +7,7 @@
+ Author: Victor Stinner
+ """
+ 
+-import sys, os, re
++import getopt, os, re, sys
+ import config
+ from program import PROGRAM, VERSION, WEBSITE
+ from log import log
+@@ -16,6 +16,7 @@
+ import ui.ui as ui
+ 
+ def usage():
++    """ Print Hachoir command line usage to stdout. """
+     print "%s version %s" % (PROGRAM, VERSION)
+     print "%s\n" % WEBSITE
+     print "Usage: %s [options] file" % (sys.argv[0])
+@@ -42,7 +43,13 @@
+             print "   --%s : %s" % (opt[0].ljust(width), opt[1])
+ 
+ def parseArgs(val):
+-    import getopt
++    """ Parse command line arguments using getopt module.
++   
++    @parameter val: Default values.
++    @type: C{dict}
++    @return: Final values
++    @rtype: C{dict}
++    """
+     try:
+         allowed = ( \
+             "verbose", "help", "version", "debug",
+@@ -80,6 +87,9 @@
+     return (val, filename,)
+ 
+ def main():
++    """ Main function of the program Hachoir: read command line
++    arguments, instanciate the Hachoir class, load user interface,
++    load plugins, and then run the Hachoir. """
+     try:        
+         # Welcome message
+         print "%s version %s" % (PROGRAM, VERSION)
+@@ -137,7 +147,8 @@
+                     __import__(module)
+                     modules.append(module_name.group(1))
+                 except Exception, msg:
+-                    warning("Error while loading the plugin \"%s\": %s" % (module, msg))
++                    warning("Error while loading the plugin \"%s\": %s" % \
++                        (module, msg))
+         modules.sort()
+         log.info("Loaded: %u plugings (%s)" % (len(modules), ", ".join(modules)))
+ 
+
+Modified: haypo/hachoir/trunk/mime.py
+===================================================================
+--- haypo/hachoir/trunk/mime.py	2006-01-25 03:46:07 UTC (rev 411)
++++ haypo/hachoir/trunk/mime.py	2006-02-11 02:35:49 UTC (rev 412)
+@@ -1,5 +1,3 @@
+-#!/usr/bin/env python
+-
+ """
+ MIME type detection using libmagic library.
+ 
+@@ -10,155 +8,199 @@
+ - files in /usr/share/misc/file/* (on Unix/BSD systems)
+ """
+ 
+-import os, sys, stat, string, re
++import os, sys, stat, re
+ from error import warning
+ 
+-instance = None
+-
+ _mime_by_ext = {
+     '.gz':  'application/x-gzip',
+     '.ico': 'image/x-ico'
+ }
+ 
+-class GuessMime:
+-    def __init__(self):
+-        self.use_fallback = False
+-        self.func = None
+-        try:
+-            path = os.path.dirname(__file__)
+-            sys.path.append(path)
+-            import magic
+-            self.func = magic.open(magic.MAGIC_MIME)
+-            self.func.load()
+-        except ImportError:
+-            warning("Warning: The library libmagic for Python is unavailable. Using internal fallback engine.")
+-            self.use_fallback = True
+-        if self.use_fallback:
+-            from  fallback.magic import whatis
+-            self.func = whatis
++# Regular expression used to split a list of MIME types
++_mime_splitter_regex = re.compile("[^/]+/[^; ]+(?:;[^;]+)*")
+ 
+-    def guess(self, buffer):
+-        if not self.use_fallback:
+-            return self.func.buffer(buffer)
+-        else:
+-            mime = self.func(buffer)
+-            return mime
++def getGuessFunc():
++    """
++    Find a function to guess MIME type of a buffer. Try to load libmagic
++    (python module "magic"), or use internal fallback.
++    @return: Function used to guess MIME type
++    @rtype: C{func}
++    """
++    try:
++        path = os.path.dirname(__file__)
++        sys.path.append(path)
++        import magic
++        func = magic.open(magic.MAGIC_MIME)
++        func.load()
++        return func.buffer
++    except ImportError:
++        warning("Warning: The library libmagic for Python is unavailable. "
++        "Using internal fallback engine.")
++        from fallback.magic import whatis
++        return whatis
+ 
++guessMime = getGuessFunc()
++
+ def getFileMime(realname, filename=None):
++    """ Guess MIME type of a file.
++
++    @parameter realname: Physical filename (used to open the file)
++    @type host: C{str}
++    @parameter filename: Filename used to detect MIME type using its extension
++    @type host: C{str}
++    @return: MIME type, or None if fails
++    @rtype: C{str}
++    """
+     if filename == None:
+         filename = realname
+     mode = os.stat(filename)[stat.ST_MODE]
+     assert not stat.S_ISDIR(mode) and not stat.S_ISLNK(mode)
+     
+-    f = file(filename, "rb")
+-    buffer = f.read(4096)
+-    f.close()
+-    return getBufferMime(buffer, filename)
++    content = file(filename, "rb").read(4096)
++    return getBufferMime(content, filename)
+ 
+ def getMimeByExt(ext):    
+-    global _mime_by_ext
++    """ Guess MIME type of a file using its extension
++
++    @parameter ext: Filename extension (eg. ".zip")
++    @type: C{str}
++    @return: MIME type, or None if fails
++    @rtype: C{str}
++    """
+     return _mime_by_ext.get(ext, None)
+ 
+ def getStreamMime(stream, filename):
++    """ Guess MIME type of a stream using first 4 KB
++
++    @parameter stream: Stream containing data
++    @type: C{Stream}
++    @parameter filename: Filename of the stream source, can be None
++    @type: C{str}
++    @return: MIME type, or None if fails
++    @rtype: C{str}
++    """
++
+     oldpos = stream.tell()
+     stream.seek(0)
+     size = stream.getSize()
+-    if 4096<size:
++    if 4096 < size:
+         size = 4096
+     data = stream.getN(size)
+     stream.seek(oldpos)
+     return getBufferMime(data, filename)
+ 
+-def getAnotherBufferMime(buffer):    
+-    if buffer[:2] == "\x4d\x4d" and buffer[6:12]=="\x02\0\x0A\0\0\0":
++def getAnotherBufferMime(content):    
++    """ Another method (L{guessMime}) to guess MIME type. This
++    function is used for uncommon MIME types like Gimp picture
++    (image/x-xcf).
++
++    @parameter content: First 4 KB of file/stream content.
++    @type: C{str}
++    @return: MIME type, or None if fails
++    @rtype: C{str}
++    """
++
++    if content[:2] == "\x4d\x4d" and content[6:12] == "\x02\0\x0A\0\0\0":
+         return "image/x-3ds"
+ 
+-    if 2<=len(buffer) and ord(buffer[0])==31 and ord(buffer[1])==139:
++    if 2 <= len(content) and ord(content[0]) == 31 and ord(content[1]) == 139:
+         return "application/x-gzip"
+ 
+     # Text
+-    if buffer[0:4] == "%PDF":
++    if content[0:4] == "%PDF":
+         return "application/pdf"
+ 
+     # Pictures
+-    if buffer[0:14] == "gimp xcf file\0":
++    if content[0:14] == "gimp xcf file\0":
+         return "image/x-xcf"
+ 
+-    if buffer[0:2] == "\0\0" \
+-    and buffer[2:4] in ("\x01\0", "\x02\0") \
+-    and buffer[9] == "\0":
++    if content[0:2] == "\0\0" \
++    and content[2:4] in ("\x01\0", "\x02\0") \
++    and content[9] == "\0":
+         return "image/x-ico"
+ 
+-    if buffer[0] == "\x0A" \
+-    and buffer[1] in "\x00\x02\x03\x04\x05" \
+-    and buffer[64] == "\0":
++    if content[0] == "\x0A" \
++    and content[1] in "\x00\x02\x03\x04\x05" \
++    and content[64] == "\0":
+         return "image/x-pcx"
+ 
+     # File system        
+-    if 4096<=len(buffer) \
+-    and buffer[1080:1082]=="\x53\xEF" \
+-    and buffer[1116:1120]=="\x04\x00\x00\x00":
++    if 4096 <= len(content) \
++    and content[1080:1082] == "\x53\xEF" \
++    and content[1116:1120] == "\x04\x00\x00\x00":
+         return "hachoir/fs-ext2"
+         
+-    if 512<=len(buffer) \
+-    and buffer[0] in "\xEB\xFA" \
+-    and buffer[510:512] == "\x55\xAA" \
+-    and buffer[446] in "\x00\x80" \
+-    and buffer[446+16*1] in "\x00\x80" \
+-    and buffer[446+16*2] in "\x00\x80" \
+-    and buffer[446+16*3] in "\x00\x80":
++    if 512 <= len(content) \
++    and content[0] in "\xEB\xFA" \
++    and content[510:512] == "\x55\xAA" \
++    and content[446] in "\x00\x80" \
++    and content[446+16*1] in "\x00\x80" \
++    and content[446+16*2] in "\x00\x80" \
++    and content[446+16*3] in "\x00\x80":
+         return "hachoir/master-boot-record"
+     
+     # Worms2 files
+-    if buffer[0:4] == "IMG\x1A":
++    if content[0:4] == "IMG\x1A":
+         return "hachoir/worms2-image"
+-    if buffer[0:4] == "SPR\x1A":
++    if content[0:4] == "SPR\x1A":
+         return "hachoir/worms2-sprite"
+-    if buffer[0:4] == "FNT\x1A":
++    if content[0:4] == "FNT\x1A":
+         return "hachoir/worms2-font"
+-    if buffer[0:4] == "DIR\x1A":
++    if content[0:4] == "DIR\x1A":
+         return "hachoir/worms2-directory"
+     return None        
+ 
+ def splitMimes(mimes):
+-    """
+-    Split MIME types into a list.
++    """ Split flat MIME type string into a list in which each entry has
++    the following format: ["type", {"key1": value1, "key2": value2, ...}]
++
+     Examples:
+     - "text/plain; encoding=latin-1" => [["text/plain", {"encoding": latin-1"}]
+-    - "text/plain, text/xml" => [["text/plain"],["text/xml"]]
++    - "text/plain, text/xml" => [["text/plain", {}],["text/xml", {}]]
+     - "text/plain; charset=ISO-8859-1; format=flowed"
+       => [['text/plain', {'charset': 'ISO-8859-1', 'format': 'flowed'}]]
+-    - "application/x-archive application/x-debian-package"
++
++    @parameter mimes: Flat MIME type string
++    @type: C{str}
++    @return: MIME type in a list
++    @rtype: C{list}
+     """
+ 
+-    regex = re.compile("[^/]+/[^; ]+(?:;[^;]+)*")
+-    mimes = regex.findall(mimes)    
++    mimes = _mime_splitter_regex.findall(mimes)    
+     
+-    list = []
++    mime_list = []
+     for mime in mimes:
+-        mime = mime.strip(" ,")
+-        parts = mime.split(";")
++        parts = mime.strip(" ,").split(";")
+         mime = parts[0]
+-        parts = map(string.strip, parts[1:])
++        parts = [ item.strip() for item in parts[1:] ]
+         values = {}
+         for part in parts:
+             if part != "":
+                 split_part = part.split("=", 1)             
+                 values[ split_part[0] ] = split_part[1]
+-        list.append([mime,values])
+-    return list
++        mime_list.append([mime, values])
++    return mime_list
+ 
+-def getBufferMime(buffer, filename):
+-    global instance
+-    if instance == None:
+-        instance = GuessMime()
+-    mimes = instance.guess(buffer)
++def getBufferMime(content, filename):
++    """ Main function used to guess the MIME types. It calls L{guessMime},
++    and then L{getAnotherBufferMime} if needed.
++
++    @parameter content: First 4 KB of file/stream content.
++    @type: C{str}
++    @parameter filename: Filename of the file/stream, can be None.
++    @type: C{str}
++    @return: MIME type list (same format than L{splitMimes} result)
++    @rtype: C{str}
++    """
++
++    mimes = guessMime(content)
+     mimes = splitMimes(mimes)
+-    if len(mimes) == 0 or mimes[0][0] in ('application/octet-stream', 'image/tiff'):
+-        new_mime = getAnotherBufferMime(buffer)
++    if len(mimes) == 0 \
++    or mimes[0][0] in ('application/octet-stream', 'image/tiff'):
++        new_mime = getAnotherBufferMime(content)
+         if new_mime == None and filename != None:
+             ext = os.path.splitext(filename)[1]
+             new_mime = getMimeByExt(ext)
+         if new_mime != None:
+-            mimes = ((new_mime,),)
++            mimes = ((new_mime, {}),)
+     return mimes
+
+Modified: haypo/hachoir/trunk/text_handler.py
+===================================================================
+--- haypo/hachoir/trunk/text_handler.py	2006-01-25 03:46:07 UTC (rev 411)
++++ haypo/hachoir/trunk/text_handler.py	2006-02-11 02:35:49 UTC (rev 412)
+@@ -6,13 +6,13 @@
+     assert chunk.size == 4
+     val = chunk.value
+     sec = 2 * (val & 31)              # 5 bits: second
+-    min = (val >> 5) & 63             # 6 bits: minute
++    minute = (val >> 5) & 63          # 6 bits: minute
+     hour = (val >> 11) & 31           # 5 bits: hour
+-    day = (val >> 16) & 31            # 5 bits: day
++    day = (val >> 16) & 31            # 5 bits: day of the month
+     month = (val >> 21) & 15          # 4 bits: month
+     year = 1980 + ((val >> 25) & 127) # 7 bits: year
+     try:
+-        return str(datetime.datetime(year, month, day, hour, min, sec))
++        return str(datetime.datetime(year, month, day, hour, minute, sec))
+     except:
+         return "invalid msdos datetime (%s)" % val
+     
+
+
+
+From haypo at berlios.de  Sat Feb 18 20:24:47 2006
+From: haypo at berlios.de (haypo at BerliOS)
+Date: Sat, 18 Feb 2006 20:24:47 +0100
+Subject: [Happyboom-svn] r413 - in haypo/hachoir: . branches branches/hachoir-yield
+Message-ID: <200602181924.k1IJOlHf003238@sheep.berlios.de>
+
+Author: haypo
+Date: 2006-02-18 20:24:45 +0100 (Sat, 18 Feb 2006)
+New Revision: 413
+
+Added:
+   haypo/hachoir/branches/
+   haypo/hachoir/branches/hachoir-yield/
+   haypo/hachoir/branches/hachoir-yield/hachoir.py
+Log:
+Add new branch: hachoir-yield.
+
+
+Added: haypo/hachoir/branches/hachoir-yield/hachoir.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-02-11 02:35:49 UTC (rev 412)
++++ haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-02-18 19:24:45 UTC (rev 413)
+@@ -0,0 +1,157 @@
++class EventHandler(object):
++    _instance = None
++
++    # Singleton design pattern
++    def __new__(cls):
++        if cls._instance == None:
++            cls._instance = object.__new__(cls)
++        return cls._instance
++
++    def __init__(self):
++        self.handlers = {}
++
++    def connect(self, event_name, handler):
++        if event_name in self.handlers:
++            self.handlers[event_name].append(handler)
++        else:
++            self.handlers[event_name] = [handler]
++
++    def raiseEvent(self, event_name, *args):
++        if event_name not in self.handlers:
++            return
++        for handler in self.handlers[event_name]:
++            handler(*args)
++
++class Field(object):
++    def __init__(self, parent, key, value, address=None):
++        self.parent = parent
++        self.key = key
++        self._value = value
++        if address == None:
++            self.address = parent.address
++        else:
++            self.address = address
++        self.size = 4
++
++    def _litValeur(self):
++        return self._value
++    def _ecritValeur(self, nouvelle):
++        self._value = nouvelle
++        self.parent.raiseEvent("value-changed", self)
++    value = property(_litValeur, _ecritValeur)
++
++    def __str__(self):
++        return str(self.value)
++
++class UniqKeyError(KeyError):
++    pass
++
++class IndexedDict:
++    def __init__(self):
++        self._dict = {}
++        self._list = []
++
++    def add(self, key, value):
++        if key in self._dict:
++            raise UniqKeyError("Key '%s' already exists" % key)
++        self._dict[key] = value
++        self._list.append(value)
++
++    def __len__(self):
++        return len(self._list)
++
++    def __contains__(self, key):
++        return key in self._dict
++
++    def __iter__(self):
++        return iter(self._list)
++
++class FieldSet(Field):
++    def __init__(self, parent=None, key="filter"):
++        Field.__init__(self, parent, key, self, 0)
++        self.fields = IndexedDict()
++        self.address = 0
++        self._event_handler = None
++        self.generator = self.createFields()
++
++    def raiseEvent(self, event_name, *args):
++        if self._event_handler == None:
++            return
++        self._event_handler.raiseEvent(event_name, *args)
++
++    def connect(self, event_name, handler):
++        if self._event_handler == None:
++            self._event_handler = EventHandler()
++        self._event_handler.connect(event_name, handler)
++
++    def __len__(self):
++        return len(self.fields)
++
++    # Utilise lorsque le tableau a ete rempli
++    def _quickGetItem(self, name):
++        print "Quick!"
++        if name in self.fields:
++            return self.fields[name]
++        raise Exception("Le field %s n'existe pas" % name)
++
++    def _feed(self):
++        field = self.generator.next()
++        self.address += field.size
++        self.fields.append(field.key, field)
++        return field
++
++    def __getitem__(self, name):
++        if name in self.fields:
++            return self.fields[name]
++        try:
++            while True:
++                field = self._feed()
++                if field.key == name:
++                    return field
++        except StopIteration:
++            self.__getitem__ = self._quickGetItem
++            self.generator = None
++        raise Exception("Le field %s n'existe pas" % name)
++
++    def __contains__(self, key):
++        return key in self.fields
++
++    def __iter__(self):
++        if self.generator != None:
++            try:
++                while True:
++                    self._feed()
++            except StopIteration:
++                pass
++        return iter(self.fields)
++
++    def createFields(self):
++        raise NotImplementedError
++
++class World3D(FieldSet):
++    def __init__(self, parent=None):
++        FieldSet.__init__(self, key="world_3d")
++        self.connect("value-changed", self.valueChanged)
++
++    def valueChanged(self, field):
++        if field.key in ("x", "y"):
++            self["sum"].value = self["x"].value + self["y"].value
++
++    def createFields(self):
++        yield Field(self, "x", 2)
++        yield Field(self, "y", 7)
++        yield Field(self, "sum", 7+2)
++
++def displayFieldSet(filtre):
++    for field in filtre:
++        print "field[%s]=%s (address %s)" % \
++            (field.key, field.value, field.address)
++
++def valueChanged(field):
++    print "Value of %s changed to %s" % (field.key, field.value)
++
++pouet = World3D()
++displayFieldSet(pouet)
++pouet.connect("value-changed", valueChanged)
++pouet["x"].value = 10
++displayFieldSet(pouet)
+
+
+
+From haypo at berlios.de  Tue Feb 28 10:08:44 2006
+From: haypo at berlios.de (haypo at BerliOS)
+Date: Tue, 28 Feb 2006 10:08:44 +0100
+Subject: [Happyboom-svn] r414 - in haypo/hachoir/branches/hachoir-yield: . field file file/image stream
+Message-ID: <200602280908.k1S98iLj011056@sheep.berlios.de>
+
+Author: haypo
+Date: 2006-02-28 10:08:43 +0100 (Tue, 28 Feb 2006)
+New Revision: 414
+
+Added:
+   haypo/hachoir/branches/hachoir-yield/bits.py
+   haypo/hachoir/branches/hachoir-yield/cache.py
+   haypo/hachoir/branches/hachoir-yield/event_handler.py
+   haypo/hachoir/branches/hachoir-yield/field/
+   haypo/hachoir/branches/hachoir-yield/field/__init__.py
+   haypo/hachoir/branches/hachoir-yield/field/bits_field.py
+   haypo/hachoir/branches/hachoir-yield/field/field.py
+   haypo/hachoir/branches/hachoir-yield/field/field_set.py
+   haypo/hachoir/branches/hachoir-yield/field/integer.py
+   haypo/hachoir/branches/hachoir-yield/field/string_field.py
+   haypo/hachoir/branches/hachoir-yield/file/
+   haypo/hachoir/branches/hachoir-yield/file/image/
+   haypo/hachoir/branches/hachoir-yield/file/image/png.py
+   haypo/hachoir/branches/hachoir-yield/format.py
+   haypo/hachoir/branches/hachoir-yield/indexed_dict.py
+   haypo/hachoir/branches/hachoir-yield/stream/
+   haypo/hachoir/branches/hachoir-yield/stream/__init__.py
+   haypo/hachoir/branches/hachoir-yield/stream/error.py
+   haypo/hachoir/branches/hachoir-yield/stream/file.py
+   haypo/hachoir/branches/hachoir-yield/stream/file_cache.py
+   haypo/hachoir/branches/hachoir-yield/stream/stream.py
+   haypo/hachoir/branches/hachoir-yield/text_handler.py
+   haypo/hachoir/branches/hachoir-yield/text_ui.py
+   haypo/hachoir/branches/hachoir-yield/tools.py
+   haypo/hachoir/branches/hachoir-yield/unit_test.py
+Modified:
+   haypo/hachoir/branches/hachoir-yield/hachoir.py
+Log:
+Big improve of hachoir-yield
+
+
+Added: haypo/hachoir/branches/hachoir-yield/bits.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/bits.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/bits.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,112 @@
++def str2hex(value):
++    text = ""
++    for character in value:
++        if text != "":
++            text += " "
++        text += "%02X" % ord(character)
++    return text
++
++def countBits(value):
++    """
++    0 -> 0 bit
++    1 -> 1 bit
++    2 -> 2 bits
++    4 -> 3 bits
++    ...
++    """
++    bits = 0
++    if value < 0:
++        bits += 1
++        value = -value
++    while value >= 1:
++        bits += 1
++        value >>= 1
++    return bits        
++
++def byte2bin(x, reverse=True):
++    text = ""
++    for i in range(0,8):
++        if reverse:
++            mask = 1 << (7-i)
++        else:
++            mask = 1 << i
++        if (x & mask) == mask:
++            text += "1"
++        else:
++            text += "0"
++    return text            
++
++def long2raw(value, big_endian=True):
++    """
++    Convert a number to a raw string in big endian order
++    Eg. 1 => "\x01"
++        0x1234 => "\x12\x34"
++
++    Use big_endian=False to get result in little endian order.
++    Eg. 0x1234 => "\x34\x12"
++    """
++    text = ""
++    while (value != 0 or text == ""):
++        byte = value & 0xFF            
++        text += chr(byte)
++        value >>= 8
++    if big_endian:
++        return text[::-1]
++    else:
++        return text        
++
++def long2bin(value, reverse=True):
++    text = ""
++    while (value != 0 or text == ""):
++        if text != "":
++            text += " "
++        byte = value & 0xFF            
++        text += byte2bin(byte, not reverse)
++        print "val=%s > %s" % (value, value >> 8)
++        value >>= 8
++    return text        
++
++def sized_long2bin(size, value, reverse=True):
++    text = ""
++    for i in range(size):
++        if (value & 1) == 1:
++            text += "1"
++        else:
++            text += "0"
++        value >>= 1
++    if reverse:
++        return text[::-1]
++    else:
++        return text        
++
++def str2bin(value, reverse=False):
++    text = ""
++    for character in value:
++        if text != "":
++            text += " "
++        byte = ord(character)
++        text += byte2bin(byte, not reverse)
++    return text
++
++def reverseBits(x):
++    y = 0
++    for i in range(0,8):
++        mask = (1 << i)
++        if (x & mask) == mask:
++            y |= (1 << (7-i))
++    return y
++
++def str2long(data, reverse_byte=False):
++    """
++    Convert a string into a number with big endian order.
++    Eg. "\0\1\2" => 0x001020
++    """
++    shift = 0
++    value = 0
++    for character in data:
++        byte = ord(character)
++        if reverse_byte:
++            byte = reverseBits(byte)
++        value += (byte << shift) 
++        shift += 8
++    return value        
+
+Added: haypo/hachoir/branches/hachoir-yield/cache.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/cache.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/cache.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,53 @@
++import gc
++
++class CacheList:
++    _instance = None
++
++    def __init__(self):
++        assert CacheList._instance == None
++        self._list = []
++
++    def purgeCaches(self):
++        size = self.getSize()
++        for value in self._list:
++            item, name = value
++            item.purgeCache()
++        gc.collect()            
++        print "Purge caches: clear %s item(s)" % size
++
++    def output(self):
++        size = 0
++        nb_obj = 0
++        print "--- Caches"
++        for value in self._list:
++            item, name = value
++            size = item.getCacheSize()
++            nb_obj += size
++            if size != 0:
++                print "o %s: %s item(s)" % (name, size)
++        print "--- Total = %s item(s)" % (nb_obj)
++
++    def getSize(self):
++        size = 0
++        for value in self._list:
++            size += value[0].getCacheSize()
++        return size           
++
++    def register(self, item, name):
++        self._list.append( (item,name) )
++
++    def getInstance():
++        if CacheList._instance == None:
++            CacheList._instance = CacheList()
++        return CacheList._instance
++    getInstance = staticmethod(getInstance)
++
++class Cache:
++    def __init__(self, name):
++        CacheList.getInstance().register(self, name)
++
++    def getCacheSize(self):
++        raise NotImplementedError()
++
++    def purgeCache(self):
++        raise NotImplementedError()
+
+Added: haypo/hachoir/branches/hachoir-yield/event_handler.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/event_handler.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/event_handler.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,24 @@
++class EventHandler(object):
++    _instance = None
++
++    # Singleton design pattern
++    def __new__(cls):
++        if cls._instance == None:
++            cls._instance = object.__new__(cls)
++        return cls._instance
++
++    def __init__(self):
++        self.handlers = {}
++
++    def connect(self, event_name, handler):
++        if event_name in self.handlers:
++            self.handlers[event_name].append(handler)
++        else:
++            self.handlers[event_name] = [handler]
++
++    def raiseEvent(self, event_name, *args):
++        if event_name not in self.handlers:
++            return
++        for handler in self.handlers[event_name]:
++            handler(*args)
++
+
+Added: haypo/hachoir/branches/hachoir-yield/field/__init__.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/__init__.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/field/__init__.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,5 @@
++from field import Field
++#from bits_field import Bits
++from integer import Integer, IntegerHex, Bits, Bit
++from string_field import String
++from field_set import FieldSet
+
+Added: haypo/hachoir/branches/hachoir-yield/field/bits_field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/bits_field.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/field/bits_field.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,74 @@
++from bits import sized_long2bin, str2long
++from field import Field
++from cIOString import IOString
++from indexed_dict import IndexedDict
++
++class BitField(Field):
++    def __init__(self, parent, name, size, description=None):
++        assert 0 < size
++        Field.__init__(self, parent, name, None, size, description=description)
++
++    def _getDisplay(self):
++        return sized_long2bin(self.size, self.value)
++    display = property(_getDisplay)
++
++    def _getValue(self):
++        if self._value == None:
++            self._value = self.parent.readBits(self.address, self.size)
++        return self._value
++    value = property(_getValue, Field._setValue)
++
++class BitsSet(object):
++    def __init__(self, source, items=None, do_reverse=False):
++        self._items = IndexedDict()
++        self._size = 0
++        self._source = source
++        if do_reverse:
++            items = reversed(items)
++        for item in items:
++            field = BitField(self, item[1], item[0], item[2])
++            self._items.append(field.name, field)
++            self._size += field.size
++        assert (0 < self._size) and ((self._size % 8) == 0)
++
++    def newFieldAskAddress(self):
++        return self._size
++
++    def readBits(self, address, size):
++        data = self._source.readRawContent()
++        start = address / 8
++        mask = (1 << size) - 1
++        byte_size = (size + (address % 8) + 7) / 8
++        shift = address - start*8
++        data = data[start:start+byte_size]
++        value = str2long(data)
++        value = (value >> shift) & mask
++        if size == 1:
++            return value == 1
++        else:
++            return value
++
++    def _getSize(self):
++        return self._size / 8
++    size = property(_getSize)
++
++    def __iter__(self):
++        return iter(self._items)
++
++class BitsSet(Field):
++    is_field_set = True
++
++    def __init__(self, parent, name, bits, description=None):
++        self.bits = BitsSet(self, bits)
++        Field.__init__(self, parent, name, None, self.bits.size, description=description)
++
++    def __iter__(self):
++        return iter(self.bits)
++
++    def __getitem__(self, name):
++        return self.bits[name]
++
++    def _getDisplay(self):
++        return "<bits>"
++    display = property(_getDisplay)
++
+
+Added: haypo/hachoir/branches/hachoir-yield/field/field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/field.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/field/field.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,60 @@
++class Field(object):
++    is_field_set = False
++    
++    def __init__(self, parent, name, value, size=None, address=None, description=None):
++        self.parent = parent
++        self._name = name 
++        self._value = value
++        if address == None:
++            if parent != None:
++                address = parent.newFieldAskAddress()
++            else:
++                address = 0
++        self.address = address
++        self._size = size 
++        self.description = description
++
++    def readRawContent(self):
++        stream = self.parent.stream
++        stream.seek(self.absolute_address)
++        return stream.getN(self.size)
++
++    def __str__(self):
++        return str(self.display)
++
++    def _getValue(self):
++        return self._value
++    def _setValue(self, new_value):
++        self._value = new_value
++        self.parent.raiseEvent("value-changed", self)
++    value = property(_getValue, _setValue)
++
++    def _getDisplay(self):
++        raise NotImplementedError()
++    display = property(_getDisplay)
++
++    def _getName(self):
++        return self._name
++    name = property(_getName)
++
++    def _getPath(self):
++        path = "/"+self.name
++        current = self.parent
++        while current != None:
++            path = "/" + current. name + path
++            current = current.parent
++        return path
++    path = property(_getPath)
++
++    def _getAbsoluteAddress(self):
++        address = self.address
++        current = self.parent
++        while current != None:
++            address += current.address
++            current = current.parent
++        return address
++    absolute_address = property(_getAbsoluteAddress)
++
++    def _getSize(self):
++        return self._size
++    size = property(_getSize)
+
+Added: haypo/hachoir/branches/hachoir-yield/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,150 @@
++from event_handler import EventHandler
++from field import Field
++from indexed_dict import IndexedDict
++
++class FieldDoesExist(KeyError):
++    pass
++
++class FieldSet(Field):
++    is_field_set = True
++
++    def __init__(self, parent, name, stream, description=None):
++        Field.__init__(self, parent, name, self, description=description)
++        self.stream = stream
++        self.fields = IndexedDict()
++        self._event_handler = None
++        self._field_generator = self.createFields()
++        self._field_array_count = {}
++        self._size = None
++        self._total_field_size = 0
++        self.endian = "!"
++
++    def __str__(self):
++        return "(...)" 
++
++    def _getDisplay(self):
++        return "(...)" 
++    display = property(_getDisplay)
++
++    def raiseEvent(self, event_name, *args):
++        if self._event_handler == None:
++            return
++        self._event_handler.raiseEvent(event_name, *args)
++
++    def connect(self, event_name, handler):
++        if self._event_handler == None:
++            self._event_handler = EventHandler()
++        self._event_handler.connect(event_name, handler)
++
++    def __len__(self):
++        return len(self.fields)
++
++    def _getSize(self):
++        if self._size == None:
++            self._feedAll()
++        return self._size
++    size = property(_getSize)
++
++    def newFieldAskAddress(self):
++        return self._total_field_size
++
++    def _feed(self):
++        # Instanciate the field
++        stream_address = self.absolute_address + self._total_field_size
++        field = self._field_generator.next()
++
++        if False:
++            addr = field.absolute_address
++            print "* Instanciate %s (addr=%s.%s, size=%s bits)" \
++                % (field.path, addr/8, addr%8, field.size)
++
++        # Compute field address and total field size
++        assert field.address == self._total_field_size
++        self._total_field_size += field.size
++
++        # Replace "name[]" with "name[<index>]"
++        if field._name[-2:] == "[]":
++            name = field._name[:-2]
++            if name in self._field_array_count:
++                self._field_array_count[name] += 1
++            else:
++                self._field_array_count[name] = 0
++            field._name = name + "[%u]" % self._field_array_count[name]
++
++        # Append field to the field list
++        self.fields.append(field._name, field)
++        return field
++
++    def __getitem__(self, name):
++        """
++        Get an item with it's name or it's path.
++        @rtype Field
++        """
++        
++        # Get item with a path? (eg. "point/x")
++        if "/" in name:
++            path = name
++            names = path.split("/")
++            field = self
++            for name in names:
++                if name=="" or not field.is_field_set:
++                    raise FieldDoesExist("Field '%s' doesn't exist in %s" \
++                        % (path, self.path))
++                field = field[name]
++            return field
++
++        # Field does exit?
++        if name in self.fields:
++            return self.fields[name]
++            
++        # Feed until field can be found
++        if self._field_generator != None:
++            field = self._feedUntil(name)
++            if field != None:
++                return field
++        raise FieldDoesExist("Field '%s' doesn't exist in %s" \
++            % (name, self.path))
++
++    def __contains__(self, name):
++        if "/" in name:
++            names = name.split("/")
++            field = self
++            for name in names:
++                if name=="" or not field.is_field_set:
++                    return False
++                field = field[name]
++            return True
++        else:
++            if self._field_generator != None:
++                field = self._feedUntil(name)
++            return name in self.fields
++
++    def _stopFeeding(self):
++        self._field_generator = None
++        self._size = self._total_field_size
++
++    def _feedUntil(self, field_name):
++        try:
++            while True:
++                field = self._feed()
++                if field.name == field_name:
++                    return field
++        except StopIteration:
++            self._stopFeeding()
++        return None
++
++    def _feedAll(self):
++        try:
++            while True:
++                self._feed()
++        except StopIteration:
++            self._stopFeeding()
++
++    def __iter__(self):
++        if self._field_generator != None:
++            self._feedAll()
++        return iter(self.fields)
++
++    def createFields(self):
++        raise NotImplementedError
++
+
+Added: haypo/hachoir/branches/hachoir-yield/field/integer.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/integer.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/field/integer.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,56 @@
++from field import Field
++from format import getFormatSize
++from text_handler import hexadecimal
++
++class Bits(Field):
++    def __init__(self, parent, name, size, description=None):
++        Field.__init__(self, parent, name, None, size, description=description)
++
++    def _getValue(self):
++        if self._value == None:
++            self._value = self.parent.stream.getBits(
++                self.absolute_address, self.size, True) 
++        return self._value
++    value = property(_getValue, Field._setValue)
++   
++    def _getDisplay(self):
++        return self.value
++    display = property(_getDisplay)
++
++class Bit(Bits):
++    def __init__(self, parent, name, description=None):
++        Bits.__init__(self, parent, name, 1, description=description)
++
++    def _getValue(self):
++        if self._value == None:
++            data = self.parent.stream.getBits(
++                self.absolute_address, self.size, True) 
++            self._value = (data == 1)
++        return self._value
++    value = property(_getValue, Field._setValue)
++   
++class Integer(Field):
++    def __init__(self, parent, name, format, description=None):
++        if format[0] not in "!<>":
++            self.format = parent.endian + format
++        else:
++            self.format = format
++        size = getFormatSize(format)*8
++        Field.__init__(self, parent, name, None, size, description=description)
++
++    def _getValue(self):
++        if self._value == None:
++            self._value = self.parent.stream.getBits(
++                self.absolute_address, self.size, self.parent.endian=="<")
++        return self._value
++    value = property(_getValue, Field._setValue)
++   
++    def _getDisplay(self):
++        return self.value
++    display = property(_getDisplay)
++
++class IntegerHex(Integer):   
++    def _getDisplay(self):
++        return hexadecimal(self)
++    display = property(_getDisplay)
++
+
+Added: haypo/hachoir/branches/hachoir-yield/field/string_field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/string_field.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/field/string_field.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,34 @@
++from field import Field
++from format import getFormatSize
++from tools import convertDataToPrintableString
++
++class String(Field):
++    def __init__(self, parent, name, format, description=None):
++        self.format = format
++        size = getFormatSize(format)*8
++        Field.__init__(self, parent, name, None, size, description=description)
++        
++    def _getDisplay(self):
++        max = 20*8
++        if self._value == None:
++            assert (self.size % 8) == 0
++            if max < self._size:
++                display = self.parent.stream.getBytes( \
++                    self.absolute_address, max / 8)
++            else:
++                display = self.parent.stream.getBytes( \
++                    self.absolute_address, self._size / 8)
++        else:
++            display = self._value[:max]
++        if max < self._size:
++            display += "(...)"
++        return convertDataToPrintableString(display)
++    display = property(_getDisplay)        
++    
++    def _getValue(self):
++        if self._value == None:
++            assert (self.size % 8) == 0
++            self._value = self.parent.stream.getBytes( \
++                self.absolute_address, self.size / 8)
++        return self._value
++    value = property(_getValue, Field._setValue)
+
+Added: haypo/hachoir/branches/hachoir-yield/file/image/png.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/file/image/png.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/file/image/png.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,78 @@
++from field import FieldSet, Integer, String, IntegerHex, Bit, Bits
++
++class HeaderFlags(FieldSet):
++    def createFields(self):
++        yield Bit(self, "palette", "Palette used?")
++        yield Bit(self, "color", "Color used?")
++        yield Bit(self, "alpha", "Alpha channel used?")
++        yield Bits(self, "reserved", 5, "(reserved)")
++
++class Header(FieldSet):
++    def createFields(self):
++        yield Integer(self, "width", "uint32", "Width (pixels)")
++        yield Integer(self, "height", "uint32", "Height (pixels)")
++        yield Integer(self, "bpp", "uint8", "Bits per pixel")
++        yield HeaderFlags(self, "color_type", self.stream, "Color type")
++        yield Integer(self, "compression", "uint8", "Compression method")
++        yield Integer(self, "filter", "uint8", "Filter method")
++        yield Integer(self, "interlace", "uint8", "Interlace method")
++
++    def updateParent(self, chunk):
++        chunk.description = "Header: %ux%u pixels and %u bits/pixel" \
++            % (self["width"], self["height"], self["bpp"])
++
++class Chunk(FieldSet):
++    handler = {
++#        "tIME": Time,
++#        "pHYs": Physical,
++        "IHDR": Header,
++#        "PLTE": Palette,
++#        "gAMA": Gamma,
++#        "tEXt": Text
++    }
++    name_by_type = {
++        "tIME": ("time", "Time"),
++        "pHYs": ("physical", "Physical"),
++        "IHDR": ("header", "Header"),
++        "PLTE": ("palette", "Palette"),
++        "gAMA": ("gamma", "Gamma"),
++        "IDAT": ("data[]", "Image data"),
++        "IEND": ("end", "End"),
++        "tEXt": ("text", "Text")
++    }
++    
++    def __init__(self, parent, name, stream, description=None):
++        FieldSet.__init__(self, parent, name, stream, description)
++        self._size = (self["size"].value + 3*4) * 8
++
++        type = self["type"].value
++        if type in self.name_by_type:
++            name = self.name_by_type[type]
++            self._name = name[0]
++
++    def createFields(self):
++        yield Integer(self, "size", "uint32", "Size")
++        yield String(self, "type", "string[4]", "Type")
++
++        type = self["type"].value
++        if type in self.handler:
++            size = self["size"]
++#            oldpos = self._stream.tell()
++#            sub = stream.createLimited(size=size)
++            cls = self.handler[type]
++            yield cls(self, "data", self.stream)
++#            assert stream.tell() == (oldpos + size) 
++        else:
++            yield String(self, "data", "string[%u]" % self["size"].value, "Data")
++        yield IntegerHex(self, "crc32", "uint32", "CRC32")
++
++class PngFile(FieldSet):
++    def createFields(self):
++        yield String(self, "id", "string[8]", "PNG identifier") 
++        assert self["id"].value == "\x89PNG\r\n\x1A\n"
++        while True:
++            field = Chunk(self, "chunks[]", self.stream)
++            yield field
++            if field.name == "end":
++                break
++
+
+Added: haypo/hachoir/branches/hachoir-yield/format.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/format.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/format.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,108 @@
++import re, struct
++from cache import Cache
++
++class FormatCache(Cache):
++    # Uniq instance of the class
++    _instance = None
++
++    # Check if a format is an array or not
++    # "string[4]" is an array, "char" isn't
++    regex_array =  re.compile("^([a-z]+[0-9]*)\[([0-9]+)\]$")
++
++    # Convert Hachoir syntax to struct module syntax
++    format_type = {
++        "string": "s",
++        "char": "c",
++        "float": "f",
++        "double": "d",
++        "int8": "b",
++        "uint8": "B",
++        "int16": "h",
++        "uint16": "H",
++        "int32": "l",
++        "uint32": "L"
++    }
++
++    # Singleton design pattern
++    def __new__(cls):
++        if cls._instance == None:
++            cls._instance = object.__new__(cls)
++        return cls._instance
++    
++    def __init__(self):
++        Cache.__init__(self, "FormatCache")
++        self._dict = {}
++
++    def getCacheSize(self):
++        return len(self._dict)
++
++    def purgeCache(self):
++        self._dict = {}
++
++    def convertNewFormat(self, format):
++        old_format = format
++        if format[0] in "!<>":
++            endian = format[0]
++            str_endian = format[0]
++            format = format[1:]
++        else:
++            endian = None
++            str_endian = ""
++        m = FormatCache.regex_array.match(format)
++        if m != None:
++            format = m.group(1)
++            str_count = m.group(2)
++            count = int(str_count)
++        else:
++            str_count = "" 
++            count = 1
++        if format not in FormatCache.format_type:
++            raise Exception("Format \"%s\" is invalid!" % old_format)
++        type = FormatCache.format_type[format]
++        return (str_endian + str_count + type, endian, count, type)
++
++    def __getitem__(self, format):
++        if format not in self._dict:
++            real_format, endian, count, type = self.convertNewFormat(format)
++            size = count * struct.calcsize(type)
++            self._dict[format] = (real_format, endian, count, type, size)
++        return self._dict[format]   
++
++_format_size_cache = {}
++
++def formatIsString(format):
++    cache = FormatCache()[format]
++    return cache[3] == "s"
++
++def formatIsInteger(format):
++    cache = FormatCache()[format]
++    return cache[3] in "bBhHlL"
++
++def getFormatEndian(format):
++    cache = FormatCache()[format]
++    return cache[1]   
++
++def getFormatSize(format):
++    cache = FormatCache()[format]
++    return cache[4]   
++
++def getRealFormat(format):
++    cache = FormatCache()[format]
++    return cache[0]   
++
++def checkFormat(format):
++    # TODO: Don't use try/except, but something better
++    try:
++        cache = FormatCache()
++        conv = cache.convertNewFormat(format)
++        return True
++    except:
++        return False
++
++def splitFormat(format):
++    cache = FormatCache()[format]
++    return cache[1:4]   
++
++def formatIsArray(format):
++    cache = FormatCache()[format]
++    return (1 < cache[2]) and (cache[3] != "s")
+
+Modified: haypo/hachoir/branches/hachoir-yield/hachoir.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -1,157 +1,17 @@
+-class EventHandler(object):
+-    _instance = None
++#!/usr/bin/env python
+ 
+-    # Singleton design pattern
+-    def __new__(cls):
+-        if cls._instance == None:
+-            cls._instance = object.__new__(cls)
+-        return cls._instance
++from file.image.png import PngFile
++from stream.file import FileStream
++from text_ui import displayFieldSet
+ 
+-    def __init__(self):
+-        self.handlers = {}
+-
+-    def connect(self, event_name, handler):
+-        if event_name in self.handlers:
+-            self.handlers[event_name].append(handler)
+-        else:
+-            self.handlers[event_name] = [handler]
+-
+-    def raiseEvent(self, event_name, *args):
+-        if event_name not in self.handlers:
+-            return
+-        for handler in self.handlers[event_name]:
+-            handler(*args)
+-
+-class Field(object):
+-    def __init__(self, parent, key, value, address=None):
+-        self.parent = parent
+-        self.key = key
+-        self._value = value
+-        if address == None:
+-            self.address = parent.address
+-        else:
+-            self.address = address
+-        self.size = 4
+-
+-    def _litValeur(self):
+-        return self._value
+-    def _ecritValeur(self, nouvelle):
+-        self._value = nouvelle
+-        self.parent.raiseEvent("value-changed", self)
+-    value = property(_litValeur, _ecritValeur)
+-
+-    def __str__(self):
+-        return str(self.value)
+-
+-class UniqKeyError(KeyError):
+-    pass
+-
+-class IndexedDict:
+-    def __init__(self):
+-        self._dict = {}
+-        self._list = []
+-
+-    def add(self, key, value):
+-        if key in self._dict:
+-            raise UniqKeyError("Key '%s' already exists" % key)
+-        self._dict[key] = value
+-        self._list.append(value)
+-
+-    def __len__(self):
+-        return len(self._list)
+-
+-    def __contains__(self, key):
+-        return key in self._dict
+-
+-    def __iter__(self):
+-        return iter(self._list)
+-
+-class FieldSet(Field):
+-    def __init__(self, parent=None, key="filter"):
+-        Field.__init__(self, parent, key, self, 0)
+-        self.fields = IndexedDict()
+-        self.address = 0
+-        self._event_handler = None
+-        self.generator = self.createFields()
+-
+-    def raiseEvent(self, event_name, *args):
+-        if self._event_handler == None:
+-            return
+-        self._event_handler.raiseEvent(event_name, *args)
+-
+-    def connect(self, event_name, handler):
+-        if self._event_handler == None:
+-            self._event_handler = EventHandler()
+-        self._event_handler.connect(event_name, handler)
+-
+-    def __len__(self):
+-        return len(self.fields)
+-
+-    # Utilise lorsque le tableau a ete rempli
+-    def _quickGetItem(self, name):
+-        print "Quick!"
+-        if name in self.fields:
+-            return self.fields[name]
+-        raise Exception("Le field %s n'existe pas" % name)
+-
+-    def _feed(self):
+-        field = self.generator.next()
+-        self.address += field.size
+-        self.fields.append(field.key, field)
+-        return field
+-
+-    def __getitem__(self, name):
+-        if name in self.fields:
+-            return self.fields[name]
+-        try:
+-            while True:
+-                field = self._feed()
+-                if field.key == name:
+-                    return field
+-        except StopIteration:
+-            self.__getitem__ = self._quickGetItem
+-            self.generator = None
+-        raise Exception("Le field %s n'existe pas" % name)
+-
+-    def __contains__(self, key):
+-        return key in self.fields
+-
+-    def __iter__(self):
+-        if self.generator != None:
+-            try:
+-                while True:
+-                    self._feed()
+-            except StopIteration:
+-                pass
+-        return iter(self.fields)
+-
+-    def createFields(self):
+-        raise NotImplementedError
+-
+-class World3D(FieldSet):
+-    def __init__(self, parent=None):
+-        FieldSet.__init__(self, key="world_3d")
+-        self.connect("value-changed", self.valueChanged)
+-
+-    def valueChanged(self, field):
+-        if field.key in ("x", "y"):
+-            self["sum"].value = self["x"].value + self["y"].value
+-
+-    def createFields(self):
+-        yield Field(self, "x", 2)
+-        yield Field(self, "y", 7)
+-        yield Field(self, "sum", 7+2)
+-
+-def displayFieldSet(filtre):
+-    for field in filtre:
+-        print "field[%s]=%s (address %s)" % \
+-            (field.key, field.value, field.address)
+-
+ def valueChanged(field):
+-    print "Value of %s changed to %s" % (field.key, field.value)
++    print "Value of %s changed to %s" % (field._name, field.value)
+ 
+-pouet = World3D()
+-displayFieldSet(pouet)
+-pouet.connect("value-changed", valueChanged)
+-pouet["x"].value = 10
+-displayFieldSet(pouet)
++def main():
++    filename = "/home/haypo/exemple/png.png"
++    stream = FileStream(open(filename, 'r'), filename)
++    png = PngFile(None, "png_file", stream)
++    displayFieldSet(png)
++
++if __name__ == "__main__":
++    main()
+
+Added: haypo/hachoir/branches/hachoir-yield/indexed_dict.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/indexed_dict.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/indexed_dict.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,26 @@
++class UniqKeyError(KeyError):
++    pass
++
++class IndexedDict:
++    def __init__(self):
++        self._dict = {}
++        self._list = []
++
++    def __getitem__(self, key):
++        return self._dict[key]
++
++    def append(self, key, value):
++        if key in self._dict:
++            raise UniqKeyError("Key '%s' already exists" % key)
++        self._dict[key] = value
++        self._list.append(value)
++
++    def __len__(self):
++        return len(self._list)
++
++    def __contains__(self, key):
++        return key in self._dict
++
++    def __iter__(self):
++        return iter(self._list)
++
+
+Added: haypo/hachoir/branches/hachoir-yield/stream/__init__.py
+===================================================================
+
+Added: haypo/hachoir/branches/hachoir-yield/stream/error.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/stream/error.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/stream/error.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,3 @@
++class StreamError(Exception):
++    def __init__(self, msg):
++        Exception.__init__(self, msg)
+
+Added: haypo/hachoir/branches/hachoir-yield/stream/file.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/stream/file.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/stream/file.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,147 @@
++import os
++from error import StreamError
++from stream import Stream
++from bits import str2long, str2hex # TODO: <== don't need this anymore!
++#from config import config
++
++class FileStream(Stream):
++    def __init__(self, file, filename=None, copy=None, use_cache=True):
++        """
++        Endian: See setEndian function. 
++        """
++
++        Stream.__init__(self, filename)
++        self._file = file 
++        if copy != None:
++            self._size = copy._size
++            self._seed = copy._seed
++            self._end = copy._end
++            self._cache = copy._cache
++        else:
++            self._file.seek(0,2) # Seek to end
++            self._size = self._file.tell()
++            self._file.seek(0,0) # Seel to beginning
++            if self._size == 0:
++                raise Exception("Error: file %s is empty!" % filename)
++            self._seed = 0
++            if self._size != 0:
++                self._end = self._size-1
++            else:
++                self._end = 0
++
++#           TODO: Re-enable that                
++#            if use_cache:
++            if False:
++                self._cache = FileCache(self._file, self._size, \
++                    config.file_cache_block_size, config.file_cache_block_count)
++            else:
++                self._cache = None
++
++    def getType(self):
++        return "%s (%s)" % \
++            (self.__class__.__name__, self.filename)
++        
++    def read(self, size, seek=True):
++        if self._cache != None:
++            if self._size < self._seed + size:
++                size = self._size - self._seed
++            data = self._cache.read(self._seed, size)
++        else:
++            self._file.seek(self._seed)
++            data = self._file.read(size)
++        if seek:
++            self._seed = self._seed + len(data)
++        return data            
++
++    def seek(self, pos, where=0):
++        """ Read file seek document to understand where. """
++        if where==0:
++            self._seed = pos
++        elif where==1:
++            self._seed = self._seed + pos
++        else:
++            self._seed = self._size - pos
++        if self._seed < 0 or self._size < self._seed:
++            raise StreamError("Error when seek to (%s,%s) in a stream." % (pos, where))
++
++    def tell(self):
++        return self._seed
++
++    def getBits(self, address, nbits, big_endian=False):
++#        print "* Read %s bits at %s.%s" % (nbits, address / 8, address % 8)
++        data = self._getRawBits(address, nbits)        
++        if (address % 8) != 0 or (nbits % 8) != 0:
++            mask = (1 << nbits) - 1
++            shift = address & 7 
++        else:
++            shift = 0
++            mask = None
++        value = 0
++        if not big_endian:
++            if shift != 0:
++                byte = ord(data[0])
++                value += (byte >> shift)
++                data = data[1:]
++                shift = nbits-shift
++            else:
++                shift = nbits-8
++                if shift < 0:
++                    shift += 8
++            for character in data:
++                byte = ord(character)
++                value += (byte << shift) 
++                shift -= 8
++        else:
++            if shift != 0:
++                byte = ord(data[0])
++                value += (byte >> shift)
++                data = data[1:]
++            for character in data:
++                byte = ord(character)
++                value += (byte << shift) 
++                shift += 8
++        if mask != None:
++            value = value & mask
++        return value
++
++    def getBytes(self, address, nbytes):
++        if address % 8 != 0:
++            data = self._getRawBits(address, nbytes*8)
++            nbits = address % 8
++            shift1 = nbits
++            shift2 = 8 - nbits
++            mask = (1 << nbits) - 1
++            newdata = ""
++            for i in range(0, len(data)-1):
++                byte1 = ord(data[i])
++                byte2 = ord(data[i+1])
++                new = chr((byte1 >> shift1) + ((byte2 & mask) << shift2))
++                newdata += new 
++            data = newdata
++        else:
++            data = self._getRawBits(address, nbytes*8)
++        return data
++    
++    def _getRawBits(self, address, nbits):
++        nbytes = (nbits + (address & 7) + 7) / 8
++#        print " * Read %s bytes (%s bits) at %s.%s" % (nbytes, nbits, address / 8, address % 8)
++        self.seek(address / 8)
++        return self.getN(nbytes)
++        
++    def getN(self, size, seek=True):
++        if self._cache != None:
++            data = self._cache.read(self._seed, size)
++        else:
++            self._file.seek(self._seed)
++            data = self._file.read(size)
++        if len(data) != size:
++            raise StreamError("Can't read %u bytes in a stream (get %u bytes)." % (size, len(data)))
++        if seek:
++            self._seed = self._seed + size
++        return data
++
++    def getSize(self):
++        return self._size
++
++    def getLastPos(self):
++        return self._end
+
+Added: haypo/hachoir/branches/hachoir-yield/stream/file_cache.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/stream/file_cache.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/stream/file_cache.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,60 @@
++from cache import Cache
++
++class FileCacheEntry:
++    def __init__(self, index, data):
++        self.index = index
++        self.data = data
++        self.used = 0
++
++    def __cmp__(self, to):
++        return cmp(self.used, to.used)
++
++class FileCache(Cache):
++    def __init__(self, file, file_size, block_size=4096, block_count=100):
++        Cache.__init__(self, "FileCache")
++        self.file = file
++        self.file_size = file_size
++        self.block_size = block_size
++        self.max_block = block_count
++        self.blocks = {}
++
++    def getCacheSize(self):
++        return len(self.blocks)
++
++    def purgeCache(self):
++        self.blocks = {}
++
++    def removeOldestBlock(self):
++        entry = min(self.blocks.values())
++        del self.blocks[entry.index]
++
++    def read(self, position, length):
++        block_position = position % self.block_size
++        block_index = position / self.block_size
++        length_copy = length
++        assert position+length <= self.file_size
++        
++        data = ""
++        while 0 < length:
++            if block_index not in self.blocks:
++                if self.max_block <= len(self.blocks):
++                    self.removeOldestBlock()
++                self.file.seek(block_index * self.block_size)
++                block_data = self.file.read(self.block_size)
++                assert (len(block_data) == self.block_size) or self.file.tell() == self.file_size
++                self.blocks[block_index] = FileCacheEntry(block_index, block_data)
++            else:
++                block_data = self.blocks[block_index].data
++            self.blocks[block_index].used = self.blocks[block_index].used + 1
++            if block_position != 0 or length != self.block_size:
++                end = block_position+length
++                if self.block_size < end:
++                    end = self.block_size
++                block_data = block_data[block_position:end]
++            data = data + block_data
++            block_position = 0
++            block_index = block_index + 1
++            length = length - len(block_data)
++        assert len(data) == length_copy
++        return data
++
+
+Added: haypo/hachoir/branches/hachoir-yield/stream/stream.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/stream/stream.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/stream/stream.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,242 @@
++import struct
++from error import StreamError
++from tools import regexMaxLength
++from format import getRealFormat, getFormatSize, formatIsArray
++
++class Stream:
++    def __init__(self, filename):
++        self.filename = filename
++    
++    #--- Virtual functions --------------------------------------------------
++    
++    def getSize(self):
++        """ Stream size in bytes. """
++        return 0
++
++    def getLastPos(self):
++        """
++        Position of last byte in stream.
++        """
++        return 0
++
++    def tell(self):
++        return 0
++    
++    def read(self, size, seek=True):
++        """ Works like Posix read (can returns less than size bytes. """
++        return None
++    
++    def getN(self, size, seek=True):
++        """
++        Read size bytes. If seek=False, stay at the same position in the
++        stream. This function always returns size bytes, else it raise an
++        exception (StreamError).
++        """
++        return None
++    
++    #--- End of virtual functions -------------------------------------------    
++
++    def getType(self):
++        return self.__class__.__name__
++
++    def eof(self):
++        return self.getLastPos() <= self.tell() 
++
++    def createSub(self, start=None, size=None):
++        if start == None:
++            start = self.tell()
++        if size == None:
++            size = self.getLastPos()-start+1
++        return SubStream(self, start, size, self.filename)
++
++    def createLimited(self, start=None, size=None):
++        if start==None:
++            start = self.tell()
++        if size == None:
++            size = self.getLastPos()-start+1
++        return LimitedStream(self, start, size, self.filename)
++
++    def getFormat(self, format, seek=True):
++        """
++        Read data using struct format. Eg. getFormat("BB") returns (10, 14).
++        """
++        size = getFormatSize(format)
++        real = getRealFormat(format)
++        data = self.getN(size, seek)
++        if formatIsArray(format):
++            return struct.unpack(real, data)
++        else:
++            return struct.unpack(real, data)[0]
++
++    def searchLength(self, needle, include_str, size_max=None):        
++        pos = self.search(needle, size_max)
++        if pos == -1: return -1
++        lg = pos - self.tell()
++        # TODO: Support Unicode?
++        assert not isinstance(needle, unicode)
++        if include_str:
++            if isinstance(needle, str):
++                lg = lg + len(needle)
++            else:
++                lg = lg + regexMaxLength(needle.pattern)
++        return lg
++  
++    def search(self, needle, size_max=None):
++        size = self.getSize()
++        if size == 0: return -1
++        if size_max != None:
++            pos_max = self.tell()+size_max
++            if size <= pos_max:
++                pos_max = size-1
++        else:
++            pos_max = size-1
++        assert 0<=pos_max  and pos_max<size
++        oldpos = self.tell()
++        pos = self._doSearch(needle, pos_max)
++        self.seek(oldpos)
++        return pos
++
++    def _doSearch(self, needle, pos_max):
++        """
++        Search a string between current position and pos_max (which will be
++        also tested). Returns -1 if fails.
++        """
++        is_regex = not isinstance(needle, str)
++        if is_regex:
++            len_needle = regexMaxLength(needle.pattern)
++        else:
++            len_needle = len(needle)
++        if 2048<=len_needle:
++            raise StreamError("Search string too big.")
++        size = 2048 
++        doublesize = size * 2
++        oldpos = self.tell()
++        max = pos_max-oldpos+1
++        if max<doublesize:
++            doublesize = max 
++            size = 0 
++        buffer = self.read(doublesize)
++        newpos = oldpos + size
++        while len(buffer) != 0:
++            if is_regex:
++                match = needle.search(buffer)
++                if match != None:
++                    pos = match.start(0)
++                else:
++                    pos = -1
++            else:
++                pos = buffer.find(needle)
++            if pos != -1: return oldpos + pos
++            oldpos = newpos
++            if pos_max < oldpos + size:
++                size = pos_max - oldpos
++            if size == 0:
++                break
++            buffer = buffer[size:] + self.read(size)
++            newpos = oldpos + size 
++        return -1 
++
++    def getRemainSize(self):
++        return self.getLastPos() - self.tell() + 1
++
++class LimitedStream(Stream):
++    def __init__(self, stream, start=0, size=0, filename=None):
++        Stream.__init__(self, filename)
++        assert 1 <= size            
++        assert 0 <= start
++        assert not(stream.getLastPos()+1 < start+size)
++        self._stream = stream
++        self._start = start
++        self._size = size
++        self._end = self._start + self._size
++        self._last_pos = self._end - 1
++        self._seed = self._start
++
++    def getType(self):
++        return "%s of %s: %s..%s" % \
++            (self.__class__.__name__, self._stream.getType(),
++             self._start, self._end)
++ 
++    def search(self, str, size_max=None):
++        if self._end == 0: return -1
++        if size_max == None or self._end-self.tell() < size_max:
++            size_max = self._end-self.tell()
++        assert 0<=size_max  and size_max<=self._size
++        self._stream.seek(self._seed)
++        return self._stream.search(str, size_max) 
++        
++    def read(self, size, seek=True):
++        """ Works like Posix read (can returns less than size bytes. """
++        self._stream.seek(self._seed)
++        max = self._end - self._seed
++        if max<size:
++            size = max
++        data = self._stream.read(size, seek)
++        if seek:
++            self._seed += len(data)
++        return data
++
++    def getN(self, size, seek=True):
++        if self._start+self._size < self._seed+size:
++            raise StreamError( \
++                "Can't read outsize the stream\n"
++                +"(try to read %u byte(s) from position %s, where stream in limited in [%u;%u])" \
++                % (size, self._seed, self._start, self._end))
++        self._stream.seek(self._seed)
++        data = self._stream.getN(size, seek)
++        if seek:
++            self._seed += size
++        return data
++
++    def tell(self):
++        return self._seed
++
++    def seek(self, pos, where=0):
++        oldpos = pos
++        if where == 2:
++            pos = self.getLastPos() - pos
++        elif where == 0:
++            pos = pos
++        elif where == 1:
++            pos = self._seed + pos
++        if not(self._start <= pos and pos <= self._end):
++            raise StreamError("Error in a limited stream: can't seek to (%i,%u)." % (oldpos, where))
++        self._seed = pos
++        
++    def getSize(self):
++        return self._size
++    
++    def getLastPos(self):
++        return self._last_pos
++
++class SubStream(LimitedStream):
++    def __init__(self, stream, start=0, size=0, filename=None):
++        LimitedStream.__init__(self, stream, start, size, filename)
++        self._last_pos = self._size - 1
++
++    def search(self, str, size_max=None):
++        if self._end == 0: return -1
++        max = self._end-self.tell()-self._start-1
++        if size_max == None or max < size_max:
++            size_max = max
++        assert 0<=size_max  and size_max<=self._size
++        self._stream.seek(self._seed)
++        pos = self._stream.search(str, size_max)
++        if pos != -1:
++            pos = pos - self._start
++        return pos
++               
++    def seek(self, pos, where=0):
++        oldpos = pos
++        if where == 2:
++            pos = self.getLastPos() - pos
++        elif where == 0:
++            pos = self._start + pos
++        elif where == 1:
++            pos = self._seed + pos
++        if not(self._start <= pos and pos <= self._end):
++            raise StreamError("Error in a sub-stream: can't seek to (%i,%u)." % (oldpos, where))
++        self._seed = pos
++
++    def tell(self):
++        return self._seed - self._start
+
+Added: haypo/hachoir/branches/hachoir-yield/text_handler.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/text_handler.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/text_handler.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,33 @@
++import datetime
++from tools import humanFilesize as doHumanFilesize
++from bits import str2bin
++
++def msdosDatetime(chunk):
++    assert chunk.size == 4
++    val = chunk.value
++    sec = 2 * (val & 31)              # 5 bits: second
++    minute = (val >> 5) & 63          # 6 bits: minute
++    hour = (val >> 11) & 31           # 5 bits: hour
++    day = (val >> 16) & 31            # 5 bits: day of the month
++    month = (val >> 21) & 15          # 4 bits: month
++    year = 1980 + ((val >> 25) & 127) # 7 bits: year
++    try:
++        return str(datetime.datetime(year, month, day, hour, minute, sec))
++    except:
++        return "invalid msdos datetime (%s)" % val
++    
++def humanFilesize(chunk):
++    return doHumanFilesize(chunk.value)
++
++def unixTimestamp(chunk):
++    timestamp = datetime.datetime.fromtimestamp(chunk.value)
++    return str(timestamp) 
++
++def binary(chunk):
++    return str2bin(chunk.getRaw()) + " (%s)" % chunk.value
++
++def hexadecimal(chunk):
++    size = chunk.size
++    assert size in (8, 16, 32, 64)
++    pattern = "0x%0" + str(size/4) + "X"
++    return pattern % chunk.value
+
+Added: haypo/hachoir/branches/hachoir-yield/text_ui.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,14 @@
++def displayFieldSet(field_set, depth=0):
++    indent = " " * (3*depth)
++    addr = field_set.absolute_address
++    print "%s--- %s --- (addr=%u.%u, size=%s bits)" \
++        % (indent, field_set.name, addr/8, addr%8, field_set.size)
++    for field in field_set:
++        if not field.is_field_set:
++            print "%s%u.%u) %s = %s (%s) (size=%s bits)" % \
++                (indent, field.address/8, field.address%8, field._name, field.display, field.description, field.size)
++        else:
++            displayFieldSet(field, depth+1)
++    if depth == 0:
++        print
++
+
+Added: haypo/hachoir/branches/hachoir-yield/tools.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/tools.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/tools.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,195 @@
++import traceback, sys, string, re
++
++def alignValue(value, align):
++    if value % align != 0:
++        return value + align - (value % align)
++    else:
++        return value        
++
++def _regexMaxLength(pattern, in_parenthesis=False):
++    """
++    Don't use this function directly, use regexMagLength!
++    """
++
++    re_letter = re.compile( r"^[^][()|.?+*{}](.*)$")
++    re_set = re.compile( r"^\[" + r"[^]]*" + r"\](.*)$" )
++    re_min_repetition = re.compile( r"^\{([0-9]+)\}(.*)$" )
++    re_min_max_repetition = re.compile( r"^\{([0-9]+),([0-9]+)\}(.*)$" )
++
++    size = 0
++    atom_size = 0
++    state = 0 # get atom
++    is_end = len(pattern) == 0
++    if in_parenthesis and not is_end:
++        is_end = pattern[0] in ("|", ")")
++    while not is_end:
++        if state==0:
++            size = size + atom_size
++
++            # Pattern: [...] => size=1
++            if pattern[0] == '(':
++                pattern = pattern[1:]
++                atom_size = None
++                while True:
++                    tmp_atom_size, pattern = _regexMaxLength(pattern, True)
++                    if tmp_atom_size == None:
++                        return None, pattern
++                    if atom_size==None or atom_size<tmp_atom_size:
++                        atom_size = tmp_atom_size
++                    if pattern[0] == ')':
++                        break
++                    assert pattern[0] == '|'
++                    pattern = pattern[1:]
++                pattern = pattern[1:]
++            else:
++                m = re_set.match(pattern)
++                if m != None:
++                    pattern = m.group(1)
++                    atom_size = 1
++                else:
++                    m = re_letter.match(pattern)
++                    if m == None:
++                        return (-1, pattern,)
++                    atom_size = 1
++                    pattern = m.group(1)
++            state = 1                
++        else:
++            assert state==1
++
++            # Repetiton: + or * => no limit
++            if pattern[0] in ("*", "+"):
++                return (None, pattern,)
++            
++            # Repetition: {2}
++            m = re_min_repetition.match(pattern)
++            if m != None:
++                repetition = int(m.group(1))
++                pattern = m.group(2)
++                atom_size = atom_size * repetition
++            else:
++                # Repetition: {1,2}
++                m = re_min_max_repetition.match(pattern)
++                if m != None:
++                    repetition = int(m.group(2))
++                    pattern = m.group(3)
++                    atom_size = atom_size * repetition
++            state = 0
++
++        is_end = len(pattern) == 0
++        if in_parenthesis and not is_end:
++            is_end = pattern[0] in ("|", ")")
++
++    return (size + atom_size, pattern,)
++
++def regexMaxLength(pattern):
++    """
++    Get maximum size of a regular expression pattern.
++    Returns (size, pattern). If size=-1, an error occurs (pattern contains
++    the buggy pattern). If size=-1, no limit does exist.
++    """
++
++    size, pattern = _regexMaxLength(pattern)
++    if size == -1:
++        raise "Can't parse regular expression: %s" % pattern 
++    return size 
++
++def humanDuration(ms):
++    # Milliseconds
++    if ms < 1000:
++        return "%u ms" % ms
++        
++    # Seconds
++    sec = ms/1000
++    ms = ms%1000
++    if sec < 60:
++        return  "%u sec" % sec
++
++    # Minutes
++    min = sec/60
++    sec = sec%60
++    if min<60:
++        return "%u min %u sec" % (min, sec)
++
++    # Hours
++    hour = min/60
++    min = min/60
++    if hour < 24:
++        return "%u hour(s) %u min" % (hour, min)
++
++    # Days
++    day = hour/24
++    hour = hour%24
++    if day < 365:
++        return "%u day(s) %u hour(s)" % (day, hour)    
++
++    # Years
++    # TODO: Better estimation !?
++    year = day / 365
++    day = day % 365
++    if hour != 0:
++        text = "%u year(s) %u day(s)" % (year, day)    
++    else:
++        text = "%u year(s)" % (year)
++    return text
++
++def humanFilesize(size):
++    if size < 1000:
++        return "%u bytes" % size
++    units = ["KB", "MB", "GB", "TB"]
++    size = float(size)
++    for unit in units:
++        size = size / 1024
++        if size < 1024:
++            return "%.1f %s" % (size, unit)
++    return "%u %s" % (size, unit)
++
++def convertDataToPrintableString(data, keep_n=False):
++    if len(data) == 0:
++        return "(empty)"
++    if not isinstance(data, unicode):
++        data = re.sub("[^\x00-\x7F]", ".", data)
++        data = unicode(data, "ascii")
++    display = ""
++    for c in data:
++        if ord(c)<32:
++            know = { \
++                "\n": "\\n",
++                "\r": "\\r",
++                "\t": "\\t",
++                "\0": "\\0"}
++            if c == "\n" and keep_n:                
++                display = display + "\\n\n"
++            elif c in know:
++                display = display + know[c]
++            else:
++                display = display + "."
++        elif c == "\"":
++            display = display + "\\\""
++        else:
++            display = display + c
++    return u"\"%s\"" % display
++
++def getBacktrace():
++    try:
++        info = sys.exc_info()
++        bt = traceback.format_exception(*info)
++        sys.exc_clear()
++        if bt[0] != "None\n":
++            return "".join(bt)
++        else:
++            return "Empty backtrace."
++    except:
++        return "Error while trying to get backtrace"
++
++def getUnixRWX(mode):
++#-- TODO --
++#EXT2_S_ISUID  0x0800  SUID
++#EXT2_S_ISGID  0x0400  SGID
++#EXT2_S_ISVTX  0x0200  sticky bit
++    rwx = ("---", "rwx")
++    text = ""
++    for i in range(0,3):
++        for j in range(0,3):
++            mask = 1 << (3*(2-i)) << (2-j)
++            text = text + rwx[int(mode & mask == mask)][j]
++    return text
+
+Added: haypo/hachoir/branches/hachoir-yield/unit_test.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/unit_test.py	2006-02-18 19:24:45 UTC (rev 413)
++++ haypo/hachoir/branches/hachoir-yield/unit_test.py	2006-02-28 09:08:43 UTC (rev 414)
+@@ -0,0 +1,111 @@
++from StringIO import StringIO
++from field import FieldSet, Integer, String, Bits, Bit
++from stream.file import FileStream
++from bits import long2raw, str2hex
++
++def test1():
++    data = "\x02\x01abc\x09"
++    stream = FileStream(StringIO(data), None)
++    class TestInteger(FieldSet):
++        def __init__(self, a, b, c):
++            FieldSet.__init__(self, a, b, c)
++            self.endian = ">"
++        def createFields(self):
++            yield Integer(self, "word", "uint16", "One integer")
++            yield String(self, "abc", "string[3]", "abc string")
++            yield Integer(self, "byte", "uint8", "Byte")
++    test = TestInteger(None, "test", stream) 
++
++    assert "word" in test
++    field = test["word"]
++    assert field.size == 16
++    assert field.value == 0x0201
++
++    assert "abc" in test
++    field = test["abc"]
++    assert field.address == 2*8
++    assert field.size == 3*8
++    assert field.value == "abc"
++
++    assert "byte" in test
++    field = test["byte"]
++    assert field.address == 5*8
++    assert field.size == 8
++    assert field.value == 9
++
++def test2():
++    data = "\x21\x43" # concat(0x01, 0x23, 0x4)
++    stream = FileStream(StringIO(data), None)
++    class TestInteger(FieldSet):
++        def createFields(self):
++            yield Bits(self, "a", 4)
++            yield Integer(self, "b", "uint8")
++            yield Bits(self, "c", 4)
++    test = TestInteger(None, "test", stream) 
++
++    assert test["a"].value == 1
++    assert test["b"].value == 0x32
++    assert test["c"].value == 4 
++
++def test2_str():
++    data = "\x19\x46" # concat(0x09, 0x61, 0x4)
++    
++    stream = FileStream(StringIO(data), None)
++    class TestInteger(FieldSet):
++        def createFields(self):
++            yield Bits(self, "a", 4)
++            yield String(self, "b", "string[1]")
++            yield Bits(self, "c", 4)
++    test = TestInteger(None, "test", stream) 
++
++    assert test["a"].value == 9
++    assert test["b"].value == "a"
++    assert test["c"].value == 4 
++
++def test2_str2():
++    data   = 1        ;  data <<= 4
++    data  += 4        ;  data <<= 8
++    data  += ord("a") ;  data <<= 2
++    data  += 3
++    data = long2raw(data, big_endian=False)
++    
++    stream = FileStream(StringIO(data), None)
++    class TestInteger(FieldSet):
++        def createFields(self):
++            yield Bits(self, "a", 2)
++            yield String(self, "b", "string[1]")
++            yield Bits(self, "c", 4)
++            yield Bits(self, "d", 2)
++    test = TestInteger(None, "test", stream) 
++
++    assert test["a"].value == 3
++    assert test["b"].value == "a"
++    assert test["c"].value == 4 
++    assert test["d"].value == 1
++
++def test3():
++    data  = (1 & 0x1) << 0
++    data += (3 & 0x7) << 1
++    data += (0 & 0x3) << 4
++    data += (2 & 0x3) << 6
++    data = chr(data)
++    stream = FileStream(StringIO(data), None)
++    class TestInteger(FieldSet):
++        def createFields(self):
++            yield Bit(self, "a")
++            yield Bits(self, "b", 3)
++            yield Bits(self, "c", 2)
++            yield Bits(self, "d", 2)
++    test = TestInteger(None, "test", stream) 
++
++    assert test["a"].value == True
++    assert test["b"].value == 3
++    assert test["c"].value == 0
++    assert test["d"].value == 2
++
++test1()   
++test2()
++test2_str()
++test2_str2()
++test3()
++
+
+
+
+From haypo at berlios.de  Tue Feb 28 12:56:57 2006
+From: haypo at berlios.de (haypo at BerliOS)
+Date: Tue, 28 Feb 2006 12:56:57 +0100
+Subject: [Happyboom-svn] r415 - in haypo/hachoir: . branches/hachoir-yield
+Message-ID: <200602281156.k1SBuvl7012786@sheep.berlios.de>
+
+Author: haypo
+Date: 2006-02-28 12:56:53 +0100 (Tue, 28 Feb 2006)
+New Revision: 415
+
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/hachoir.py
+Log:
+ r5 at haypopc:  haypo | 2006-02-28 12:53:54 +0100
+ Remove unused function (valueChanged)
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:5
+
+Modified: haypo/hachoir/branches/hachoir-yield/hachoir.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-02-28 09:08:43 UTC (rev 414)
++++ haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-02-28 11:56:53 UTC (rev 415)
+@@ -4,9 +4,6 @@
+ from stream.file import FileStream
+ from text_ui import displayFieldSet
+ 
+-def valueChanged(field):
+-    print "Value of %s changed to %s" % (field._name, field.value)
+-
+ def main():
+     filename = "/home/haypo/exemple/png.png"
+     stream = FileStream(open(filename, 'r'), filename)
+
+
+
+From haypo at berlios.de  Tue Feb 28 12:57:17 2006
+From: haypo at berlios.de (haypo at BerliOS)
+Date: Tue, 28 Feb 2006 12:57:17 +0100
+Subject: [Happyboom-svn] r416 - in haypo/hachoir: . branches/hachoir-yield/field
+Message-ID: <200602281157.k1SBvH8e013151@sheep.berlios.de>
+
+Author: haypo
+Date: 2006-02-28 12:57:13 +0100 (Tue, 28 Feb 2006)
+New Revision: 416
+
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/field/field_set.py
+Log:
+ r6 at haypopc:  haypo | 2006-02-28 12:56:41 +0100
+ Add docstring and root attribute to FieldSet
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:5
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:6
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-02-28 11:56:53 UTC (rev 415)
++++ haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-02-28 11:57:13 UTC (rev 416)
+@@ -6,6 +6,11 @@
+     pass
+ 
+ class FieldSet(Field):
++    """
++    Ordered list of fields. Use operator [] to access fields using their
++    name (field names are unique in a field set, but not in the whole
++    document).
++    """
+     is_field_set = True
+ 
+     def __init__(self, parent, name, stream, description=None):
+@@ -18,6 +23,10 @@
+         self._size = None
+         self._total_field_size = 0
+         self.endian = "!"
++        if parent != None:
++            self.root = parent.root
++        else:
++            self.root = self
+ 
+     def __str__(self):
+         return "(...)" 
+
+
+
+From haypo at berlios.de  Tue Feb 28 13:20:48 2006
+From: haypo at berlios.de (haypo at BerliOS)
+Date: Tue, 28 Feb 2006 13:20:48 +0100
+Subject: [Happyboom-svn] r417 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/unit_test
+Message-ID: <200602281220.k1SCKmRE024254@sheep.berlios.de>
+
+Author: haypo
+Date: 2006-02-28 13:20:24 +0100 (Tue, 28 Feb 2006)
+New Revision: 417
+
+Added:
+   haypo/hachoir/branches/hachoir-yield/run_unit_test.py
+   haypo/hachoir/branches/hachoir-yield/unit_test/
+   haypo/hachoir/branches/hachoir-yield/unit_test/__init__.py
+   haypo/hachoir/branches/hachoir-yield/unit_test/create_fields.py
+   haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py
+Removed:
+   haypo/hachoir/branches/hachoir-yield/unit_test.py
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/field/field_set.py
+Log:
+ r9 at haypopc:  haypo | 2006-02-28 13:20:30 +0100
+ * Split unit test in many files: now use 'python run_unit_test.py'
+ * FieldSet supports path with like '/header/width' and '../width'
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:6
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:9
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-02-28 11:57:13 UTC (rev 416)
++++ haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-02-28 12:20:24 UTC (rev 417)
+@@ -84,6 +84,28 @@
+         self.fields.append(field._name, field)
+         return field
+ 
++    def getChunkByPath(self, path):
++        names = path.split("/")
++        if names[0] == '':
++            # Path "/..." => start from root
++            field = self.root
++            names = names[1:]
++        elif names[0] == '..':
++            if self.parent == None:
++                raise FieldDoesExist("Field '%s' has no parent (can't get field %s)!" \
++                    % (path, self.path))
++            field = self.parent
++            names = names[1:]
++        else:
++            field = self
++        for name in names:
++            if name=="" or not field.is_field_set:
++                raise FieldDoesExist("Field '%s' doesn't exist in %s" \
++                    % (path, self.path))
++            field = field[name]
++        return field
++
++    
+     def __getitem__(self, name):
+         """
+         Get an item with it's name or it's path.
+@@ -91,16 +113,8 @@
+         """
+         
+         # Get item with a path? (eg. "point/x")
+-        if "/" in name:
+-            path = name
+-            names = path.split("/")
+-            field = self
+-            for name in names:
+-                if name=="" or not field.is_field_set:
+-                    raise FieldDoesExist("Field '%s' doesn't exist in %s" \
+-                        % (path, self.path))
+-                field = field[name]
+-            return field
++        if "/" in name or name.startswith(".."):
++            return self.getChunkByPath(name)
+ 
+         # Field does exit?
+         if name in self.fields:
+
+Added: haypo/hachoir/branches/hachoir-yield/run_unit_test.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/run_unit_test.py	2006-02-28 11:57:13 UTC (rev 416)
++++ haypo/hachoir/branches/hachoir-yield/run_unit_test.py	2006-02-28 12:20:24 UTC (rev 417)
+@@ -0,0 +1,9 @@
++from unit_test import create_fields
++from unit_test import field_set_get_item
++
++def runAllTests():
++    create_fields.runTests()
++    field_set_get_item.runTests()
++
++if __name__ == "__main__":
++    runAllTests()
+
+Added: haypo/hachoir/branches/hachoir-yield/unit_test/__init__.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/unit_test/__init__.py	2006-02-28 11:57:13 UTC (rev 416)
++++ haypo/hachoir/branches/hachoir-yield/unit_test/__init__.py	2006-02-28 12:20:24 UTC (rev 417)
+@@ -0,0 +1,3 @@
++import create_fields
++import field_set_get_item
++
+
+Added: haypo/hachoir/branches/hachoir-yield/unit_test/create_fields.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/unit_test/create_fields.py	2006-02-28 11:57:13 UTC (rev 416)
++++ haypo/hachoir/branches/hachoir-yield/unit_test/create_fields.py	2006-02-28 12:20:24 UTC (rev 417)
+@@ -0,0 +1,118 @@
++from StringIO import StringIO
++from field import FieldSet, Integer, String, Bits, Bit
++from stream.file import FileStream
++from bits import long2raw, str2hex
++
++def test1():
++    data = "\x02\x01abc\x09"
++    stream = FileStream(StringIO(data), None)
++    class TestInteger(FieldSet):
++        def __init__(self, a, b, c):
++            FieldSet.__init__(self, a, b, c)
++            self.endian = ">"
++        def createFields(self):
++            yield Integer(self, "word", "uint16", "One integer")
++            yield String(self, "abc", "string[3]", "abc string")
++            yield Integer(self, "byte", "uint8", "Byte")
++    test = TestInteger(None, "test", stream) 
++
++    assert "word" in test
++    field = test["word"]
++    assert field.size == 16
++    assert field.value == 0x0201
++
++    assert "abc" in test
++    field = test["abc"]
++    assert field.address == 2*8
++    assert field.size == 3*8
++    assert field.value == "abc"
++
++    assert "byte" in test
++    field = test["byte"]
++    assert field.address == 5*8
++    assert field.size == 8
++    assert field.value == 9
++
++def test2():
++    data = "\x21\x43" # concat(0x01, 0x23, 0x4)
++    stream = FileStream(StringIO(data), None)
++    class TestInteger(FieldSet):
++        def createFields(self):
++            yield Bits(self, "a", 4)
++            yield Integer(self, "b", "uint8")
++            yield Bits(self, "c", 4)
++    test = TestInteger(None, "test", stream) 
++
++    assert test["a"].value == 1
++    assert test["b"].value == 0x32
++    assert test["c"].value == 4 
++
++def test2_str():
++    data = "\x19\x46" # concat(0x09, 0x61, 0x4)
++    
++    stream = FileStream(StringIO(data), None)
++    class TestInteger(FieldSet):
++        def createFields(self):
++            yield Bits(self, "a", 4)
++            yield String(self, "b", "string[1]")
++            yield Bits(self, "c", 4)
++    test = TestInteger(None, "test", stream) 
++
++    assert test["a"].value == 9
++    assert test["b"].value == "a"
++    assert test["c"].value == 4 
++
++def test2_str2():
++    data   = 1        ;  data <<= 4
++    data  += 4        ;  data <<= 8
++    data  += ord("a") ;  data <<= 2
++    data  += 3
++    data = long2raw(data, big_endian=False)
++    
++    stream = FileStream(StringIO(data), None)
++    class TestInteger(FieldSet):
++        def createFields(self):
++            yield Bits(self, "a", 2)
++            yield String(self, "b", "string[1]")
++            yield Bits(self, "c", 4)
++            yield Bits(self, "d", 2)
++    test = TestInteger(None, "test", stream) 
++
++    assert test["a"].value == 3
++    assert test["b"].value == "a"
++    assert test["c"].value == 4 
++    assert test["d"].value == 1
++
++def test3():
++    data  = (1 & 0x1) << 0
++    data += (3 & 0x7) << 1
++    data += (0 & 0x3) << 4
++    data += (2 & 0x3) << 6
++    data = chr(data)
++    stream = FileStream(StringIO(data), None)
++    class TestInteger(FieldSet):
++        def createFields(self):
++            yield Bit(self, "a")
++            yield Bits(self, "b", 3)
++            yield Bits(self, "c", 2)
++            yield Bits(self, "d", 2)
++    test = TestInteger(None, "test", stream) 
++
++    assert test["a"].value == True
++    assert test["b"].value == 3
++    assert test["c"].value == 0
++    assert test["d"].value == 2
++
++def runTests():
++    print "Test FieldSet.createField()"
++    try:
++        test1()   
++        test2()
++        test2_str()
++        test2_str2()
++        test3()
++        print "Test FieldSet.createField(): done"
++    except Exception, msg: 
++        print "Test FieldSet.createField(): error"
++        print msg
++
+
+Added: haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py	2006-02-28 11:57:13 UTC (rev 416)
++++ haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py	2006-02-28 12:20:24 UTC (rev 417)
+@@ -0,0 +1,41 @@
++from StringIO import StringIO
++from field import FieldSet, Integer, String, Bits, Bit
++from stream.file import FileStream
++
++class Header(FieldSet):
++    def createFields(self):
++        yield Integer(self, "width", "int16", "Width") 
++        yield Integer(self, "height", "int16", "Height") 
++
++class Body(FieldSet):
++    def createFields(self):
++        yield Integer(self, "x", "uint8", "Item") 
++        yield Integer(self, "y", "uint8", "Item") 
++
++class Document(FieldSet):
++    def createFields(self):
++        yield Header(self, "header", self.stream)
++        yield Body(self, "body", self.stream)
++
++def test():
++    data = "\x00\x0A\x00\x0B\x05\x07"
++    stream = FileStream(StringIO(data), None)
++    document = Document(None, "document", stream)
++    
++    # Test path starting with "/"
++    assert id(document["/header"]) == id(document["header"])
++    header = document["/header"]
++
++    # Test path starting with ".."
++    assert id(header[".."]) == id(document)
++    assert id(header["../header"]) == id(header)
++
++def runTests():
++    print "Test FieldSet.__getitem__"
++    try:
++        test()
++        print "Test FieldSet.__getitem__: done"
++    except Exception, msg:
++        print "Test FieldSet.__getitem__: error!"
++        print msg
++        raise
+
+Deleted: haypo/hachoir/branches/hachoir-yield/unit_test.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/unit_test.py	2006-02-28 11:57:13 UTC (rev 416)
++++ haypo/hachoir/branches/hachoir-yield/unit_test.py	2006-02-28 12:20:24 UTC (rev 417)
+@@ -1,111 +0,0 @@
+-from StringIO import StringIO
+-from field import FieldSet, Integer, String, Bits, Bit
+-from stream.file import FileStream
+-from bits import long2raw, str2hex
+-
+-def test1():
+-    data = "\x02\x01abc\x09"
+-    stream = FileStream(StringIO(data), None)
+-    class TestInteger(FieldSet):
+-        def __init__(self, a, b, c):
+-            FieldSet.__init__(self, a, b, c)
+-            self.endian = ">"
+-        def createFields(self):
+-            yield Integer(self, "word", "uint16", "One integer")
+-            yield String(self, "abc", "string[3]", "abc string")
+-            yield Integer(self, "byte", "uint8", "Byte")
+-    test = TestInteger(None, "test", stream) 
+-
+-    assert "word" in test
+-    field = test["word"]
+-    assert field.size == 16
+-    assert field.value == 0x0201
+-
+-    assert "abc" in test
+-    field = test["abc"]
+-    assert field.address == 2*8
+-    assert field.size == 3*8
+-    assert field.value == "abc"
+-
+-    assert "byte" in test
+-    field = test["byte"]
+-    assert field.address == 5*8
+-    assert field.size == 8
+-    assert field.value == 9
+-
+-def test2():
+-    data = "\x21\x43" # concat(0x01, 0x23, 0x4)
+-    stream = FileStream(StringIO(data), None)
+-    class TestInteger(FieldSet):
+-        def createFields(self):
+-            yield Bits(self, "a", 4)
+-            yield Integer(self, "b", "uint8")
+-            yield Bits(self, "c", 4)
+-    test = TestInteger(None, "test", stream) 
+-
+-    assert test["a"].value == 1
+-    assert test["b"].value == 0x32
+-    assert test["c"].value == 4 
+-
+-def test2_str():
+-    data = "\x19\x46" # concat(0x09, 0x61, 0x4)
+-    
+-    stream = FileStream(StringIO(data), None)
+-    class TestInteger(FieldSet):
+-        def createFields(self):
+-            yield Bits(self, "a", 4)
+-            yield String(self, "b", "string[1]")
+-            yield Bits(self, "c", 4)
+-    test = TestInteger(None, "test", stream) 
+-
+-    assert test["a"].value == 9
+-    assert test["b"].value == "a"
+-    assert test["c"].value == 4 
+-
+-def test2_str2():
+-    data   = 1        ;  data <<= 4
+-    data  += 4        ;  data <<= 8
+-    data  += ord("a") ;  data <<= 2
+-    data  += 3
+-    data = long2raw(data, big_endian=False)
+-    
+-    stream = FileStream(StringIO(data), None)
+-    class TestInteger(FieldSet):
+-        def createFields(self):
+-            yield Bits(self, "a", 2)
+-            yield String(self, "b", "string[1]")
+-            yield Bits(self, "c", 4)
+-            yield Bits(self, "d", 2)
+-    test = TestInteger(None, "test", stream) 
+-
+-    assert test["a"].value == 3
+-    assert test["b"].value == "a"
+-    assert test["c"].value == 4 
+-    assert test["d"].value == 1
+-
+-def test3():
+-    data  = (1 & 0x1) << 0
+-    data += (3 & 0x7) << 1
+-    data += (0 & 0x3) << 4
+-    data += (2 & 0x3) << 6
+-    data = chr(data)
+-    stream = FileStream(StringIO(data), None)
+-    class TestInteger(FieldSet):
+-        def createFields(self):
+-            yield Bit(self, "a")
+-            yield Bits(self, "b", 3)
+-            yield Bits(self, "c", 2)
+-            yield Bits(self, "d", 2)
+-    test = TestInteger(None, "test", stream) 
+-
+-    assert test["a"].value == True
+-    assert test["b"].value == 3
+-    assert test["c"].value == 0
+-    assert test["d"].value == 2
+-
+-test1()   
+-test2()
+-test2_str()
+-test2_str2()
+-test3()
+-
+
+
+
+From haypo at berlios.de  Tue Feb 28 13:53:11 2006
+From: haypo at berlios.de (haypo at BerliOS)
+Date: Tue, 28 Feb 2006 13:53:11 +0100
+Subject: [Happyboom-svn] r418 - in haypo/hachoir: . branches/hachoir-yield/field branches/hachoir-yield/unit_test
+Message-ID: <200602281253.k1SCrB9q006420@sheep.berlios.de>
+
+Author: haypo
+Date: 2006-02-28 13:52:41 +0100 (Tue, 28 Feb 2006)
+New Revision: 418
+
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/field/field_set.py
+   haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py
+Log:
+ r11 at haypopc:  haypo | 2006-02-28 13:52:42 +0100
+ Fix about "../" path in FieldSet
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:9
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:11
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-02-28 12:20:24 UTC (rev 417)
++++ haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-02-28 12:52:41 UTC (rev 418)
+@@ -98,6 +98,9 @@
+             names = names[1:]
+         else:
+             field = self
++        # For path like "../" => delete last (useless) "/"
++        if 1 <= len(names) and names[-1] == '':
++            del names[-1]
+         for name in names:
+             if name=="" or not field.is_field_set:
+                 raise FieldDoesExist("Field '%s' doesn't exist in %s" \
+@@ -129,14 +132,12 @@
+             % (name, self.path))
+ 
+     def __contains__(self, name):
+-        if "/" in name:
+-            names = name.split("/")
+-            field = self
+-            for name in names:
+-                if name=="" or not field.is_field_set:
+-                    return False
+-                field = field[name]
+-            return True
++        if "/" in name or name.startswith(".."):
++            try:
++                field = self.getChunkByPath(name)
++                return True
++            except FieldDoesExist:
++                return False
+         else:
+             if self._field_generator != None:
+                 field = self._feedUntil(name)
+
+Modified: haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py	2006-02-28 12:20:24 UTC (rev 417)
++++ haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py	2006-02-28 12:52:41 UTC (rev 418)
+@@ -23,12 +23,19 @@
+     document = Document(None, "document", stream)
+     
+     # Test path starting with "/"
++    assert "/body" in document
++    assert "/header" in document
+     assert id(document["/header"]) == id(document["header"])
+     header = document["/header"]
++    body = document["/body"]
++    assert id(document["/header/width"]) == id(header["width"])
+ 
+     # Test path starting with ".."
++    assert ".." in header
++    assert "../" in header
+     assert id(header[".."]) == id(document)
+     assert id(header["../header"]) == id(header)
++    assert id(body["../header/width"]) == id(header["width"])
+ 
+ def runTests():
+     print "Test FieldSet.__getitem__"
+
+
+

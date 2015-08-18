@@ -1,0 +1,122 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r319 - haypo/hachoir/plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r319%20-%20haypo/hachoir/plugins&In-Reply-To=%3C200512121605.jBCG5MZD029390%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000224.html">
+   <LINK REL="Next"  HREF="000226.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r319 - haypo/hachoir/plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r319%20-%20haypo/hachoir/plugins&In-Reply-To=%3C200512121605.jBCG5MZD029390%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r319 - haypo/hachoir/plugins">haypo at berlios.de
+       </A><BR>
+    <I>Mon Dec 12 17:05:22 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000224.html">[Happyboom-svn] r318 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000226.html">[Happyboom-svn] r320 - haypo/hachoir/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#225">[ date ]</a>
+              <a href="thread.html#225">[ thread ]</a>
+              <a href="subject.html#225">[ subject ]</a>
+              <a href="author.html#225">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-12 17:05:21 +0100 (Mon, 12 Dec 2005)
+New Revision: 319
+
+Modified:
+   haypo/hachoir/plugins/png.py
+Log:
+Fix dummy bug in PNG.
+
+
+Modified: haypo/hachoir/plugins/png.py
+===================================================================
+--- haypo/hachoir/plugins/png.py	2005-12-12 00:29:05 UTC (rev 318)
++++ haypo/hachoir/plugins/png.py	2005-12-12 16:05:21 UTC (rev 319)
+@@ -54,7 +54,7 @@
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;png_text&quot;, &quot;PNG text&quot;, stream, parent)
+         chunk = self.readString(&quot;keyword&quot;, &quot;C&quot;, &quot;Keyword&quot;)
+-        lg = self._parent.size - chunk.size
++        lg = stream.getSize() - chunk.size
+         self.read(&quot;text&quot;, &quot;!%us&quot; % lg, &quot;Text&quot;)
+ 
+     def __str__(self):
+@@ -77,23 +77,24 @@
+              self[&quot;hour&quot;], self[&quot;minute&quot;], self[&quot;second&quot;])
+         
+ class PngChunk(Filter):
++    handler = {
++        &quot;tIME&quot;: PngTime,
++        &quot;pHYs&quot;: PngPhysical,
++        &quot;IHDR&quot;: PngHeader,
++        &quot;gAMA&quot;: PngGamma,
++        &quot;tEXt&quot;: PngText
++    }
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;png_chunk&quot;, &quot;PNG chunk&quot;, stream, parent)
+         self.read(&quot;size&quot;, &quot;!L&quot;, &quot;Chunk size&quot;)
+         self.read(&quot;type&quot;, &quot;!4s&quot;, &quot;Chunk type&quot;)
+-        self.chunk_splitter = {
+-            &quot;tIME&quot;: PngTime,
+-            &quot;pHYs&quot;: PngPhysical,
+-            &quot;IHDR&quot;: PngHeader,
+-            &quot;gAMA&quot;: PngGamma,
+-            &quot;tEXt&quot;: PngText
+-        }
+-        if self[&quot;type&quot;] in self.chunk_splitter:
++        type = self[&quot;type&quot;]
++        if type in PngChunk.handler:
++            size = self[&quot;size&quot;]
+             oldpos = self._stream.tell()
+-            child_filter = self.chunk_splitter[self[&quot;type&quot;]]
+-            sub = stream.createSub(stream.tell(), self[&quot;size&quot;])
+-            self.readStreamChild(&quot;chunk_data&quot;, sub, child_filter)
+-            stream.seek(oldpos + self[&quot;size&quot;])
++            sub = stream.createSub(size=size)
++            self.readStreamChild(&quot;chunk_data&quot;, sub, PngChunk.handler[type])
++            assert stream.tell() == (oldpos + size) 
+         else:
+             self.read(&quot;data&quot;, &quot;!{size}s&quot;, &quot;Chunk data&quot;)
+         self.read(&quot;crc32&quot;, &quot;!L&quot;, &quot;Chunk CRC32&quot;)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000224.html">[Happyboom-svn] r318 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000226.html">[Happyboom-svn] r320 - haypo/hachoir/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#225">[ date ]</a>
+              <a href="thread.html#225">[ thread ]</a>
+              <a href="subject.html#225">[ subject ]</a>
+              <a href="author.html#225">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

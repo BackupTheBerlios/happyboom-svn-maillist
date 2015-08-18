@@ -1,0 +1,105 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r167 - happyboom/trunk/common
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r167%20-%20happyboom/trunk/common&In-Reply-To=%3C200509152035.j8FKZAMr031376%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000073.html">
+   <LINK REL="Next"  HREF="000075.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r167 - happyboom/trunk/common</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r167%20-%20happyboom/trunk/common&In-Reply-To=%3C200509152035.j8FKZAMr031376%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r167 - happyboom/trunk/common">dboucard at berlios.de
+       </A><BR>
+    <I>Thu Sep 15 22:35:10 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000073.html">[Happyboom-svn] r166 - happyboom/trunk/common happyboom/trunk/server poilu/trunk
+</A></li>
+        <LI>Next message: <A HREF="000075.html">[Happyboom-svn] r168 - in happyboom/trunk: common server
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#74">[ date ]</a>
+              <a href="thread.html#74">[ thread ]</a>
+              <a href="subject.html#74">[ subject ]</a>
+              <a href="author.html#74">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-15 22:35:10 +0200 (Thu, 15 Sep 2005)
+New Revision: 167
+
+Modified:
+   happyboom/trunk/common/presentation.py
+Log:
+IO_Client
+
+
+Modified: happyboom/trunk/common/presentation.py
+===================================================================
+--- happyboom/trunk/common/presentation.py	2005-09-15 20:12:12 UTC (rev 166)
++++ happyboom/trunk/common/presentation.py	2005-09-15 20:35:10 UTC (rev 167)
+@@ -33,22 +33,22 @@
+             self.DESTROY: self.unpackDestroyItem,
+             self.EVENT: self.unpackEvent}
+ 
+-        # Event (IOClient client, str version, str signature)
++        # Event (IO_Client client, str version, str signature)
+         self._on_client_connection = None
+ 
+-        # Event (IOClient client, str features)
++        # Event (IO_Client client, str features)
+         self._on_features = None
+         
+-        # Event (IOClient client)
++        # Event (IO_Client client)
+         self._on_client_disconnection = None
+ 
+-        # Event (IOClient client, str feature, str event, str arguments)
++        # Event (IO_Client client, str feature, str event, str arguments)
+         self._on_recv_event = None
+ 
+-        # Event (IOClient client, str type, int id)
++        # Event (IO_Client client, str type, int id)
+         self._on_create_item = None
+ 
+-        # Event (IOClient client, int id)
++        # Event (IO_Client client, int id)
+         self._on_destroy_item = None
+         
+     def processPacket(self, packet):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000073.html">[Happyboom-svn] r166 - happyboom/trunk/common happyboom/trunk/server poilu/trunk
+</A></li>
+	<LI>Next message: <A HREF="000075.html">[Happyboom-svn] r168 - in happyboom/trunk: common server
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#74">[ date ]</a>
+              <a href="thread.html#74">[ thread ]</a>
+              <a href="subject.html#74">[ subject ]</a>
+              <a href="author.html#74">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

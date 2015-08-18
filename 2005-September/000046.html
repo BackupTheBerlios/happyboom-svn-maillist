@@ -1,0 +1,180 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r139 - happyboom/trunk
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r139%20-%20happyboom/trunk&In-Reply-To=%3C200509132310.j8DNAfjf018399%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000045.html">
+   <LINK REL="Next"  HREF="000047.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r139 - happyboom/trunk</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r139%20-%20happyboom/trunk&In-Reply-To=%3C200509132310.j8DNAfjf018399%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r139 - happyboom/trunk">dboucard at berlios.de
+       </A><BR>
+    <I>Wed Sep 14 01:10:41 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000045.html">[Happyboom-svn] r138 - happyboom/trunk/common languetudes/trunk
+</A></li>
+        <LI>Next message: <A HREF="000047.html">[Happyboom-svn] r140 - in happyboom/trunk: common net server
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#46">[ date ]</a>
+              <a href="thread.html#46">[ thread ]</a>
+              <a href="subject.html#46">[ subject ]</a>
+              <a href="author.html#46">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-14 01:10:32 +0200 (Wed, 14 Sep 2005)
+New Revision: 139
+
+Removed:
+   happyboom/trunk/server.py
+Log:
+
+
+Deleted: happyboom/trunk/server.py
+===================================================================
+--- happyboom/trunk/server.py	2005-09-13 22:57:23 UTC (rev 138)
++++ happyboom/trunk/server.py	2005-09-13 23:10:32 UTC (rev 139)
+@@ -1,104 +0,0 @@
+-#!/usr/bin/python
+-# -*- coding: ISO-8859-1 -*-
+-VERSION=&quot;0.1.4&quot;
+-import time
+-from console_server import *
+-import getopt
+-import sys
+-
+-def usage(defval):
+-	print &quot;HappyBoom server version %s&quot; % (VERSION)
+-	print &quot;&quot;
+-	print &quot;Usage: %s [-v,--verbose] [-d,--debug] [-h,--help]&quot; % (sys.argv[0])
+-	print &quot;&quot;
+-	print &quot;Arguments :&quot;
+-	print &quot;\t-h,--help         : Show this help&quot;
+-	print &quot;\t-v,--verbose      : Activate verbose mode&quot;
+-	print &quot;\t-d,--debug        : Activate debug mode&quot;
+-	print &quot;&quot;
+-	print &quot;Other arguments :&quot;
+-	print &quot;\t--max-input NB    : Max input clients (default %u)&quot; % (defval[&quot;max-input&quot;])
+-	print &quot;\t--max-view NB     : Max view clients (default %u)&quot; % (defval[&quot;max-view&quot;])
+-	print &quot;\t--view-port PORT  : Port number for view clients (default %u)&quot; % (defval[&quot;view-port&quot;])
+-	print &quot;\t--input-port PORT : Port number for input clients (default %u)&quot; % (defval[&quot;input-port&quot;])
+-
+-def parseArgs(val):
+-	import getopt
+-	def_val = val.copy()
+-	
+-	try:
+-		short = &quot;hdv&quot;
+-		long = [&quot;debug&quot;, &quot;verbose&quot;, &quot;help&quot;, \
+-			&quot;max-input=&quot;, &quot;max-view=&quot;, \
+-			&quot;view-port=&quot;, &quot;input-port=&quot;]
+-		opts, args = getopt.getopt(sys.argv[1:], short, long)
+-	except getopt.GetoptError:
+-		usage(def_val)
+-		sys.exit(2)
+-		
+-	if 0&lt;len(args):
+-		usage(def_val)
+-		sys.exit(2)
+-	
+-	for o, a in opts:
+-		if o == &quot;--help&quot;:
+-			usage(def_val)
+-			sys.exit()
+-		if o == &quot;--input-port&quot;:
+-			a = int(a)
+-			if a == val[&quot;view-port&quot;]:
+-				print &quot;Sorry, input port should be different than view port!&quot;
+-			else:
+-				val[&quot;input-port&quot;] = a 			
+-		if o == &quot;--view-port&quot;:
+-			a = int(a)
+-			if a == val[&quot;input-port&quot;]:
+-				print &quot;Sorry, view port should be different than input port!&quot;
+-			else:
+-				val[&quot;view-port&quot;] = a 
+-		if o == &quot;--max-input&quot;:
+-			a = int(a)
+-			if a &lt; 1: 
+-				a=1
+-			elif 100 &lt; a:
+-				a = 100
+-			val[&quot;max-input&quot;] = a
+-		if o == &quot;--max-view&quot;:
+-			a = int(a)
+-			if a &lt; 1: 
+-				a=1
+-			elif 100 &lt; a:
+-				a = 100
+-			val[&quot;max-view&quot;] = a
+-		if o in (&quot;-v&quot;, &quot;--verbose&quot;):
+-			val[&quot;verbose&quot;] = True
+-		if o in (&quot;-d&quot;, &quot;--debug&quot;):
+-			val[&quot;debug&quot;] = True
+-	return val
+-
+-def main():
+-	val = { \
+-		&quot;view-port&quot;: 12430, \
+-		&quot;input-port&quot;: 12431, \
+-		&quot;max-input&quot;: 4, \
+-		&quot;max-view&quot;: 4, \
+-		&quot;verbose&quot;: False,
+-		&quot;debug&quot;: False}
+-	arg = parseArgs(val)
+-	
+-	server = ConsoleServer()
+-	server.setVerbose(arg[&quot;verbose&quot;])
+-	server.setDebug(arg[&quot;debug&quot;])
+-
+-	server.start(arg)
+-	try:
+-		while server.quit==False:
+-			server.live()
+-			time.sleep(0.010)
+-	except KeyboardInterrupt:
+-		print &quot;Program interrupted (CTRL+C).&quot;
+-		pass
+-	server.stop()
+-	print &quot;Server quit.&quot;
+-
+-if __name__==&quot;__main__&quot;: main()
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000045.html">[Happyboom-svn] r138 - happyboom/trunk/common languetudes/trunk
+</A></li>
+	<LI>Next message: <A HREF="000047.html">[Happyboom-svn] r140 - in happyboom/trunk: common net server
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#46">[ date ]</a>
+              <a href="thread.html#46">[ thread ]</a>
+              <a href="subject.html#46">[ subject ]</a>
+              <a href="author.html#46">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,102 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r114 - languetudes/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r114%20-%20languetudes/src&In-Reply-To=%3C200509022351.j82Np5Dj006797%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000024.html">
+   <LINK REL="Next"  HREF="000021.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r114 - languetudes/src</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r114%20-%20languetudes/src&In-Reply-To=%3C200509022351.j82Np5Dj006797%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r114 - languetudes/src">dboucard at berlios.de
+       </A><BR>
+    <I>Sat Sep  3 01:51:05 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000024.html">[Happyboom-svn] r113 - in languetudes: . locale locale/en locale/en/LC_MESSAGES locale/eo locale/eo/LC_MESSAGES src
+</A></li>
+        <LI>Next message: <A HREF="000021.html">[Happyboom-svn] r115 - languetudes
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20">[ date ]</a>
+              <a href="thread.html#20">[ thread ]</a>
+              <a href="subject.html#20">[ subject ]</a>
+              <a href="author.html#20">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-03 01:50:53 +0200 (Sat, 03 Sep 2005)
+New Revision: 114
+
+Modified:
+   languetudes/src/common.py
+Log:
+debug : declaration de self.connexion et self.curseur pour le destructeur
+
+
+Modified: languetudes/src/common.py
+===================================================================
+--- languetudes/src/common.py	2005-09-02 22:06:14 UTC (rev 113)
++++ languetudes/src/common.py	2005-09-02 23:50:53 UTC (rev 114)
+@@ -8,6 +8,9 @@
+ WHERE __dictionnaire.langue=__langue.id
+   AND __langue.intitule='%s'
+   AND __dictionnaire.intitule='%s'&quot;&quot;&quot;
++  
++    connexion = None
++    curseur = None
+     
+     def __init__(self):
+         # Chargement du fichier de configuration
+@@ -184,7 +187,9 @@
+             return False
+         
+     def __del__(self):
+-        # fermeture du curseur
+-        self.curseur.close()
+-        # fermeture de la connexion
+-        self.connexion.close()
+\ No newline at end of file
++        if self.connexion != None:
++            if self.curseur != None:
++                # fermeture du curseur
++                self.curseur.close()
++            # fermeture de la connexion
++            self.connexion.close()
+\ No newline at end of file
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000024.html">[Happyboom-svn] r113 - in languetudes: . locale locale/en locale/en/LC_MESSAGES locale/eo locale/eo/LC_MESSAGES src
+</A></li>
+	<LI>Next message: <A HREF="000021.html">[Happyboom-svn] r115 - languetudes
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20">[ date ]</a>
+              <a href="thread.html#20">[ thread ]</a>
+              <a href="subject.html#20">[ subject ]</a>
+              <a href="author.html#20">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

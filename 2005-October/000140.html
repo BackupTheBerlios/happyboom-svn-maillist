@@ -1,0 +1,1121 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r233 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-October/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r233%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200510300345.j9U3jXmd006396%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000139.html">
+   <LINK REL="Next"  HREF="000141.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r233 - in haypo/hachoir: . plugins</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r233%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200510300345.j9U3jXmd006396%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r233 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Sun Oct 30 04:45:33 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000139.html">[Happyboom-svn] r232 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000141.html">[Happyboom-svn] r234 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#140">[ date ]</a>
+              <a href="thread.html#140">[ thread ]</a>
+              <a href="subject.html#140">[ subject ]</a>
+              <a href="author.html#140">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-10-30 04:45:29 +0100 (Sun, 30 Oct 2005)
+New Revision: 233
+
+Added:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/ui.py
+Removed:
+   haypo/hachoir/hmi.py
+Modified:
+   haypo/hachoir/filter.py
+   haypo/hachoir/hachoir.py
+   haypo/hachoir/plugins/exe.py
+   haypo/hachoir/plugins/gif.py
+   haypo/hachoir/plugins/ncftp.py
+   haypo/hachoir/plugins/png.py
+   haypo/hachoir/plugins/tar.py
+Log:
+Update plugins for new chunk system, rename hmi to ui (user interface).
+
+
+Added: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-10-30 01:42:18 UTC (rev 232)
++++ haypo/hachoir/chunk.py	2005-10-30 03:45:29 UTC (rev 233)
+@@ -0,0 +1,108 @@
++import struct
++import re
++import types
++import string
++
++class Chunk(object):
++    def __init__(self, id, description, stream, addr, size):
++        self.id = id
++        self.description = description
++        self.size = size
++        self._addr = addr
++
++    def __str__(self):
++        return &quot;Chunk(%s) &lt;addr=%s, size=%s, id=%s, description=%s&gt;&quot; % \
++            (self.__class__, self._addr, self.size, self.id, self.description)
++        
++    def getRawData(self, max_size=None):
++        return None
++        
++    def getData(self, max_size=None):
++        return None
++
++    def getDisplayData(self):
++        return self.getData()
++
++    def _getAddr(self): return self._addr
++    addr = property(_getAddr)        
++    
++class ArrayChunk(Chunk):
++    def __init__(self, id, description, stream, addr, size, array):
++        Chunk.__init__(self, id, description, stream, addr, size)
++        self._array = array
++    
++    def getData(self, max_size=None):
++        return self._array
++
++    def __getitem__(self, index):
++        return self._array[index]
++        
++class FilterChunk(Chunk):
++    def __init__(self, id, description, stream, addr, size, filter):
++        Chunk.__init__(self, id, description, stream, addr, size)
++        self._filter = filter
++        
++    def getDisplayData(self):
++        return &quot;(...)&quot; 
++        
++    def getData(self, max_size=None):
++        return self._filter
++
++    def getFilter(self):
++        return self._filter
++
++class FormatChunk(Chunk):
++    def __init__(self, id, description, stream, addr, format):
++        size = struct.calcsize(format)
++        Chunk.__init__(self, id, description, stream, addr, size)
++        self.__stream = stream
++        self.__addr = addr
++        self.__format = format
++        self.value = None
++
++    def getFormat(self): return self.__format
++
++    def isArray(self):
++        if self.isString(): return False
++        return re.compile(&quot;^.?[0-9]+.*$&quot;).match(self.__format) != None
++        
++    def isString(self):
++        return self.__format[-1] == &quot;s&quot;
++
++    def getRawData(self, max_size=None):
++        &quot;&quot;&quot; max_size can be None &quot;&quot;&quot;
++        self.__stream.seek(self.addr)
++        if (max_size == None or self.size&lt;max_size) or not self.isString():
++            data = self.__stream.getN(self.size)
++            return data, False
++        else:
++            data = self.__stream.getN(max_size)
++            return data+&quot;(...)&quot;, True
++   
++    def getData(self, max_size=None):
++        data, truncated = self.getRawData(max_size)
++        if not truncated:
++            data = struct.unpack(self.__format, data)
++            if not self.isArray():
++                data = data[0]
++        return data
++
++    def getDisplayData(self):
++#        if self.id == None: return &quot;-&quot;
++
++        data = self.getData(20)
++        if type(data)==types.StringType:
++            display = &quot;&quot;
++            for c in data:
++                if ord(c)&lt;32:
++                    know = {&quot;\n&quot;: &quot;\\n&quot;, &quot;\r&quot;: &quot;\\r&quot;, &quot;\0&quot;: &quot;\\0&quot;}
++                    if c in know:
++                        display = display + know[c]
++                    else:
++                        display = display + &quot;\\x%02X&quot; % ord(c)
++                elif c in string.printable:
++                    display = display + c
++                else:
++                    display = display + &quot;.&quot;
++            return &quot;\&quot;%s\&quot;&quot; % display
++        return data 
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-10-30 01:42:18 UTC (rev 232)
++++ haypo/hachoir/filter.py	2005-10-30 03:45:29 UTC (rev 233)
+@@ -3,11 +3,10 @@
+ &quot;&quot;&quot;
+ 
+ import struct
+-import re
+-import sys
+-import types
++import re, sys
+ import string
+-import hmi
++import types
++import ui
+ from chunk import Chunk, FormatChunk, ArrayChunk, FilterChunk
+     
+ class Filter:
+@@ -31,6 +30,9 @@
+         self._chunks = []
+         self._chunks_dict = {}
+ 
++    def updateParent(self, parent, chunk):
++        pass
++
+     def getChunk(self, chunk_id):
+         return self._chunks_dict.get(chunk_id, None)
+ 
+@@ -40,20 +42,23 @@
+             type = chunk.getFormat()
+         elif issubclass(type, FilterChunk):
+             type = chunk.getFilter().id
+-            #type = &quot;(sub)&quot;
+-        hmi.hmi.add_table(self.table_parent, chunk.addr, chunk.size, type, &quot;HEX&quot;, chunk.id, chunk.description, &quot;&quot;)
++        ui.ui.add_table(self.table_parent, chunk.addr, chunk.size, type, chunk.id, chunk.description, chunk.getDisplayData())
+ 
+-    def display(self):
+-        hmi.hmi.enableParentButton(self.getParent() != None)
++    def display(self):  
++        # Update parent button
++        ui.ui.enableParentButton(self.getParent() != None)
++        
++        # Update status bar
+         text = &quot;&quot;
+         current = self
+         while current != None:
+             if text != &quot;&quot;: text = &quot; &gt; &quot; + text
+             text = current.id + text
+             current = current.getParent()
+-        hmi.hmi.updateStatusBar(text)
++        ui.ui.updateStatusBar(&quot;%s: %s&quot; % (text, self.description))
+             
+-        hmi.hmi.clear_table()
++        # Update table
++        ui.ui.clear_table()
+         for chunk in self._chunks:
+             if issubclass(chunk.__class__, ArrayChunk):
+                 for subchunk in chunk:
+@@ -64,45 +69,6 @@
+     def __replaceFieldFormat(self, match):
+         return str(getattr(self, match.group(1)))
+ 
+-    def openChild(self):
+-        return
+-        self.__child_stream_pos = self._stream.tell()
+-        self.__last_child_stream_pos = None 
+-
+-    def closeChild(self, text):
+-        return
+-        self.__updateChild(self.__last_child_stream_pos, self.table_item)
+-        if self.table_parent != None:
+-            self.__updateChild(self.__child_stream_pos, self.table_parent)
+-        self.table_item = None
+-        self.__last_child_stream_pos = None
+-        if display_filter_actions != self.depth: return
+-        size = self._stream.tell() - self.__child_stream_pos
+-        sys.stdout.write(&quot;%s&lt;%s (%u bytes)&gt;\n&quot; % (self.indent, text, size))
+-
+-    def __updateChild(self, pos, table):
+-        if pos == None or table == None: return False
+-        size = self._stream.tell() - pos
+-        hmi.hmi.set_table_value(table, 1, size) 
+-        return True
+-
+-    def updateChildTitle(self, text):
+-        return
+-        hmi.hmi.set_table_value(self.table_item, 4, text) 
+-
+-    def updateChildComment(self, comment):
+-        return
+-        hmi.hmi.set_table_value(self.table_item, 5, comment) 
+-
+-    def newChild(self, text):
+-        return
+-        file_pos = self._stream.tell()
+-        self.__updateChild(self.__last_child_stream_pos, self.table_item)
+-        self.table_item = hmi.hmi.add_table_child(self.table_parent, file_pos, 0, None, text)
+-        self.__last_child_stream_pos = file_pos 
+-        if display_filter_actions &lt; self.depth+1: return
+-        sys.stdout.write(&quot;%s[ %s ]\n&quot; % (self.child_indent, text))
+-
+     def __isStrPrintable(self, str):
+         &quot;&quot;&quot;
+         Can a string be printed on the screen?
+@@ -135,43 +101,55 @@
+         self._chunks.append(chunk)
+         id = chunk.id
+         if id != None:
+-            if hasattr(self, id):
+-                raise Exception(&quot;Chunk identifier %s already exist!&quot; % id)
+-            setattr(self, id, chunk.getData())
+-            self._chunks_dict[id] = chunk
+-        print &quot;%sNew chunk: %s, addr=%s, size=%s (file pos=%s)&quot; % (self.indent, chunk.id, chunk.addr, chunk.size, self._stream.tell())
++            m = re.compile(r&quot;^([^[]+)\[\]$&quot;).match(id)
++            if m != None:
++                id = m.group(1)
++                if hasattr(self, id):
++                    array = getattr(self, id)
++                else:
++                    array = []
++                    setattr(self, id, array)
++                assert type(array) == types.ListType
++                chunk.id = &quot;%s[%u]&quot; % (id, len(array))
++                array.append(chunk)
++                if id not in self._chunks_dict:
++                    self._chunks_dict[id] = array 
++            else:
++                if hasattr(self, id):
++                    raise Exception(&quot;Chunk identifier %s already exist!&quot; % id)
++                setattr(self, id, chunk.getData())
++                self._chunks_dict[id] = chunk
+ 
+     def readChild(self, id, filter_class, description): 
+-        self.openChild()
+         oldpos = self._stream.tell()
+-        self.newChild(description)
+         filter = filter_class(self._stream, self)
+         chunk = FilterChunk(id, filter.description, self._stream, oldpos, self._stream.tell() - oldpos, filter)
+-        self.closeChild(description)
+-        print &quot;%s : %s = %s&quot; % (chunk.__class__, chunk.id, chunk.getData())
+         self._appendChunk(chunk)
+-        print &quot;New child chunk&quot;
++        filter.updateParent(self, chunk)
+ 
+     def readArray(self, id, filter_class, description, end_func): 
+-        array = []
+-        self.openChild()
+         addr = self._stream.tell()
++        array = []
++        array_chunk = ArrayChunk(id, description, self._stream, addr, self._stream.tell() - addr, array)
++        self._appendChunk(array_chunk)
++
+         nb = 0
+-        while not end_func(self._stream):
++        last_filter = None
++        while not end_func(self._stream, array, last_filter):
+             oldpos = self._stream.tell()
+-            self.newChild(&quot;New chunk&quot;)
+             filter = filter_class(self._stream, self)
+             chunk_id = &quot;%s[%u]&quot; % (id, nb)
+             nb = nb + 1
+             chunk = FilterChunk(chunk_id, filter.description, self._stream, oldpos, self._stream.tell() - oldpos, filter)
+             array.append( chunk )
+-        self.closeChild(&quot;Chunks&quot;)
++            last_filter = filter
+ 
+-        chunk = ArrayChunk(id, description, self._stream, addr, self._stream.tell() - addr, array)
+-        self._appendChunk(chunk)
+-        print &quot;New chunk array&quot;
++
++        for chunk in array:
++            chunk.getFilter().updateParent(self, chunk)
+     
+     def read(self, id, format, description, can_truncate=True):
++        &quot;&quot;&quot; Returns chunk &quot;&quot;&quot;
+         format = re.sub(r'\[([^]]+)\]', self.__replaceFieldFormat, format)
+ #        if self.depth &lt;= display_filter_actions and 0&lt;size:
+ #            chunk_data.output(self.indent)
+@@ -182,7 +160,13 @@
+         chunk = FormatChunk(id, description, self._stream, self._stream.tell(), format)
+         self._stream.seek(chunk.size, 1)
+         self._appendChunk(chunk)
++        return chunk
+ 
+-    def getParent(self): return self._parent
++    def __str__(self):
++        return &quot;Filter(%s) &lt;id=%s, description=%s&gt;&quot; % \
++            (self.__class__, self.id, self.description)
+ 
++    def getParent(self):
++        return self._parent
++
+ display_filter_actions = 1
+
+Modified: haypo/hachoir/hachoir.py
+===================================================================
+--- haypo/hachoir/hachoir.py	2005-10-30 01:42:18 UTC (rev 232)
++++ haypo/hachoir/hachoir.py	2005-10-30 03:45:29 UTC (rev 233)
+@@ -65,7 +65,6 @@
+         self.depth = 5
+ 
+     def onGoParent(self):
+-        print &quot;Go parent:&quot;, self.filter
+         if self.filter.getParent() == None: return
+         self.filter = self.filter.getParent()
+         self.filter.display()
+@@ -142,17 +141,17 @@
+             setattr(hachoir, key, opt[key])
+ 
+         try:
+-            import hmi
++            import ui 
+         except ImportError, err:
+             print &quot;&quot;&quot;Error: a Python module is missing:\n%s\n
+ You can find PyGTK at: <A HREF="http://www.pygtk.org/">http://www.pygtk.org/</A>
+ and PyGlade at: <A HREF="http://glade.gnome.org/">http://glade.gnome.org/</A>&quot;&quot;&quot; % (err)
+             sys.exit(1)
+-        hmi.loadInterface()
+-        hmi.hmi.on_row_click = hachoir.onRowClick
+-        hmi.hmi.on_go_parent = hachoir.onGoParent
++        ui.loadInterface()
++        ui.ui.on_row_click = hachoir.onRowClick
++        ui.ui.on_go_parent = hachoir.onGoParent
+         hachoir.run(filename)
+-        hmi.hmi.run()
++        ui.ui.run()
+ 
+     except SystemExit:
+         pass
+
+Deleted: haypo/hachoir/hmi.py
+===================================================================
+--- haypo/hachoir/hmi.py	2005-10-30 01:42:18 UTC (rev 232)
++++ haypo/hachoir/hmi.py	2005-10-30 03:45:29 UTC (rev 233)
+@@ -1,112 +0,0 @@
+-import os
+-import pygtk
+-pygtk.require ('2.0')
+-import gtk
+-import gtk.glade
+-
+-def loadInterface():
+-    global hmi
+-    glade = os.path.join(os.path.dirname(__file__), 'hachoir.glade')
+-    hmi = GladeInterface(glade)
+-
+-class GladeInterface:
+-    def __init__(self, filename):
+-        self.on_row_click = None # event(chunk_id)
+-        self.on_go_parent = None # event(chunk_id)
+-        self.xml = gtk.glade.XML(filename)
+-        self.xml.signal_autoconnect(self)
+-        self.window = self.xml.get_widget('window')
+-        self.about_window = self.xml.get_widget('about_window')
+-        self.statusbar = self.xml.get_widget('statusbar')
+-        self.toolbar = self.xml.get_widget('toolbar')
+-        self.toolbutton_parent = self.xml.get_widget('toolbutton_parent')
+-        self.statusbar_state = self.statusbar.get_context_id(&quot;State&quot;)
+-        self.window.connect(&quot;key-press-event&quot;, self.onKeyUp)
+-        self.table = self.xml.get_widget('table')
+-        self.table_store = None
+-        self.build_him()
+-
+-    def run(self):
+-        try:
+-            gtk.main()
+-        except KeyboardInterrupt:
+-            print &quot;Interrupted (CTRL+C).&quot;
+-
+-    def updateStatusBar(self, text):
+-        self.statusbar.push(self.statusbar_state, text)
+-        print &quot;Status %s&quot; % text
+-        
+-    def enableParentButton(self, enable):
+-        print &quot;Enable = &quot;, enable
+-        self.toolbutton_parent.set_sensitive(enable)
+-
+-    def clear_table(self):
+-        self.table_store.clear()
+-
+-    def set_table_value(self, iter, column, value):
+-        row = self.table_store[iter]
+-        row[column] = value
+-       
+-    def add_table_child(self, parent, addr, size, type, id, description):
+-        return self.table_store.append(parent, (&quot;%08X&quot; % addr, size, type, None, id, description, None,))
+-       
+-    def add_table(self, parent, addr, size, type, name, id, description, comment):
+-        self.table_store.append(parent, (&quot;%08X&quot; % addr, size, type, name, id, description, comment,))
+-       
+-    def build_him(self):
+-        self.window.set_size_request(600,400)
+-        self.build_table()
+-
+-    def onKeyUp(self, widget, key, data=None):
+-        if key.keyval == gtk.keysyms.Escape:
+-            self.on_go_parent()
+-        
+-    def onTableClicked(self, widget, iter, data=None):
+-        row = self.table_store[iter]
+-        self.on_row_click(row[4])
+-
+-    def build_table(self):
+-        self.table_store = gtk.TreeStore(str, int, str, str, str, str, str)
+-        self.table.set_model(self.table_store)
+-        self.table.connect(&quot;row-activated&quot;, self.onTableClicked)
+-        self.treeview_add_column(self.table, &quot;Address&quot;, 0)
+-        self.treeview_add_column(self.table, &quot;Size&quot;, 1)
+-        self.treeview_add_column(self.table, &quot;Type&quot;, 2)
+-        self.treeview_add_column(self.table, &quot;Data&quot;, 3)
+-        self.treeview_add_column(self.table, &quot;Name&quot;, 4)
+-        self.treeview_add_column(self.table, &quot;Description&quot;, 5)
+-        self.treeview_add_column(self.table, &quot;Comment&quot;, 6)
+-        self.table.set_reorderable(True)
+-        self.treeselection = self.table.get_selection()
+-
+-    def treeview_add_column(self, treeview, name, num):
+-        col = gtk.TreeViewColumn(name)
+-        treeview.append_column(col)
+-        cell = gtk.CellRendererText()
+-        col.pack_start(cell, True)
+-        col.add_attribute(cell, 'text', num)
+-        treeview.set_search_column(num)
+-        col.set_sort_column_id(num)
+- 
+-    def on_toolbutton_parent(self, widget, data=None):
+-        print &quot;Pouet&quot;
+-        self.on_go_parent()
+-
+-    def on_open_activate(self, widget):
+-        print &quot;Open (do nothing yet)&quot;
+-
+-    def on_about_activate(self, widget):
+-        print &quot;About (do nothing yet)&quot;
+-        self.about_window.show()
+-
+-    def on_quit_activate(self, widget):
+-        self.quit()
+-
+-    def on_window_destroy(self, widget, data=None):
+-        self.quit()
+-
+-    def quit(self):
+-        print &quot;Quit.&quot;
+-        gtk.main_quit()
+-
+-hmi = None
+
+Modified: haypo/hachoir/plugins/exe.py
+===================================================================
+--- haypo/hachoir/plugins/exe.py	2005-10-30 01:42:18 UTC (rev 232)
++++ haypo/hachoir/plugins/exe.py	2005-10-30 03:45:29 UTC (rev 233)
+@@ -1,7 +1,8 @@
+ &quot;&quot;&quot;
+ EXE filter.
+ 
+-Status: alpha 
++Status: read ms-dos and pe headers
++Todo: support resources ... and disassembler ? :-)
+ Author: Victor Stinner
+ &quot;&quot;&quot;
+ 
+@@ -37,13 +38,15 @@
+     if exe.pe:
+ #        displayPE(exe.pe)
+         for section in exe.pe_sections:
++            section = section.getFilter()
+             displayPE_Section(section)
+         for res in exe.pe_resources:
++            res = res.getFilter()
+             displayPE_ResourceDirectory(res)
+             
+ class PE_ResourceData(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, stream, parent)
++        Filter.__init__(self, &quot;pe_rsrc_data&quot;, &quot;PE resource data&quot;, stream, parent)
+         self.read(&quot;offset&quot;, &quot;&lt;L&quot;, &quot;Offset&quot;)
+         self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Size&quot;)
+         self.read(&quot;page_code&quot;, &quot;&lt;L&quot;, &quot;Page code (language)&quot;)
+@@ -59,13 +62,13 @@
+ 
+ class PE_ResourceEntry(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, stream, parent)
++        Filter.__init__(self, &quot;pe_rsrc_entry&quot;, &quot;PE resource entry&quot;, stream, parent)
+         self.read(&quot;id&quot;, &quot;&lt;L&quot;, &quot;ID or name&quot;)
+         self.read(&quot;offset&quot;, &quot;&lt;L&quot;, &quot;Offset&quot;)
+         
+ class PE_ResourceDirectory(Filter):
+     def __init__(self, stream, parent, offset_res_section):
+-        Filter.__init__(self, stream, parent)
++        Filter.__init__(self, &quot;pe_rsrc_dir&quot;, &quot;PE resource directory&quot;, stream, parent)
+         self.offset_res_section = offset_res_section
+         self.read(&quot;option&quot;, &quot;&lt;L&quot;, &quot;Options&quot;)
+         self.read(&quot;creation_date&quot;, &quot;&lt;L&quot;, &quot;Creation date&quot;)
+@@ -84,7 +87,7 @@
+ 
+ class PE_Section(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, stream, parent)
++        Filter.__init__(self, &quot;pe_section&quot;, &quot;PE section&quot;, stream, parent)
+         self.read(&quot;name&quot;, &quot;8s&quot;, &quot;Name&quot;)
+         self.name = self.name.strip(&quot;\0&quot;)
+         self.read(&quot;rva&quot;, &quot;&lt;L&quot;, &quot;RVA&quot;)
+@@ -99,13 +102,13 @@
+ 
+ class PE_Directory(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, stream, parent)
++        Filter.__init__(self, &quot;pe_dir&quot;, &quot;PE directory&quot;, stream, parent)
+         self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Size&quot;)
+         self.read(&quot;rva&quot;, &quot;&lt;L&quot;, &quot;RVA&quot;)
+ 
+ class PE_OptionnalHeader(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, stream, parent)
++        Filter.__init__(self, &quot;pe_opt_hdr&quot;, &quot;PE optionnal header&quot;, stream, parent)
+         self.read(&quot;header&quot;, &quot;&lt;H&quot;, &quot;Header&quot;)
+         assert self.header == 0x010B
+         self.read(&quot;linker_maj_ver&quot;, &quot;B&quot;, &quot;Linker major version&quot;)
+@@ -138,16 +141,14 @@
+         self.read(&quot;loader_options&quot;, &quot;&lt;L&quot;, &quot;Loader options&quot;)
+         self.read(&quot;nb_directories&quot;, &quot;&lt;L&quot;, &quot;Number of directories (16)&quot;)
+         assert self.nb_directories == 16
+-        self.directories = []
+-        self.openChild()
+-        for i in range(self.nb_directories):
+-            self.newChild(&quot;PE directory&quot;)            
+-            self.directories.append( PE_Directory(stream, self) )
+-        self.closeChild(&quot;PE directories&quot;)            
++        self.readArray(&quot;directories&quot;, PE_Directory, &quot;PE directories&quot;, self.checkEndOfDir)
+ 
++    def checkEndOfDir(self, stream, array, dir):
++        return len(self.directories) == self.nb_directories
++
+ class PE_Filter(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, stream, parent)
++        Filter.__init__(self, &quot;pe_header&quot;, &quot;PE header&quot;, stream, parent)
+         self.read(&quot;header&quot;, &quot;4s&quot;, &quot;File header&quot;)
+         assert self.header == &quot;PE\0\0&quot;
+         self.read(&quot;cpu_type&quot;, &quot;&lt;H&quot;, &quot;CPU type&quot;)
+@@ -173,7 +174,7 @@
+ 
+ class MS_Dos(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, stream, parent)
++        Filter.__init__(self, &quot;msdos_header&quot;, &quot;MS-Dos executable header&quot;, stream, parent)
+         self.read(&quot;header&quot;, &quot;2s&quot;, &quot;File header&quot;)
+         assert self.header == &quot;MZ&quot;
+         self.read(&quot;filesize_mod_512&quot;, &quot;&gt;H&quot;, &quot;Filesize mod 512&quot;)
+@@ -197,36 +198,28 @@
+         self.read(None, &quot;!10H&quot;, &quot;Reserved&quot;)
+         self.read(&quot;pe_offset&quot;, &quot;&lt;L&quot;, &quot;Offset to PE header&quot;)
+ 
+-class ExeFilter(Filter):
++class ExeFile(Filter):
++    def checkEndOfSections(self, stream, array, section):
++        return len(array) == self.pe.nb_sections
++
+     def __init__(self, stream):
+-        Filter.__init__(self, stream)
++        Filter.__init__(self, &quot;exe_file&quot;, &quot;EXE file&quot;, stream)
+ 
+-        self.openChild()
+-        self.newChild(&quot;MS-Dos header&quot;)
+-        self.ms_dos = MS_Dos(stream, self)
+-        self.closeChild(&quot;MS-Dos header&quot;)
++        self.readChild(&quot;ms_dos&quot;, MS_Dos, &quot;MS-Dos header&quot;)
+ 
+         if self.ms_dos.reloc_offset == 0x40:
+-            self.stream.seek(self.ms_dos.pe_offset)
+-            self.openChild()
+-            self.newChild(&quot;PE header&quot;)
+-            self.pe = PE_Filter(stream, self)
+-            self.closeChild(&quot;PE header&quot;)
++            stream.seek(self.ms_dos.pe_offset, 0)
+ 
+-            self.openChild()
+-            self.newChild(&quot;PE optionnal header&quot;)            
+-            self.pe_optionnal_header = PE_OptionnalHeader(stream, self)
+-            self.closeChild(&quot;PE optionnal header&quot;)            
++            self.readChild(&quot;pe&quot;, PE_Filter, &quot;PE header&quot;)
++            self.readChild(&quot;pe_opt&quot;, PE_OptionnalHeader, &quot;PE optionnal header&quot;)
++            self.readArray(&quot;pe_sections&quot;, PE_Section, &quot;PE sections&quot;, self.checkEndOfSections)
+ 
+-            self.openChild()
+-            self.pe_sections = []
+-            for i in range(self.pe.nb_sections):
+-                self.newChild(&quot;PE section&quot;)            
+-                self.pe_sections.append( PE_Section(stream, self) )
+-            self.closeChild(&quot;PE sections&quot;)     
+-
+             # Look for resource section
+             self.pe_resources = []
++            return
++
++            # TODO: Fix this ...
++            
+             offset_res_section = None
+             for section in self.pe_sections:
+                 if section.name == &quot;.rsrc&quot;:
+@@ -242,4 +235,4 @@
+         else:
+             self.pe = None
+ 
+-registerPlugin(&quot;^.*\.(exe|EXE)$&quot;, &quot;MS-Dos / Windows filter&quot;, ExeFilter, displayExe)
++registerPlugin(&quot;^.*\.(exe|EXE)$&quot;, &quot;MS-Dos / Windows executable filter&quot;, ExeFile, displayExe)
+
+Modified: haypo/hachoir/plugins/gif.py
+===================================================================
+--- haypo/hachoir/plugins/gif.py	2005-10-30 01:42:18 UTC (rev 232)
++++ haypo/hachoir/plugins/gif.py	2005-10-30 03:45:29 UTC (rev 233)
+@@ -12,19 +12,22 @@
+     print &quot;Format: %s&quot; % (gif.header)
+     print &quot;Size: %ux%u&quot; % (gif.screen.width, gif.screen.height)
+     print &quot;Colormap: %s&quot; % (gif.color_map)
++    i = 0
+     for image in gif.images:
+-        print image
++        image = image.getFilter()
++        print &quot;Image %u: %s&quot; % (i, image)
++        i = i + 1
+ 
+ class GifColor(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, stream, parent)
++        Filter.__init__(self, &quot;gif_color&quot;, &quot;GIF color (RGB)&quot;, stream, parent)
+         self.read(&quot;red&quot;, &quot;&lt;B&quot;, &quot;Red&quot;)
+         self.read(&quot;green&quot;, &quot;&lt;B&quot;, &quot;Green&quot;)
+         self.read(&quot;blue&quot;, &quot;&lt;B&quot;, &quot;Blue&quot;)
+ 
+ class GifImage(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, stream, parent)
++        Filter.__init__(self, &quot;gif_image&quot;, &quot;GIF image data&quot;, stream, parent)
+         self.read(&quot;left&quot;, &quot;&lt;H&quot;, &quot;Left&quot;)
+         self.read(&quot;top&quot;, &quot;&lt;H&quot;, &quot;Top&quot;)
+         self.read(&quot;width&quot;, &quot;&lt;H&quot;, &quot;Width&quot;)
+@@ -36,7 +39,7 @@
+         self.interlaced = ((self.flags &amp; 0x40) == 0x40)
+         self.bits_per_pixel = 1 + (self.flags &amp; 0x07)
+         if not self.global_map:
+-            self.local_map = GifColorMap(stream, 1 &lt;&lt; self.bits_per_pixel, self)
++            self.readChild(&quot;local_map&quot;, GifColorMap, &quot;Local color map&quot;)
+         else:
+             self.local_map = None
+         # -- End of TODO
+@@ -48,40 +51,40 @@
+              self.bits_per_pixel)
+      
+ class GifColorMap(Filter):
+-    def __init__(self, stream, nb_colors, parent):
+-        Filter.__init__(self, stream, parent)
+-        self.map = []
+-        self.openChild()
+-        for i in range(0, nb_colors):
+-            self.newChild(&quot;Color&quot;)
+-            self.map.append( GifColor(stream, self) )
+-        self.closeChild(&quot;Colors&quot;)
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;gif_colormap&quot;, &quot;GIF color map&quot;, stream, parent)
++        if issubclass(parent.__class__, GifImage):
++            self._nb_colors = (1 &lt;&lt; parent.bits_per_pixel)
++        else:
++            assert issubclass(parent.__class__, GifFile)
++            self._nb_colors = (1 &lt;&lt; parent.screen.bits_per_pixel)
++        self.readArray(&quot;map&quot;, GifColor, &quot;Color map&quot;, self.checkEndOfMap)
+ 
++    def checkEndOfMap(self, stream, array, color):
++        return len(array) == self._nb_colors 
++
+     def __str__(self):
+         return &quot;Gif colormap &lt;colors=%u&gt;&quot; % (len(self.map))
+         
+ class GifExtensionChunk(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, stream, parent)
++        Filter.__init__(self, &quot;gif_ext_data&quot;, &quot;GIF extension data&quot;, stream, parent)
+         self.read(&quot;size&quot;, &quot;&lt;B&quot;, &quot;Size (in bytes)&quot;)
+         self.read(&quot;content&quot;, &quot;&lt;[size]s&quot;, &quot;Content&quot;)
+ 
+ class GifExtension(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, stream, parent)
++        Filter.__init__(self, &quot;gif_ext&quot;, &quot;GIF extension&quot;, stream, parent)
+         self.read(&quot;func&quot;, &quot;&lt;B&quot;, &quot;Function&quot;)
+-        self.chunks = []
+-        self.openChild()
+-        while True:
+-            self.newChild(&quot;Extension chunk&quot;)
+-            chunk = GifExtensionChunk(stream, self)
+-            self.chunks.append( chunk )
+-            if chunk.size == 0: break 
+-        self.closeChild(&quot;Extension chunk&quot;)
++        self.readArray(&quot;chunks&quot;, GifExtensionChunk, &quot;Extension chunks&quot;, self.checkEnd)
++
++    def checkEnd(self, stream, array, chunk):
++        if chunk == None: return False
++        return chunk.size == 0 
+         
+ class GifScreenDescriptor(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, stream, parent)
++        Filter.__init__(self, &quot;gif_screen_desc&quot;, &quot;GIF screen descriptor&quot;, stream, parent)
+         self.read(&quot;width&quot;, &quot;&lt;H&quot;, &quot;Width&quot;)
+         self.read(&quot;height&quot;, &quot;&lt;H&quot;, &quot;Height&quot;)
+ 
+@@ -95,38 +98,33 @@
+         self.background = stream.get8()
+         zero = stream.get8()
+         
+-class GifFilter(Filter):
++class GifFile(Filter):
+     def __init__(self, stream):
+-        Filter.__init__(self, stream)
++        Filter.__init__(self, &quot;gif_file&quot;, &quot;GIF picture file&quot;, stream)
+         # Header
+         self.read(&quot;header&quot;, &quot;6s&quot;, &quot;File header&quot;)
+         assert (self.header == &quot;GIF87a&quot;) or (self.header == &quot;GIF89a&quot;)
+-        self.newChild(&quot;Screen descriptor&quot;)
+-        self.screen = GifScreenDescriptor(stream, self)
++        
++        self.readChild(&quot;screen&quot;, GifScreenDescriptor, &quot;Screen descriptor&quot;)
+         if self.screen.global_map:
+-            self.newChild(&quot;Color map&quot;)
+-            self.color_map = GifColorMap(stream, 1 &lt;&lt; self.screen.bits_per_pixel, self)
++            self.readChild(&quot;color_map&quot;, GifColorMap, &quot;Color map&quot;)
+         else:
+             self.color_map = None
+-        self.images = []
+-        self.extensions = []
++            
+         while True:
+-            self.read(&quot;code&quot;, &quot;c&quot;, &quot;Separator code&quot;)
+-            if self.code == &quot;!&quot;:
+-                self.openChild()
+-                self.newChild(&quot;New extension&quot;)
+-                self.extensions.append( GifExtension(stream, self) )
+-                self.closeChild(&quot;Extension&quot;)
+-            elif self.code == &quot;,&quot;:
+-                self.openChild()
+-                self.newChild(&quot;New image&quot;)
+-                self.images.append( GifImage(stream, self) )
+-                self.closeChild(&quot;Image&quot;)
++            code = self.read(None, &quot;c&quot;, &quot;Separator code&quot;)
++            code = code.getData()
++            if code == &quot;!&quot;:
++                self.readChild(&quot;extensions[]&quot;, GifExtension, &quot;Extension&quot;)
++            elif code == &quot;,&quot;:
++                self.readChild(&quot;images[]&quot;, GifImage, &quot;Image&quot;)
++                # TODO: Write GifImage code :-)
++                print &quot;WARNING: GIF FILTER CAN NOT READ IMAGE CONTENT YET, SO ABORT READING!&quot;
+                 return
+-            elif self.code == &quot;;&quot;:
++            elif code == &quot;;&quot;:
+                 # GIF Terminator
+                 return
+             else:
+-                raise Exception(&quot;Wrong GIF image separator: ASCII %02X.&quot; % ord(self.code))
++                raise Exception(&quot;Wrong GIF image separator: ASCII %02X.&quot; % ord(code))
+ 
+-registerPlugin(&quot;^.*\.(gif|GIF)$&quot;, &quot;GIF picture&quot;, GifFilter, displayGif)
++registerPlugin(&quot;^.*\.(gif|GIF)$&quot;, &quot;GIF picture&quot;, GifFile, displayGif)
+
+Modified: haypo/hachoir/plugins/ncftp.py
+===================================================================
+--- haypo/hachoir/plugins/ncftp.py	2005-10-30 01:42:18 UTC (rev 232)
++++ haypo/hachoir/plugins/ncftp.py	2005-10-30 03:45:29 UTC (rev 233)
+@@ -12,20 +12,21 @@
+ 
+ def displayNcftp(data):
+     print &quot;Ncftp saved bookmarks:&quot;
+-    for b in data.bookmarks:
++    for bc in data.bookmarks:
++        b = bc.getFilter()
+         print &quot;o %s (port %s): u=%s, p=\&quot;%s\&quot;&quot; % \
+             (b.server, b.port, b.username, b.password)
+ 
+ class NcftpBookmark(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, stream, parent)
++        Filter.__init__(self, &quot;ncftp_bookmark&quot;, &quot;NCFTP bookmark&quot;, stream, parent)
+         self.readField(&quot;name&quot;, &quot;Bookmark name&quot;, &quot;,&quot;)
+         self.readField(&quot;server&quot;, &quot;Server name/ip&quot;, &quot;,&quot;)
+         self.readField(&quot;username&quot;, &quot;Username&quot;, &quot;,&quot;)
+         self.readField(&quot;password&quot;, &quot;Password&quot;, &quot;,&quot;)
+         self.readField(&quot;notused1&quot;, &quot;Not used (1)&quot;, &quot;,&quot;)
+         self.readField(&quot;last_dir&quot;, &quot;Last directory&quot;, &quot;,&quot;)
+-        self.readField(&quot;notused3&quot;, &quot;Not used (3)&quot;, &quot;,&quot;)
++        self.readField(&quot;notused&quot;, &quot;Not used?&quot;, &quot;,&quot;)
+         self.readField(&quot;port&quot;, &quot;Server port&quot;, &quot;,&quot;)
+         self.readLine(&quot;eol&quot;, &quot;End of line&quot;, &quot;\n&quot;)
+         self.password = self.crackPass(self.password)
+@@ -36,17 +37,14 @@
+         password = base64.decodestring(m.group(1))
+         return password.strip(&quot;\0&quot;)
+ 
+-class NcftpFilter(Filter):
++class NcftpFile(Filter):
+     def __init__(self, stream):
+-        Filter.__init__(self, stream)
++        Filter.__init__(self, &quot;ncftp_file&quot;, &quot;NCFTP bookmark file&quot;, stream)
+         self.readLine(&quot;header&quot;, &quot;Header (first line&quot;)
+         self.readLine(&quot;nb_bookmark&quot;, &quot;Number of bookmarks&quot;)
++        self.readArray(&quot;bookmarks&quot;, NcftpBookmark, &quot;Bookmarks&quot;, self.checkEOF)
+ 
+-        self.openChild()
+-        self.bookmarks = []
+-        while not self.stream.eof():
+-            self.newChild(&quot;Bookmark&quot;)
+-            self.bookmarks.append( NcftpBookmark(stream,self) )
+-        self.closeChild(&quot;Bookmarks&quot;)
+-        
+-registerPlugin(&quot;^.*bookmarks$&quot;, &quot;NcFTP bookmarks&quot;, NcftpFilter, displayNcftp)
++    def checkEOF(self, stream, array, bookmark):
++        return stream.eof()
++
++registerPlugin(&quot;^.*bookmarks$&quot;, &quot;NcFTP bookmarks&quot;, NcftpFile, displayNcftp)
+
+Modified: haypo/hachoir/plugins/png.py
+===================================================================
+--- haypo/hachoir/plugins/png.py	2005-10-30 01:42:18 UTC (rev 232)
++++ haypo/hachoir/plugins/png.py	2005-10-30 03:45:29 UTC (rev 233)
+@@ -101,8 +101,8 @@
+         assert self.header == &quot;\x89\x50\x4E\x47\x0D\x0A\x1A\x0A&quot;
+         self.readArray(&quot;chunks&quot;, PngChunk, &quot;Png chunks&quot;, self.checkEndOfChunks)
+ 
+-    def checkEndOfChunks(self, stream):
+-        return self._stream.eof()
++    def checkEndOfChunks(self, stream, array, png_chunk):
++        return stream.eof()
+         
+ class PngChunk(Filter):
+     def __init__(self, stream, parent):
+@@ -125,6 +125,10 @@
+             self.read(None, &quot;![size]s&quot;, &quot;Chunk data&quot;)
+         self.read(&quot;crc32&quot;, &quot;!L&quot;, &quot;Chunk CRC32&quot;)
+ 
++    def updateParent(self, parent, chunk):
++        self.description = &quot;PNG chunk (type %s)&quot; % self.type
++        chunk.description = &quot;PNG chunk (type %s)&quot; % self.type
++
+     def __str__(self):
+         return &quot;PngChunk &lt;size=%u, type=%s&gt;&quot; % (self.size, self.type)
+ 
+
+Modified: haypo/hachoir/plugins/tar.py
+===================================================================
+--- haypo/hachoir/plugins/tar.py	2005-10-30 01:42:18 UTC (rev 232)
++++ haypo/hachoir/plugins/tar.py	2005-10-30 03:45:29 UTC (rev 233)
+@@ -36,12 +36,13 @@
+     
+ def displayTar(tar):
+     for file in tar.files:
++        file = file.getFilter()
+         print &quot;[ File %s ]&quot; % file.name
+         displayFile(file)
+ 
+ class TarFile(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, stream, parent)
++        Filter.__init__(self, &quot;tar_file&quot;,&quot;Tar file&quot;, stream, parent)
+         self.read(&quot;name&quot;, &quot;!100s&quot;, &quot;Name&quot;, False)
+         self.name = self.name.strip(&quot;\0&quot;)
+         self.read(&quot;mode&quot;, &quot;!8s&quot;, &quot;Mode&quot;)
+@@ -99,26 +100,27 @@
+         if self.type not in name: return &quot;Unknow type (%02X)&quot; % ord(self.type)
+         return name[self.type]
+ 
++    def updateParent(self, parent, chunk):
++        if not self.isEmpty():
++            text = &quot;Tar File (%s: %s)&quot; % (self.name, self.getType())
++        else:
++            text = &quot;Tar File (terminator, empty header)&quot;
++        chunk.description = self.description = text
++
+ class TarFilter(Filter):
+     def __init__(self, stream):
+-        Filter.__init__(self, stream)
++        Filter.__init__(self, &quot;tar_archive&quot;, &quot;Tar archive&quot;, stream)
+ 
+-        self.files = []
+-        self.openChild()
+-        while not self.stream.eof():
+-            self.newChild(&quot;File&quot;)
+-            file = TarFile(stream, self) 
+-            if file.isEmpty():
+-                self.updateChildTitle(&quot;Terminator (empty header)&quot;)
+-                break 
+-            self.files.append(file)
+-            self.updateChildTitle(&quot;File (%s)&quot; % file.getType())
+-            self.updateChildComment(&quot;Filename = %s&quot; % file.name)
+-        self.closeChild(&quot;Files&quot;)
++        self.readArray(&quot;files&quot;, TarFile, &quot;Tar Files&quot;, self.checkEndOfChunks)
+         
+-        padding = 4096 - self.stream.tell() % 4096
++        padding = 4096 - stream.tell() % 4096
+         self.read(None, &quot;!%ss&quot; % padding, &quot;Padding (4096 align)&quot;)
+ 
+-        assert self.stream.eof()
++        assert stream.eof()
++
++    def checkEndOfChunks(self, stream, array, file):
++        if file != None:
++            if file.isEmpty(): return True
++        return stream.eof()
+         
+ registerPlugin(&quot;^.*\.tar$&quot;, &quot;Tar archive&quot;, TarFilter, displayTar)
+
+Copied: haypo/hachoir/ui.py (from rev 232, haypo/hachoir/hmi.py)
+===================================================================
+--- haypo/hachoir/hmi.py	2005-10-30 01:42:18 UTC (rev 232)
++++ haypo/hachoir/ui.py	2005-10-30 03:45:29 UTC (rev 233)
+@@ -0,0 +1,108 @@
++import os
++import pygtk
++pygtk.require ('2.0')
++import gtk
++import gtk.glade
++
++def loadInterface():
++    global ui 
++    glade = os.path.join(os.path.dirname(__file__), 'hachoir.glade')
++    ui = GladeInterface(glade)
++
++class GladeInterface:
++    def __init__(self, filename):
++        self.on_row_click = None # event(chunk_id)
++        self.on_go_parent = None # event(chunk_id)
++        self.xml = gtk.glade.XML(filename)
++        self.xml.signal_autoconnect(self)
++        self.window = self.xml.get_widget('window')
++        self.about_window = self.xml.get_widget('about_window')
++        self.statusbar = self.xml.get_widget('statusbar')
++        self.toolbar = self.xml.get_widget('toolbar')
++        self.toolbutton_parent = self.xml.get_widget('toolbutton_parent')
++        self.statusbar_state = self.statusbar.get_context_id(&quot;State&quot;)
++        self.window.connect(&quot;key-press-event&quot;, self.onKeyUp)
++        self.table = self.xml.get_widget('table')
++        self.table_store = None
++        self.build_him()
++
++    def run(self):
++        try:
++            gtk.main()
++        except KeyboardInterrupt:
++            print &quot;Interrupted (CTRL+C).&quot;
++
++    def updateStatusBar(self, text):
++        self.statusbar.push(self.statusbar_state, text)
++        
++    def enableParentButton(self, enable):
++        self.toolbutton_parent.set_sensitive(enable)
++
++    def clear_table(self):
++        self.table_store.clear()
++
++    def set_table_value(self, iter, column, value):
++        row = self.table_store[iter]
++        row[column] = value
++       
++    def add_table_child(self, parent, addr, size, type, id, description):
++        return self.table_store.append(parent, (&quot;%08X&quot; % addr, type, size, None, id, description, None,))
++       
++    def add_table(self, parent, addr, size, type, id, description, value):
++        self.table_store.append(parent, (&quot;%08X&quot; % addr, type, size, id, value, description, ))
++       
++    def build_him(self):
++        self.window.set_size_request(600,400)
++        self.build_table()
++
++    def onKeyUp(self, widget, key, data=None):
++        if key.keyval == gtk.keysyms.Escape:
++            self.on_go_parent()
++        
++    def onTableClicked(self, widget, iter, data=None):
++        row = self.table_store[iter]
++        self.on_row_click(row[3])
++
++    def build_table(self):
++        self.table_store = gtk.TreeStore(str, str, int, str, str, str)
++        self.table.set_model(self.table_store)
++        self.table.connect(&quot;row-activated&quot;, self.onTableClicked)
++        self.treeview_add_column(self.table, &quot;Address&quot;, 0)
++        self.treeview_add_column(self.table, &quot;Type&quot;, 1)
++        self.treeview_add_column(self.table, &quot;Size&quot;, 2)
++        self.treeview_add_column(self.table, &quot;Name&quot;, 3)
++        self.treeview_add_column(self.table, &quot;Value&quot;, 4)
++        self.treeview_add_column(self.table, &quot;Description&quot;, 5)
++        self.table.set_reorderable(True)
++        self.treeselection = self.table.get_selection()
++
++    def treeview_add_column(self, treeview, name, num):
++        col = gtk.TreeViewColumn(name)
++        treeview.append_column(col)
++        cell = gtk.CellRendererText()
++        col.pack_start(cell, True)
++        col.add_attribute(cell, 'text', num)
++        treeview.set_search_column(num)
++        col.set_sort_column_id(num)
++ 
++    def on_toolbutton_parent(self, widget, data=None):
++        self.on_go_parent()
++
++    def on_open_activate(self, widget):
++        print &quot;Open (do nothing yet)&quot;
++
++    def on_about_activate(self, widget):
++        print &quot;About (do nothing yet)&quot;
++        self.about_window.show()
++
++    def on_quit_activate(self, widget):
++        self.quit()
++
++    def on_window_destroy(self, widget, data=None):
++        self.quit()
++
++    def quit(self):
++        print &quot;Quit.&quot;
++        gtk.main_quit()
++
++ui = None
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000139.html">[Happyboom-svn] r232 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000141.html">[Happyboom-svn] r234 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#140">[ date ]</a>
+              <a href="thread.html#140">[ thread ]</a>
+              <a href="subject.html#140">[ subject ]</a>
+              <a href="author.html#140">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

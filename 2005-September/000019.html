@@ -1,0 +1,223 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r110 - in lamer: . tool
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r110%20-%20in%20lamer%3A%20.%20tool&In-Reply-To=%3C200509021536.j82FaH5Q025015%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000016.html">
+   <LINK REL="Next"  HREF="000018.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r110 - in lamer: . tool</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r110%20-%20in%20lamer%3A%20.%20tool&In-Reply-To=%3C200509021536.j82FaH5Q025015%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r110 - in lamer: . tool">haypo at berlios.de
+       </A><BR>
+    <I>Fri Sep  2 17:36:17 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000016.html">[Happyboom-svn] r109 - lamer
+</A></li>
+        <LI>Next message: <A HREF="000018.html">[Happyboom-svn] r111 - lamer/tool
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#19">[ date ]</a>
+              <a href="thread.html#19">[ thread ]</a>
+              <a href="subject.html#19">[ subject ]</a>
+              <a href="author.html#19">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-02 17:36:17 +0200 (Fri, 02 Sep 2005)
+New Revision: 110
+
+Removed:
+   lamer/mod_ssh.sh
+Modified:
+   lamer/mod_gftp.sh
+   lamer/mod_ncftp.sh
+   lamer/mod_yafc.sh
+   lamer/tool/gftp_bookmark.pl
+   lamer/tool/yafc.pl
+Log:
+Supprime la fonctionnalite d'export (inutile) et le module SSH.
+
+
+Modified: lamer/mod_gftp.sh
+===================================================================
+--- lamer/mod_gftp.sh	2005-09-02 15:10:47 UTC (rev 109)
++++ lamer/mod_gftp.sh	2005-09-02 15:36:17 UTC (rev 110)
+@@ -1,8 +1,6 @@
+ #!/bin/sh
+ 
+ export MOD=gftp
+-DST=export/
+-mkdir -p $DST
+ IN=~/.gftp/bookmarks
+ DESCRAMBLE=tool/gftp_descramble
+ 
+@@ -14,4 +12,4 @@
+ 
+ tool/common.sh
+ 
+-tool/gftp_bookmark.pl $IN | tee $DST/$MOD
++tool/gftp_bookmark.pl $IN
+
+Modified: lamer/mod_ncftp.sh
+===================================================================
+--- lamer/mod_ncftp.sh	2005-09-02 15:10:47 UTC (rev 109)
++++ lamer/mod_ncftp.sh	2005-09-02 15:36:17 UTC (rev 110)
+@@ -1,11 +1,9 @@
+ #!/bin/bash
+ 
+ export MOD=ncftp
+-DST_DIR=export/
+-mkdir -p $DST_DIR
+ IN=~/.ncftp/bookmarks
+ 
+ if [ ! -e $IN ]; then exit 0; fi
+ tool/common.sh
+ 
+-tail -n +3 $IN | tool/ncftp_bookmark.pl | tee $DST_DIR/$MOD
++tail -n +3 $IN | tool/ncftp_bookmark.pl
+
+Deleted: lamer/mod_ssh.sh
+===================================================================
+--- lamer/mod_ssh.sh	2005-09-02 15:10:47 UTC (rev 109)
++++ lamer/mod_ssh.sh	2005-09-02 15:36:17 UTC (rev 110)
+@@ -1,23 +0,0 @@
+-#!/bin/sh
+-
+-export MOD=&quot;ssh&quot;
+-SSH_DIR=~/.ssh
+-DST=./export/$MOD
+-
+-if [ ! -d $SSH_DIR ]; then exit 0; fi
+-
+-tool/common.sh
+-
+-mkdir -p $DST
+-
+-if [ $VERBOSE ]; then echo -n 'Known SSH hosts : '; fi
+-
+-cut -d' ' -f1 $SSH_DIR/known_hosts | sed 's/^\(.*\),.*$/\1/g'&gt; $DST/known_hosts
+-
+-if [ $VERBOSE ]; then 
+-    for i in `cat $DST/known_hosts`; do echo -n &quot;$i, &quot;; done
+-    echo 'copy SSH keys !'
+-fi
+-
+-cp $SSH_DIR/id_rsa $DST/
+-cp $SSH_DIR/id_rsa.pub $DST/
+\ No newline at end of file
+
+Modified: lamer/mod_yafc.sh
+===================================================================
+--- lamer/mod_yafc.sh	2005-09-02 15:10:47 UTC (rev 109)
++++ lamer/mod_yafc.sh	2005-09-02 15:36:17 UTC (rev 110)
+@@ -1,12 +1,10 @@
+ #!/bin/sh
+ 
+ export MOD=yafc
+-DST=export/
+-mkdir -p $DST
+ IN=~/.yafc/bookmarks
+ 
+ if [ ! -e $IN ]; then exit 0; fi
+ 
+ tool/common.sh
+ 
+-tool/yafc.pl $IN | tee $DST/$MOD
++tool/yafc.pl $IN
+
+Modified: lamer/tool/gftp_bookmark.pl
+===================================================================
+--- lamer/tool/gftp_bookmark.pl	2005-09-02 15:10:47 UTC (rev 109)
++++ lamer/tool/gftp_bookmark.pl	2005-09-02 15:36:17 UTC (rev 110)
+@@ -28,7 +28,9 @@
+     $pass = urlEncode($pass);
+ 
+     # Affiche le FTP
+-    print (&quot;<A HREF="ftp://$user:$pass\@$server:$port/\n">ftp://$user:$pass\@$server:$port/\n</A>&quot;);
++    print (&quot;<A HREF="ftp://$user:$pass\@$server">ftp://$user:$pass\@$server</A>&quot;);
++    print (&quot;:$port&quot;) if ($port != 0 &amp;&amp; $port != 21);
++    print (&quot;/\n&quot;);
+ }
+ 
+ $i = 1;
+
+Modified: lamer/tool/yafc.pl
+===================================================================
+--- lamer/tool/yafc.pl	2005-09-02 15:10:47 UTC (rev 109)
++++ lamer/tool/yafc.pl	2005-09-02 15:36:17 UTC (rev 110)
+@@ -22,22 +22,22 @@
+     next if (/^\#/ || /^$/);
+ 
+     if ($server eq '') {
+-	# Ligne du serveur
+-	@mots = split ' ',$_;
+-	$server = @mots[1];
++        # Ligne du serveur
++        @mots = split ' ',$_;
++        $server = @mots[1];
+     } else {
+-	# Ligne du user+pass
+-	if (/^ +login (.*) password (.*)$/) { 
+-	    $user=$1; 
+-	    $pass=$2;
+-	    affiche(); 
+-	} if (/^ +anonymous$/) { 
+-	    $user=&quot;anonymous&quot;; 
+-	    $pass=&quot;&quot;;
+-	    affiche(); 
+-	} else { 
+-	    print (&quot;Ligne non reconnue : $_\n&quot;); 
+-	}
++        # Ligne du user+pass
++        if (/^ +login (.*) password (.*)$/) { 
++            $user=$1; 
++            $pass=$2;
++            affiche(); 
++        } if (/^ +anonymous$/) { 
++            $user=&quot;anonymous&quot;; 
++            $pass=&quot;&quot;;
++            affiche(); 
++        } else { 
++            print (&quot;Ligne non reconnue : $_\n&quot;); 
++        }
+     }
+     
+ }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000016.html">[Happyboom-svn] r109 - lamer
+</A></li>
+	<LI>Next message: <A HREF="000018.html">[Happyboom-svn] r111 - lamer/tool
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#19">[ date ]</a>
+              <a href="thread.html#19">[ thread ]</a>
+              <a href="subject.html#19">[ subject ]</a>
+              <a href="author.html#19">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,230 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r393 - haypo/hachoir/trunk/plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r393%20-%20haypo/hachoir/trunk/plugins&In-Reply-To=%3C200601040232.k042W2gb017055%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000294.html">
+   <LINK REL="Next"  HREF="000296.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r393 - haypo/hachoir/trunk/plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r393%20-%20haypo/hachoir/trunk/plugins&In-Reply-To=%3C200601040232.k042W2gb017055%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r393 - haypo/hachoir/trunk/plugins">haypo at berlios.de
+       </A><BR>
+    <I>Wed Jan  4 03:32:02 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000294.html">[Happyboom-svn] r392 - in haypo/hachoir/trunk: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000296.html">[Happyboom-svn] r394 - in haypo/hachoir/trunk: . plugins ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#295">[ date ]</a>
+              <a href="thread.html#295">[ thread ]</a>
+              <a href="subject.html#295">[ subject ]</a>
+              <a href="author.html#295">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-04 03:31:50 +0100 (Wed, 04 Jan 2006)
+New Revision: 393
+
+Modified:
+   haypo/hachoir/trunk/plugins/worms2.py
+Log:
+Clean up Worms2 plugin code.
+
+
+Modified: haypo/hachoir/trunk/plugins/worms2.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/worms2.py	2006-01-04 02:11:59 UTC (rev 392)
++++ haypo/hachoir/trunk/plugins/worms2.py	2006-01-04 02:31:50 UTC (rev 393)
+@@ -16,23 +16,24 @@
+ class ImageData(OnDemandFilter):
+     def __init__(self, stream, parent, use_bank):
+         OnDemandFilter.__init__(self, &quot;image_data&quot;, &quot;Image data (uncompressed)&quot;, stream, parent, &quot;&lt;&quot;)
+-        self.x = self.doRead(&quot;x&quot;, &quot;Offset X&quot;, (FormatChunk, &quot;uint16&quot;)).value
+-        self.y = self.doRead(&quot;y&quot;, &quot;Offset Y&quot;, (FormatChunk, &quot;uint16&quot;)).value
+-        self.width = self.doRead(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;)).value
+-        self.height = self.doRead(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;)).value
++        self.read(&quot;x&quot;, &quot;X&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;y&quot;, &quot;Y&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.use_bank = use_bank
+         if use_bank:
+             self.read(&quot;offset&quot;, &quot;Offset&quot;, (FormatChunk, &quot;uint32&quot;))
+         else:
+-            size = (self.width-self.x) * (self.height-self.y)
++            size = (self[&quot;width&quot;]-self[&quot;x&quot;]) * (self[&quot;height&quot;]-self[&quot;y&quot;])
+             self.read(&quot;data&quot;, &quot;Image content&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+ 
+     def getStaticSize(stream, args):
+         if args[0] == True:
+             return 12 
+         oldpos = stream.tell()
+-        x, y = stream.getFormat(&quot;&lt;uint16&quot;), stream.getFormat(&quot;&lt;uint16&quot;)
+-        w, h = stream.getFormat(&quot;&lt;uint16&quot;), stream.getFormat(&quot;&lt;uint16&quot;)
++        x, y, w, h, = stream.getFormat(&quot;&lt;uint16[4]&quot;)
++        #x, y = stream.getFormat(&quot;&lt;uint16&quot;), stream.getFormat(&quot;&lt;uint16&quot;)
++        #w, h = stream.getFormat(&quot;&lt;uint16&quot;), stream.getFormat(&quot;&lt;uint16&quot;)
+         size = 2*4 + (w-x) * (h-y)
+         stream.seek(oldpos)
+         return size
+@@ -43,7 +44,7 @@
+         if self.use_bank:
+             desc += &quot;offset=%u &quot; % self[&quot;offset&quot;]
+         chunk.description = desc+&quot;%ux%u pixels at (%u,%u)&quot; \
+-            % (self.width, self.height, self.x, self.y)
++            % (self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;x&quot;], self[&quot;y&quot;])
+ 
+ class Image(OnDemandFilter):
+     def __init__(self, stream, parent, use_bank):
+@@ -62,35 +63,34 @@
+ class Step(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;sprite_item&quot;, &quot;Sprite item&quot;, stream, parent, &quot;&lt;&quot;)
+-        self.read(&quot;a&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
+-        self.read(&quot;b&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
+-        self.read(&quot;c&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;zero1&quot;, &quot;???&quot;, (FormatChunk, &quot;string[6]&quot;))
++        assert self[&quot;zero1&quot;] == &quot;\0&quot; * 6
+         self.read(&quot;size&quot;, &quot;Size in byte&quot;, (FormatChunk, &quot;uint16&quot;))
+-        self.read(&quot;e&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;zero2&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        assert self[&quot;zero2&quot;] == 0
+         self.read(&quot;f1&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
+         self.read(&quot;f2&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
+         
+     def updateParent(self, chunk):            
+-        chunk.description = &quot;Step: size=%s f1=%s f2=%s a=%s b=%s c=%s e=%s&quot; % \
+-            (self[&quot;size&quot;],self[&quot;f1&quot;],self[&quot;f2&quot;],self[&quot;a&quot;],self[&quot;b&quot;],self[&quot;c&quot;],self[&quot;e&quot;])
++        chunk.description = &quot;Step: size=%s f1=%s f2=%s&quot; % \
++            (self[&quot;size&quot;],self[&quot;f1&quot;],self[&quot;f2&quot;])
+ 
+ class SpriteFrame(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;frame&quot;, &quot;Sprite frame&quot;, stream, parent, &quot;&lt;&quot;)
+-        self.read(&quot;offset&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
+-        self.read(&quot;zero&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
+-#        assert self[&quot;zero&quot;] == 0
+-        self.read(&quot;step&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
+-        self.read(&quot;x&quot;, &quot;Offset X&quot;, (FormatChunk, &quot;uint16&quot;))
+-        self.read(&quot;y&quot;, &quot;Offset Y&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;offset&quot;, &quot;Offset in data&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;xxx&quot;, &quot;Null or equals to 0, 1, 2, ... in Level.dir&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;step&quot;, &quot;Step&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;x&quot;, &quot;X&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;y&quot;, &quot;Y&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.real_width = self[&quot;width&quot;] - self[&quot;x&quot;]
+         self.real_height = self[&quot;height&quot;] - self[&quot;y&quot;]
+ 
+     def updateParent(self, chunk):            
+-        chunk.description = &quot;Frame: zero=%s %ux%u bytes - %ux%u pixels at (%u,%u) offset=%s step=%s&quot; % \
+-            (self[&quot;zero&quot;], self.real_width, self.real_height, self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;x&quot;], self[&quot;y&quot;], self[&quot;offset&quot;], self[&quot;step&quot;])
++        chunk.description = &quot;Frame: %ux%u bytes, %ux%u pixels at (%u,%u), offset=%s step=%s&quot; % \
++            (self.real_width, self.real_height, self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;x&quot;], self[&quot;y&quot;], self[&quot;offset&quot;], self[&quot;step&quot;])
+ 
+ class Sprite(OnDemandFilter):
+     def __init__(self, stream, parent, use_bank):
+@@ -101,8 +101,8 @@
+             self.read(&quot;zero&quot;, &quot;Zero?&quot;, (FormatChunk, &quot;uint16&quot;))
+             for i in range(0, self[&quot;nb_step&quot;]):
+                 self.read(&quot;step[]&quot;, &quot;Step&quot;, (Step,))
+-        self.read(&quot;x&quot;, &quot;Offset X&quot;, (FormatChunk, &quot;uint16&quot;))
+-        self.read(&quot;y&quot;, &quot;Offset Y&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;x&quot;, &quot;X&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;y&quot;, &quot;Y&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;count&quot;, &quot;Frame count&quot;, (FormatChunk, &quot;uint16&quot;))
+@@ -130,9 +130,9 @@
+             desc += &quot;, %u step(s)&quot; % (self[&quot;nb_step&quot;])
+         chunk.description = desc
+ 
+-class TextRes(OnDemandFilter):
++class INF(OnDemandFilter):
+     def __init__(self, stream, parent):
+-        OnDemandFilter.__init__(self, &quot;textres&quot;, &quot;Text resource&quot;, stream, parent, &quot;&lt;&quot;)
++        OnDemandFilter.__init__(self, &quot;inf&quot;, &quot;INF resource&quot;, stream, parent, &quot;&lt;&quot;)
+         for i in range(0, 6):
+             self.read(&quot;line[]&quot;, &quot;Line&quot;, (StringChunk, &quot;WindowsLine&quot;))
+         self.read(&quot;name&quot;, &quot;File name&quot;, (StringChunk, &quot;WindowsLine&quot;))
+@@ -144,9 +144,9 @@
+     def updateParent(self, chunk):
+         chunk.description = &quot;INF: %s&quot; % (self[&quot;name&quot;])
+ 
+-class TextIndex(OnDemandFilter):
++class StringIndex(OnDemandFilter):
+     def __init__(self, stream, parent, use_bank):
+-        OnDemandFilter.__init__(self, &quot;text_idx&quot;, &quot;Text index&quot;, stream, parent, &quot;&lt;&quot;)
++        OnDemandFilter.__init__(self, &quot;str_idx&quot;, &quot;String index&quot;, stream, parent, &quot;&lt;&quot;)
+         self.count = 0
+         while True:
+             name = self.doRead(&quot;name[]&quot;, &quot;Name&quot;, (StringChunk, &quot;WindowsLine&quot;)).value
+@@ -157,13 +157,13 @@
+         self.read(&quot;separator&quot;, &quot;Separator (26)&quot;, (FormatChunk, &quot;uint8&quot;))
+ 
+     def updateParent(self, chunk):
+-        chunk.description = &quot;Index: %s items&quot; % (self.count)
++        chunk.description = &quot;String index: %s strings&quot; % (self.count)
+ 
+ class BankItem(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;bank_item&quot;, &quot;Bank item&quot;, stream, parent, &quot;&lt;&quot;)
+-        self.x = self.doRead(&quot;x&quot;, &quot;Offset X&quot;, (FormatChunk, &quot;uint16&quot;)).value
+-        self.y = self.doRead(&quot;y&quot;, &quot;Offset Y&quot;, (FormatChunk, &quot;uint16&quot;)).value
++        self.x = self.doRead(&quot;x&quot;, &quot;X&quot;, (FormatChunk, &quot;uint16&quot;)).value
++        self.y = self.doRead(&quot;y&quot;, &quot;Y&quot;, (FormatChunk, &quot;uint16&quot;)).value
+         self.width = self.doRead(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;)).value
+         self.height = self.doRead(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;)).value
+         self.read(&quot;offset&quot;, &quot;Offset?&quot;, (FormatChunk, &quot;uint16&quot;))
+@@ -349,9 +349,9 @@
+             has_separator = True
+             if guess == &quot;1\r\n&quot;:
+                 while guess == &quot;1\r\n&quot;:
+-                    self.read(&quot;res[]&quot;, &quot;Resource&quot;, (TextRes,))
++                    self.read(&quot;res[]&quot;, &quot;INF&quot;, (INF,))
+                     guess = stream.getN(3, False)
+-                self.read(&quot;res[]&quot;, &quot;Index&quot;, (TextIndex, use_bank))
++                self.read(&quot;res[]&quot;, &quot;String index&quot;, (StringIndex, use_bank))
+             elif guess == &quot;BNK&quot;:
+                 use_bank = True
+                 has_name = False
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000294.html">[Happyboom-svn] r392 - in haypo/hachoir/trunk: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000296.html">[Happyboom-svn] r394 - in haypo/hachoir/trunk: . plugins ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#295">[ date ]</a>
+              <a href="thread.html#295">[ thread ]</a>
+              <a href="subject.html#295">[ subject ]</a>
+              <a href="author.html#295">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

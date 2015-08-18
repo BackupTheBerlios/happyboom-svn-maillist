@@ -1,0 +1,109 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r401 - haypo/hachoir/trunk
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r401%20-%20haypo/hachoir/trunk&In-Reply-To=%3C200601062026.k06KQiXp029250%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000304.html">
+   <LINK REL="Next"  HREF="000306.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r401 - haypo/hachoir/trunk</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r401%20-%20haypo/hachoir/trunk&In-Reply-To=%3C200601062026.k06KQiXp029250%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r401 - haypo/hachoir/trunk">haypo at berlios.de
+       </A><BR>
+    <I>Fri Jan  6 21:26:44 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000304.html">[Happyboom-svn] r400 - in haypo/hachoir/trunk: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000306.html">[Happyboom-svn] r402 - in haypo/lamer: . tool
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#305">[ date ]</a>
+              <a href="thread.html#305">[ thread ]</a>
+              <a href="subject.html#305">[ subject ]</a>
+              <a href="author.html#305">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-06 21:26:44 +0100 (Fri, 06 Jan 2006)
+New Revision: 401
+
+Modified:
+   haypo/hachoir/trunk/hachoir.py
+   haypo/hachoir/trunk/log.py
+   haypo/hachoir/trunk/mime.py
+Log:
+Fix Python header (first line):
+  #!/usr/bin/env python
+instead of
+  #!/usr/bin/python
+
+
+Modified: haypo/hachoir/trunk/hachoir.py
+===================================================================
+--- haypo/hachoir/trunk/hachoir.py	2006-01-06 20:23:14 UTC (rev 400)
++++ haypo/hachoir/trunk/hachoir.py	2006-01-06 20:26:44 UTC (rev 401)
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python
++#!/usr/bin/env python
+ &quot;&quot;&quot;
+ Hachoir: tool to split a binary file into human readable data.
+ Because it's written in Python, it would be easy to write new plugins
+
+Modified: haypo/hachoir/trunk/log.py
+===================================================================
+--- haypo/hachoir/trunk/log.py	2006-01-06 20:23:14 UTC (rev 400)
++++ haypo/hachoir/trunk/log.py	2006-01-06 20:26:44 UTC (rev 401)
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python
++#!/usr/bin/env python
+ # -*- coding: UTF-8 -*-
+ 
+ import time
+
+Modified: haypo/hachoir/trunk/mime.py
+===================================================================
+--- haypo/hachoir/trunk/mime.py	2006-01-06 20:23:14 UTC (rev 400)
++++ haypo/hachoir/trunk/mime.py	2006-01-06 20:26:44 UTC (rev 401)
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python
++#!/usr/bin/env python
+ 
+ &quot;&quot;&quot;
+ MIME type detection using libmagic library.
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000304.html">[Happyboom-svn] r400 - in haypo/hachoir/trunk: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000306.html">[Happyboom-svn] r402 - in haypo/lamer: . tool
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#305">[ date ]</a>
+              <a href="thread.html#305">[ thread ]</a>
+              <a href="subject.html#305">[ subject ]</a>
+              <a href="author.html#305">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

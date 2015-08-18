@@ -1,0 +1,190 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r332 - haypo/hachoir/plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r332%20-%20haypo/hachoir/plugins&In-Reply-To=%3C200512152151.jBFLpo8f029704%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000237.html">
+   <LINK REL="Next"  HREF="000239.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r332 - haypo/hachoir/plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r332%20-%20haypo/hachoir/plugins&In-Reply-To=%3C200512152151.jBFLpo8f029704%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r332 - haypo/hachoir/plugins">haypo at berlios.de
+       </A><BR>
+    <I>Thu Dec 15 22:51:50 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000237.html">[Happyboom-svn] r331 - in haypo/hachoir: . plugins ui
+</A></li>
+        <LI>Next message: <A HREF="000239.html">[Happyboom-svn] r333 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#238">[ date ]</a>
+              <a href="thread.html#238">[ thread ]</a>
+              <a href="subject.html#238">[ subject ]</a>
+              <a href="author.html#238">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-15 22:51:50 +0100 (Thu, 15 Dec 2005)
+New Revision: 332
+
+Modified:
+   haypo/hachoir/plugins/ext2.py
+Log:
+Clean EXT2 plugin code.
+
+
+Modified: haypo/hachoir/plugins/ext2.py
+===================================================================
+--- haypo/hachoir/plugins/ext2.py	2005-12-15 21:41:39 UTC (rev 331)
++++ haypo/hachoir/plugins/ext2.py	2005-12-15 21:51:50 UTC (rev 332)
+@@ -25,7 +25,7 @@
+         8: &quot;Max&quot;
+     }
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;dir&quot;, &quot;EXT2 directory&quot;, stream, parent)
++        Filter.__init__(self, &quot;dir&quot;, &quot;EXT2 directory entry&quot;, stream, parent)
+         self.read(&quot;inode&quot;, &quot;&lt;L&quot;, &quot;Inode&quot;)
+         self.read(&quot;rec_len&quot;, &quot;&lt;H&quot;, &quot;Record length&quot;)
+         name_length = self.read(&quot;name_len&quot;, &quot;B&quot;, &quot;Name length&quot;).value
+@@ -80,7 +80,7 @@
+         self.read(&quot;file_acl&quot;, &quot;&lt;L&quot;, &quot;File ACL&quot;)
+         self.read(&quot;dir_acl&quot;, &quot;&lt;L&quot;, &quot;Directory ACL&quot;)
+         self.read(&quot;faddr&quot;, &quot;&lt;L&quot;, &quot;Block where the fragment of the file resides&quot;)
+-        os = parent.superblock[&quot;creator_os&quot;]
++        os = parent.getParent().superblock[&quot;creator_os&quot;]
+         if os == SuperBlock.OS_LINUX:
+             self.read(&quot;frag&quot;, &quot;B&quot;, &quot;Number of fragments in the block&quot;)
+             self.read(&quot;fsize&quot;, &quot;B&quot;, &quot;Fragment size&quot;)
+@@ -291,6 +291,33 @@
+     def getTime(self, chunk):
+         return datetime.fromtimestamp(chunk.value)
+ 
++class Groups(Filter):
++    def __init__(self, stream, parent, count):
++        Filter.__init__(self, &quot;groups&quot;, &quot;EXT2 groups&quot;, stream, parent)
++        self.items = []
++        for i in range(0, count):
++            group = self.readChild(&quot;group[]&quot;, EXT2_Group).getFilter()
++            self.items.append(group)
++
++    def __getitem__(self, index):
++        return self.items[index]
++
++class InodeTable(Filter):
++    def __init__(self, stream, parent, start, count):
++        Filter.__init__(self, &quot;ino_table&quot;, &quot;EXT2 inode table&quot;, stream, parent)
++        self.inodes = {}
++        for index in range(start,start+count):
++            inode = self.readChild(&quot;inode[]&quot;, Inode, index).getFilter()
++            self.inodes[index] = inode
++
++    def __getitem__(self, index):
++        return self.inodes[index]
++
++#class Directory(Filter):
++#    def __init__(self, stream, parent):
++#        Filter.__init__(self, &quot;dir&quot;, &quot;EXT2 directory&quot;, stream, parent)
++#        self.read(&quot;inode&quot;, &quot;&lt;L&quot;, &quot;Inode&quot;)
++
+ class EXT2_FS(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;ext2&quot;, &quot;EXT2 file system&quot;, stream, parent)
+@@ -302,10 +329,7 @@
+ 
+         # Read groups
+         self.seek(4096) 
+-        groups = []
+-        for i in range(0,self.superblock.group_count):
+-            group = self.readChild(&quot;group[]&quot;, EXT2_Group).getFilter()
+-            groups.append(group)
++        groups = self.readChild(&quot;groups&quot;, Groups, self.superblock.group_count).getFilter()
+         group = groups[0]
+         
+         # Read block bitmap
+@@ -318,17 +342,14 @@
+         count = 32768
+         self.readChild(&quot;inode_bitmap[]&quot;, InodeBitmap, count / 8, 1)
+ 
+-        root_inode = 2
+-        for index in range(1,20):
+-            inode = self.readChild(&quot;inode[]&quot;, Inode, index).getFilter()
+-            if index == root_inode:
+-                root = inode
++        inode_table0 = self.readChild(&quot;inode_table[]&quot;, InodeTable, 1, 20).getFilter()
+ 
++        root = inode_table0[2]
++
+         self.readDirectory(root)
+ 
+     def seek(self, to):
+         size = to - self.getStream().tell()
+-        print &quot;Seek to %s =&gt; %s&quot; % (to, size)
+         assert 0 &lt;= size
+         if 0 &lt; size:
+             self.read(&quot;raw[]&quot;, &quot;%us&quot; % size, &quot;Raw&quot;)
+@@ -336,26 +357,20 @@
+     def readDirectory(self, inode):
+         stream = self.getStream()
+         block_index = 0
+-        print &quot;Read Dir.&quot;
+         while True:
+             assert block_index &lt; 12
+             block = inode[&quot;block[%u]&quot; % block_index]
+             if block == 0:
+                 return
+-            print &quot;Seek to block %s&quot; % block_index
+             self.seek(block * self.block_size)
+ 
+             total = 0
+-            for i in range(0, 100):
++            while total &lt; self.block_size:
+                 entry = self.readChild(&quot;directory[]&quot;, DirectoryEntry).getFilter()
+                 if entry[&quot;inode&quot;] == 0:
+-                    print &quot;End.&quot;            
+                     return
+                 total = total + entry.getSize()
+-                if self.block_size &lt;= total:
+-                    assert total == self.block_size
+-                    print &quot;End of block&quot;
+-                    break
++            assert total == self.block_size
+             block_index = block_index + 1
+ 
+ registerPlugin(EXT2_FS, &quot;hachoir/fs-ext2&quot;)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000237.html">[Happyboom-svn] r331 - in haypo/hachoir: . plugins ui
+</A></li>
+	<LI>Next message: <A HREF="000239.html">[Happyboom-svn] r333 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#238">[ date ]</a>
+              <a href="thread.html#238">[ thread ]</a>
+              <a href="subject.html#238">[ subject ]</a>
+              <a href="author.html#238">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

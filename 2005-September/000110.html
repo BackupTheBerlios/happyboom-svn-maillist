@@ -1,0 +1,84 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r203 - happyboom/trunk/client
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r203%20-%20happyboom/trunk/client&In-Reply-To=%3C200509180941.j8I9fCfg026417%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000109.html">
+   <LINK REL="Next"  HREF="000111.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r203 - happyboom/trunk/client</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r203%20-%20happyboom/trunk/client&In-Reply-To=%3C200509180941.j8I9fCfg026417%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r203 - happyboom/trunk/client">dboucard at berlios.de
+       </A><BR>
+    <I>Sun Sep 18 11:41:12 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000109.html">[Happyboom-svn] r202 - in boomboom: . curses_client curses_client/items
+</A></li>
+        <LI>Next message: <A HREF="000111.html">[Happyboom-svn] r204 - in boomboom/curses_client: . items
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#110">[ date ]</a>
+              <a href="thread.html#110">[ thread ]</a>
+              <a href="subject.html#110">[ subject ]</a>
+              <a href="author.html#110">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-18 11:41:10 +0200 (Sun, 18 Sep 2005)
+New Revision: 203
+
+Modified:
+   happyboom/trunk/client/base_client.py
+Log:
+removes dummy prints
+
+
+Modified: happyboom/trunk/client/base_client.py
+===================================================================
+--- happyboom/trunk/client/base_client.py	2005-09-18 09:28:18 UTC (rev 202)
++++ happyboom/trunk/client/base_client.py	2005-09-18 09:41:10 UTC (rev 203)
+@@ -142,7 +142,6 @@
+                         if feat in self.features:
+                             raise Exception(&quot;[HAPPYBOOM] Duplicated feature %s in %s and %s classes&quot; %(feat, itemClass.__name__, self.features[feat].__name__))
+                         self.features[feat] = itemClass
+-                    print &quot;FEATURE : %s !!!!!!!!!!!!!!!!!!!!!!!&quot; %feat
+         
+     def processConnection(self, ioclient, version, signature):
+         self.launchEvent(&quot;happyboom&quot;, &quot;signature&quot;, ioclient, signature)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000109.html">[Happyboom-svn] r202 - in boomboom: . curses_client curses_client/items
+</A></li>
+	<LI>Next message: <A HREF="000111.html">[Happyboom-svn] r204 - in boomboom/curses_client: . items
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#110">[ date ]</a>
+              <a href="thread.html#110">[ thread ]</a>
+              <a href="subject.html#110">[ subject ]</a>
+              <a href="author.html#110">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

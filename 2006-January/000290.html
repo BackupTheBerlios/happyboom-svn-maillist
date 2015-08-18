@@ -1,0 +1,369 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r388 - in haypo/hachoir/trunk: . plugins stream
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r388%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins%20stream&In-Reply-To=%3C200601030402.k0342RtY024422%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000289.html">
+   <LINK REL="Next"  HREF="000291.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r388 - in haypo/hachoir/trunk: . plugins stream</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r388%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins%20stream&In-Reply-To=%3C200601030402.k0342RtY024422%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r388 - in haypo/hachoir/trunk: . plugins stream">haypo at berlios.de
+       </A><BR>
+    <I>Tue Jan  3 05:02:27 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000289.html">[Happyboom-svn] r387 - in haypo/hachoir/trunk: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000291.html">[Happyboom-svn] r389 - in haypo/hachoir/trunk: . plugins stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#290">[ date ]</a>
+              <a href="thread.html#290">[ thread ]</a>
+              <a href="subject.html#290">[ subject ]</a>
+              <a href="author.html#290">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-03 05:02:25 +0100 (Tue, 03 Jan 2006)
+New Revision: 388
+
+Modified:
+   haypo/hachoir/trunk/filter.py
+   haypo/hachoir/trunk/plugins/ico.py
+   haypo/hachoir/trunk/plugins/worms2.py
+   haypo/hachoir/trunk/reverse.py
+   haypo/hachoir/trunk/stream/stream.py
+   haypo/hachoir/trunk/tools.py
+Log:
+- Worms2 plugin is able to read &quot;file system&quot; and the strange XXX structure
+- tools.py: create alignValue function
+- some bugfix around stream.getSize() VS stream.getLastPos()
+- fix in LimitedStream: don't clone parent anymore
+- fix SubStream and LimitedStream search() method (seek in parent stream)
+- remove Chunk.clone() and Stream.clone() methods
+- reverse.py: create entropy() function
+
+
+Modified: haypo/hachoir/trunk/filter.py
+===================================================================
+--- haypo/hachoir/trunk/filter.py	2006-01-02 23:42:46 UTC (rev 387)
++++ haypo/hachoir/trunk/filter.py	2006-01-03 04:02:25 UTC (rev 388)
+@@ -99,7 +99,7 @@
+     endian = property(_getEndian)
+ 
+     def addPadding(self):
+-        size = self._stream.getLastPos() - self._stream.tell()
++        size = self._stream.getRemainSize()
+         if 0 &lt; size:
+             self.read(&quot;end&quot;, &quot;Raw end&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+ 
+
+Modified: haypo/hachoir/trunk/plugins/ico.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/ico.py	2006-01-02 23:42:46 UTC (rev 387)
++++ haypo/hachoir/trunk/plugins/ico.py	2006-01-03 04:02:25 UTC (rev 388)
+@@ -26,11 +26,8 @@
+         # Read pixels
+         size = header[&quot;width&quot;] * header[&quot;height&quot;] * header[&quot;bpp&quot;] / 8
+         self.read(&quot;pixels&quot;, &quot;Image pixels&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        self.addPadding()
+ 
+-        padding = stream.getLastPos() - stream.tell() + 1
+-        if 0 &lt; padding:
+-            self.read(&quot;padding&quot;, &quot;(padding)&quot;, (FormatChunk, &quot;string[%u]&quot; % padding))
+-
+ class IconHeader(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;icon&quot;, &quot;Icon header&quot;, stream, parent, &quot;&lt;&quot;)
+
+Modified: haypo/hachoir/trunk/plugins/worms2.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/worms2.py	2006-01-02 23:42:46 UTC (rev 387)
++++ haypo/hachoir/trunk/plugins/worms2.py	2006-01-03 04:02:25 UTC (rev 388)
+@@ -11,6 +11,7 @@
+ from chunk import FormatChunk, StringChunk, EnumChunk, BitsChunk, BitsStruct
+ from generic.image import Palette
+ from text_handler import humanFilesize
++from tools import alignValue
+ 
+ class ImageData(OnDemandFilter):
+     def __init__(self, stream, parent):
+@@ -74,8 +75,8 @@
+         self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
+ 
+     def updateParent(self, chunk):            
+-        chunk.description = &quot;Frame: %ux%u pixels at (%u,%u)&quot; % \
+-            (self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;x&quot;], self[&quot;y&quot;])
++        chunk.description = &quot;Frame: a=%s b=%s c=%s %ux%u pixels at (%u,%u)&quot; % \
++            (self[&quot;a&quot;], self[&quot;b&quot;], self[&quot;c&quot;], self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;x&quot;], self[&quot;y&quot;])
+ 
+ class Sprite(OnDemandFilter):
+     def __init__(self, stream, parent):
+@@ -177,8 +178,10 @@
+             self.read(&quot;filesize&quot;, &quot;File size&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: humanFilesize})
+             self.name = &quot;(directory)&quot;
+             end = self.doRead(&quot;last_pos&quot;, &quot;Last position&quot;, (FormatChunk, &quot;uint32&quot;)).value
++            self.count = 0
+             while stream.tell() &lt; end:
+                 self.read(&quot;res[]&quot;, &quot;Resource&quot;, (Resource,))
++                self.count += 1
+ 
+     def getStaticSize(stream, args):
+         oldpos = stream.tell()
+@@ -196,11 +199,55 @@
+         if self[&quot;tag&quot;] != &quot;DIR&quot;:
+             chunk.description = &quot;[%s] %s&quot; % (self.name, self[&quot;data&quot;].getDescription())
+         else:
+-            chunk.description = &quot;Directory&quot; 
++            chunk.description = &quot;Directory: %u resources&quot; % self.count 
+ 
++class File(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;fs&quot;, &quot;File system&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;position&quot;, &quot;Position in file&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;size&quot;, &quot;File size (in bytes)&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: humanFilesize})
++        size = self.doRead(&quot;name&quot;, &quot;Name&quot;, (StringChunk,&quot;C&quot;)).size
++        padding = 4 + alignValue(size, 4) - size
++        max = stream.getLastPos() - stream.tell() + 1
++        if max&lt;padding:
++            padding = max
++        self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk,&quot;string[%u]&quot; % padding))
++        
++    def updateParent(self, chunk):
++        size = self.getChunk(&quot;size&quot;).getDisplayData()
++        chunk.description = &quot;File: %s (%s)&quot; \
++            % (self[&quot;name&quot;], size)
++
++class XXX(OnDemandFilter):
++    def __init__(self, stream, parent, count):
++        OnDemandFilter.__init__(self, &quot;fs&quot;, &quot;File system&quot;, stream, parent, &quot;&lt;&quot;)
++        self.count = count
++        for i in range(0, self.count):
++            self.read(&quot;value32[]&quot;, &quot;?&quot;, (FormatChunk, &quot;uint32&quot;))
++        
++    def updateParent(self, chunk):
++        chunk.description = &quot;XXX: %u integers (uint32)&quot; % (self.count)
++
++class FileSystem(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;fs&quot;, &quot;File system&quot;, stream, parent, &quot;&lt;&quot;)
++        self.count = 0 
++        while not stream.eof():
++            self.read(&quot;file[]&quot;, &quot;File&quot;, (File,))
++            self.count += 1
++        
++    def updateParent(self, chunk):
++        chunk.description = &quot;File system: %u files&quot; % (self.count)
++
+ class Worms2_Dir_File(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;worms2_dir_file&quot;, &quot;Worms2 directory (.dir) file&quot;, stream, parent, &quot;&lt;&quot;)
+-        self.read(&quot;resources&quot;, &quot;Directory of resources&quot;, (Resource,))
++        self.read(&quot;resources&quot;, &quot;Directory&quot;, (Resource,))
++        if True:
++            count = 1026
++            self.read(&quot;xxx&quot;, &quot;XXX&quot;, (XXX,count), {&quot;size&quot;: count*4})
++        
++            size = stream.getRemainSize()
++            self.read(&quot;fs&quot;, &quot;File system&quot;, (FileSystem,), {&quot;size&quot;: size})
+          
+ registerPlugin(Worms2_Dir_File, &quot;hachoir/worms2&quot;)
+
+Modified: haypo/hachoir/trunk/reverse.py
+===================================================================
+--- haypo/hachoir/trunk/reverse.py	2006-01-02 23:42:46 UTC (rev 387)
++++ haypo/hachoir/trunk/reverse.py	2006-01-03 04:02:25 UTC (rev 388)
+@@ -7,8 +7,26 @@
+ from chunk import FormatChunk
+ from default import EmptyFilter
+ import config
+-import sys
++import sys, math
+ 
++def entropy(raw):
++    assert 0&lt;len(raw)
++    assert isinstance(raw, str)
++    # Create list of 
++    count = [ 0 for i in range(0, 256) ]
++    length = len(raw)        
++    p = []
++    for i in raw:
++        count[ord(i)] += 1
++    for i in range(0,256):
++        if count[i] != 0:
++            p.append( float(count[i]) / length )
++    h = 0
++    n = len(p)
++    for p_i in p:
++        h += p_i * math.log(p_i, 2)
++    return -h
++
+ class Pattern:
+     def check(self, stream):
+         return False
+
+Modified: haypo/hachoir/trunk/stream/stream.py
+===================================================================
+--- haypo/hachoir/trunk/stream/stream.py	2006-01-02 23:42:46 UTC (rev 387)
++++ haypo/hachoir/trunk/stream/stream.py	2006-01-03 04:02:25 UTC (rev 388)
+@@ -10,12 +10,13 @@
+     #--- Virtual functions --------------------------------------------------
+     
+     def getSize(self):
++        &quot;&quot;&quot; Stream size in bytes. &quot;&quot;&quot;
+         return 0
+ 
+-    def clone(self):
+-        return None
+-    
+     def getLastPos(self):
++        &quot;&quot;&quot;
++        Position of last byte in stream.
++        &quot;&quot;&quot;
+         return 0
+ 
+     def tell(self):
+@@ -45,14 +46,14 @@
+         if start == None:
+             start = self.tell()
+         if size == None:
+-            size = self.getSize()-start
++            size = self.getLastPos()-start+1
+         return SubStream(self, start, size, self.filename)
+ 
+     def createLimited(self, start=None, size=None):
+         if start==None:
+             start = self.tell()
+         if size == None:
+-            size = self.getSize()-start
++            size = self.getLastPos()-start+1
+         return LimitedStream(self, start, size, self.filename)
+ 
+     def getFormat(self, format, seek=True):
+@@ -132,17 +133,16 @@
+             newpos = oldpos + size 
+         return -1 
+ 
++    def getRemainSize(self):
++        return self.getLastPos() - self.tell() + 1
++
+ class LimitedStream(Stream):
+     def __init__(self, stream, start=0, size=0, filename=None):
+         Stream.__init__(self, filename)
+         assert 1 &lt;= size            
+         assert 0 &lt;= start
+         assert not(stream.getLastPos()+1 &lt; start+size)
+-        self._stream = stream.clone()
+-#        if start&lt;0:
+-#            start = 0
+-#        if self._stream.getLastPos()+1 &lt; start+size:
+-#            size = self._stream.getLastPos()-start+1
++        self._stream = stream
+         self._start = start
+         self._size = size
+         self._end = self._start + self._size
+@@ -159,7 +159,8 @@
+         if size_max == None or self._end-self.tell() &lt; size_max:
+             size_max = self._end-self.tell()
+         assert 0&lt;=size_max  and size_max&lt;=self._size
+-        return self._stream.search(str, size_max)
++        self._stream.seek(self._seed)
++        return self._stream.search(str, size_max) 
+         
+     def read(self, size, seek=True):
+         &quot;&quot;&quot; Works like Posix read (can returns less than size bytes. &quot;&quot;&quot;
+@@ -170,7 +171,7 @@
+         return data
+ 
+     def getN(self, size, seek=True):
+-        if self._start+self._size&lt;self._seed+size:
++        if self._start+self._size &lt; self._seed+size:
+             raise StreamError( \
+                 &quot;Can't read outsize the stream\n&quot;
+                 +&quot;(try to read %u byte(s) from position %s, where stream in limited in [%u;%u])&quot; \
+@@ -202,16 +203,18 @@
+     def getLastPos(self):
+         return self._last_pos
+ 
+-    def clone(self):
+-        return LimitedStream(self._stream, self._start, self._size, self.filename)
+-
+ class SubStream(LimitedStream):
++    def __init__(self, stream, start=0, size=0, filename=None):
++        LimitedStream.__init__(self, stream, start, size, filename)
++        self._last_pos = self._size - 1
++
+     def search(self, str, size_max=None):
+         if self._end == 0: return -1
+         max = self._end-self.tell()-self._start-1
+         if size_max == None or max &lt; size_max:
+             size_max = max
+         assert 0&lt;=size_max  and size_max&lt;=self._size
++        self._stream.seek(self._seed)
+         pos = self._stream.search(str, size_max)
+         if pos != -1:
+             pos = pos - self._start
+@@ -231,9 +234,3 @@
+ 
+     def tell(self):
+         return self._seed - self._start
+-    
+-    def getLastPos(self):
+-        return self._end - self._start
+-
+-    def clone(self):
+-        return SubStream(self._stream, self._start, self._size, self.filename)
+
+Modified: haypo/hachoir/trunk/tools.py
+===================================================================
+--- haypo/hachoir/trunk/tools.py	2006-01-02 23:42:46 UTC (rev 387)
++++ haypo/hachoir/trunk/tools.py	2006-01-03 04:02:25 UTC (rev 388)
+@@ -1,5 +1,11 @@
+ import traceback, sys, string, re
+ 
++def alignValue(value, align):
++    if value % align != 0:
++        return value + align - (value % align)
++    else:
++        return value        
++
+ def _regexMaxLength(pattern, in_parenthesis=False):
+     &quot;&quot;&quot;
+     Don't use this function directly, use regexMagLength!
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000289.html">[Happyboom-svn] r387 - in haypo/hachoir/trunk: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000291.html">[Happyboom-svn] r389 - in haypo/hachoir/trunk: . plugins stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#290">[ date ]</a>
+              <a href="thread.html#290">[ thread ]</a>
+              <a href="subject.html#290">[ subject ]</a>
+              <a href="author.html#290">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

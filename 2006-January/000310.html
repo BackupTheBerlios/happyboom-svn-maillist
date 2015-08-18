@@ -1,0 +1,239 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r406 - in haypo/hachoir/trunk: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r406%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200601200249.k0K2nnwC018874%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000309.html">
+   <LINK REL="Next"  HREF="000311.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r406 - in haypo/hachoir/trunk: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r406%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200601200249.k0K2nnwC018874%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r406 - in haypo/hachoir/trunk: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Fri Jan 20 03:49:49 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000309.html">[Happyboom-svn] r405 - in haypo/hachoir/trunk: . stream
+</A></li>
+        <LI>Next message: <A HREF="000311.html">[Happyboom-svn] r407 - haypo/hachoir/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#310">[ date ]</a>
+              <a href="thread.html#310">[ thread ]</a>
+              <a href="subject.html#310">[ subject ]</a>
+              <a href="author.html#310">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-20 03:48:56 +0100 (Fri, 20 Jan 2006)
+New Revision: 406
+
+Modified:
+   haypo/hachoir/trunk/filter.py
+   haypo/hachoir/trunk/plugins/3ds.py
+   haypo/hachoir/trunk/plugins/ext2.py
+   haypo/hachoir/trunk/plugins/worms2.py
+Log:
+Use new python (2.4) decorator: @staticmethod
+
+
+Modified: haypo/hachoir/trunk/filter.py
+===================================================================
+--- haypo/hachoir/trunk/filter.py	2006-01-20 02:30:52 UTC (rev 405)
++++ haypo/hachoir/trunk/filter.py	2006-01-20 02:48:56 UTC (rev 406)
+@@ -24,9 +24,9 @@
+         self._endian = endian
+         self.filter_chunk = None
+ 
++    @staticmethod
+     def getStaticSize(stream, args):
+         return None
+-    getStaticSize = staticmethod(getStaticSize)
+ 
+     def updateParent(self, chunk): pass
+     def getId(self): return self._id
+
+Modified: haypo/hachoir/trunk/plugins/3ds.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/3ds.py	2006-01-20 02:30:52 UTC (rev 405)
++++ haypo/hachoir/trunk/plugins/3ds.py	2006-01-20 02:48:56 UTC (rev 406)
+@@ -27,9 +27,9 @@
+         self.read(&quot;u&quot;, &quot;Map U&quot;, (FormatChunk, &quot;float&quot;))
+         self.read(&quot;v&quot;, &quot;Map V&quot;, (FormatChunk, &quot;float&quot;))
+ 
++    @staticmethod
+     def getStaticSize(stream, args):
+         return 4*2
+-    getStaticSize = staticmethod(getStaticSize)
+  
+ class Filter_3DS_Vertex(OnDemandFilter):
+     def __init__(self, stream, parent):
+@@ -38,9 +38,9 @@
+         self.read(&quot;y&quot;, &quot;Y&quot;, (FormatChunk, &quot;float&quot;))
+         self.read(&quot;z&quot;, &quot;Z&quot;, (FormatChunk, &quot;float&quot;))
+ 
++    @staticmethod
+     def getStaticSize(stream, args):
+         return 4*3
+-    getStaticSize = staticmethod(getStaticSize)
+ 
+ class Filter_3DS_Polygon(OnDemandFilter):
+     def __init__(self, stream, parent):
+@@ -50,9 +50,9 @@
+         self.read(&quot;c&quot;, &quot;Vertex C&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;flags&quot;, &quot;Flags&quot;, (FormatChunk, &quot;uint16&quot;))
+ 
++    @staticmethod
+     def getStaticSize(stream, args):
+         return 4*2
+-    getStaticSize = staticmethod(getStaticSize)
+     
+ def readMapList(filter, stream, last_pos):
+     filter.read(&quot;count&quot;, &quot;Map count&quot;, (FormatChunk, &quot;uint16&quot;))
+
+Modified: haypo/hachoir/trunk/plugins/ext2.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/ext2.py	2006-01-20 02:30:52 UTC (rev 405)
++++ haypo/hachoir/trunk/plugins/ext2.py	2006-01-20 02:48:56 UTC (rev 406)
+@@ -95,9 +95,9 @@
+         else:
+             self.read(&quot;raw&quot;, &quot;Reserved&quot;, (FormatChunk, &quot;string[12]&quot;))
+ 
++    @staticmethod
+     def getStaticSize(stream, args):
+         return 68 + 15*4
+-    getStaticSize = staticmethod(getStaticSize)
+ 
+     def updateParent(self, chunk):
+         desc = &quot;Inode %s: &quot; % self.index
+@@ -174,9 +174,9 @@
+         self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;reserved&quot;, &quot;Reserved&quot;, (FormatChunk, &quot;string[12]&quot;))
+ 
++    @staticmethod
+     def getStaticSize(stream, args):
+         return 32
+-    getStaticSize = staticmethod(getStaticSize)
+ 
+     def updateParent(self, chunk):
+         superblock = self.getParent().getParent().superblock
+@@ -257,9 +257,9 @@
+         blocks_per_group = self[&quot;blocks_per_group&quot;]
+         self.group_count = (self[&quot;blocks_count&quot;] - self[&quot;first_data_block&quot;] + (blocks_per_group - 1)) / blocks_per_group
+ 
++    @staticmethod
+     def getStaticSize(stream, args):
+         return 433
+-    getStaticSize = staticmethod(getStaticSize)
+  
+     def updateParent(self, chunk):
+         if self[&quot;feature_compat&quot;] &amp; 4 == 4:
+
+Modified: haypo/hachoir/trunk/plugins/worms2.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/worms2.py	2006-01-20 02:30:52 UTC (rev 405)
++++ haypo/hachoir/trunk/plugins/worms2.py	2006-01-20 02:48:56 UTC (rev 406)
+@@ -28,6 +28,7 @@
+             size = (self[&quot;width&quot;]-self[&quot;x&quot;]) * (self[&quot;height&quot;]-self[&quot;y&quot;])
+             self.read(&quot;data&quot;, &quot;Image content&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+ 
++    @staticmethod
+     def getStaticSize(stream, args):
+         if args[0] == True:
+             return 12 
+@@ -36,7 +37,6 @@
+         size = 2*4 + (w-x) * (h-y)
+         stream.seek(oldpos)
+         return size
+-    getStaticSize = staticmethod(getStaticSize)
+ 
+     def updateParent(self, chunk):
+         desc = &quot;Image data: &quot; 
+@@ -171,9 +171,9 @@
+         self.read(&quot;offset&quot;, &quot;Offset?&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;xxx&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
+ 
++    @staticmethod
+     def getStaticSize(stream, args):
+         return 12 
+-    getStaticSize = staticmethod(getStaticSize)
+ 
+     def updateParent(self, chunk):
+         desc = &quot;Bank item: &quot; 
+@@ -191,9 +191,9 @@
+         self.read(&quot;zero&quot;, &quot;Zero&quot;, (FormatChunk, &quot;string[6]&quot;))
+         assert self[&quot;zero&quot;] == &quot;\0&quot; * 6 
+ 
++    @staticmethod
+     def getStaticSize(stream, args):
+         return 12 
+-    getStaticSize = staticmethod(getStaticSize)
+ 
+     def updateParent(self, chunk):
+         chunk.description = &quot;Bank item2: size=%s offset=%s step=%s&quot; % (self[&quot;size&quot;], self[&quot;offset&quot;], self[&quot;step&quot;])
+@@ -205,12 +205,12 @@
+         for i in range(0, self.count):
+             self.read(&quot;item[]&quot;, &quot;Item&quot;, chunk_info)
+ 
++    @staticmethod
+     def getStaticSize(stream, args):
+         size = args[0][0].getStaticSize(stream, [])
+         count = args[1]
+         assert size != None
+         return count * size
+-    getStaticSize = staticmethod(getStaticSize)
+ 
+     def updateParent(self, chunk):
+         chunk.description = &quot;Big Bank: %s items&quot; % (self.count)
+@@ -374,6 +374,7 @@
+         if size != 0:
+             self.read(&quot;padding[]&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+ 
++    @staticmethod
+     def getStaticSize(stream, args):
+         oldpos = stream.tell()
+         tag = stream.getN(3, False)
+@@ -387,7 +388,6 @@
+             size = stream.getFormat(&quot;&lt;uint32&quot;)
+         stream.seek(oldpos)
+         return size
+-    getStaticSize = staticmethod(getStaticSize)
+ 
+     def updateParent(self, chunk):            
+         if self[&quot;tag&quot;] != &quot;DIR&quot;:
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000309.html">[Happyboom-svn] r405 - in haypo/hachoir/trunk: . stream
+</A></li>
+	<LI>Next message: <A HREF="000311.html">[Happyboom-svn] r407 - haypo/hachoir/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#310">[ date ]</a>
+              <a href="thread.html#310">[ thread ]</a>
+              <a href="subject.html#310">[ subject ]</a>
+              <a href="author.html#310">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

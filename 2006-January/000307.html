@@ -1,0 +1,276 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r403 - in haypo/hachoir/trunk: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r403%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200601090252.k092qg9h032445%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000306.html">
+   <LINK REL="Next"  HREF="000308.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r403 - in haypo/hachoir/trunk: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r403%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200601090252.k092qg9h032445%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r403 - in haypo/hachoir/trunk: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Mon Jan  9 03:52:42 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000306.html">[Happyboom-svn] r402 - in haypo/lamer: . tool
+</A></li>
+        <LI>Next message: <A HREF="000308.html">[Happyboom-svn] r404 - haypo/hachoir/trunk/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#307">[ date ]</a>
+              <a href="thread.html#307">[ thread ]</a>
+              <a href="subject.html#307">[ subject ]</a>
+              <a href="author.html#307">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-09 03:52:15 +0100 (Mon, 09 Jan 2006)
+New Revision: 403
+
+Added:
+   haypo/hachoir/trunk/plugins/rar.py
+Modified:
+   haypo/hachoir/trunk/hachoir_class.py
+   haypo/hachoir/trunk/mime.py
+   haypo/hachoir/trunk/plugins/bmp.py
+   haypo/hachoir/trunk/text_handler.py
+Log:
+- Create RAR archive parser
+- Use addPadding() method in Hachoir &amp; BmpFile classes
+
+
+Modified: haypo/hachoir/trunk/hachoir_class.py
+===================================================================
+--- haypo/hachoir/trunk/hachoir_class.py	2006-01-07 11:00:21 UTC (rev 402)
++++ haypo/hachoir/trunk/hachoir_class.py	2006-01-09 02:52:15 UTC (rev 403)
+@@ -70,7 +70,7 @@
+         self._filter = new_filter           
+         if parent == None:
+             self._main_filter = self._filter
+-            self._addPadding()
++            self._main_filter.addPadding()
+         else:
+             chunk = old_filter.filter_chunk
+             chunk.setFilter(self._filter)
+@@ -88,13 +88,6 @@
+         my = UserFilterDescriptor(filter=self._filter)
+         my.exportPython(filename)
+         
+-    def _addPadding(self):
+-        filter_size = self._main_filter.getSize()
+-        stream_size = self._main_filter.getStream().getSize()
+-        diff_size = filter_size - stream_size
+-        if diff_size &lt; 0:
+-            self._main_filter.read(&quot;end&quot;, &quot;Raw data&quot;, (FormatChunk, &quot;string[%u]&quot; % -diff_size))
+-
+     def loadFile(self, filename):
+         try:
+             print &quot;Load file %s&quot; % filename
+@@ -123,7 +116,7 @@
+             stream.seek(0)
+             filter = DefaultFilter(stream)
+         self._main_filter = filter
+-        self._addPadding()
++        self._main_filter.addPadding()
+         self.setFilter(filter)
+ 
+     def loadScript(self, filename):
+
+Modified: haypo/hachoir/trunk/mime.py
+===================================================================
+--- haypo/hachoir/trunk/mime.py	2006-01-07 11:00:21 UTC (rev 402)
++++ haypo/hachoir/trunk/mime.py	2006-01-09 02:52:15 UTC (rev 403)
+@@ -7,6 +7,7 @@
+ - <A HREF="ftp://ftp.astron.com/pub/file/">ftp://ftp.astron.com/pub/file/</A> (libmagic)
+ - <A HREF="http://www.demonseed.net/~jp/code/magic.py">http://www.demonseed.net/~jp/code/magic.py</A> (100% Python)
+ - <A HREF="http://svn.gna.org/viewcvs/castor/trunk/lib/mime.php?view=markup">http://svn.gna.org/viewcvs/castor/trunk/lib/mime.php?view=markup</A> (PHP)
++- files in /usr/share/misc/file/* (on Unix/BSD systems)
+ &quot;&quot;&quot;
+ 
+ import os, sys, stat, string, re
+
+Modified: haypo/hachoir/trunk/plugins/bmp.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/bmp.py	2006-01-07 11:00:21 UTC (rev 402)
++++ haypo/hachoir/trunk/plugins/bmp.py	2006-01-09 02:52:15 UTC (rev 403)
+@@ -30,7 +30,6 @@
+             self.read(&quot;vertical_dpi&quot;, &quot;Vertical DPI&quot;, (FormatChunk, &quot;uint32&quot;))
+             self.read(&quot;used_colors&quot;, &quot;Number of color used&quot;, (FormatChunk, &quot;uint32&quot;))
+             self.read(&quot;important_color&quot;, &quot;Number of import colors&quot;, (FormatChunk, &quot;uint32&quot;))
+-        size = stream.getSize() - stream.tell()            
+-        self.read(&quot;data&quot;, &quot;Image raw data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        self.addPadding(&quot;data&quot;, &quot;Image raw data&quot;)
+ 
+ registerPlugin(BitmapFile, &quot;image/x-ms-bmp&quot;)
+
+Added: haypo/hachoir/trunk/plugins/rar.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/rar.py	2006-01-07 11:00:21 UTC (rev 402)
++++ haypo/hachoir/trunk/plugins/rar.py	2006-01-09 02:52:15 UTC (rev 403)
+@@ -0,0 +1,116 @@
++&quot;&quot;&quot;
++RAR archive parser.
++
++Informations source:
++---
++UniquE RAR File Library (under their license or GNU GPL license)
++The free file lib for the demoscene
++multi-OS version (Win32, Linux and SunOS)
++
++RAR decompression code:
++ (C) Eugene Roshal
++Modifications to a FileLib:
++ (C) 2000-2002 Christian Scheurer aka. UniquE/Vantage (<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">cs at unrarlib.org</A>)
++Linux port:
++ (C) 2000-2002 Johannes Winkelmann (<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">jw at tks6.net</A>)
++---
++
++Author: Victor Stinner
++Creation: 9 january 2006 
++&quot;&quot;&quot;
++
++from filter import OnDemandFilter
++from chunk import FormatChunk, StringChunk, BitsStruct, BitsChunk
++from plugin import registerPlugin
++from text_handler import hexadecimal, unixTimestamp, humanFilesize
++
++class MainHeader(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;head&quot;, &quot;Header&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;crc&quot;, &quot;CRC (16 bits)&quot;, (FormatChunk, &quot;uint16&quot;), {&quot;post&quot;: hexadecimal})
++        self.read(&quot;type&quot;, &quot;Type&quot;, (FormatChunk, &quot;uint8&quot;), {&quot;post&quot;: hexadecimal})
++
++        bits = (
++            (1, &quot;xxx&quot;, &quot;???&quot;),
++            (1, &quot;comment&quot;, &quot;Has comment&quot;),
++            (1, &quot;lock&quot;, &quot;Lock (?)&quot;),
++            (1, &quot;solid&quot;, &quot;Solid archive (?)&quot;),
++            (1, &quot;pack_comment&quot;, &quot;Pack comment&quot;),
++            (1, &quot;av&quot;, &quot;av (audio/video?)&quot;),
++            (1, &quot;protect&quot;, &quot;Protect&quot;),
++            (9, &quot;raw&quot;, &quot;Raw bits&quot;),
++        )
++        self.read(&quot;flags&quot;, &quot;Flags&quot;, (BitsChunk, BitsStruct(bits)))
++        #self.read(&quot;flags&quot;, &quot;Flags&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;size&quot;, &quot;Size&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;reserved&quot;, &quot;(reserved)&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;reserved2&quot;, &quot;(reserved)&quot;, (FormatChunk, &quot;uint32&quot;))
++
++class FileHeader(OnDemandFilter):
++    window_size = {
++        0: &quot;64 bits&quot;,
++        1: &quot;128 bits&quot;,
++        2: &quot;256 bits&quot;,
++        3: &quot;512 bits&quot;,
++        4: &quot;1024 bits&quot;
++    }
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;head&quot;, &quot;Header&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;crc&quot;, &quot;CRC (16 bits)&quot;, (FormatChunk, &quot;uint16&quot;), {&quot;post&quot;: hexadecimal})
++        self.read(&quot;type&quot;, &quot;Type&quot;, (FormatChunk, &quot;uint8&quot;), {&quot;post&quot;: hexadecimal})
++        
++        bits = (
++            (1, &quot;split_before&quot;, &quot;Split before&quot;),
++            (1, &quot;split_after&quot;, &quot;Split after&quot;),
++            (1, &quot;password&quot;, &quot;Passowrd&quot;),
++            (1, &quot;comment&quot;, &quot;Has comment?&quot;),
++            (1, &quot;solid&quot;, &quot;Solid&quot;),
++#            (3, &quot;window_size&quot;, &quot;Window size&quot;),
++            (11, &quot;raw&quot;, &quot;Bits&quot;),
++        )
++        self.read(&quot;flags&quot;, &quot;Flags&quot;, (BitsChunk, BitsStruct(bits)))
++        
++        self.read(&quot;hdr_size&quot;, &quot;Header size&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;pack_size&quot;, &quot;Pack size&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: humanFilesize})
++        self.read(&quot;unpack_size&quot;, &quot;Unpack size&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: humanFilesize})
++        self.read(&quot;os&quot;, &quot;Host OS&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;crc32&quot;, &quot;File CRC32&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: hexadecimal})
++        self.read(&quot;time&quot;, &quot;File timestamp&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: unixTimestamp})
++        self.read(&quot;unp_ver&quot;, &quot;Unpacker version(?)&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;method&quot;, &quot;Compression method&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;name_len&quot;, &quot;Name size&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;file_attr&quot;, &quot;File attributes&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;name&quot;, &quot;File name&quot;, (StringChunk, &quot;Fixed&quot;), {&quot;size&quot;: self[&quot;name_len&quot;]})
++
++    def updateParent(self, chunk):
++        chunk.description = &quot;File: %s&quot; % (self[&quot;name&quot;])
++
++class RAR_File(OnDemandFilter):
++    handler = {
++        0x73: (&quot;main_head&quot;, &quot;Main header&quot;, (MainHeader,)),
++        0x74: (&quot;file_head&quot;, &quot;File header&quot;, (FileHeader,))
++    }
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;rar_file&quot;, &quot;RAR archive file&quot;, stream, parent, &quot;&lt;&quot;)
++
++        # Read header:
++        # - &quot;Rar!\x1A\x07\x00&quot; is RAR v2.0 header
++        # - &quot;UniquE!&quot; is Unique RAR header (generated with UniquE RAR library?)
++        # - &quot;\x52\x45\x7e\x5e&quot; (&quot;RE~^&quot;) is old header (not supported)
++        self.read(&quot;id&quot;, &quot;RAR identifier&quot;, (FormatChunk, &quot;string[7]&quot;))
++        assert self[&quot;id&quot;] in (&quot;Rar!\x1A\x07\x00&quot;, &quot;UniquE!&quot;)
++
++        # Read blocks
++        while not stream.eof():
++            # Read type
++            stream.seek(2, 1)
++            type = stream.getFormat(&quot;uint8&quot;, False)
++            stream.seek(-2, 1)
++            if type not in RAR_File.handler:
++                print &quot;RAR: unknow type=%02X&quot; % type
++                break
++            handler = RAR_File.handler[type]
++            self.read(*handler)
++        self.addPadding()
++
++registerPlugin(RAR_File, &quot;application/x-rar&quot;)
+
+Modified: haypo/hachoir/trunk/text_handler.py
+===================================================================
+--- haypo/hachoir/trunk/text_handler.py	2006-01-07 11:00:21 UTC (rev 402)
++++ haypo/hachoir/trunk/text_handler.py	2006-01-09 02:52:15 UTC (rev 403)
+@@ -28,6 +28,6 @@
+ 
+ def hexadecimal(chunk):
+     size = chunk.size
+-    assert size in (2, 4, 8)
++    assert size in (1, 2, 4, 8)
+     pattern = &quot;0x%0&quot; + str(2*size) + &quot;X&quot;
+     return pattern % chunk.value
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000306.html">[Happyboom-svn] r402 - in haypo/lamer: . tool
+</A></li>
+	<LI>Next message: <A HREF="000308.html">[Happyboom-svn] r404 - haypo/hachoir/trunk/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#307">[ date ]</a>
+              <a href="thread.html#307">[ thread ]</a>
+              <a href="subject.html#307">[ subject ]</a>
+              <a href="author.html#307">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

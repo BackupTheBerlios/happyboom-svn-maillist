@@ -1,0 +1,295 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r259 - in greycstoration_gimp: . po src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r259%20-%20in%20greycstoration_gimp%3A%20.%20po%20src&In-Reply-To=%3C200511212303.jALN3Ao2026920%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000183.html">
+   <LINK REL="Next"  HREF="000166.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r259 - in greycstoration_gimp: . po src</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r259%20-%20in%20greycstoration_gimp%3A%20.%20po%20src&In-Reply-To=%3C200511212303.jALN3Ao2026920%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r259 - in greycstoration_gimp: . po src">haypo at berlios.de
+       </A><BR>
+    <I>Tue Nov 22 00:03:10 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000183.html">[Happyboom-svn] r258 - in greycstoration_gimp: . src
+</A></li>
+        <LI>Next message: <A HREF="000166.html">[Happyboom-svn] r260 - haypo/mediawiki
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#165">[ date ]</a>
+              <a href="thread.html#165">[ thread ]</a>
+              <a href="subject.html#165">[ subject ]</a>
+              <a href="author.html#165">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-22 00:03:09 +0100 (Tue, 22 Nov 2005)
+New Revision: 259
+
+Added:
+   greycstoration_gimp/po/
+   greycstoration_gimp/po/POTFILES.in
+   greycstoration_gimp/po/fr.po
+   greycstoration_gimp/src/Makefile.am
+   greycstoration_gimp/src/plugin-intl.h
+Removed:
+   greycstoration_gimp/src/Makefile
+Log:
+Commit autotools patch (last part?).
+
+
+Added: greycstoration_gimp/po/POTFILES.in
+===================================================================
+--- greycstoration_gimp/po/POTFILES.in	2005-11-21 22:57:19 UTC (rev 258)
++++ greycstoration_gimp/po/POTFILES.in	2005-11-21 23:03:09 UTC (rev 259)
+@@ -0,0 +1,3 @@
++# List of source files containing translatable strings.
++
++src/dialog.cpp
+
+Added: greycstoration_gimp/po/fr.po
+===================================================================
+--- greycstoration_gimp/po/fr.po	2005-11-21 22:57:19 UTC (rev 258)
++++ greycstoration_gimp/po/fr.po	2005-11-21 23:03:09 UTC (rev 259)
+@@ -0,0 +1,77 @@
++# translation of GIMP GREYCstroration Plug-In.
++# Copyright (C) 2005 THE GIMP GREYCstroration Plug-In'S COPYRIGHT HOLDER
++# This file is distributed under the same license as the GIMP GREYCstroration Plug-In package.
++# &lt;&gt;, 2005.
++# , fuzzy
++#  &lt;&gt;, 2005.
++# 
++# 
++msgid &quot;&quot;
++msgstr &quot;&quot;
++&quot;Project-Id-Version: GIMP GREYCstroration Plug-In 0.1.2\n&quot;
++&quot;Report-Msgid-Bugs-To: \n&quot;
++&quot;POT-Creation-Date: 2005-11-21 17:50+0100\n&quot;
++&quot;PO-Revision-Date: 2005-11-21 16:18+0100\n&quot;
++&quot;Last-Translator: Thomas de Grenier de Latour (TGL) &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">degrenier at easyconnect</A>&gt;\n&quot;
++&quot;Language-Team: French &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">gnomefr at traduc.org</A>&gt;\n&quot;
++&quot;MIME-Version: 1.0\n&quot;
++&quot;Content-Type: text/plain; charset=UTF-8\n&quot;
++&quot;Content-Transfer-Encoding: 8bit\n&quot;
++
++#. Insert table in a new notebook page
++#: ../src/dialog.cpp:122
++msgid &quot;Restore&quot;
++msgstr &quot;Restauration&quot;
++
++#. Power1
++#: ../src/dialog.cpp:127
++msgid &quot;_Detail factor (p1):&quot;
++msgstr &quot;Facteur de _d&#233;tails (p1) :&quot;
++
++#: ../src/dialog.cpp:128
++msgid &quot;_Gradient factor (p2):&quot;
++msgstr &quot;Facteur de _gradiant (p2) :&quot;
++
++#: ../src/dialog.cpp:129
++msgid &quot;_Time step (dt):&quot;
++msgstr &quot;Intervale de _temps (dt) :&quot;
++
++#: ../src/dialog.cpp:130
++msgid &quot;_Blur (sigma):&quot;
++msgstr &quot;_Flou (sigma) :&quot;
++
++#: ../src/dialog.cpp:131
++msgid &quot;Blur _iterations (iter) :&quot;
++msgstr &quot;_It&#233;rations de flou (iter) :&quot;
++
++#. New vbox
++#: ../src/dialog.cpp:141
++msgid &quot;Quality&quot;
++msgstr &quot;Qualit&#233;&quot;
++
++#. linear checkbox
++#: ../src/dialog.cpp:147
++msgid &quot;Use linear interpolation:&quot;
++msgstr &quot;Utiliser une interpolation lin&#233;aire :&quot;
++
++#. normalize checkbox
++#: ../src/dialog.cpp:153
++msgid &quot;Normalize picture to [0-255]:&quot;
++msgstr &quot;Normaliser l'image dans [0-255] :&quot;
++
++#. Insert parameters into the table
++#: ../src/dialog.cpp:170
++msgid &quot;_Angular step (da):&quot;
++msgstr &quot;Pas _angulaire (da) :&quot;
++
++#: ../src/dialog.cpp:171
++msgid &quot;_Integral step (dt):&quot;
++msgstr &quot;Pas d'_int&#233;gration (dt) :&quot;
++
++#: ../src/dialog.cpp:172
++msgid &quot;_Gaussian precision (gauss):&quot;
++msgstr &quot;Pr&#233;cision _gaussienne (gauss) :&quot;
++
++#: ../src/dialog.cpp:188
++msgid &quot;GREYCstoration&quot;
++msgstr &quot;GREYCstoration&quot;
+
+Deleted: greycstoration_gimp/src/Makefile
+===================================================================
+--- greycstoration_gimp/src/Makefile	2005-11-21 22:57:19 UTC (rev 258)
++++ greycstoration_gimp/src/Makefile	2005-11-21 23:03:09 UTC (rev 259)
+@@ -1,36 +0,0 @@
+-# Common arguments
+-CXXFLAGS=-Wall -O3 -ffast-math
+-SRC=image.cpp greycstoration.cpp dialog.cpp main.cpp
+-
+-# C++ compiler
+-CXX=g++
+-
+-# pkg-config modules needed
+-MODULES=gimp-2.0 gimpui-2.0 gtk+-2.0
+-CXXFLAGS+=$(shell pkg-config $(MODULES) --cflags)
+-LIBS=$(shell pkg-config $(MODULES) --libs)
+-
+-# Don't use CImg interface (keyboard/mouse interaction)
+-CXXFLAGS+=-Dcimg_OS=-1 -Dcimg_display_type=0 
+-
+-# And others variables ...
+-PROG=greycstoration
+-OBJECTS=$(patsubst %.cpp,%.o,$(SRC))
+-GIMPTOOL=gimptool-2.0
+-
+-$(PROG): $(OBJECTS)
+-	@echo &quot;Linking ...&quot;
+-	@$(CXX) -o $(PROG) $(OBJECTS) $(CXXFLAGS) $(LIBS)
+-	
+-%.o: %.cpp
+-	@echo &quot;Compile $@&quot;
+-	@$(CXX) -c -o $@ $&lt; $(CXXFLAGS)
+-	
+-install: $(PROG)
+-	$(GIMPTOOL) --install-bin $(PROG)
+-	
+-uninstall:
+-	$(GIMPTOOL) --uninstall-bin $(PROG)
+-
+-clean:
+-	rm -f $(PROG) $(OBJECTS)
+
+Copied: greycstoration_gimp/src/Makefile.am (from rev 258, greycstoration_gimp/src/Makefile)
+===================================================================
+--- greycstoration_gimp/src/Makefile	2005-11-21 22:57:19 UTC (rev 258)
++++ greycstoration_gimp/src/Makefile.am	2005-11-21 23:03:09 UTC (rev 259)
+@@ -0,0 +1,27 @@
++bin_PROGRAMS = greycstoration
++
++bindir = $(GIMP_LIBDIR)/plug-ins
++
++greycstoration_SOURCES = \
++	plugin-intl.h \
++	CImg.h \
++	dialog.h \
++	dialog.cpp \
++	greycstoration.h \
++	greycstoration.cpp \
++	image.h \
++	image.cpp \
++	main.h \
++	main.cpp
++
++AM_CPPFLAGS = \
++	-Dcimg_OS=-1 \
++	-Dcimg_display_type=0 \
++	-DLOCALEDIR=\&quot;&quot;$(LOCALEDIR)&quot;\&quot;
++
++INCLUDES = \
++	-I$(top_srcdir) \
++	@GIMP_CFLAGS@ \
++	-I$(includedir)
++
++LDADD = $(GIMP_LIBS)
+
+Added: greycstoration_gimp/src/plugin-intl.h
+===================================================================
+--- greycstoration_gimp/src/plugin-intl.h	2005-11-21 22:57:19 UTC (rev 258)
++++ greycstoration_gimp/src/plugin-intl.h	2005-11-21 23:03:09 UTC (rev 259)
+@@ -0,0 +1,45 @@
++/* plugin-intl.h
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a
++ * copy of this software and associated documentation files (the &quot;Software&quot;),
++ * to deal in the Software without restriction, including without limitation
++ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
++ * and/or sell copies of the Software, and to permit persons to whom the
++ * Software is furnished to do so, subject to the following conditions:
++ * 
++ * The above copyright notice and this permission notice shall be included
++ * in all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS
++ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
++ * THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
++ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
++ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
++ * 
++ * Except as contained in this notice, the name of the Author of the
++ * Software shall not be used in advertising or otherwise to promote the
++ * sale, use or other dealings in this Software without prior written
++ * authorization from the Author.
++ */
++
++#ifndef __PLUGIN_INTL_H__
++#define __PLUGIN_INTL_H__
++
++
++#ifndef GETTEXT_PACKAGE
++#error &quot;config.h must be included prior to plugin-intl.h&quot;
++#endif
++
++#include &lt;libintl.h&gt;
++
++#define _(String) gettext (String)
++
++#ifdef gettext_noop
++#    define N_(String) gettext_noop (String)
++#else
++#    define N_(String) (String)
++#endif
++
++
++#endif /* __PLUGIN_INTL_H__ */
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000183.html">[Happyboom-svn] r258 - in greycstoration_gimp: . src
+</A></li>
+	<LI>Next message: <A HREF="000166.html">[Happyboom-svn] r260 - haypo/mediawiki
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#165">[ date ]</a>
+              <a href="thread.html#165">[ thread ]</a>
+              <a href="subject.html#165">[ subject ]</a>
+              <a href="author.html#165">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

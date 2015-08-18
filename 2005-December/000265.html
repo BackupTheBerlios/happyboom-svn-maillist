@@ -1,0 +1,374 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r363 - in haypo/hachoir/trunk: . broken_plugins plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r363%20-%20in%20haypo/hachoir/trunk%3A%20.%20broken_plugins%20plugins&In-Reply-To=%3C200512271918.jBRJI7pT031140%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000264.html">
+   <LINK REL="Next"  HREF="000266.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r363 - in haypo/hachoir/trunk: . broken_plugins plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r363%20-%20in%20haypo/hachoir/trunk%3A%20.%20broken_plugins%20plugins&In-Reply-To=%3C200512271918.jBRJI7pT031140%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r363 - in haypo/hachoir/trunk: . broken_plugins plugins">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec 27 20:18:07 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000264.html">[Happyboom-svn] r362 - in haypo/hachoir/trunk: . broken_plugins plugins
+</A></li>
+        <LI>Next message: <A HREF="000266.html">[Happyboom-svn] r364 - in haypo/hachoir/trunk: broken_plugins plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#265">[ date ]</a>
+              <a href="thread.html#265">[ thread ]</a>
+              <a href="subject.html#265">[ subject ]</a>
+              <a href="author.html#265">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-27 20:18:05 +0100 (Tue, 27 Dec 2005)
+New Revision: 363
+
+Added:
+   haypo/hachoir/trunk/plugins/gif.py
+Removed:
+   haypo/hachoir/trunk/broken_plugins/gif.py
+Modified:
+   haypo/hachoir/trunk/chunk.py
+   haypo/hachoir/trunk/format.py
+Log:
+- Upgrade GIF plugin to new syntax
+- Fix GIF flags parser (thanks to new BitsChunk class)
+
+
+Deleted: haypo/hachoir/trunk/broken_plugins/gif.py
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/gif.py	2005-12-27 17:57:40 UTC (rev 362)
++++ haypo/hachoir/trunk/broken_plugins/gif.py	2005-12-27 19:18:05 UTC (rev 363)
+@@ -1,130 +0,0 @@
+-&quot;&quot;&quot;
+-GIF splitter.
+-
+-Status: loads header, don't load image data (stop filter), and is buggy ...
+-Author: Victor Stinner
+-&quot;&quot;&quot;
+-
+-from filter import Filter
+-from plugin import registerPlugin
+-from error import warning
+-
+-class GifColor(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;gif_color&quot;, &quot;GIF color (RGB)&quot;, stream, parent)
+-        self.read(&quot;red&quot;, &quot;&lt;B&quot;, &quot;Red&quot;)
+-        self.read(&quot;green&quot;, &quot;&lt;B&quot;, &quot;Green&quot;)
+-        self.read(&quot;blue&quot;, &quot;&lt;B&quot;, &quot;Blue&quot;)
+-
+-class GifImage(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;gif_image&quot;, &quot;GIF image data&quot;, stream, parent)
+-        self.read(&quot;left&quot;, &quot;&lt;H&quot;, &quot;Left&quot;)
+-        self.read(&quot;top&quot;, &quot;&lt;H&quot;, &quot;Top&quot;)
+-        self.read(&quot;width&quot;, &quot;&lt;H&quot;, &quot;Width&quot;)
+-        self.read(&quot;height&quot;, &quot;&lt;H&quot;, &quot;Height&quot;)
+-
+-        # TODO: Fix this ...
+-        self.read(&quot;flags&quot;, &quot;&lt;H&quot;, &quot;Flags&quot;)
+-        self.global_map = ((self[&quot;flags&quot;] &amp; 0x80) == 0x80)
+-        self.interlaced = ((self[&quot;flags&quot;] &amp; 0x40) == 0x40)
+-        self.bits_per_pixel = 1 + (self[&quot;flags&quot;] &amp; 0x07)
+-        if not self.global_map:
+-            self.readChild(&quot;local_map&quot;, GifColorMap)
+-            self.local_map = self[&quot;local_map&quot;]
+-        else:
+-            self.local_map = None
+-        # -- End of TODO
+-
+-class GifColorMap(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;gif_colormap&quot;, &quot;GIF color map&quot;, stream, parent)
+-        if issubclass(parent.__class__, GifImage):
+-            self._nb_colors = (1 &lt;&lt; parent.bits_per_pixel)
+-        else:
+-            assert issubclass(parent.__class__, GifFile)
+-            screen = parent.getChunk(&quot;screen&quot;).getFilter()
+-            self._nb_colors = (1 &lt;&lt; screen.bits_per_pixel)
+-        n = 0
+-        while n&lt;self._nb_colors:
+-            self.readChild(&quot;color[]&quot;, GifColor)
+-            n = n + 1
+-
+-    def checkEndOfMap(self, stream, array, color):
+-        return len(array) == self._nb_colors 
+-
+-class GifExtensionChunk(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;gif_ext_data&quot;, &quot;GIF extension data&quot;, stream, parent)
+-        self.read(&quot;size&quot;, &quot;B&quot;, &quot;Size (in bytes)&quot;)
+-        self.read(&quot;content&quot;, &quot;%us&quot; % self[&quot;size&quot;], &quot;Content&quot;)
+-
+-class GifExtension(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;gif_ext&quot;, &quot;GIF extension&quot;, stream, parent)
+-        self.read(&quot;func&quot;, &quot;&lt;B&quot;, &quot;Function&quot;)
+-        while True:
+-            chunk = self.readChild(&quot;chunk[]&quot;, GifExtensionChunk)
+-            if chunk.getFilter()[&quot;size&quot;] == 0:
+-                break
+-        
+-class GifScreenDescriptor(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;gif_screen_desc&quot;, &quot;GIF screen descriptor&quot;, stream, parent)
+-        self.read(&quot;width&quot;, &quot;&lt;H&quot;, &quot;Width&quot;)
+-        self.read(&quot;height&quot;, &quot;&lt;H&quot;, &quot;Height&quot;)
+-
+-        # TODO: Fix this
+-        self.read(&quot;flags&quot;, &quot;&lt;B&quot;, &quot;Flags&quot;, post=self.processFlags)
+-        # -- End of TODO
+-        
+-        self.read(&quot;background&quot;, &quot;&lt;B&quot;, &quot;Background color&quot;)
+-        self.read(&quot;notused&quot;, &quot;&lt;B&quot;, &quot;Not used (zero)&quot;)
+-
+-    def processFlags(self, chunk):
+-        flags = chunk.value
+-        self.global_map = ((flags &amp; 0x80) == 0x80) # ok
+-        self.color_res = 1 + ((flags &gt;&gt; 4) &amp; 0x7) # ??
+-        self.bits_per_pixel = 1 + (flags &amp; 0x7) # ok
+-        if self.global_map:
+-            text = &quot;global map, &quot;
+-        else:
+-            text = &quot;&quot;
+-        return text + &quot;color res=%u, bits/pixel=%u&quot; % (self.color_res, self.bits_per_pixel)
+-        
+-class GifFile(Filter):
+-    def __init__(self, stream, parent=None):
+-        Filter.__init__(self, &quot;gif_file&quot;, &quot;GIF picture file&quot;, stream, parent)
+-        # Header
+-        self.read(&quot;header&quot;, &quot;6s&quot;, &quot;File header&quot;)
+-        assert (self[&quot;header&quot;] == &quot;GIF87a&quot;) or (self[&quot;header&quot;] == &quot;GIF89a&quot;)
+-        
+-        self.readChild(&quot;screen&quot;, GifScreenDescriptor)
+-        if self[&quot;screen&quot;].global_map:
+-            self.readChild(&quot;color_map&quot;, GifColorMap)
+-            self.color_map = self[&quot;color_map&quot;]
+-        else:
+-            self.color_map = None
+-            
+-        self.images = []
+-        while True:
+-            code = self.read(&quot;separator[]&quot;, &quot;c&quot;, &quot;Separator code&quot;)
+-            code = code.getValue()
+-            if code == &quot;!&quot;:
+-                self.readChild(&quot;extensions[]&quot;, GifExtension)
+-            elif code == &quot;,&quot;:
+-                self.readChild(&quot;images[]&quot;, GifImage)
+-                # TODO: Write Huffman parser code :-)
+-#                self.readImage(stream)
+-                return
+-            elif code == &quot;;&quot;:
+-                # GIF Terminator
+-                return
+-            else:
+-                raise Exception(&quot;Wrong GIF image separator: ASCII %02X.&quot; % ord(code))
+-
+-    def readImage(self, stream):              
+-        size = stream.getSize() - stream.tell()
+-        self.read(&quot;data&quot;, &quot;%us&quot; % size, &quot;Image data&quot;)
+-
+-registerPlugin(GifFile, &quot;image/gif&quot;)
+
+Modified: haypo/hachoir/trunk/chunk.py
+===================================================================
+--- haypo/hachoir/trunk/chunk.py	2005-12-27 17:57:40 UTC (rev 362)
++++ haypo/hachoir/trunk/chunk.py	2005-12-27 19:18:05 UTC (rev 363)
+@@ -1,6 +1,6 @@
+ import struct, re, types
+ import config
+-from format import checkFormat, splitFormat, getFormatSize, getRealFormat, formatIsString, formatIsInteger
++from format import checkFormat, splitFormat, getFormatSize, getRealFormat, formatIsString, formatIsArray, formatIsInteger
+ from error import warning, error
+ from tools import convertDataToPrintableString
+ 
+@@ -362,7 +362,7 @@
+ 
+ class EnumChunk(FormatChunk):
+     def __init__(self, id, description, stream, format, dict, parent):
+-        assert formatIsString(format) or formatIsInteger(format)
++        assert not formatIsArray(format)
+         FormatChunk.__init__(self, id, description, stream, format, parent)
+         self._dict = dict
+ #        value = self.getValue()
+
+Modified: haypo/hachoir/trunk/format.py
+===================================================================
+--- haypo/hachoir/trunk/format.py	2005-12-27 17:57:40 UTC (rev 362)
++++ haypo/hachoir/trunk/format.py	2005-12-27 19:18:05 UTC (rev 363)
+@@ -99,3 +99,7 @@
+ def splitFormat(format):
+     cache = FormatCache.getInstance()[format]
+     return cache[1:4]   
++
++def formatIsArray(format):
++    cache = FormatCache.getInstance()[format]
++    return 1 &lt; cache[2]   
+
+Copied: haypo/hachoir/trunk/plugins/gif.py (from rev 351, haypo/hachoir/trunk/broken_plugins/gif.py)
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/gif.py	2005-12-26 03:53:11 UTC (rev 351)
++++ haypo/hachoir/trunk/plugins/gif.py	2005-12-27 19:18:05 UTC (rev 363)
+@@ -0,0 +1,120 @@
++&quot;&quot;&quot;
++GIF picture parser.
++
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from filter import OnDemandFilter
++from plugin import registerPlugin
++from chunk import FormatChunk, EnumChunk, BitsChunk, BitsStruct
++from error import warning
++from generic.image import RGB
++
++class Image(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;gif_image&quot;, &quot;Image&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;left&quot;, &quot;Left&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;top&quot;, &quot;Top&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
++
++        bits = (
++            (1, &quot;local_color&quot;, &quot;Local color table&quot;),
++            (1, &quot;interlace&quot;, &quot;Interlaced?&quot;),
++            (1, &quot;sort&quot;, &quot;Sort&quot;),
++            (2, &quot;reserved&quot;, &quot;Reserved&quot;),
++            (3, &quot;size_local&quot;, &quot;Size of local color&quot;))
++        self.flags = self.doRead(&quot;flags&quot;, &quot;Flags&quot;, (BitsChunk, BitsStruct(bits)))
++
++        return
++        if not self.flags[&quot;local_color&quot;]:
++            self.read(&quot;local_map&quot;, &quot;Local color map&quot;, (ColorMap, 1 &lt;&lt; self.flags[&quot;size_local&quot;]))
++            self.local_map = self[&quot;local_map&quot;]
++        else:
++            self.local_map = None
++
++    def updateParent(self, chunk):
++        chunk.description = &quot;Image: %ux%u pixels at (%u,%u)&quot; \
++            % (self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;left&quot;], self[&quot;top&quot;])
++
++class ColorMap(OnDemandFilter):
++    def __init__(self, stream, parent, nb_colors):
++        OnDemandFilter.__init__(self, &quot;gif_colormap&quot;, &quot;Color map: %u colors&quot; % nb_colors, stream, parent)
++        for i in range(0, nb_colors):
++            self.read(&quot;color[]&quot;, &quot;Color&quot;, (RGB,))
++
++class ExtensionChunk(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;gif_ext_data&quot;, &quot;GIF extension data&quot;, stream, parent)
++        self.read(&quot;size&quot;, &quot;Size (in bytes)&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;content&quot;, &quot;Content&quot;, (FormatChunk, &quot;string[%u]&quot; % self[&quot;size&quot;]))
++
++class Extension(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;gif_ext&quot;, &quot;GIF extension&quot;, stream, parent)
++        self.read(&quot;func&quot;, &quot;Function&quot;, (FormatChunk, &quot;uint8&quot;))
++        while True:
++            chunk = self.doRead(&quot;chunk[]&quot;, &quot;Chunk&quot;, (ExtensionChunk,))
++            if chunk[&quot;size&quot;] == 0:
++                break
++        
++class ScreenDescriptor(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;gif_screen_desc&quot;, &quot;GIF screen descriptor&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
++
++        bits = (
++            (1, &quot;global_map&quot;, &quot;Has global map?&quot;),
++            (3, &quot;bpp&quot;, &quot;Bits per pixel minus one&quot;),
++            (3, &quot;color_res&quot;, &quot;Color resolution minus one&quot;),
++            (1, &quot;xxx&quot;, &quot;???&quot;))
++        self.flags = self.doRead(&quot;flags&quot;, &quot;Flags&quot;, (BitsChunk, BitsStruct(bits)))
++        self.bits_per_pixel = 1 + self.flags[&quot;bpp&quot;]
++
++
++#        self.read(&quot;flags&quot;, &quot;Flags&quot;, (FormatChunk, &quot;uint8&quot;), {&quot;post&quot;: self.processFlags})
++        
++        self.read(&quot;background&quot;, &quot;Background color&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;notused&quot;, &quot;Not used (zero)&quot;, (FormatChunk, &quot;uint8&quot;))
++
++    def updateParent(self, chunk):
++        chunk.description = &quot;Screen descriptor: %ux%u, %u colors&quot; \
++            % (self[&quot;width&quot;], self[&quot;height&quot;], 1 &lt;&lt; self.bits_per_pixel)
++
++class GifFile(OnDemandFilter):
++    separator_name = {
++        &quot;!&quot;: &quot;Extension&quot;,
++        &quot;,&quot;: &quot;Image&quot;,
++        &quot;;&quot;: &quot;Terminator&quot;
++    }
++    def __init__(self, stream, parent=None):
++        OnDemandFilter.__init__(self, &quot;gif_file&quot;, &quot;GIF picture file&quot;, stream, parent)
++        # Header
++        self.read(&quot;header&quot;, &quot;File header&quot;, (FormatChunk, &quot;string[6]&quot;))
++        assert self[&quot;header&quot;] in (&quot;GIF87a&quot;, &quot;GIF89a&quot;)
++        
++        screen = self.doRead(&quot;screen&quot;, &quot;Screen descriptor&quot;, (ScreenDescriptor,))
++        if screen.flags[&quot;global_map&quot;]:
++            self.read(&quot;color_map&quot;, &quot;Color map&quot;, (ColorMap, 1 &lt;&lt; screen.bits_per_pixel))
++            self.color_map = self[&quot;color_map&quot;]
++        else:
++            self.color_map = None
++            
++        self.images = []
++        while True:
++            code = self.doRead(&quot;separator[]&quot;, &quot;Separator code&quot;, (EnumChunk, &quot;char&quot;, GifFile.separator_name)).value
++            if code == &quot;!&quot;:
++                self.read(&quot;extensions[]&quot;, &quot;Extension&quot;, (Extension,))
++            elif code == &quot;,&quot;:
++                self.read(&quot;image[]&quot;, &quot;Image&quot;, (Image,))
++                # TODO: Write Huffman parser code :-)
++                return
++            elif code == &quot;;&quot;:
++                # GIF Terminator
++                return
++            else:
++                raise Exception(&quot;Wrong GIF image separator: ASCII %02X.&quot; % ord(code))
++                
++
++registerPlugin(GifFile, &quot;image/gif&quot;)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000264.html">[Happyboom-svn] r362 - in haypo/hachoir/trunk: . broken_plugins plugins
+</A></li>
+	<LI>Next message: <A HREF="000266.html">[Happyboom-svn] r364 - in haypo/hachoir/trunk: broken_plugins plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#265">[ date ]</a>
+              <a href="thread.html#265">[ thread ]</a>
+              <a href="subject.html#265">[ subject ]</a>
+              <a href="author.html#265">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

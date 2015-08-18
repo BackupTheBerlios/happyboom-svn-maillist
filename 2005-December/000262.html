@@ -1,0 +1,678 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r359 - in haypo/hachoir/trunk: . broken_plugins generic plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r359%20-%20in%20haypo/hachoir/trunk%3A%20.%20broken_plugins%20generic%20plugins&In-Reply-To=%3C200512270339.jBR3dhKU023546%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000261.html">
+   <LINK REL="Next"  HREF="000263.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r359 - in haypo/hachoir/trunk: . broken_plugins generic plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r359%20-%20in%20haypo/hachoir/trunk%3A%20.%20broken_plugins%20generic%20plugins&In-Reply-To=%3C200512270339.jBR3dhKU023546%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r359 - in haypo/hachoir/trunk: . broken_plugins generic plugins">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec 27 04:39:43 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000261.html">[Happyboom-svn] r358 - in haypo/hachoir/trunk: . broken_plugins plugins
+</A></li>
+        <LI>Next message: <A HREF="000263.html">[Happyboom-svn] r361 - in haypo/hachoir/trunk: broken_plugins plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#262">[ date ]</a>
+              <a href="thread.html#262">[ thread ]</a>
+              <a href="subject.html#262">[ subject ]</a>
+              <a href="author.html#262">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-27 04:39:41 +0100 (Tue, 27 Dec 2005)
+New Revision: 359
+
+Added:
+   haypo/hachoir/trunk/plugins/bmp.py
+   haypo/hachoir/trunk/plugins/pcx.py
+   haypo/hachoir/trunk/plugins/zip.py
+Removed:
+   haypo/hachoir/trunk/bmp_filter.xml
+   haypo/hachoir/trunk/broken_plugins/bmp.py
+   haypo/hachoir/trunk/broken_plugins/pcx.py
+   haypo/hachoir/trunk/broken_plugins/zip.py
+Modified:
+   haypo/hachoir/trunk/generic/image.py
+   haypo/hachoir/trunk/text_handler.py
+Log:
+- Upgrade PCX, ZIP and BMP plugins to new syntax
+- ZIP plugin: parse flags, display datetime (is msdos timestamp), display
+  compression method name
+- Remove bmp_filter.xml file (replace by BMP plugin)
+- Fix RGB filter (problem of Python syntax)
+- Set RGB filter static size
+
+
+Deleted: haypo/hachoir/trunk/bmp_filter.xml
+===================================================================
+--- haypo/hachoir/trunk/bmp_filter.xml	2005-12-27 02:11:18 UTC (rev 358)
++++ haypo/hachoir/trunk/bmp_filter.xml	2005-12-27 03:39:41 UTC (rev 359)
+@@ -1,18 +0,0 @@
+-&lt;?xml version='1.0' encoding='UTF-8'?&gt;
+-&lt;user_filter hachoir_version='2005-10-27' id='bmp_file' description='Bitmap picture file (BMP)'&gt;
+-  &lt;chunk format='!2s' id='header' description='Header (&quot;BM&quot;)'/&gt;
+-  &lt;chunk format='&lt;L' id='file_size' description='File size (bytes)'/&gt;
+-  &lt;chunk format='&lt;L' id='notused' description='Reseved'/&gt;
+-  &lt;chunk format='&lt;L' id='data_start' description='Data start position'/&gt;
+-  &lt;chunk format='&lt;L' id='header_size' description='Header size'/&gt;
+-  &lt;chunk format='&lt;L' id='width' description='Width (pixels)'/&gt;
+-  &lt;chunk format='&lt;L' id='height' description='Height (pixels)'/&gt;
+-  &lt;chunk format='&lt;H' id='nb_plan' description='Number of plan (=1)'/&gt;
+-  &lt;chunk format='&lt;H' id='bits_pixel' description='Bits per pixel'/&gt;
+-  &lt;chunk format='&lt;L' id='compression' description='Compression method'/&gt;
+-  &lt;chunk format='&lt;L' id='image_size' description='Image size (bytes)'/&gt;
+-  &lt;chunk format='&lt;L' id='horizontal_dpi' description='Horizontal DPI'/&gt;
+-  &lt;chunk format='&lt;L' id='vertical_dpi' description='Vertical DPI'/&gt;
+-  &lt;chunk format='&lt;L' id='used_colors' description='Number of color used'/&gt;
+-  &lt;chunk format='&lt;L' id='important_color' description='Number of import colors'/&gt;
+-&lt;/user_filter&gt;
+
+Deleted: haypo/hachoir/trunk/broken_plugins/bmp.py
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/bmp.py	2005-12-27 02:11:18 UTC (rev 358)
++++ haypo/hachoir/trunk/broken_plugins/bmp.py	2005-12-27 03:39:41 UTC (rev 359)
+@@ -1,32 +0,0 @@
+-&quot;&quot;&quot;
+-Microsoft Bitmap picture parseer.
+-
+-Author: Victor Stinner
+-Creation: 16 december 2005
+-&quot;&quot;&quot;
+-
+-from filter import Filter
+-from plugin import registerPlugin
+-
+-class BitmapFile(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;bmp_file&quot;, &quot;Bitmap picture file (BMP)&quot;, stream, parent)
+-        self.read(&quot;header&quot;, &quot;!2s&quot;, &quot;Header (\&quot;BM\&quot;)&quot;)
+-        self.read(&quot;file_size&quot;, &quot;&lt;L&quot;, &quot;File size (bytes)&quot;)
+-        self.read(&quot;notused&quot;, &quot;&lt;L&quot;, &quot;Reseved&quot;)
+-        self.read(&quot;data_start&quot;, &quot;&lt;L&quot;, &quot;Data start position&quot;)
+-        header_size = self.read(&quot;header_size&quot;, &quot;&lt;L&quot;, &quot;Header size&quot;).value
+-        assert header_size in (12, 40)
+-        self.read(&quot;width&quot;, &quot;&lt;L&quot;, &quot;Width (pixels)&quot;)
+-        self.read(&quot;height&quot;, &quot;&lt;L&quot;, &quot;Height (pixels)&quot;)
+-        self.read(&quot;nb_plan&quot;, &quot;&lt;H&quot;, &quot;Number of plan (=1)&quot;)
+-        self.read(&quot;bits_pixel&quot;, &quot;&lt;H&quot;, &quot;Bits per pixel&quot;)
+-        if header_size == 40:
+-            self.read(&quot;compression&quot;, &quot;&lt;L&quot;, &quot;Compression method&quot;)
+-            self.read(&quot;image_size&quot;, &quot;&lt;L&quot;, &quot;Image size (bytes)&quot;)
+-            self.read(&quot;horizontal_dpi&quot;, &quot;&lt;L&quot;, &quot;Horizontal DPI&quot;)
+-            self.read(&quot;vertical_dpi&quot;, &quot;&lt;L&quot;, &quot;Vertical DPI&quot;)
+-            self.read(&quot;used_colors&quot;, &quot;&lt;L&quot;, &quot;Number of color used&quot;)
+-            self.read(&quot;important_color&quot;, &quot;&lt;L&quot;, &quot;Number of import colors&quot;)
+-
+-registerPlugin(BitmapFile, &quot;image/x-ms-bmp&quot;)
+
+Deleted: haypo/hachoir/trunk/broken_plugins/pcx.py
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/pcx.py	2005-12-27 02:11:18 UTC (rev 358)
++++ haypo/hachoir/trunk/broken_plugins/pcx.py	2005-12-27 03:39:41 UTC (rev 359)
+@@ -1,94 +0,0 @@
+-&quot;&quot;&quot;
+-PCX picture filter.
+-&quot;&quot;&quot;
+-
+-from filter import Filter, DeflateFilter
+-from plugin import registerPlugin
+-from stream.file import FileStream
+-from cStringIO import StringIO
+-
+-class RGB(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;rgb_color&quot;, &quot;RGB color&quot;, stream, parent)
+-        self.read(&quot;red&quot;, &quot;B&quot;, &quot;Red&quot;)
+-        self.read(&quot;green&quot;, &quot;B&quot;, &quot;Green&quot;)
+-        self.read(&quot;blue&quot;, &quot;B&quot;, &quot;Blue&quot;)
+-    def updateParent(self, chunk):
+-        chunk.description = &quot;RGB color: #%02X%02X%02X&quot; % (self[&quot;red&quot;], self[&quot;green&quot;], self[&quot;blue&quot;])
+-
+-class Palette(Filter):
+-    def __init__(self, stream, parent, count):
+-        Filter.__init__(self, &quot;rgb_color&quot;, &quot;RGB color (8 bits/component)&quot;, stream, parent)
+-        for i in range(0, count):
+-            self.readChild(&quot;color[]&quot;, RGB)
+-
+-def StreamDeflateRLE(filter, stream, size):
+-    start = stream.tell()
+-    end = start + size - 1
+-    data = &quot;&quot;
+-    width = filter.width
+-    for y in range(0, filter.height):
+-        line = &quot;&quot;
+-        while len(line) &lt; width:
+-            character = stream.getN(1)
+-            byte = ord(character)
+-            if byte &amp; 192 == 192:
+-                repeat = byte &amp; 63
+-                character = stream.getN(1)
+-                line = line + character * repeat                
+-            else:
+-                line = line + character
+-        assert len(line) == width
+-        data = data + line
+-    assert stream.tell() == end
+-    stream.seek(start)
+-    return FileStream(StringIO(data),None)
+-
+-class PCX_Content(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;pcx_content&quot;, &quot;PCX content&quot;, stream, parent)
+-        pcx = parent.getParent()
+-        bytes_per_line = pcx[&quot;bytes_per_line&quot;]
+-        height = pcx[&quot;bytes_per_line&quot;]
+-        for y in range(0, height):
+-            self.read(&quot;line[]&quot;, &quot;%us&quot; % bytes_per_line, &quot;Line&quot;)
+-
+-class PCX_File(Filter):
+-    compression_name = {
+-        1: &quot;RLE&quot;
+-    }
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;pcx_file&quot;, &quot;PCX picture&quot;, stream, parent)
+-        id = self.read(&quot;id&quot;, &quot;B&quot;, &quot;PCX identifier (10)&quot;).value
+-        assert id == 10
+-        self.read(&quot;version&quot;, &quot;B&quot;, &quot;PCX version&quot;)
+-        self.read(&quot;compression&quot;, &quot;B&quot;, &quot;Compression&quot;, post=self.postCompression)
+-        self.bpp = self.read(&quot;bpp&quot;, &quot;B&quot;, &quot;Bits / pixel&quot;).value
+-        # TODO: Support 4 and 24 bits/pxiel
+-        assert self.bpp == 8
+-        self.read(&quot;xmin&quot;, &quot;&lt;H&quot;, &quot;Minimum X&quot;)
+-        self.read(&quot;ymin&quot;, &quot;&lt;H&quot;, &quot;Minimum Y&quot;)
+-        self.width = self.read(&quot;width&quot;, &quot;&lt;H&quot;, &quot;Width minus one&quot;).value+1
+-        self.height = self.read(&quot;height&quot;, &quot;&lt;H&quot;, &quot;Height minus one&quot;).value+1
+-        self.read(&quot;horiz_dpi&quot;, &quot;&lt;H&quot;, &quot;Horizontal DPI&quot;)
+-        self.read(&quot;vert_dpi&quot;, &quot;&lt;H&quot;, &quot;Vertical DPI&quot;)
+-        self.readChild(&quot;palette_4bits&quot;, Palette, 16)
+-        self.read(&quot;reserved&quot;, &quot;B&quot;, &quot;Reserved&quot;)
+-        self.read(&quot;nb_color_plan&quot;, &quot;B&quot;, &quot;Number of color plans&quot;)
+-        self.read(&quot;bytes_per_line&quot;, &quot;&lt;H&quot;, &quot;Bytes per line&quot;)
+-        self.read(&quot;color_mode&quot;, &quot;&lt;H&quot;, &quot;Color mode&quot;)
+-        self.read(&quot;reserved2&quot;, &quot;58s&quot;, &quot;Reserved&quot;)
+-
+-        size = stream.getSize() - stream.tell()
+-        if self.bpp == 8:
+-            size = size - 256*3
+-        deflate = StreamDeflateRLE(self, stream, size)
+-        self.readChild(&quot;data&quot;, DeflateFilter, deflate, size, PCX_Content)
+-        if self.bpp == 8:
+-            self.readChild(&quot;palette_8bits&quot;, Palette, 256)
+-
+-    def postCompression(self, chunk):
+-        mode = chunk.value
+-        return PCX_File.compression_name.get(mode, &quot;Unknow (%s)&quot; % mode)
+-
+-registerPlugin(PCX_File, &quot;image/x-pcx&quot;)
+
+Deleted: haypo/hachoir/trunk/broken_plugins/zip.py
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/zip.py	2005-12-27 02:11:18 UTC (rev 358)
++++ haypo/hachoir/trunk/broken_plugins/zip.py	2005-12-27 03:39:41 UTC (rev 359)
+@@ -1,115 +0,0 @@
+-&quot;&quot;&quot;
+-Zip splitter.
+-
+-Status: can read most important headers
+-Author: Victor Stinner
+-&quot;&quot;&quot;
+-
+-import sys
+-from filter import Filter
+-from plugin import registerPlugin
+-from error import error
+-from text_handler import humanFilesize, hexadecimal
+-
+-class ZipCentralDirectory(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;zip_central_dir&quot;, &quot;ZIP central directory&quot;, stream, parent)
+-        self.read(&quot;version_made_by&quot;, &quot;&lt;H&quot;, &quot;Version made by&quot;)
+-        self.read(&quot;version_needed&quot;, &quot;&lt;H&quot;, &quot;Version neede&quot;)
+-        self.read(&quot;flags&quot;, &quot;&lt;H&quot;, &quot;General purpose flag&quot;)
+-        self.read(&quot;compression_method&quot;, &quot;&lt;H&quot;, &quot;Compression method&quot;)
+-        self.read(&quot;last_mod_file_time&quot;, &quot;&lt;H&quot;, &quot;Last moditication file time&quot;)
+-        self.read(&quot;last_mod_file_date&quot;, &quot;&lt;H&quot;, &quot;Last moditication file date&quot;)
+-        self.read(&quot;crc32&quot;, &quot;&lt;L&quot;, &quot;CRC-32&quot;)
+-        self.read(&quot;compressed_size&quot;, &quot;&lt;L&quot;, &quot;Compressed size&quot;)
+-        self.read(&quot;uncompressed_size&quot;, &quot;&lt;L&quot;, &quot;Uncompressed size&quot;)
+-        self.read(&quot;filename_length&quot;, &quot;&lt;H&quot;, &quot;Filename length&quot;)
+-        self.read(&quot;extra_length&quot;, &quot;&lt;H&quot;, &quot;Extra fields length&quot;)
+-        self.read(&quot;file_comment_length&quot;, &quot;&lt;H&quot;, &quot;File comment length&quot;)
+-        self.read(&quot;disk_number_start&quot;, &quot;&lt;H&quot;, &quot;Disk number start&quot;)
+-        self.read(&quot;internal_attr&quot;, &quot;&lt;H&quot;, &quot;Internal file attributes&quot;)
+-        self.read(&quot;external_attr&quot;, &quot;&lt;L&quot;, &quot;External file attributes&quot;)
+-        self.read(&quot;offset_header&quot;, &quot;&lt;L&quot;, &quot;Relative offset of local header&quot;)
+-        self.read(&quot;filename&quot;, &quot;%us&quot; % self[&quot;filename_length&quot;], &quot;Filename&quot;)
+-        self.read(&quot;extra&quot;, &quot;%us&quot; % self[&quot;extra_length&quot;], &quot;Extra fields&quot;)
+-        self.read(&quot;file_comment&quot;, &quot;%us&quot; % self[&quot;file_comment_length&quot;], &quot;File comment&quot;)
+-
+-    def updateParent(self, chunk):
+-        desc = &quot;Central directory: %s&quot; % self[&quot;filename&quot;]
+-        chunk.description = desc
+-        self.setDescription(desc)
+-
+-class ZipEndCentralDirectory(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;zip_end_dir&quot;, &quot;ZIP end central directory&quot;, stream, parent)
+-        self.read(&quot;number_disk&quot;, &quot;&lt;H&quot;, &quot;Number of this disk&quot;)
+-        self.read(&quot;number_disk2&quot;, &quot;&lt;H&quot;, &quot;Number of this disk2&quot;)
+-        self.read(&quot;total_number_disk&quot;, &quot;&lt;H&quot;, &quot;Total number of entries&quot;)
+-        self.read(&quot;total_number_disk2&quot;, &quot;&lt;H&quot;, &quot;Total number of entries2&quot;)
+-        self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Size of the central directory&quot;)
+-        self.read(&quot;offset&quot;, &quot;&lt;L&quot;, &quot;Offset of start of central directory&quot;)
+-        self.readString(&quot;comment&quot;, &quot;Pascal16&quot;, &quot;ZIP comment&quot;)
+-
+-#class ZipZip64(Filter):
+-#    def __init__(self, stream, parent):
+-#        Filter.__init__(self, &quot;zip_zip64, &quot;ZIP ZIP64&quot;, stream, parent)
+-#        self.read(&quot;size&quot;, &quot;&lt;Q&quot;, &quot;Directory size&quot;)
+-#        self.read(&quot;version_made_by&quot;, &quot;&lt;H&quot;, &quot;Version made by&quot;)
+-#        self.read(&quot;version_needed&quot;, &quot;&lt;H&quot;, &quot;Version neede&quot;)
+-#        self.read(&quot;disk_index&quot;, &quot;&lt;L&quot;, &quot;Disk index&quot;)
+-#        self.read(&quot;disk_index2&quot;, &quot;&lt;L&quot;, &quot;Disk index2&quot;)
+-#        self.read(&quot;disk_number&quot;, &quot;&lt;Q&quot;, &quot;Disk number&quot;)
+-#        self.read(&quot;disk_number2&quot;, &quot;&lt;Q&quot;, &quot;Disk number2&quot;)
+-#        self.read(&quot;size2&quot;, &quot;&lt;Q&quot;, &quot;Directory size2&quot;)
+-#        self.read(&quot;offset&quot;, &quot;&lt;Q&quot;, &quot;Offset&quot;)
+-        
+-class ZipFileEntry(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;zip_file_entry&quot;, &quot;ZIP file entry&quot;, stream, parent)
+-        self.read(&quot;version&quot;, &quot;&lt;H&quot;, &quot;Version&quot;)
+-        self.read(&quot;flags&quot;, &quot;&lt;H&quot;, &quot;Flags&quot;)
+-        self.read(&quot;compression_method&quot;, &quot;&lt;H&quot;, &quot;Compression method&quot;)
+-        self.read(&quot;last_mod_time&quot;, &quot;&lt;H&quot;, &quot;Last modification time&quot;)
+-        self.read(&quot;last_mod_date&quot;, &quot;&lt;H&quot;, &quot;Last modification date&quot;)
+-        self.read(&quot;crc32&quot;, &quot;&lt;L&quot;, &quot;Checksum (CRC32)&quot;)
+-        self.read(&quot;compressed_size&quot;, &quot;&lt;L&quot;, &quot;Compressed size (bytes)&quot;, post=humanFilesize)
+-        self.read(&quot;uncompressed_size&quot;, &quot;&lt;L&quot;, &quot;Uncompressed size (bytes)&quot;, post=humanFilesize)
+-        self.read(&quot;filename_length&quot;, &quot;&lt;H&quot;, &quot;Filename length&quot;)
+-        self.read(&quot;extra_length&quot;, &quot;&lt;H&quot;, &quot;Extra length&quot;)
+-        self.read(&quot;filename&quot;, &quot;%us&quot; % self[&quot;filename_length&quot;], &quot;Filename&quot;)
+-        self.read(&quot;extra&quot;, &quot;%us&quot; % self[&quot;extra_length&quot;], &quot;Extra&quot;)
+-        self.read(&quot;compressed_data&quot;, &quot;%us&quot; % self[&quot;compressed_size&quot;], &quot;Compressed data&quot;)
+-        if (self[&quot;flags&quot;] &amp; 4) == 4:
+-            self.read(&quot;file_crc32&quot;, &quot;&lt;L&quot;, &quot;Checksum (CRC32)&quot;)
+-            self.read(&quot;file_compressed_size&quot;, &quot;&lt;L&quot;, &quot;Compressed size (bytes)&quot;)
+-            self.read(&quot;file_uncompressed_size&quot;, &quot;&lt;L&quot;, &quot;Uncompressed size (bytes)&quot;)
+-
+-    def updateParent(self, chunk):
+-        size = self.getChunk(&quot;compressed_size&quot;).display
+-        desc = &quot;File entry: %s (%s)&quot; % (self[&quot;filename&quot;], size)
+-        chunk.description = desc
+-        self.setDescription(desc)
+-        
+-class ZipFile(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;zip_file&quot;, &quot;ZIP archive file&quot;, stream, parent)
+-        # File data
+-        self.signature = None
+-        self.central_directory = []
+-        self.files = []
+-        while not stream.eof():
+-            header = self.read(&quot;header[]&quot;, &quot;&lt;L&quot;, &quot;Header&quot;, post=hexadecimal).value
+-            if header == 0x04034B50:
+-                self.readChild(&quot;files[]&quot;, ZipFileEntry)
+-            elif header == 0x02014b50:
+-                self.readChild(&quot;central_directory[]&quot;, ZipCentralDirectory)
+-            elif header == 0x06054b50:
+-                self.readChild(&quot;end_central_directory&quot;, ZipEndCentralDirectory)
+-            elif header == 0x05054b50:
+-                self.readString(&quot;signature&quot;, &quot;Pascal16&quot;, &quot;Signature&quot;)
+-            else:
+-                error(&quot;Error, unknow ZIP header (0x%08X).&quot; % header)
+-                size = stream.getSize() - stream.tell()
+-                self.read(&quot;raw&quot;, &quot;%us&quot; % size, &quot;Raw&quot;)
+-        
+-registerPlugin(ZipFile, &quot;application/x-zip&quot;)
+
+Modified: haypo/hachoir/trunk/generic/image.py
+===================================================================
+--- haypo/hachoir/trunk/generic/image.py	2005-12-27 02:11:18 UTC (rev 358)
++++ haypo/hachoir/trunk/generic/image.py	2005-12-27 03:39:41 UTC (rev 359)
+@@ -12,8 +12,12 @@
+         self.read(&quot;green&quot;, &quot;Green&quot;, (FormatChunk, &quot;uint8&quot;))
+         self.read(&quot;blue&quot;, &quot;Blue&quot;, (FormatChunk, &quot;uint8&quot;))
+ 
++    def getStaticSize(stream, args):
++        return 3 
++    getStaticSize = staticmethod(getStaticSize)
++
+     def updateParent(self, chunk):
+-        value = self[&quot;red&quot;] &lt;&lt; 16 + self[&quot;green&quot;] &lt;&lt; 8 + self[&quot;blue&quot;]
++        value = (self[&quot;red&quot;] &lt;&lt; 16) + (self[&quot;green&quot;] &lt;&lt; 8) + self[&quot;blue&quot;]
+         if value in RGB.name:
+             chunk.description = &quot;RGB color: &quot;+RGB.name[value]
+         else:
+
+Copied: haypo/hachoir/trunk/plugins/bmp.py (from rev 351, haypo/hachoir/trunk/broken_plugins/bmp.py)
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/bmp.py	2005-12-26 03:53:11 UTC (rev 351)
++++ haypo/hachoir/trunk/plugins/bmp.py	2005-12-27 03:39:41 UTC (rev 359)
+@@ -0,0 +1,36 @@
++&quot;&quot;&quot;
++Microsoft Bitmap picture parser.
++- file extension: &quot;.bmp&quot;
++
++Author: Victor Stinner
++Creation: 16 december 2005
++&quot;&quot;&quot;
++
++from filter import OnDemandFilter
++from chunk import FormatChunk
++from plugin import registerPlugin
++
++class BitmapFile(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;bmp_file&quot;, &quot;Bitmap picture file (BMP)&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;header&quot;, &quot;Header (\&quot;BM\&quot;)&quot;, (FormatChunk, &quot;string[2]&quot;))
++        self.read(&quot;file_size&quot;, &quot;File size (bytes)&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;notused&quot;, &quot;Reseved&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;data_start&quot;, &quot;Data start position&quot;, (FormatChunk, &quot;uint32&quot;))
++        header_size = self.doRead(&quot;header_size&quot;, &quot;Header size&quot;, (FormatChunk, &quot;uint32&quot;)).value
++        assert self[&quot;header_size&quot;] in (12, 40)
++        self.read(&quot;width&quot;, &quot;Width (pixels)&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;height&quot;, &quot;Height (pixels)&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;nb_plan&quot;, &quot;Number of plan (=1)&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;bits_pixel&quot;, &quot;Bits per pixel&quot;, (FormatChunk, &quot;uint16&quot;))
++        if header_size == 40:
++            self.read(&quot;compression&quot;, &quot;Compression method&quot;, (FormatChunk, &quot;uint32&quot;))
++            self.read(&quot;image_size&quot;, &quot;Image size (bytes)&quot;, (FormatChunk, &quot;uint32&quot;))
++            self.read(&quot;horizontal_dpi&quot;, &quot;Horizontal DPI&quot;, (FormatChunk, &quot;uint32&quot;))
++            self.read(&quot;vertical_dpi&quot;, &quot;Vertical DPI&quot;, (FormatChunk, &quot;uint32&quot;))
++            self.read(&quot;used_colors&quot;, &quot;Number of color used&quot;, (FormatChunk, &quot;uint32&quot;))
++            self.read(&quot;important_color&quot;, &quot;Number of import colors&quot;, (FormatChunk, &quot;uint32&quot;))
++        size = stream.getSize() - stream.tell()            
++        self.read(&quot;data&quot;, &quot;Image raw data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++registerPlugin(BitmapFile, &quot;image/x-ms-bmp&quot;)
+
+Copied: haypo/hachoir/trunk/plugins/pcx.py (from rev 351, haypo/hachoir/trunk/broken_plugins/pcx.py)
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/pcx.py	2005-12-26 03:53:11 UTC (rev 351)
++++ haypo/hachoir/trunk/plugins/pcx.py	2005-12-27 03:39:41 UTC (rev 359)
+@@ -0,0 +1,83 @@
++&quot;&quot;&quot;
++PCX picture filter.
++&quot;&quot;&quot;
++
++from filter import OnDemandFilter, DeflateFilter
++from plugin import registerPlugin
++from chunk import FormatChunk, EnumChunk
++from stream.file import FileStream
++from cStringIO import StringIO
++from generic.image import RGB
++
++class Palette(OnDemandFilter):
++    def __init__(self, stream, parent, count):
++        OnDemandFilter.__init__(self, &quot;rgb_color&quot;, &quot;RGB color (8 bits/component)&quot;, stream, parent)
++        for i in range(0, count):
++            self.read(&quot;color[]&quot;, &quot;Color&quot;, (RGB,))
++
++def StreamDeflateRLE(filter, stream, size):
++    start = stream.tell()
++    end = start + size - 1
++    data = &quot;&quot;
++    width = filter.width
++    for y in range(0, filter.height):
++        line = &quot;&quot;
++        while len(line) &lt; width:
++            character = stream.getN(1)
++            byte = ord(character)
++            if byte &amp; 192 == 192:
++                repeat = byte &amp; 63
++                character = stream.getN(1)
++                line = line + character * repeat                
++            else:
++                line = line + character
++        assert len(line) == width
++        data = data + line
++    assert stream.tell() == end
++    stream.seek(start)
++    return FileStream(StringIO(data),None)
++
++class PCX_Content(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;pcx_content&quot;, &quot;PCX content&quot;, stream, parent)
++        pcx = parent.getParent()
++        bytes_per_line = pcx[&quot;bytes_per_line&quot;]
++        height = pcx[&quot;bytes_per_line&quot;]
++        for y in range(0, height):
++            self.read(&quot;line[]&quot;, &quot;Line&quot;, (FormatChunk, &quot;string[%u]&quot; % bytes_per_line))
++
++class PCX_File(OnDemandFilter):
++    compression_name = {
++        1: &quot;RLE&quot;
++    }
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;pcx_file&quot;, &quot;PCX picture&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;id&quot;, &quot;PCX identifier (10)&quot;, (FormatChunk, &quot;uint8&quot;))
++        assert self[&quot;id&quot;] == 10
++        self.read(&quot;version&quot;, &quot;PCX version&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;compression&quot;, &quot;Compression&quot;, (EnumChunk, &quot;uint8&quot;, PCX_File.compression_name))
++        self.bpp = self.doRead(&quot;bpp&quot;, &quot;Bits / pixel&quot;, (FormatChunk, &quot;uint8&quot;)).value
++        # TODO: Support 4 and 24 bits/pxiel
++        assert self.bpp == 8
++        self.read(&quot;xmin&quot;, &quot;Minimum X&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;ymin&quot;, &quot;Minimum Y&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.width = self.doRead(&quot;width&quot;, &quot;Width minus one&quot;, (FormatChunk, &quot;uint16&quot;)).value + 1
++        self.height = self.doRead(&quot;height&quot;, &quot;Height minus one&quot;, (FormatChunk, &quot;uint16&quot;)).value + 1
++        self.read(&quot;horiz_dpi&quot;, &quot;Horizontal DPI&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;vert_dpi&quot;, &quot;Vertical DPI&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;palette_4bits&quot;, &quot;Palette (4 bits)&quot;, (Palette, 16))
++        self.read(&quot;reserved&quot;, &quot;Reserved&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;nb_color_plan&quot;, &quot;Number of color plans&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;bytes_per_line&quot;, &quot;Bytes per line&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;color_mode&quot;, &quot;Color mode&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;reserved2&quot;, &quot;Reserved&quot;, (FormatChunk, &quot;string[58]&quot;))
++
++        size = stream.getSize() - stream.tell()
++        if self.bpp == 8:
++            size = size - 256*3
++        deflate = StreamDeflateRLE(self, stream, size)
++        self.read(&quot;data&quot;, &quot;Data&quot;, (DeflateFilter, deflate, size, PCX_Content))
++        if self.bpp == 8:
++            self.read(&quot;palette_8bits&quot;, &quot;Palette (8 bit)&quot;, (Palette, 256)) 
++
++registerPlugin(PCX_File, &quot;image/x-pcx&quot;)
+
+Copied: haypo/hachoir/trunk/plugins/zip.py (from rev 351, haypo/hachoir/trunk/broken_plugins/zip.py)
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/zip.py	2005-12-26 03:53:11 UTC (rev 351)
++++ haypo/hachoir/trunk/plugins/zip.py	2005-12-27 03:39:41 UTC (rev 359)
+@@ -0,0 +1,125 @@
++&quot;&quot;&quot;
++Zip splitter.
++
++Status: can read most important headers
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++import sys
++from filter import OnDemandFilter
++from plugin import registerPlugin
++from chunk import FormatChunk, StringChunk, BitsChunk, BitsStruct, EnumChunk
++from error import error
++from text_handler import humanFilesize, hexadecimal, msdosDatetime
++
++class ZipCentralDirectory(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;zip_central_dir&quot;, &quot;ZIP central directory&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;version_made_by&quot;, &quot;Version made by&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;version_needed&quot;, &quot;Version needed&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;flags&quot;, &quot;General purpose flag&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;compression&quot;, &quot;Compression method&quot;, (EnumChunk, &quot;uint16&quot;, FileEntry.compression_name))
++        self.read(&quot;last_mod&quot;, &quot;Last moditication file time&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: msdosDatetime})
++        self.read(&quot;crc32&quot;, &quot;CRC-32&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: hexadecimal})
++        self.read(&quot;compressed_size&quot;, &quot;Compressed size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;uncompressed_size&quot;, &quot;Uncompressed size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;filename_length&quot;, &quot;Filename length&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;extra_length&quot;, &quot;Extra fields length&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;comment_length&quot;, &quot;File comment length&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;disk_number_start&quot;, &quot;Disk number start&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;internal_attr&quot;, &quot;Internal file attributes&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;external_attr&quot;, &quot;External file attributes&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;offset_header&quot;, &quot;Relative offset of local header&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;filename&quot;, &quot;Filename&quot;, (FormatChunk, &quot;string[%u]&quot; % self[&quot;filename_length&quot;]))
++        self.read(&quot;extra&quot;, &quot;Extra fields&quot;, (FormatChunk, &quot;string[%u]&quot; % self[&quot;extra_length&quot;]))
++        self.read(&quot;comment&quot;, &quot;Comment&quot;, (FormatChunk, &quot;string[%u]&quot; % self[&quot;comment_length&quot;]))
++
++    def updateParent(self, chunk):
++        desc = &quot;Central directory: %s&quot; % self[&quot;filename&quot;]
++        chunk.description = desc
++        self.setDescription(desc)
++
++class ZipEndCentralDirectory(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;zip_end_dir&quot;, &quot;ZIP end central directory&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;number_disk&quot;, &quot;Number of this disk&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;number_disk2&quot;, &quot;Number of this disk2&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;total_number_disk&quot;, &quot;Total number of entries&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;total_number_disk2&quot;, &quot;Total number of entries2&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;size&quot;, &quot;Size of the central directory&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;offset&quot;, &quot;Offset of start of central directory&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;comment&quot;, &quot;ZIP comment&quot;, (StringChunk, &quot;Pascal16&quot;))
++       
++class FileEntry(OnDemandFilter):
++    compression_name = {
++        0: &quot;no compression&quot;,
++        1: &quot;Shrunk&quot;,
++        2: &quot;Reduced (factor 1)&quot;,
++        3: &quot;Reduced (factor 2)&quot;,
++        4: &quot;Reduced (factor 3)&quot;,
++        5: &quot;Reduced (factor 4)&quot;,
++        6: &quot;Imploded&quot;,
++        7: &quot;Tokenizing&quot;,
++        8: &quot;Deflate&quot;,
++        9: &quot;Deflate64&quot;,
++        10: &quot;PKWARE Imploding&quot;
++    }
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;zip_file_entry&quot;, &quot;ZIP file entry&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;version&quot;, &quot;Version&quot;, (FormatChunk, &quot;uint16&quot;))
++        bits = (
++            (1, &quot;encryption&quot;, &quot;File is encrypted?&quot;),
++            (1, &quot;8k_sliding&quot;, &quot;Use 8K sliding dictionnary (instead of 4K)&quot;),
++            (1, &quot;3shannon&quot;, &quot;Use a 3 Shannon-Fano tree (instead of 2 Shannon-Fano)&quot;),
++            (1, &quot;use_data_desc&quot;, &quot;Use data descriptor?&quot;),
++            (1, &quot;reserved&quot;, &quot;Reserved&quot;),
++            (1, &quot;patched&quot;, &quot;File is compressed with patched data?&quot;),
++            (6, &quot;unused&quot;, &quot;Unused bits&quot;),
++            (4, &quot;pkware&quot;, &quot;Reserved by PKWARE&quot;))
++        flags = self.doRead(&quot;flags&quot;, &quot;Flags&quot;, (BitsChunk, BitsStruct(bits)))
++#        self.read(&quot;flags&quot;, &quot;Flags&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;compression&quot;, &quot;Compression method&quot;, (EnumChunk, &quot;uint16&quot;, FileEntry.compression_name))
++        self.read(&quot;last_mod_time&quot;, &quot;Last modification time&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;last_mod_date&quot;, &quot;Last modification date&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;crc32&quot;, &quot;Checksum (CRC32)&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;compressed_size&quot;, &quot;Compressed size (bytes)&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: humanFilesize})
++        self.read(&quot;uncompressed_size&quot;, &quot;Uncompressed size (bytes)&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: humanFilesize})
++        self.read(&quot;filename_length&quot;, &quot;Filename length&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;extra_length&quot;, &quot;Extra length&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;filename&quot;, &quot;Filename&quot;, (FormatChunk, &quot;string[%u]&quot; % self[&quot;filename_length&quot;]))
++        self.read(&quot;extra&quot;, &quot;Extra&quot;, (FormatChunk, &quot;string[%u]&quot; % self[&quot;extra_length&quot;]))
++        self.read(&quot;compressed_data&quot;, &quot;Compressed data&quot;, (FormatChunk, &quot;string[%u]&quot; % self[&quot;compressed_size&quot;]))
++        if flags[&quot;use_data_desc&quot;]:
++            self.read(&quot;file_crc32&quot;, &quot;Checksum (CRC32)&quot;, (FormatChunk, &quot;uint32&quot;))
++            self.read(&quot;file_compressed_size&quot;, &quot;Compressed size (bytes)&quot;, (FormatChunk, &quot;uint32&quot;))
++            self.read(&quot;file_uncompressed_size&quot;, &quot;Uncompressed size (bytes)&quot;, (FormatChunk, &quot;uint32&quot;))
++
++    def updateParent(self, chunk):
++        size = self.getChunk(&quot;compressed_size&quot;).display
++        desc = &quot;File entry: %s (%s)&quot; % (self[&quot;filename&quot;], size)
++        chunk.description = desc
++        self.setDescription(desc)
++        
++class ZipFile(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;zip_file&quot;, &quot;ZIP archive file&quot;, stream, parent, &quot;&lt;&quot;)
++        # File data
++        self.signature = None
++        self.central_directory = []
++        self.files = []
++        while not stream.eof():
++            header = self.doRead(&quot;header[]&quot;, &quot;Header&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: hexadecimal}).value
++            if header == 0x04034B50:
++                self.read(&quot;file[]&quot;, &quot;File&quot;, (FileEntry,))
++            elif header == 0x02014b50:
++                self.read(&quot;central_directory[]&quot;, &quot;Central directory&quot;, (ZipCentralDirectory,))
++            elif header == 0x06054b50:
++                self.read(&quot;end_central_directory&quot;, &quot;End of central directory&quot;, (ZipEndCentralDirectory,))
++            elif header == 0x05054b50:
++                self.read(&quot;signature&quot;, &quot;Signature&quot;, (StringChunk, &quot;Pascal16&quot;))
++            else:
++                error(&quot;Error, unknow ZIP header (0x%08X).&quot; % header)
++                size = stream.getSize() - stream.tell()
++                self.read(&quot;raw&quot;, &quot;Raw&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        
++registerPlugin(ZipFile, &quot;application/x-zip&quot;)
+
+Modified: haypo/hachoir/trunk/text_handler.py
+===================================================================
+--- haypo/hachoir/trunk/text_handler.py	2005-12-27 02:11:18 UTC (rev 358)
++++ haypo/hachoir/trunk/text_handler.py	2005-12-27 03:39:41 UTC (rev 359)
+@@ -1,3 +1,15 @@
++def msdosDatetime(chunk):
++    import datetime
++    assert chunk.size == 4
++    val = chunk.value
++    sec = 2 * (val &amp; 31)              #&#160;5 bits: second
++    min = (val &gt;&gt; 5) &amp; 63             # 6 bits: minute
++    hour = (val &gt;&gt; 11) &amp; 31           #&#160;5 bits: hour
++    day = (val &gt;&gt; 16) &amp; 31            # 5 bits: day
++    month = (val &gt;&gt; 21) &amp; 15          # 4 bits: month
++    year = 1980 + ((val &gt;&gt; 25) &amp; 127) # 7 bits: year
++    return str(datetime.datetime(year, month, day, hour, min, sec))
++    
+ def humanFilesize(chunk):
+     from tools import humanFilesize as doHumanFilesize
+     return doHumanFilesize(chunk.value)
+@@ -10,5 +22,5 @@
+ def hexadecimal(chunk):
+     size = chunk.size
+     assert size in (2, 4, 8)
+-    pattern = &quot;%0&quot; + str(2*size) + &quot;X&quot;
++    pattern = &quot;0x%0&quot; + str(2*size) + &quot;X&quot;
+     return pattern % chunk.value
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000261.html">[Happyboom-svn] r358 - in haypo/hachoir/trunk: . broken_plugins plugins
+</A></li>
+	<LI>Next message: <A HREF="000263.html">[Happyboom-svn] r361 - in haypo/hachoir/trunk: broken_plugins plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#262">[ date ]</a>
+              <a href="thread.html#262">[ thread ]</a>
+              <a href="subject.html#262">[ subject ]</a>
+              <a href="author.html#262">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

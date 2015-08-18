@@ -1,0 +1,612 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r392 - in haypo/hachoir/trunk: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r392%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200601040212.k042CFRk010302%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000293.html">
+   <LINK REL="Next"  HREF="000295.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r392 - in haypo/hachoir/trunk: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r392%20-%20in%20haypo/hachoir/trunk%3A%20.%20plugins&In-Reply-To=%3C200601040212.k042CFRk010302%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r392 - in haypo/hachoir/trunk: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Wed Jan  4 03:12:15 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000293.html">[Happyboom-svn] r391 - in haypo/hachoir/tags: . 2005-12-26/plugins 2005-12-28
+</A></li>
+        <LI>Next message: <A HREF="000295.html">[Happyboom-svn] r393 - haypo/hachoir/trunk/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#294">[ date ]</a>
+              <a href="thread.html#294">[ thread ]</a>
+              <a href="subject.html#294">[ subject ]</a>
+              <a href="author.html#294">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-04 03:11:59 +0100 (Wed, 04 Jan 2006)
+New Revision: 392
+
+Modified:
+   haypo/hachoir/trunk/filter.py
+   haypo/hachoir/trunk/plugins/worms2.py
+Log:
+- Filter: only get chunk size if it isn't instanciated
+- Worms2: lot of bugfix to support more .dir files
+  o Support uncompressed sprite
+  o Support Bank resource
+  o Support INF resource
+  o Support Index resource
+  o Support font using offset
+  o etc.
+
+
+Modified: haypo/hachoir/trunk/filter.py
+===================================================================
+--- haypo/hachoir/trunk/filter.py	2006-01-03 16:39:09 UTC (rev 391)
++++ haypo/hachoir/trunk/filter.py	2006-01-04 02:11:59 UTC (rev 392)
+@@ -98,10 +98,10 @@
+     def _getEndian(self): return self._endian
+     endian = property(_getEndian)
+ 
+-    def addPadding(self):
++    def addPadding(self, id=&quot;end&quot;, description=&quot;Raw end&quot;):
+         size = self._stream.getRemainSize()
+         if 0 &lt; size:
+-            self.read(&quot;end&quot;, &quot;Raw end&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++            self.read(id, description, (FormatChunk, &quot;string[%u]&quot; % size))
+ 
+     # --- Pure virtual methods -----------
+     def getSize(self): todoWriteMethod(self, &quot;getSize&quot;) 
+@@ -161,6 +161,9 @@
+         self._chunks_cache = {}
+         
+     def read(self, id, description, info, optionnal={}): 
++        self._read(id, description, info, optionnal, False)
++
++    def _read(self, id, description, info, optionnal, instanciate):
+         chunk_class = info[0]
+         id = self.getUniqChunkId(id)
+         addr = self._stream.tell()
+@@ -169,9 +172,9 @@
+             size = optionnal.get(&quot;size&quot;, None)
+             filter_addr = filter_stream.tell()
+             args = info[1:]
+-            if size == None:
++            if not instanciate and size == None:
+                 size = chunk_class.getStaticSize(self._stream, info[1:])
+-            if size == None:
++            if instanciate or size == None:
+                 filter = chunk_class(filter_stream, self, *args)
+                 description = filter.getDescription()
+                 filter.setId(id)
+@@ -191,8 +194,6 @@
+                 self._chunks_cache[id] = chunk
+             self._size = self._size + size
+             self._stream.seek(addr + size)
+-            return id
+-
+         else:
+             post = optionnal.get(&quot;post&quot;, None)
+             if &quot;post&quot; in optionnal:
+@@ -203,7 +204,10 @@
+                 args = [ i for i in info[1:] ]
+             instance_info = [info[0], id, description, self._stream]+args+[self]
+ 
+-            size = chunk_class.getStaticSize(self._stream, info[1:])
++            if not instanciate:
++                size = chunk_class.getStaticSize(self._stream, info[1:])
++            else:
++                size = None
+             if size != None:
+                 self._stream.seek(size, 1)
+             else:
+@@ -217,11 +221,13 @@
+             self._chunks_dict[id] = chunk_info
+             self._chunks.append(id)
+             self._size = self._size + size
++        if instanciate:
++            return chunk
++        else:
+             return id
+ 
+     def doRead(self, id, description, info, optionnal={}):
+-        id = self.read(id, description, info, optionnal)
+-        chunk = self.getChunk(id)
++        chunk = self._read(id, description, info, optionnal, True)
+         if isinstance(chunk, FilterChunk):
+             return chunk.getFilter()
+         else:
+
+Modified: haypo/hachoir/trunk/plugins/worms2.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/worms2.py	2006-01-03 16:39:09 UTC (rev 391)
++++ haypo/hachoir/trunk/plugins/worms2.py	2006-01-04 02:11:59 UTC (rev 392)
+@@ -14,16 +14,22 @@
+ from tools import alignValue
+ 
+ class ImageData(OnDemandFilter):
+-    def __init__(self, stream, parent):
++    def __init__(self, stream, parent, use_bank):
+         OnDemandFilter.__init__(self, &quot;image_data&quot;, &quot;Image data (uncompressed)&quot;, stream, parent, &quot;&lt;&quot;)
+         self.x = self.doRead(&quot;x&quot;, &quot;Offset X&quot;, (FormatChunk, &quot;uint16&quot;)).value
+         self.y = self.doRead(&quot;y&quot;, &quot;Offset Y&quot;, (FormatChunk, &quot;uint16&quot;)).value
+         self.width = self.doRead(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;)).value
+         self.height = self.doRead(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;)).value
+-        size = (self.width-self.x) * (self.height-self.y)
+-        self.read(&quot;data&quot;, &quot;Image content&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        self.use_bank = use_bank
++        if use_bank:
++            self.read(&quot;offset&quot;, &quot;Offset&quot;, (FormatChunk, &quot;uint32&quot;))
++        else:
++            size = (self.width-self.x) * (self.height-self.y)
++            self.read(&quot;data&quot;, &quot;Image content&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+ 
+     def getStaticSize(stream, args):
++        if args[0] == True:
++            return 12 
+         oldpos = stream.tell()
+         x, y = stream.getFormat(&quot;&lt;uint16&quot;), stream.getFormat(&quot;&lt;uint16&quot;)
+         w, h = stream.getFormat(&quot;&lt;uint16&quot;), stream.getFormat(&quot;&lt;uint16&quot;)
+@@ -33,16 +39,20 @@
+     getStaticSize = staticmethod(getStaticSize)
+ 
+     def updateParent(self, chunk):
+-        chunk.description = &quot;Image data: %ux%u pixels at (%u,%u)&quot; \
++        desc = &quot;Image data: &quot; 
++        if self.use_bank:
++            desc += &quot;offset=%u &quot; % self[&quot;offset&quot;]
++        chunk.description = desc+&quot;%ux%u pixels at (%u,%u)&quot; \
+             % (self.width, self.height, self.x, self.y)
+ 
+ class Image(OnDemandFilter):
+-    def __init__(self, stream, parent):
++    def __init__(self, stream, parent, use_bank):
+         OnDemandFilter.__init__(self, &quot;image&quot;, &quot;Image&quot;, stream, parent, &quot;&lt;&quot;)
+         self.read(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
+         size = self[&quot;width&quot;] * self[&quot;height&quot;]
+-        self.read(&quot;img_data&quot;, &quot;Data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        if size &lt;= stream.getRemainSize():
++            self.read(&quot;img_data&quot;, &quot;Image data: %ux%u pixels in 8 bits/pixels&quot; % (self[&quot;width&quot;], self[&quot;height&quot;]), (FormatChunk, &quot;string[%u]&quot; % size))
+         self.addPadding()
+ 
+     def updateParent(self, chunk):            
+@@ -69,35 +79,42 @@
+         OnDemandFilter.__init__(self, &quot;frame&quot;, &quot;Sprite frame&quot;, stream, parent, &quot;&lt;&quot;)
+         self.read(&quot;offset&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;zero&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
+-        assert self[&quot;zero&quot;] == 0
++#        assert self[&quot;zero&quot;] == 0
+         self.read(&quot;step&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
+         self.read(&quot;x&quot;, &quot;Offset X&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;y&quot;, &quot;Offset Y&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.real_width = self[&quot;width&quot;] - self[&quot;x&quot;]
++        self.real_height = self[&quot;height&quot;] - self[&quot;y&quot;]
+ 
+     def updateParent(self, chunk):            
+-        w = self[&quot;width&quot;] - self[&quot;x&quot;]
+-        h = self[&quot;height&quot;] - self[&quot;y&quot;]
+-        chunk.description = &quot;Frame: %ux%u bytes - %ux%u pixels at (%u,%u) offset=%s step=%s&quot; % \
+-            (w, h, self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;x&quot;], self[&quot;y&quot;], self[&quot;offset&quot;], self[&quot;step&quot;])
++        chunk.description = &quot;Frame: zero=%s %ux%u bytes - %ux%u pixels at (%u,%u) offset=%s step=%s&quot; % \
++            (self[&quot;zero&quot;], self.real_width, self.real_height, self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;x&quot;], self[&quot;y&quot;], self[&quot;offset&quot;], self[&quot;step&quot;])
+ 
+ class Sprite(OnDemandFilter):
+-    def __init__(self, stream, parent):
++    def __init__(self, stream, parent, use_bank):
+         OnDemandFilter.__init__(self, &quot;sprite&quot;, &quot;Sprite&quot;, stream, parent, &quot;&lt;&quot;)
+         name = parent.name
+         self.read(&quot;nb_step&quot;, &quot;Number of steps&quot;, (FormatChunk, &quot;uint16&quot;))
+-        self.read(&quot;zero&quot;, &quot;Zero?&quot;, (FormatChunk, &quot;uint16&quot;))
+-        for i in range(0, self[&quot;nb_step&quot;]):
+-            self.read(&quot;step[]&quot;, &quot;Step&quot;, (Step,))
++        if 0 &lt; self[&quot;nb_step&quot;]:
++            self.read(&quot;zero&quot;, &quot;Zero?&quot;, (FormatChunk, &quot;uint16&quot;))
++            for i in range(0, self[&quot;nb_step&quot;]):
++                self.read(&quot;step[]&quot;, &quot;Step&quot;, (Step,))
+         self.read(&quot;x&quot;, &quot;Offset X&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;y&quot;, &quot;Offset Y&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
+         self.read(&quot;count&quot;, &quot;Frame count&quot;, (FormatChunk, &quot;uint16&quot;))
++        frames = []
+         for i in range(0, self[&quot;count&quot;]):
+-            self.read(&quot;item[]&quot;, &quot;Frame&quot;, (SpriteFrame,))
+-        if False:            
++            frame = self.doRead(&quot;frame[]&quot;, &quot;Frame&quot;, (SpriteFrame,))
++            frames.append(frame)
++        if self[&quot;nb_step&quot;] == 0:
++            for frame in frames:
++                size = frame.real_width * frame.real_height
++                self.read(&quot;data[]&quot;, &quot;Frame data: %ux%u pixels in 8 bits/pixel&quot; % (frame.real_width, frame.real_height), (FormatChunk,&quot;string[%u]&quot; % size))
++        elif False:            
+             real_width = self[&quot;width&quot;] - self[&quot;x&quot;]
+             real_height = self[&quot;height&quot;] - self[&quot;y&quot;]
+             size = real_width * real_height
+@@ -106,92 +123,267 @@
+         self.addPadding()
+ 
+     def updateParent(self, chunk):            
+-        chunk.description = &quot;Animation: %ux%u pixels, %u step(s), %u frame(s)&quot; % \
+-            (self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;nb_step&quot;], self[&quot;count&quot;])
++        desc = &quot;Animation: %ux%u pixels, %u frame(s)&quot; % (self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;count&quot;])
++        if self[&quot;nb_step&quot;] == 0:
++            desc += &quot; (uncompressed)&quot;
++        else:
++            desc += &quot;, %u step(s)&quot; % (self[&quot;nb_step&quot;])
++        chunk.description = desc
+ 
++class TextRes(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;textres&quot;, &quot;Text resource&quot;, stream, parent, &quot;&lt;&quot;)
++        for i in range(0, 6):
++            self.read(&quot;line[]&quot;, &quot;Line&quot;, (StringChunk, &quot;WindowsLine&quot;))
++        self.read(&quot;name&quot;, &quot;File name&quot;, (StringChunk, &quot;WindowsLine&quot;))
++        self.read(&quot;line[]&quot;, &quot;Line&quot;, (StringChunk, &quot;WindowsLine&quot;))
++        self.read(&quot;empty_line[]&quot;, &quot;(empty line)&quot;, (StringChunk, &quot;WindowsLine&quot;))
++        self.read(&quot;empty_line[]&quot;, &quot;(empty line)&quot;, (StringChunk, &quot;WindowsLine&quot;))
++        self.read(&quot;separator&quot;, &quot;Separator (26)&quot;, (FormatChunk, &quot;uint8&quot;))
++
++    def updateParent(self, chunk):
++        chunk.description = &quot;INF: %s&quot; % (self[&quot;name&quot;])
++
++class TextIndex(OnDemandFilter):
++    def __init__(self, stream, parent, use_bank):
++        OnDemandFilter.__init__(self, &quot;text_idx&quot;, &quot;Text index&quot;, stream, parent, &quot;&lt;&quot;)
++        self.count = 0
++        while True:
++            name = self.doRead(&quot;name[]&quot;, &quot;Name&quot;, (StringChunk, &quot;WindowsLine&quot;)).value
++            if name == &quot;!&quot;:
++                break
++            self.count += 1
++        self.read(&quot;empty_line&quot;, &quot;(empty line)&quot;, (StringChunk, &quot;WindowsLine&quot;))
++        self.read(&quot;separator&quot;, &quot;Separator (26)&quot;, (FormatChunk, &quot;uint8&quot;))
++
++    def updateParent(self, chunk):
++        chunk.description = &quot;Index: %s items&quot; % (self.count)
++
++class BankItem(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;bank_item&quot;, &quot;Bank item&quot;, stream, parent, &quot;&lt;&quot;)
++        self.x = self.doRead(&quot;x&quot;, &quot;Offset X&quot;, (FormatChunk, &quot;uint16&quot;)).value
++        self.y = self.doRead(&quot;y&quot;, &quot;Offset Y&quot;, (FormatChunk, &quot;uint16&quot;)).value
++        self.width = self.doRead(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;)).value
++        self.height = self.doRead(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;)).value
++        self.read(&quot;offset&quot;, &quot;Offset?&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;xxx&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++
++    def getStaticSize(stream, args):
++        return 12 
++    getStaticSize = staticmethod(getStaticSize)
++
++    def updateParent(self, chunk):
++        desc = &quot;Bank item: &quot; 
++        desc += &quot;%ux%u pixels at (%u,%u)&quot; % (self.width, self.height, self.x, self.y)
++        desc += &quot; offset=%s xxx=%s&quot; % (self[&quot;offset&quot;], self[&quot;xxx&quot;])
++
++        chunk.description = desc
++
++class BankItem2(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;bank_item&quot;, &quot;Bank item&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;offset&quot;, &quot;Offset?&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;step&quot;, &quot;Step?&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;size&quot;, &quot;Size?&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;zero&quot;, &quot;Zero&quot;, (FormatChunk, &quot;string[6]&quot;))
++        assert self[&quot;zero&quot;] == &quot;\0&quot; * 6 
++
++    def getStaticSize(stream, args):
++        return 12 
++    getStaticSize = staticmethod(getStaticSize)
++
++    def updateParent(self, chunk):
++        chunk.description = &quot;Bank item2: size=%s offset=%s step=%s&quot; % (self[&quot;size&quot;], self[&quot;offset&quot;], self[&quot;step&quot;])
++
++class BigBank(OnDemandFilter):
++    def __init__(self, stream, parent, chunk_info, count):
++        OnDemandFilter.__init__(self, &quot;bigbank&quot;, &quot;Big bank&quot;, stream, parent, &quot;&lt;&quot;)
++        self.count = count
++        for i in range(0, self.count):
++            self.read(&quot;item[]&quot;, &quot;Item&quot;, chunk_info)
++
++    def getStaticSize(stream, args):
++        size = args[0][0].getStaticSize(stream, [])
++        count = args[1]
++        assert size != None
++        return count * size
++    getStaticSize = staticmethod(getStaticSize)
++
++    def updateParent(self, chunk):
++        chunk.description = &quot;Big Bank: %s items&quot; % (self.count)
++
++class Bank(OnDemandFilter):
++    def __init__(self, stream, parent, use_bank):
++        OnDemandFilter.__init__(self, &quot;text_idx&quot;, &quot;Text index&quot;, stream, parent, &quot;&lt;&quot;)
++        nb_color = self.doRead(&quot;nb_color&quot;, &quot;Number of colors&quot;, (FormatChunk, &quot;uint16&quot;)).value
++        self.read(&quot;palette&quot;, &quot;Palette&quot;, (Palette, nb_color))
++        self.read(&quot;xxx[]&quot;, &quot;??&quot;, (FormatChunk, &quot;uint16&quot;))
++       
++        # Items (1)
++        self.count = self.doRead(&quot;count&quot;, &quot;Number of items (1)&quot;, (FormatChunk, &quot;uint16&quot;)).value
++        self.read(&quot;items1&quot;, &quot;Items (1)&quot;, (BigBank, (BankItem,), self.count))
++            
++        # Items (2)
++        self.read(&quot;zero1&quot;, &quot;Zero?&quot;, (FormatChunk, &quot;uint16&quot;))
++        assert self[&quot;zero1&quot;] == 0
++        self.count2 = self.doRead(&quot;count2&quot;, &quot;Number of items (2)&quot;, (FormatChunk, &quot;uint32&quot;)).value
++        self.read(&quot;zero2&quot;, &quot;Zero?&quot;, (FormatChunk, &quot;uint32&quot;))
++        assert self[&quot;zero2&quot;] == 0
++        self.read(&quot;items2&quot;, &quot;Items (2)&quot;, (BigBank, (BankItem,), self.count2))
++
++        # Items (3)
++        self.count3 = self[&quot;items2&quot;][&quot;item[%u]&quot; % (self.count2-1)][&quot;offset&quot;]       
++        self.read(&quot;items3&quot;, &quot;Items (3)&quot;, (BigBank, (BankItem2,), self.count3))
++       
++        if False:
++            # TODO: Finish the parser... 
++            size = stream.getRemainSize() - 1
++            self.read(&quot;data&quot;, &quot;Images data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++            
++            self.read(&quot;separator&quot;, &quot;Separator (26)&quot;, (FormatChunk, &quot;uint8&quot;))
++        else:
++            self.addPadding()
++
++    def updateParent(self, chunk):
++        chunk.description = &quot;Bank: %s items, %s items2, %s items3&quot; % (self.count, self.count2, self.count3)
++
+ class Font(OnDemandFilter):
+-    def __init__(self, stream, parent):
++    def __init__(self, stream, parent, use_bank):
+         OnDemandFilter.__init__(self, &quot;font&quot;, &quot;Font&quot;, stream, parent, &quot;&lt;&quot;)
+ 
+         #--- Ugly header ---
+         size = 33
+-        self.read(&quot;zero[]&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+-        size = 255 - stream.tell()
+-        self.read(&quot;xxx&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+-        self.read(&quot;nb_char8bit&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
+-        self.read(&quot;align&quot;, &quot;Next factor of four to height?&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;zero&quot;, &quot;Zero&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        assert self[&quot;zero&quot;] == &quot;\0&quot; * size
++        size = 223
++        self.read(&quot;header&quot;, &quot;Header&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        self.read(&quot;size&quot;, &quot;Font width and height&quot;, (FormatChunk, &quot;uint16&quot;))
+ 
+         # Read images
+         self.read(&quot;nb_char&quot;, &quot;Number of characters&quot;, (FormatChunk, &quot;uint16&quot;))
++        
+         for i in range(0, self[&quot;nb_char&quot;]):
+-            self.read(&quot;image[]&quot;, &quot;Image&quot;, (ImageData,))
++            self.read(&quot;image[]&quot;, &quot;Image&quot;, (ImageData, use_bank))
+ 
+         # Get image size
+-        image = self[&quot;image[0]&quot;]
+-        self.width = image.width
+-        self.height = image.height
++        if use_bank:
++            for i in range(0, self[&quot;nb_char&quot;]):
++                image = self[&quot;image[%u]&quot; % i]
++                size = image.width * image.height
++                self.read(&quot;image_data[]&quot;, &quot;Image data content&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+         self.addPadding()
+ 
+     def updateParent(self, chunk):
+         chunk.description = &quot;Font: %ux%u pixels, %u characters&quot; \
+-            % (self.width, self.height, self[&quot;nb_char&quot;])
++            % (self[&quot;size&quot;], self[&quot;size&quot;], self[&quot;nb_char&quot;])
+ 
+ class Resource(OnDemandFilter):
+-    name = {
++    tag_name = {
+         &quot;IMG&quot;: &quot;Image&quot;,
+         &quot;SPR&quot;: &quot;Sprite&quot;,
+         &quot;FNT&quot;: &quot;Font&quot;,
+-        &quot;DIR&quot;: &quot;Directory&quot;
++        &quot;DIR&quot;: &quot;Directory&quot;,
++        &quot;BNK&quot;: &quot;Bank&quot;
+     }
+ 
+     handler = {
+         &quot;IMG&quot;: Image,
+         &quot;SPR&quot;: Sprite,
+-        &quot;FNT&quot;: Font
++        &quot;FNT&quot;: Font,
++        &quot;BNK&quot;: Bank
+     }
+ 
+-    def __init__(self, stream, parent):
++    def __init__(self, stream, parent, has_name, use_bank, has_separator):
+         OnDemandFilter.__init__(self, &quot;worms2_res&quot;, &quot;Worms2 resource&quot;, stream, parent, &quot;&lt;&quot;)
+-        pos = stream.tell()
+-        self.tag = self.doRead(&quot;tag&quot;, &quot;Type&quot;, (EnumChunk, &quot;string[3]&quot;, Resource.name)).value
++        guess = stream.getN(3, False)
++        if guess not in Resource.tag_name:
++            self.name = &quot;Strange chunk!?&quot;
++            self.addPadding()
++            return
++        self.tag = self.doRead(&quot;tag&quot;, &quot;Type&quot;, (EnumChunk, &quot;string[3]&quot;, Resource.tag_name)).value
+         self.read(&quot;tag_end&quot;, &quot;Type end&quot;, (FormatChunk, &quot;string[1]&quot;))
+         if self.tag != &quot;DIR&quot;:
+-            size = self.doRead(&quot;size&quot;, &quot;Size&quot;, (FormatChunk, &quot;uint32&quot;)).value
++            self.read(&quot;size&quot;, &quot;Size&quot;, (FormatChunk, &quot;uint32&quot;))
++
+             # Read resource name
+-            self.name = self.doRead(&quot;name&quot;, &quot;Name&quot;, (StringChunk, &quot;C&quot;)).value
+-            size += (pos - stream.tell() + 1)
++            if has_name:
++                self.name = self.doRead(&quot;name&quot;, &quot;Name&quot;, (StringChunk, &quot;C&quot;)).value
++            else:
++                self.name = self.getChunk(&quot;tag&quot;).getDisplayData() 
+             
+-            # Read informations about colors
+-            self.read(&quot;bpp&quot;, &quot;Bits / pixel&quot;, (FormatChunk, &quot;uint8&quot;))
+-            self.read(&quot;xxx&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
+-            nb_color = self.doRead(&quot;nb_color&quot;, &quot;Number of colors&quot;, (FormatChunk, &quot;uint16&quot;)).value
+-            self.read(&quot;palette&quot;, &quot;Palette&quot;, (Palette, nb_color))
+-            size -= (4 + nb_color*3 + 1)
+-            
++            if self.tag != &quot;BNK&quot;:
++                # Read informations about colors
++                self.read(&quot;bpp&quot;, &quot;Bits / pixel&quot;, (FormatChunk, &quot;uint8&quot;))
++                self.read(&quot;xxx&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
++                nb_color = self.doRead(&quot;nb_color&quot;, &quot;Number of colors&quot;, (FormatChunk, &quot;uint16&quot;)).value
++
++                self.read(&quot;palette&quot;, &quot;Palette&quot;, (Palette, nb_color))
++            else:
++                has_separator = False
++           
++            size = self[&quot;size&quot;] - self.getSize()
+             if self.tag in Resource.handler:    
+                 # Data content handler
+-                sub = stream.createSub(size=size)
+-                self.read(&quot;data&quot;, &quot;Data&quot;, (Resource.handler[self.tag],), {&quot;stream&quot;: sub})
++                self.handled = True
++                #sub = stream.createSub(size=size)
++                sub = stream.createLimited(size=size)
++                self.read(&quot;data&quot;, &quot;Data&quot;, (Resource.handler[self.tag], use_bank), {&quot;stream&quot;: sub})
+             else:
++                self.handled = False
+                 self.read(&quot;data&quot;, &quot;Data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+ 
+             # Separator
+-            self.read(&quot;separator&quot;, &quot;Separator (0x1A = 26)&quot;, (FormatChunk, &quot;uint8&quot;))
+-            assert self[&quot;separator&quot;] == 0x1A
++            if has_separator:
++                if not use_bank or stream.getN(1) == &quot;\x1A&quot;:
++                    self.read(&quot;separator&quot;, &quot;Separator (0x1A = 26)&quot;, (FormatChunk, &quot;uint8&quot;))
++                #assert self[&quot;separator&quot;] == 0x1A
+         else:
+             self.read(&quot;filesize&quot;, &quot;File size&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: humanFilesize})
+             self.name = &quot;(directory)&quot;
+             end = self.doRead(&quot;last_pos&quot;, &quot;Last position&quot;, (FormatChunk, &quot;uint32&quot;)).value
+             self.count = 0
++            guess = stream.getN(3, False)
++            has_name = True
++            use_bank = False
++            has_separator = True
++            if guess == &quot;1\r\n&quot;:
++                while guess == &quot;1\r\n&quot;:
++                    self.read(&quot;res[]&quot;, &quot;Resource&quot;, (TextRes,))
++                    guess = stream.getN(3, False)
++                self.read(&quot;res[]&quot;, &quot;Index&quot;, (TextIndex, use_bank))
++            elif guess == &quot;BNK&quot;:
++                use_bank = True
++                has_name = False
+             while stream.tell() &lt; end:
+-                self.read(&quot;res[]&quot;, &quot;Resource&quot;, (Resource,))
++                guess = stream.getN(4, False)
++                if guess[0:4] == &quot;\0\0\0\0&quot;:
++                    self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[4]&quot;))
++                elif guess[0:3] == &quot;\0\0\0&quot;:
++                    self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[3]&quot;))
++                elif guess[0:2] == &quot;\0\0&quot;:
++                    self.read(&quot;padding[]&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[2]&quot;))
++                elif guess[0:1] == &quot;\0&quot;:
++                    self.read(&quot;padding[]&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[1]&quot;))
++                size = end - self.getSize()
++                if use_bank and size &lt;= 20:
++                    # TODO: Remove self.addPadding() (shouldn't work so)
++                    self.read(&quot;cdrom_str&quot;, &quot;cdrom.spr text&quot;, (StringChunk, &quot;C&quot;))
++                    self.read(&quot;cdrom_a&quot;, &quot;&quot;, (FormatChunk, &quot;uint32&quot;))
++                    self.read(&quot;cdrom_b&quot;, &quot;&quot;, (FormatChunk, &quot;uint32&quot;))
++                    assert self.getSize() == end
++                    break                
++                self.read(&quot;res[]&quot;, &quot;Resource&quot;, (Resource, has_name, use_bank, has_separator))
+                 self.count += 1
+ 
+     def getStaticSize(stream, args):
+         oldpos = stream.tell()
+-        if stream.getFormat(&quot;string[3]&quot;, False) != &quot;DIR&quot;:
++        tag = stream.getN(3, False)
++        if tag != &quot;DIR&quot;:
+             stream.seek(4, 1)
+-            size = 1 + stream.getFormat(&quot;&lt;uint32&quot;)
++            size = stream.getFormat(&quot;&lt;uint32&quot;)
++            if args[2] and (not args[1] or tag != &quot;SPR&quot;):
++                size += 1
+         else:
+             stream.seek(8, 1)
+             size = stream.getFormat(&quot;&lt;uint32&quot;)
+@@ -201,7 +393,10 @@
+ 
+     def updateParent(self, chunk):            
+         if self[&quot;tag&quot;] != &quot;DIR&quot;:
+-            chunk.description = &quot;[%s] %s&quot; % (self.name, self[&quot;data&quot;].getDescription())
++            if self.handled:
++                chunk.description = &quot;[%s] %s&quot; % (self.name, self[&quot;data&quot;].getDescription())
++            else:
++                chunk.description = &quot;[%s]&quot; % (self.name)
+         else:
+             chunk.description = &quot;Directory: %u resources&quot; % self.count 
+ 
+@@ -222,7 +417,7 @@
+         chunk.description = &quot;File: %s (%s)&quot; \
+             % (self[&quot;name&quot;], size)
+ 
+-class XXX(OnDemandFilter):
++class Numbers(OnDemandFilter):
+     def __init__(self, stream, parent, count):
+         OnDemandFilter.__init__(self, &quot;fs&quot;, &quot;File system&quot;, stream, parent, &quot;&lt;&quot;)
+         self.count = count
+@@ -230,7 +425,7 @@
+             self.read(&quot;value32[]&quot;, &quot;?&quot;, (FormatChunk, &quot;uint32&quot;))
+         
+     def updateParent(self, chunk):
+-        chunk.description = &quot;XXX: %u integers (uint32)&quot; % (self.count)
++        chunk.description = &quot;Numbers: %u integers (uint32)&quot; % (self.count)
+ 
+ class FileSystem(OnDemandFilter):
+     def __init__(self, stream, parent):
+@@ -246,10 +441,10 @@
+ class Worms2_Dir_File(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;worms2_dir_file&quot;, &quot;Worms2 directory (.dir) file&quot;, stream, parent, &quot;&lt;&quot;)
+-        self.read(&quot;resources&quot;, &quot;Directory&quot;, (Resource,))
++        self.read(&quot;resources&quot;, &quot;Directory&quot;, (Resource, True, None, True))
+         if True:
+             count = 1026
+-            self.read(&quot;xxx&quot;, &quot;XXX&quot;, (XXX,count), {&quot;size&quot;: count*4})
++            self.read(&quot;numbers&quot;, &quot;Numbers?&quot;, (Numbers, count), {&quot;size&quot;: count*4})
+         
+             size = stream.getRemainSize()
+             self.read(&quot;fs&quot;, &quot;File system&quot;, (FileSystem,), {&quot;size&quot;: size})
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000293.html">[Happyboom-svn] r391 - in haypo/hachoir/tags: . 2005-12-26/plugins 2005-12-28
+</A></li>
+	<LI>Next message: <A HREF="000295.html">[Happyboom-svn] r393 - haypo/hachoir/trunk/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#294">[ date ]</a>
+              <a href="thread.html#294">[ thread ]</a>
+              <a href="subject.html#294">[ subject ]</a>
+              <a href="author.html#294">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

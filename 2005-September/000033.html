@@ -1,0 +1,2053 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r127 - boomboom boomboom/client happyboom/trunk/net/io happyboom/trunk/net/io_tcp happyboom/trunk/server happywarry
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r127%20-%20boomboom%20boomboom/client%20happyboom/trunk/net/io%20happyboom/trunk/net/io_tcp%20happyboom/trunk/server%20happywarry&In-Reply-To=%3C200509080255.j882tdRG018898%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000032.html">
+   <LINK REL="Next"  HREF="000034.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r127 - boomboom boomboom/client happyboom/trunk/net/io happyboom/trunk/net/io_tcp happyboom/trunk/server happywarry</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r127%20-%20boomboom%20boomboom/client%20happyboom/trunk/net/io%20happyboom/trunk/net/io_tcp%20happyboom/trunk/server%20happywarry&In-Reply-To=%3C200509080255.j882tdRG018898%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r127 - boomboom boomboom/client happyboom/trunk/net/io happyboom/trunk/net/io_tcp happyboom/trunk/server happywarry">haypo at berlios.de
+       </A><BR>
+    <I>Thu Sep  8 04:55:39 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000032.html">[Happyboom-svn] r126 - in languetudes: . trunk
+</A></li>
+        <LI>Next message: <A HREF="000034.html">[Happyboom-svn] r128 - poilu/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#33">[ date ]</a>
+              <a href="thread.html#33">[ thread ]</a>
+              <a href="subject.html#33">[ subject ]</a>
+              <a href="author.html#33">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-08 04:55:34 +0200 (Thu, 08 Sep 2005)
+New Revision: 127
+
+Removed:
+   boomboom/net
+Modified:
+   boomboom/boomboom_client.py
+   boomboom/boomboom_server.py
+   boomboom/client/bb_client.py
+   boomboom/client/bb_display.py
+   boomboom/client/bb_input.py
+   happyboom/trunk/net/io/base_io.py
+   happyboom/trunk/net/io/packet.py
+   happyboom/trunk/net/io_tcp/tcp.py
+   happyboom/trunk/server/base_server.py
+   happywarry/happywarry-server.py
+Log:
+Fix BoomBoom and HappyWarry to use new directory structure. Fix TCP to
+support unreachable server.
+
+
+Modified: boomboom/boomboom_client.py
+===================================================================
+--- boomboom/boomboom_client.py	2005-09-08 01:07:22 UTC (rev 126)
++++ boomboom/boomboom_client.py	2005-09-08 02:55:34 UTC (rev 127)
+@@ -6,82 +6,89 @@
+ import time
+ import socket
+ import sys
+-import pygame
+-from client import BoomBoomClient
+ 
+ def usage(defval):
+-	print &quot;%s version %s&quot; % (PROGRAM, VERSION)
+-	print &quot;&quot;
+-	print &quot;Usage: %s [options] [yourname]&quot; % (sys.argv[0])
+-	print
+-	print &quot;Options :&quot;
+-	print &quot;\t--help            : Print this help&quot;
+-	print &quot;\t--version         : Print the software version&quot;
+-	print &quot;\t-h,--host HOST    : Server ip/name (default %s)&quot; % (defval[&quot;host&quot;])
+-	print &quot;\t--view-port PORT  : Server view port (default %u)&quot; % (defval[&quot;view_port&quot;])
+-	print &quot;\t--input-port PORT : Server input port (default %u)&quot; % (defval[&quot;input_port&quot;])
+-	print &quot;\t-d,--debug        : Enable debug mode&quot;
+-	print &quot;\t-v,--verbose      : Enable verbose mode&quot;
+-	print &quot;\t--max-fps MAX     : Set maximum frame par second (fps)&quot;
++    print &quot;%s version %s&quot; % (PROGRAM, VERSION)
++    print &quot;&quot;
++    print &quot;Usage: %s [options] [yourname]&quot; % (sys.argv[0])
++    print
++    print &quot;Options :&quot;
++    print &quot;\t--help            : Print this help&quot;
++    print &quot;\t--version         : Print the software version&quot;
++    print &quot;\t-h,--host HOST    : Server ip/name (default %s)&quot; % (defval[&quot;host&quot;])
++    print &quot;\t--view-port PORT  : Server view port (default %u)&quot; % (defval[&quot;view_port&quot;])
++    print &quot;\t--input-port PORT : Server input port (default %u)&quot; % (defval[&quot;input_port&quot;])
++    print &quot;\t-d,--debug        : Enable debug mode&quot;
++    print &quot;\t-v,--verbose      : Enable verbose mode&quot;
++    print &quot;\t--max-fps MAX     : Set maximum frame par second (fps)&quot;
+ 
+ def parseArgs(val):
+-	import getopt
++    import getopt
+ 
+-	defval = val.copy()
+-	try:
+-		short = &quot;h:dv&quot;
+-		long = [&quot;debug&quot;, &quot;help&quot;, &quot;version&quot;, &quot;verbose&quot;, \
+-			&quot;view-port=&quot;, &quot;input-port=&quot;,
+-			&quot;host=&quot;, &quot;max-fps=&quot;]
+-		opts, args = getopt.getopt(sys.argv[1:], short, long)
+-	except getopt.GetoptError:
+-		usage(defval)
+-		sys.exit(2)
++    defval = val.copy()
++    try:
++        short = &quot;h:dv&quot;
++        long = [&quot;debug&quot;, &quot;help&quot;, &quot;version&quot;, &quot;verbose&quot;, \
++            &quot;view-port=&quot;, &quot;input-port=&quot;,
++            &quot;host=&quot;, &quot;max-fps=&quot;]
++        opts, args = getopt.getopt(sys.argv[1:], short, long)
++    except getopt.GetoptError:
++        usage(defval)
++        sys.exit(2)
+ 
+-	if 0&lt;len(args): val[&quot;name&quot;] = args[0]
+-		
+-	for o, a in opts:
+-		if o == &quot;--help&quot;:
+-			usage(defval)
+-			sys.exit()
+-		if o == &quot;--version&quot;:
+-			print &quot;%s version %s&quot; % (PROGRAM, VERSION)
+-		if o == &quot;--input-port&quot;:
+-			val[&quot;input_port&quot;] = int(a)
+-		if o == &quot;--view-port&quot;:
+-			val[&quot;view_port&quot;] = int(a)
+-		if o in (&quot;-h&quot;, &quot;--host&quot;,):
+-			val[&quot;host&quot;] = a
+-		if o in (&quot;-v&quot;, &quot;--verbose&quot;,):
+-			val[&quot;verbose&quot;] = True
+-		if o == &quot;--max-fps&quot;:
+-			a = int(a)
+-			if a &lt; 1: a=1
+-			elif 100&lt;a: a=100
+-			val[&quot;max_fps&quot;] = a
+-		if o in (&quot;-d&quot;, &quot;--debug&quot;,):
+-			val[&quot;debug&quot;] = True
+-	return val
++    if 0&lt;len(args): val[&quot;name&quot;] = args[0]
++        
++    for o, a in opts:
++        if o == &quot;--help&quot;:
++            usage(defval)
++            sys.exit()
++        if o == &quot;--version&quot;:
++            print &quot;%s version %s&quot; % (PROGRAM, VERSION)
++        if o == &quot;--input-port&quot;:
++            val[&quot;input_port&quot;] = int(a)
++        if o == &quot;--view-port&quot;:
++            val[&quot;view_port&quot;] = int(a)
++        if o in (&quot;-h&quot;, &quot;--host&quot;,):
++            val[&quot;host&quot;] = a
++        if o in (&quot;-v&quot;, &quot;--verbose&quot;,):
++            val[&quot;verbose&quot;] = True
++        if o == &quot;--max-fps&quot;:
++            a = int(a)
++            if a &lt; 1: a=1
++            elif 100&lt;a: a=100
++            val[&quot;max_fps&quot;] = a
++        if o in (&quot;-d&quot;, &quot;--debug&quot;,):
++            val[&quot;debug&quot;] = True
++    return val
+ 
+ def main():
+-	val = {
+-		&quot;host&quot;: &quot;127.0.0.1&quot;, \
+-		&quot;view_port&quot;: 12430, \
+-		&quot;input_port&quot;: 12431, \
+-		&quot;max_fps&quot;: 50, \
+-		&quot;verbose&quot;: False, \
+-		&quot;name&quot;: &quot;-&quot;, \
+-		&quot;debug&quot;: False}
+-	arg = parseArgs(val)
++    # Add HappyBoom to PYTHONPATH (&quot;../&quot; today, but should be improved)
++    import sys, os
++    file_dir = os.path.dirname(__file__)
++    happyboomdir = os.path.join(file_dir, &quot;../happyboom/trunk&quot;)
++    sys.path.append(happyboomdir)
++ 
++    val = {
++        &quot;host&quot;: &quot;127.0.0.1&quot;, \
++        &quot;view_port&quot;: 12430, \
++        &quot;input_port&quot;: 12431, \
++        &quot;max_fps&quot;: 50, \
++        &quot;verbose&quot;: False, \
++        &quot;name&quot;: &quot;-&quot;, \
++        &quot;debug&quot;: False}
++    arg = parseArgs(val)
+ 
+-	client = BoomBoomClient(arg[&quot;host&quot;], arg[&quot;view_port&quot;], arg[&quot;input_port&quot;],\
+-							 arg[&quot;verbose&quot;], arg[&quot;debug&quot;], arg[&quot;max_fps&quot;])
+-	try:
+-		client.start()
+-	except KeyboardInterrupt:
+-		print &quot;Program interrupted (CTRL+C).&quot;
+-		pass
+-	client.stop()
+-	pygame.quit()
++    # Create the client
++    import pygame
++    from client import BoomBoomClient
++    client = BoomBoomClient(arg[&quot;host&quot;], arg[&quot;view_port&quot;], arg[&quot;input_port&quot;],\
++                            arg[&quot;verbose&quot;], arg[&quot;debug&quot;], arg[&quot;max_fps&quot;])
++    try:
++        client.start()
++    except KeyboardInterrupt:
++        print &quot;Program interrupted (CTRL+C).&quot;
++        pass
++    client.stop()
++    pygame.quit()
+ 
+ if __name__==&quot;__main__&quot;: main()
+
+Modified: boomboom/boomboom_server.py
+===================================================================
+--- boomboom/boomboom_server.py	2005-09-08 01:07:22 UTC (rev 126)
++++ boomboom/boomboom_server.py	2005-09-08 02:55:34 UTC (rev 127)
+@@ -3,101 +3,113 @@
+ VERSION=&quot;0.2.0&quot;
+ PROGRAM=&quot;BoomBoom&quot;
+ 
+-from server import BoomBoomServer
+ import getopt
+ import sys
+ 
+ def usage(defval):
+-	print &quot;%s server version %s&quot; % (PROGRAM, VERSION)
+-	print &quot;&quot;
+-	print &quot;Usage: %s [-v,--verbose] [-d,--debug] [-h,--help] [--version]&quot; % (sys.argv[0])
+-	print &quot;&quot;
+-	print &quot;Arguments :&quot;
+-	print &quot;\t-h,--help         : Show this help&quot;
+-	print &quot;\t--version         : Show the program version&quot;
+-	print &quot;\t-v,--verbose      : Activate verbose mode&quot;
+-	print &quot;\t-d,--debug        : Activate debug mode&quot;
+-	print &quot;&quot;
+-	print &quot;Other arguments :&quot;
+-	print &quot;\t--max-input NB    : Max input clients (default %u)&quot; % (defval[&quot;max-input&quot;])
+-	print &quot;\t--max-display NB     : Max display clients (default %u)&quot; % (defval[&quot;max-display&quot;])
+-	print &quot;\t--display-port PORT  : Port number for display clients (default %u)&quot; % (defval[&quot;display-port&quot;])
+-	print &quot;\t--input-port PORT : Port number for input clients (default %u)&quot; % (defval[&quot;input-port&quot;])
++    print &quot;%s server version %s&quot; % (PROGRAM, VERSION)
++    print &quot;&quot;
++    print &quot;Usage: %s [-v,--verbose] [-d,--debug] [-h,--help] [--version]&quot; % (sys.argv[0])
++    print &quot;&quot;
++    print &quot;Arguments :&quot;
++    print &quot;\t-h,--help         : Show this help&quot;
++    print &quot;\t--version         : Show the program version&quot;
++    print &quot;\t-v,--verbose      : Activate verbose mode&quot;
++    print &quot;\t-d,--debug        : Activate debug mode&quot;
++    print &quot;&quot;
++    print &quot;Other arguments :&quot;
++    print &quot;\t--max-input NB    : Max input clients (default %u)&quot; % (defval[&quot;maxInput&quot;])
++    print &quot;\t--max-display NB     : Max display clients (default %u)&quot; % (defval[&quot;maxDisplay&quot;])
++    print &quot;\t--display-port PORT  : Port number for display clients (default %u)&quot; % (defval[&quot;displayPort&quot;])
++    print &quot;\t--input-port PORT : Port number for input clients (default %u)&quot; % (defval[&quot;inputPort&quot;])
+ 
+ def parseArgs(val):
+-	import getopt
+-	def_val = val.copy()
+-	
+-	try:
+-		short = &quot;hdv&quot;
+-		long = [&quot;debug&quot;, &quot;verbose&quot;, &quot;help&quot;, &quot;version&quot;, \
+-			&quot;max-input=&quot;, &quot;max-display=&quot;, \
+-			&quot;display-port=&quot;, &quot;input-port=&quot;]
+-		opts, args = getopt.getopt(sys.argv[1:], short, long)
+-	except getopt.GetoptError:
+-		usage(def_val)
+-		sys.exit(2)
+-	
+-	if 0&lt;len(args):
+-		usage(def_val)
+-		sys.exit(2)
+-		
+-	for o, a in opts:
+-		if o in (&quot;-h&quot;, &quot;--help&quot;):
+-			usage(def_val)
+-			sys.exit()
+-		if o == &quot;--version&quot;:
+-			print &quot;%s server version %s&quot; % (PROGRAM, VERSION)
+-			sys.exit()
+-		if o == &quot;--input-port&quot;:
+-			a = int(a)
+-			if a == val[&quot;displayPort&quot;]:
+-				print &quot;Sorry, input port should be different than display port!&quot;
+-			else:
+-				val[&quot;inputPort&quot;] = a 			
+-		if o == &quot;--display-port&quot;:
+-			a = int(a)
+-			if a == val[&quot;inputPort&quot;]:
+-				print &quot;Sorry, display port should be different than input port!&quot;
+-			else:
+-				val[&quot;displayPort&quot;] = a 
+-		if o == &quot;--max-input&quot;:
+-			a = int(a)
+-			if a &lt; 1: 
+-				a=1
+-			elif 100 &lt; a:
+-				a = 100
+-			val[&quot;maxInput&quot;] = a
+-		if o == &quot;--max-display&quot;:
+-			a = int(a)
+-			if a &lt; 1: 
+-				a=1
+-			elif 100 &lt; a:
+-				a = 100
+-			val[&quot;maxDisplay&quot;] = a
+-		if o in (&quot;-v&quot;, &quot;--verbose&quot;):
+-			val[&quot;verbose&quot;] = True
+-		if o in (&quot;-d&quot;, &quot;--debug&quot;):
+-			val[&quot;debug&quot;] = True
+-	return val
++    import getopt
++    def_val = val.copy()
++    
++    try:
++        short = &quot;hdv&quot;
++        long = [&quot;debug&quot;, &quot;verbose&quot;, &quot;help&quot;, &quot;version&quot;, \
++            &quot;max-input=&quot;, &quot;max-display=&quot;, \
++            &quot;display-port=&quot;, &quot;input-port=&quot;]
++        opts, args = getopt.getopt(sys.argv[1:], short, long)
++    except getopt.GetoptError:
++        usage(def_val)
++        sys.exit(2)
++    
++    if 0&lt;len(args):
++        usage(def_val)
++        sys.exit(2)
++        
++    for o, a in opts:
++        if o in (&quot;-h&quot;, &quot;--help&quot;):
++            usage(def_val)
++            sys.exit()
++        if o == &quot;--version&quot;:
++            print &quot;%s server version %s&quot; % (PROGRAM, VERSION)
++            sys.exit()
++        if o == &quot;--input-port&quot;:
++            a = int(a)
++            if a == val[&quot;displayPort&quot;]:
++                print &quot;Sorry, input port should be different than display port!&quot;
++            else:
++                val[&quot;inputPort&quot;] = a             
++        if o == &quot;--display-port&quot;:
++            a = int(a)
++            if a == val[&quot;inputPort&quot;]:
++                print &quot;Sorry, display port should be different than input port!&quot;
++            else:
++                val[&quot;displayPort&quot;] = a 
++        if o == &quot;--max-input&quot;:
++            a = int(a)
++            if a &lt; 1: 
++                a=1
++            elif 100 &lt; a:
++                a = 100
++            val[&quot;maxInput&quot;] = a
++        if o == &quot;--max-display&quot;:
++            a = int(a)
++            if a &lt; 1: 
++                a=1
++            elif 100 &lt; a:
++                a = 100
++            val[&quot;maxDisplay&quot;] = a
++        if o in (&quot;-v&quot;, &quot;--verbose&quot;):
++            val[&quot;verbose&quot;] = True
++        if o in (&quot;-d&quot;, &quot;--debug&quot;):
++            val[&quot;debug&quot;] = True
++    return val
+ 
++def run():
++    # Add HappyBoom to PYTHONPATH (&quot;../&quot; today, but should be improved)
++    import sys, os
++    file_dir = os.path.dirname(__file__)
++    happyboomdir = os.path.join(file_dir, &quot;../happyboom/trunk&quot;)
++    sys.path.append(happyboomdir)
++    
++    val = { \
++        &quot;displayPort&quot;: 12430, \
++        &quot;inputPort&quot;: 12431, \
++        &quot;maxInput&quot;: 4, \
++        &quot;maxDisplay&quot;: 4, \
++        &quot;verbose&quot;: False,
++        &quot;debug&quot;: False}
++    arg = parseArgs(val)
++    
++    from server import BoomBoomServer
++    server = BoomBoomServer(**arg)
++
++    try:
++        server.start()
++    except KeyboardInterrupt:
++        pass
++    server.stop()
++    print &quot;Server quit.&quot;
++
+ def main():
+-	val = { \
+-		&quot;displayPort&quot;: 12430, \
+-		&quot;inputPort&quot;: 12431, \
+-		&quot;maxInput&quot;: 4, \
+-		&quot;maxDisplay&quot;: 4, \
+-		&quot;verbose&quot;: False,
+-		&quot;debug&quot;: False}
+-	arg = parseArgs(val)
+-	
+-	server = BoomBoomServer(**arg)
++    try:
++        run()
++    except KeyboardInterrupt:
++        print &quot;Program interrupted (CTRL+C).&quot;
+ 
+-	try:
+-		server.start()
+-	except KeyboardInterrupt:
+-		print &quot;Program interrupted (CTRL+C).&quot;
+-	server.stop()
+-	print &quot;Server quit.&quot;
+-
+ if __name__==&quot;__main__&quot;: main()
+
+Modified: boomboom/client/bb_client.py
+===================================================================
+--- boomboom/client/bb_client.py	2005-09-08 01:07:22 UTC (rev 126)
++++ boomboom/client/bb_client.py	2005-09-08 02:55:34 UTC (rev 127)
+@@ -64,9 +64,7 @@
+         while not quit:
+             # Wait for Keyboard Interrupt
+             time.sleep(0.100)
+-            self.__stoplock.acquire()
+-            quit = self.__stopped
+-            self.__stoplock.release()
++            quit = self.is_stopped
+         
+     def stop(self):
+         &quot;&quot;&quot;  Stops the game client.&quot;&quot;&quot;
+@@ -95,7 +93,7 @@
+             self.display.start()
+         except:
+             traceback.print_exc()
+-            self.stop()
++        self.stop()
+         
+     def thread_input(self):
+         &quot;&quot;&quot; Thread handler for the &quot;input&quot; part.&quot;&quot;&quot;
+@@ -103,4 +101,11 @@
+             self.input.start()
+         except:
+             traceback.print_exc()
+-            self.stop()
++        self.stop()
++
++    def __isStopped(self):
++        self.__stoplock.acquire()
++        stop = self.__stopped
++        self.__stoplock.release()
++        return stop
++    is_stopped = property(__isStopped)
+
+Modified: boomboom/client/bb_display.py
+===================================================================
+--- boomboom/client/bb_display.py	2005-09-08 01:07:22 UTC (rev 126)
++++ boomboom/client/bb_display.py	2005-09-08 02:55:34 UTC (rev 127)
+@@ -76,12 +76,14 @@
+         # Try to connect to server
+         if self.__verbose: print &quot;[DISPLAY] Trying to connect to server %s:%u&quot; % (self.host, self.port)
+         self.__io.on_connect = self.onConnect
++        self.__io.on_connection_fails = self.onConnectionFails
+         self.__io.on_disconnect = self.onDisconnect
+         self.__io.on_new_packet = self.processPacket
+         self.__io.on_lost_connection = self.onLostConnection
+         self.__io.connect(self.host, self.port)
++        if not self.__io.is_ready: return
+         thread.start_new_thread(self.__io.run_thread, ())
+-        
++    
+         BoomBoomConstructor()
+         print &quot;==== BoomBoom ====&quot;
+         self.drawer.start()
+@@ -108,6 +110,10 @@
+     def onConnect(self):
+         &quot;&quot;&quot; Handler called on network connection. &quot;&quot;&quot;
+         if self.__verbose: print &quot;[DISPLAY] Connected to server&quot;
++        
++    def onConnectionFails(self):
++        &quot;&quot;&quot; Handler called when network connection fails. &quot;&quot;&quot;
++        print &quot;[DISPLAY] Fail to connect to the server&quot;
+ 
+     def onDisconnect(self):
+         &quot;&quot;&quot; Handler called on network disconnection. &quot;&quot;&quot;
+@@ -171,4 +177,4 @@
+         @param event: Event with &quot;agent_manager_AskName&quot; type
+         @type event: C{L{common.simple_event.Event}}
+         &quot;&quot;&quot;
+-        self.send(self.name)
+\ No newline at end of file
++        self.send(self.name)
+
+Modified: boomboom/client/bb_input.py
+===================================================================
+--- boomboom/client/bb_input.py	2005-09-08 01:07:22 UTC (rev 126)
++++ boomboom/client/bb_input.py	2005-09-08 02:55:34 UTC (rev 127)
+@@ -68,10 +68,12 @@
+         # Try to connect to server
+         if self.__verbose: print &quot;[INPUT] Trying to connect to server %s:%s&quot; % (self.host, self.port)
+         self.__io.on_connect = self.onConnect
++        self.__io.on_connection_fails = self.onConnectionFails
+         self.__io.on_disconnect = self.onDisconnect
+         self.__io.on_lost_connection = self.onLostConnection
+         self.__io.on_new_packet = self.processPacket
+         self.__io.connect(self.host, self.port)
++        if not self.__io.is_ready: return
+         thread.start_new_thread( self.__io.run_thread, ())
+         
+         stopped = False
+@@ -179,7 +181,11 @@
+             
+     def onConnect(self):
+         &quot;&quot;&quot; Handler called on network connection. &quot;&quot;&quot;
+-        if self.__verbose: print &quot;[INPUT] Connected to server&quot;
++        if self.__verbose: print &quot;[INPUT] Connected to the server&quot;
++        
++    def onConnectionFails(self):
++        &quot;&quot;&quot; Handler called when network connection fails. &quot;&quot;&quot;
++        print &quot;[INPUT] Fail to connect to the server&quot;
+             
+     def onDisconnect(self):
+         &quot;&quot;&quot; Handler called on network disconnection. &quot;&quot;&quot;
+@@ -220,4 +226,4 @@
+     
+         #character = self.client.view.getActiveCharacter()
+         #if character != None: self.process_event_active(character, event)
+-        self.process_event_active(event)
+\ No newline at end of file
++        self.process_event_active(event)
+
+Deleted: boomboom/net
+===================================================================
+--- boomboom/net	2005-09-08 01:07:22 UTC (rev 126)
++++ boomboom/net	2005-09-08 02:55:34 UTC (rev 127)
+@@ -1 +0,0 @@
+-link ../net
+\ No newline at end of file
+
+Modified: happyboom/trunk/net/io/base_io.py
+===================================================================
+--- happyboom/trunk/net/io/base_io.py	2005-09-08 01:07:22 UTC (rev 126)
++++ happyboom/trunk/net/io/base_io.py	2005-09-08 02:55:34 UTC (rev 127)
+@@ -10,97 +10,108 @@
+ from io_client import IO_Client
+ 
+ class BaseIO(object):
+-	&quot;&quot;&quot; Base IO virtual class.
+-	@ivar verbose: Is verbose ?
+-	@type verbose: C{bool}
+-	@ivar debug: Display debug messages ?
+-	@type debug: C{bool}
+-	@ivar on_connect: Event called when the IO try to connect.
+-	@type on_connect: C{function()}
+-	@ivar on_disconnect: Event called when the server try to disconnect.
+-	@type on_disconnect: C{function()}
+-	@ivar on_client_connect: Event called when a new client try to connect to the server.
+-	@type on_client_connect: C{function(L{IO_Client})}
+-	@ivar on_client_disconnect: Event called when a client is disconnected.
+-	@type on_client_disconnect: C{function(L{IO_Client})}
+-	@ivar on_new_packet: Event called when a new packet is received.
+-	@type on_new_packet: C{function(L{Packet})}
+-	@ivar __name: The IO name.
+-	@type __name: C{str}
+-	&quot;&quot;&quot;
+-	
+-	def __init__(self, is_server=False):
+-		&quot;&quot;&quot; Constructor.
+-		@type is_server: C{bool}
+-		&quot;&quot;&quot;
+-		self.debug = False
+-		self.verbose = False 
++    &quot;&quot;&quot;
++    Base IO virtual class.
+ 
+-		# Events
+-		self.on_connect = None            # No argument
+-		self.on_lost_connection = None    # No argument
+-		self.on_disconnect = None         # No argument
+-		self.on_client_connect = None     # (client)
+-		self.on_client_disconnect = None  # (client)
+-		self.on_new_packet = None         # (packet) : client address
+-		self.on_send = None               # (data)
+-		self.on_receive = None            # (data)
++    @ivar verbose: Is verbose ?
++    @type verbose: C{bool}
++    @ivar debug: Display debug messages ?
++    @type debug: C{bool}
++    @ivar on_connect: Event called when the IO try to connect.
++    @type on_connect: C{function()}
++    @ivar on_connection_fails: Event called when the IO fails to connect to server.
++    @type on_connection_fails: C{function()}
++    @ivar on_disconnect: Event called when the server try to disconnect.
++    @type on_disconnect: C{function()}
++    @ivar on_client_connect: Event called when a new client try to connect to the server.
++    @type on_client_connect: C{function(L{IO_Client})}
++    @ivar on_client_disconnect: Event called when a client is disconnected.
++    @type on_client_disconnect: C{function(L{IO_Client})}
++    @ivar on_new_packet: Event called when a new packet is received.
++    @type on_new_packet: C{function(L{Packet})}
++    @ivar __name: The IO name.
++    @type __name: C{str}
++    &quot;&quot;&quot;
++    
++    def __init__(self, is_server=False):
++        &quot;&quot;&quot;
++        Constructor.
++        @type is_server: C{bool}
++        &quot;&quot;&quot;
++        self.debug = False
++        self.verbose = False 
++        self._is_ready = False
+ 
+-		self.__name = None
++        # Events
++        self.on_connect = None            # No argument
++        self.on_connection_fails = None   # No argument
++        self.on_lost_connection = None    # No argument
++        self.on_disconnect = None         # No argument
++        self.on_client_connect = None     # (client)
++        self.on_client_disconnect = None  # (client)
++        self.on_new_packet = None         # (packet) : client address
++        self.on_send = None               # (data)
++        self.on_receive = None            # (data)
+ 
+-	def connect(self, host, port):
+-		&quot;&quot;&quot; Connect to host:port.
+-		@parameter host: Network hostname.
+-		@type host: C{str}
+-		@parameter port: Network port number.
+-		@type port: C{int}
+-		&quot;&quot;&quot;
+-		if self.__name==None:
+-			self.__name = &quot;%s:%u&quot; % (host, port)
++        self.__name = None
+ 
+-	def disconnect(self):
+-		&quot;&quot;&quot; Close connection. &quot;&quot;&quot;
+-		pass
++    def connect(self, host, port):
++        &quot;&quot;&quot; Connect to host:port.
++        @parameter host: Network hostname.
++        @type host: C{str}
++        @parameter port: Network port number.
++        @type port: C{int}
++        &quot;&quot;&quot;
++        if self.__name==None:
++            self.__name = &quot;%s:%u&quot; % (host, port)
+ 
+-	def send(self, packet, to=None):
+-		&quot;&quot;&quot; Send a packet to the server or to all clients. &quot;&quot;&quot;
+-		pass
+-	
+-	def receive(self, max_size = 1024):
+-		&quot;&quot;&quot; Read a packet from the socket. Returns None if there is not new data.
+-		@parameter max_size: Maximum packet size (in bytes).
+-		@type max_size: C{int}
+-		@rtype: C{L{Packet}}
+-		&quot;&quot;&quot;
+-		pass
++    def disconnect(self):
++        &quot;&quot;&quot; Close connection. &quot;&quot;&quot;
++        pass
+ 
+-	def live(self):				
+-		&quot;&quot;&quot; Keep the connection alive. &quot;&quot;&quot;
+-		pass
++    def send(self, packet, to=None):
++        &quot;&quot;&quot; Send a packet to the server or to all clients. &quot;&quot;&quot;
++        pass
++    
++    def receive(self, max_size = 1024):
++        &quot;&quot;&quot; Read a packet from the socket. Returns None if there is not new data.
++        @parameter max_size: Maximum packet size (in bytes).
++        @type max_size: C{int}
++        @rtype: C{L{Packet}}
++        &quot;&quot;&quot;
++        pass
+ 
+-	def disconnectClient(self, client):
+-		&quot;&quot;&quot; Disconnect an IO client.
+-		@type client: L{IO_Client}
+-		&quot;&quot;&quot;
+-		pass
+-	
+-	def run_thread(self):
+-		&quot;&quot;&quot; Run the IO thread (will call L{live()} itself). &quot;&quot;&quot;
+-		pass
+-	
+-	def stop(self):
+-		&quot;&quot;&quot; Stop the IO (close connections). &quot;&quot;&quot;
+-		pass
++    def live(self):                
++        &quot;&quot;&quot; Keep the connection alive. &quot;&quot;&quot;
++        pass
+ 
+-	#--- Private functions ------------------------------------------------------
++    def disconnectClient(self, client):
++        &quot;&quot;&quot; Disconnect an IO client.
++        @type client: L{IO_Client}
++        &quot;&quot;&quot;
++        pass
++    
++    def run_thread(self):
++        &quot;&quot;&quot; Run the IO thread (will call L{live()} itself). &quot;&quot;&quot;
++        pass
++    
++    def stop(self):
++        &quot;&quot;&quot; Stop the IO (close connections). &quot;&quot;&quot;
++        pass
+ 
+-	def getName(self):
+-		if self.__name == None: return &quot;no name&quot;
+-		return self.__name
+-	
+-	def setName(self, name):
+-		self.__name = name	
++    #--- Private functions ------------------------------------------------------
+ 
+-	#--- Properties -------------------------------------------------------------
++    def __getName(self):
++        if self.__name == None: return &quot;no name&quot;
++        return self.__name
++    
++    def __setName(self, name):
++        self.__name = name
+ 
+-	name = property(getName, setName, doc=&quot;The IO name&quot;)
++    def __getReady(self):
++        return self._is_ready
++
++    #--- Properties -------------------------------------------------------------
++
++    name = property(__getName, __setName, doc=&quot;The IO name.&quot;)
++    is_ready = property(__getReady, doc=&quot;Tells if the IO is ready to use.&quot;);
+
+Modified: happyboom/trunk/net/io/packet.py
+===================================================================
+--- happyboom/trunk/net/io/packet.py	2005-09-08 01:07:22 UTC (rev 126)
++++ happyboom/trunk/net/io/packet.py	2005-09-08 02:55:34 UTC (rev 127)
+@@ -9,152 +9,161 @@
+ import struct
+ 
+ class Packet(object):
+-	&quot;&quot;&quot; Network packet.
+-	@ivar id: Packet identifier.
+-	@type id: C{int}
+-	@ivar __data: Data string.
+-	@type __data: C{str}
+-	@ivar type: Packet type (see types).
+-	@type type: C{int}
+-	@ivar recv_from: Packet shipper.
+-	@type recv_from: C{L{IO_Client}}
+-	@ivar timeout: Timeout before packet is resend.
+-	@type timeout: C{float}
+-	@ivar total_timeout: Timeout before packet is said to be &quot;lost&quot;.
+-	@type total_timeout: C{float}
+-	@ivar max_resend: Maximum number of packet resend.
+-	@type max_resend: C{int}
+-	@ivar use_tcp : Does IO used TCP connection ?
+-	@type use_tcp: C{bool}
+-	&quot;&quot;&quot;
++    &quot;&quot;&quot; Network packet.
++    @ivar id: Packet identifier.
++    @type id: C{int}
++    @ivar __data: Data string.
++    @type __data: C{str}
++    @ivar type: Packet type (see types).
++    @type type: C{int}
++    @ivar recv_from: Packet shipper.
++    @type recv_from: C{L{IO_Client}}
++    @ivar timeout: Timeout before packet is resend.
++    @type timeout: C{float}
++    @ivar total_timeout: Timeout before packet is said to be &quot;lost&quot;.
++    @type total_timeout: C{float}
++    @ivar max_resend: Maximum number of packet resend.
++    @type max_resend: C{int}
++    @ivar use_tcp : Does IO used TCP connection ?
++    @type use_tcp: C{bool}
++    &quot;&quot;&quot;
+ 
+-	timeout = 0.250
+-	total_timeout = 5.000 
+-	max_resend = int(total_timeout / timeout)
+-	use_tcp = False
++    timeout = 0.250
++    total_timeout = 5.000 
++    max_resend = int(total_timeout / timeout)
++    use_tcp = False
+ 
+-	# Packet types
+-	PACKET_DATA = 1
+-	PACKET_PING = 2
+-	PACKET_PONG = 3
+-	PACKET_ACK = 4
++    # Packet types
++    PACKET_DATA = 1
++    PACKET_PING = 2
++    PACKET_PONG = 3
++    PACKET_ACK = 4
+ 
+-	def __init__(self, str=None, skippable=False):
+-		&quot;&quot;&quot; Constructor.
+-		@parameter str: String data.
+-		@type str: C{str}
+-		@parameter skippable: Is the packet skippable if link quality is bad ? See skippable attribute.
+-		@type skippable: C{bool}
+-		&quot;&quot;&quot;
+-		self.sent = 0
+-		self.__data = None
+-		self.timeout = None
+-		self.skippable = skippable
+-		self.id = None
+-		self.type = Packet.PACKET_DATA
+-		self.recv_from = None
+-		self.__valid = True
+-		if str != None: self.writeStr(str)
++    def __str__(self):
++        txt = &quot;Packet &lt;type=%u, &quot; % (self.type)
++        if self.__data:
++            txt = txt+&quot;data=\&quot;%s\&quot;&quot; % (self.__data)
++        else:
++            txt = txt+&quot;no data&quot;            
++        if self.skippable: txt = txt+&quot;, skippable&quot;
++        return txt+&quot;&gt;&quot;
+ 
+-	def isValid(self):
+-		&quot;&quot;&quot; After unpack, say if the packet is valid or not.
+-		@rtype: C{bool}
+-		&quot;&quot;&quot;
+-		if not Packet.use_tcp and self.id==None: return False
+-		return self.__valid 
+-		
+-	def toStr(self):
+-		&quot;&quot;&quot; For debug only, convert to string &quot;&quot;&quot;
+-		if self.type == Packet.PACKET_ACK:
+-			return &quot;ACK %u [id=%u, skippable=%u]&quot; % (self.id, self.id, self.skippable)
+-		if self.type == Packet.PACKET_PING:
+-			ping = struct.unpack(&quot;!I&quot;, self.__data)
+-			return &quot;PING %u [id=%u, skippable=%u]&quot; % (ping[0], self.id, self.skippable)
+-		if self.type == Packet.PACKET_PONG:
+-			ping = struct.unpack(&quot;!I&quot;, self.__data)
+-			return &quot;PONG %u [id=%u, skippable=%u]&quot; % (ping[0], self.id, self.skippable)
+-		else:
+-			return &quot;\&quot;%s\&quot; [id=%u, skippable=%u]&quot; \
+-				% (self.__data, self.id, self.skippable)
++    def __init__(self, str=None, skippable=False):
++        &quot;&quot;&quot; Constructor.
++        @parameter str: String data.
++        @type str: C{str}
++        @parameter skippable: Is the packet skippable if link quality is bad ? See skippable attribute.
++        @type skippable: C{bool}
++        &quot;&quot;&quot;
++        self.sent = 0
++        self.__data = None
++        self.timeout = None
++        self.skippable = skippable
++        self.id = None
++        self.type = Packet.PACKET_DATA
++        self.recv_from = None
++        self.__valid = True
++        if str != None: self.writeStr(str)
+ 
+-	def unpack(self, binary_data):
+-		&quot;&quot;&quot; Fill attributes from a binary data packet
+-		@parameter binary_data: Binary datas which comes from network.
+-		@type C{binary}
+-		&quot;&quot;&quot;
+-		if binary_data==None: return
+-		self.__valid = False
++    def isValid(self):
++        &quot;&quot;&quot; After unpack, say if the packet is valid or not.
++        @rtype: C{bool}
++        &quot;&quot;&quot;
++        if not Packet.use_tcp and self.id==None: return False
++        return self.__valid 
++        
++    def toStr(self):
++        &quot;&quot;&quot; For debug only, convert to string &quot;&quot;&quot;
++        if self.type == Packet.PACKET_ACK:
++            return &quot;ACK %u [id=%u, skippable=%u]&quot; % (self.id, self.id, self.skippable)
++        if self.type == Packet.PACKET_PING:
++            ping = struct.unpack(&quot;!I&quot;, self.__data)
++            return &quot;PING %u [id=%u, skippable=%u]&quot; % (ping[0], self.id, self.skippable)
++        if self.type == Packet.PACKET_PONG:
++            ping = struct.unpack(&quot;!I&quot;, self.__data)
++            return &quot;PONG %u [id=%u, skippable=%u]&quot; % (ping[0], self.id, self.skippable)
++        else:
++            return &quot;\&quot;%s\&quot; [id=%u, skippable=%u]&quot; \
++                % (self.__data, self.id, self.skippable)
+ 
+-		if Packet.use_tcp:
+-			# Read data len
+-			format = &quot;!I&quot;
+-			size = struct.calcsize(format)
+-			if len(binary_data) &lt;  size:
+-				print &quot;Taille du paquet (%s) incorrect !&quot; % (binary_data)
+-				return None
+-			data = struct.unpack(format, binary_data[:size])
+-			data_len = data[0]
+-			binary_data = binary_data[size:]
+-		else:
+-			# Read skippable, id, data len
+-			format = &quot;!BBII&quot;
+-			size = struct.calcsize(format)
+-			if len(binary_data) &lt;  size:
+-				print &quot;Taille du paquet (%s) incorrect !&quot; % (binary_data)
+-				return None
+-			data = struct.unpack(format, binary_data[:size])
+-			self.type = data[0]
+-			self.skippable = (data[1]==1)
+-			self.id = data[2]
+-			data_len = data[3]
+-			binary_data = binary_data[size:]
++    def unpack(self, binary_data):
++        &quot;&quot;&quot; Fill attributes from a binary data packet
++        @parameter binary_data: Binary datas which comes from network.
++        @type C{binary}
++        &quot;&quot;&quot;
++        if binary_data==None: return
++        self.__valid = False
+ 
+-		# Read data
+-		if 0 &lt; data_len:
+-			format = &quot;!%us&quot; % (data_len)
+-			size = struct.calcsize(format)
+-			if len(binary_data) &lt; size:
+-				print &quot;Taille du paquet (%s) incorrect !&quot; % (binary_data)
+-				return None
+-			data = struct.unpack(format, binary_data[:size]) 
+-			self.__data = data[0] 
+-		else:
+-			self.__data = None
+-		self.__valid = True
+-		return binary_data[size:]
++        if Packet.use_tcp:
++            # Read data len
++            format = &quot;!I&quot;
++            size = struct.calcsize(format)
++            if len(binary_data) &lt;  size:
++                print &quot;Taille du paquet (%s) incorrect !&quot; % (binary_data)
++                return None
++            data = struct.unpack(format, binary_data[:size])
++            data_len = data[0]
++            binary_data = binary_data[size:]
++        else:
++            # Read skippable, id, data len
++            format = &quot;!BBII&quot;
++            size = struct.calcsize(format)
++            if len(binary_data) &lt;  size:
++                print &quot;Taille du paquet (%s) incorrect !&quot; % (binary_data)
++                return None
++            data = struct.unpack(format, binary_data[:size])
++            self.type = data[0]
++            self.skippable = (data[1]==1)
++            self.id = data[2]
++            data_len = data[3]
++            binary_data = binary_data[size:]
+ 
+-	def pack(self):
+-		&quot;&quot;&quot; Pack datas to a binary string (using struct module)
+-		@rtype: C{str}
+-		&quot;&quot;&quot;
+-		if self.__data != None:
+-			data_len = len(self.__data)
+-		else:
+-			data_len = 0
+-		if Packet.use_tcp:
+-			data = struct.pack(&quot;!I&quot;, data_len)
+-		else:
+-			data = struct.pack(&quot;!BBII&quot;, 
+-				self.type, self.skippable+0, self.id, data_len)
+-		if data_len != 0:
+-			data = data + struct.pack(&quot;!%us&quot; % data_len, self.__data)
+-		return data
+-		
+-	def writeStr(self, str):
+-		&quot;&quot;&quot; Write a sting into packet (still used ???) &quot;&quot;&quot;
+-		if self.__data == None:
+-			self.__data = str
+-		else:
+-			self.__data = self.__data + str
+-		
+-	def prepareSend(self):
+-		&quot;&quot;&quot; Prepare the packet before it will be send : set timeout and send counter. &quot;&quot;&quot;
+-		self.timeout = time.time()+Packet.timeout
+-		self.sent = self.sent + 1
++        # Read data
++        if 0 &lt; data_len:
++            format = &quot;!%us&quot; % (data_len)
++            size = struct.calcsize(format)
++            if len(binary_data) &lt; size:
++                print &quot;Taille du paquet (%s) incorrect !&quot; % (binary_data)
++                return None
++            data = struct.unpack(format, binary_data[:size]) 
++            self.__data = data[0] 
++        else:
++            self.__data = None
++        self.__valid = True
++        return binary_data[size:]
+ 
+-	#-- Properties --------------------------------------------------------------
++    def pack(self):
++        &quot;&quot;&quot; Pack datas to a binary string (using struct module)
++        @rtype: C{str}
++        &quot;&quot;&quot;
++        if self.__data != None:
++            data_len = len(self.__data)
++        else:
++            data_len = 0
++        if Packet.use_tcp:
++            data = struct.pack(&quot;!I&quot;, data_len)
++        else:
++            data = struct.pack(&quot;!BBII&quot;, 
++                self.type, self.skippable+0, self.id, data_len)
++        if data_len != 0:
++            data = data + struct.pack(&quot;!%us&quot; % data_len, self.__data)
++        return data
++        
++    def writeStr(self, str):
++        &quot;&quot;&quot; Write a sting into packet (still used ???) &quot;&quot;&quot;
++        if self.__data == None:
++            self.__data = str
++        else:
++            self.__data = self.__data + str
++        
++    def prepareSend(self):
++        &quot;&quot;&quot; Prepare the packet before it will be send : set timeout and send counter. &quot;&quot;&quot;
++        self.timeout = time.time()+Packet.timeout
++        self.sent = self.sent + 1
+ 
+-	def getData(self): return self.__data
+-	data = property(getData, doc=&quot;Packet data.&quot;)	
++    #-- Properties --------------------------------------------------------------
+ 
++    def getData(self): return self.__data
++    data = property(getData, doc=&quot;Packet data.&quot;)    
+ 
++
+
+Modified: happyboom/trunk/net/io_tcp/tcp.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/tcp.py	2005-09-08 01:07:22 UTC (rev 126)
++++ happyboom/trunk/net/io_tcp/tcp.py	2005-09-08 02:55:34 UTC (rev 127)
+@@ -12,196 +12,208 @@
+ from server_waiter import NetworkServerWaiter
+ 
+ class IO_TCP(io.BaseIO):
+-	&quot;&quot;&quot; IO for TCP transport
+-	@ivar packet_timeout: Timeout of packets (in seconds)
+-	@type packet_timeout: C{float}
+-	@ivar thread_sleep: Sleep time used in the thread (in seconds).
+-	@type thread_sleep: C{float}
+-	@ivar __is_server: ??? 
+-	@type __is_server: C{bool}
+-	@ivar __waiter: Class which wait for clients.
+-	@type __waiter: NetworkServerWaiter
+-	@ivar __addr: The IO network address (host, port).
+-	@type __addr: C{(string, string,)}
+-	@ivar __clients: List of clients connected to this IO.
+-	@type __clients: C{list&lt;L{IO_client&lt;io.IO_Client&gt;}&gt;?}
+-	@ivar __clients_sema: Semaphore used to access L{__clients}.
+-	@type __clients_sema: C{threading.Semaphore}
+-	@ivar __running: Is the thread running ?
+-	@type __running: C{bool}
+-	&quot;&quot;&quot;
+-	
+-	def __init__(self, is_server=False):
+-		io.BaseIO.__init__(self)
+-		self.packet_timeout = 1.000
+-		self.thread_sleep = 0.010
++    &quot;&quot;&quot;
++    IO for TCP transport.
++    @ivar packet_timeout: Timeout of packets (in seconds)
++    @type packet_timeout: C{float}
++    @ivar thread_sleep: Sleep time used in the thread (in seconds).
++    @type thread_sleep: C{float}
++    @ivar __is_server: ??? 
++    @type __is_server: C{bool}
++    @ivar __waiter: Class which wait for clients.
++    @type __waiter: NetworkServerWaiter
++    @ivar __addr: The IO network address (host, port).
++    @type __addr: C{(string, string,)}
++    @ivar __clients: List of clients connected to this IO.
++    @type __clients: C{list&lt;L{IO_client&lt;io.IO_Client&gt;}&gt;?}
++    @ivar __clients_sema: Semaphore used to access L{__clients}.
++    @type __clients_sema: C{threading.Semaphore}
++    @ivar __running: Is the thread running ?
++    @type __running: C{bool}
++    &quot;&quot;&quot;
++    
++    def __init__(self, is_server=False):
++        io.BaseIO.__init__(self)
++        self.packet_timeout = 1.000
++        self.thread_sleep = 0.010
+ 
+-		self.__is_server = is_server
++        self.__is_server = is_server
+ 
+-		self.__waiter = NetworkServerWaiter(self)
+-		self.__addr = None
+-		self.__clients = {}
+-		self.__server = None
+-		self.__clients_sema = threading.Semaphore()
+-		self.__running = True
+-		io.Packet.use_tcp = True
++        self.__waiter = NetworkServerWaiter(self)
++        self.__addr = None
++        self.__clients = {}
++        self.__server = None
++        self.__clients_sema = threading.Semaphore()
++        self.__running = False 
++        io.Packet.use_tcp = True
+ 
+-	def connect(self, host, port):
+-		&quot;&quot;&quot; Connect to host:port &quot;&quot;&quot;
+-		max_connection = 50
+-	
+-		self.__addr = (host, port,)
+-		if self.__is_server:
+-			if self.verbose:
+-				print &quot;Run server at %s:%u (tcp)&quot; % (self.host, self.port)
+-			thread.start_new_thread( self.__waiter.run_thread, (port,max_connection,))
+-		else:
+-			if self.verbose:
+-				print &quot;Connect to server %s:%u&quot; % (self.host, self.port)			
+-			s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+-			s.connect(self.__addr)
++    def connect(self, host, port):
++        &quot;&quot;&quot; Connect to host:port &quot;&quot;&quot;
++        max_connection = 50
++    
++        self.__addr = (host, port,)
++        if self.__is_server:
++            if self.verbose:
++                print &quot;Run server at %s:%u (tcp)&quot; % (self.host, self.port)
++            thread.start_new_thread( self.__waiter.run_thread, (port,max_connection,))
++        else:
++            if self.verbose:
++                print &quot;Connect to server %s:%u&quot; % (self.host, self.port)            
++            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
++            try:
++                s.connect(self.__addr)
++            except socket.error, err:
++                if err[0]==111:
++                    if self.verbose:
++                        print &quot;Fail to connect to server %s:%u&quot; % (self.host, self.port)            
++                    if self.on_connection_fails:
++                        self.on_connection_fails()
++                    return
++                raise
+ 
+-			client = TCP_Client(self, self.__addr, socket=s)
+-			self.__server = client
+-			self.__clients_sema.acquire()
+-			self.__clients[client.addr] = client
+-			self.__clients_sema.release()
++            client = TCP_Client(self, self.__addr, socket=s)
++            self.__server = client
++            self.__clients_sema.acquire()
++            self.__clients[client.addr] = client
++            self.__clients_sema.release()
+ 
+-		if self.on_connect != None: self.on_connect()
+-		io.BaseIO.connect(self, host, port)
++        if self.on_connect != None: self.on_connect()
++        io.BaseIO.connect(self, host, port)
++        self._is_ready = True
++        self.__running = True
+ 
+-	def disconnect(self):
+-		&quot;&quot;&quot; Close connection &quot;&quot;&quot;
+-		self.__clients_sema.acquire()
+-		clients = self.__clients.copy()
+-		self.__clients_sema.release()
+-		for client_addr, client in clients.items():
+-			client.disconnect()
+-		if self.on_disconnect != None: self.on_disconnect()
+-		self.stop()
++    def disconnect(self):
++        &quot;&quot;&quot; Close connection &quot;&quot;&quot;
++        self.__clients_sema.acquire()
++        clients = self.__clients.copy()
++        self.__clients_sema.release()
++        for client_addr, client in clients.items():
++            client.disconnect()
++        if self.on_disconnect != None: self.on_disconnect()
++        self.stop()
+ 
+-	def disconnectClient(self, client):
+-		&quot;&quot;&quot; Disconnect a client. &quot;&quot;&quot;
+-		self.__clients_sema.acquire()
+-		if  self.__clients.has_key(client.addr): del self.__clients[client.addr]
+-		self.__clients_sema.release()
+-		if self.verbose:
+-			print &quot;Disconnect client %s:%u&quot; % (client.host, client.port)
+-		if self.on_client_disconnect != None: self.on_client_disconnect (client)
+-		if self.__server == client: self.disconnect()
+-	
+-	def send(self, packet, to=None):
+-		&quot;&quot;&quot; Send a packet to the server or to all clients
+-		@type packet: Packet
+-		&quot;&quot;&quot;
+-		if not self.__running: return
+-		
+-		# Read binary version of the packet
+-		data = packet.pack()
++    def disconnectClient(self, client):
++        &quot;&quot;&quot; Disconnect a client. &quot;&quot;&quot;
++        self.__clients_sema.acquire()
++        if  self.__clients.has_key(client.addr): del self.__clients[client.addr]
++        self.__clients_sema.release()
++        if self.verbose:
++            print &quot;Disconnect client %s:%u&quot; % (client.host, client.port)
++        if self.on_client_disconnect != None: self.on_client_disconnect (client)
++        if self.__server == client: self.disconnect()
++    
++    def send(self, packet, to=None):
++        &quot;&quot;&quot; Send a packet to the server or to all clients
++        @type packet: Packet
++        &quot;&quot;&quot;
++        if not self.__running: return
++        
++        # Read binary version of the packet
++        data = packet.pack()
+ 
+-		if self.__is_server:
+-			if to==None:
+-				self.__clients_sema.acquire()
+-				clients = self.__clients.copy()
+-				self.__clients_sema.release()	
+-				for client in clients:
+-					client.sendBinary(data)
+-			else:
+-				to.sendBinary(data)
+-		else:
+-			self.__server.sendBinary(data)
++        if self.__is_server:
++            if to==None:
++                self.__clients_sema.acquire()
++                clients = self.__clients.copy()
++                self.__clients_sema.release()    
++                for client in clients:
++                    client.sendBinary(data)
++            else:
++                to.sendBinary(data)
++        else:
++            self.__server.sendBinary(data)
+ 
+-	def live(self):				
+-		&quot;&quot;&quot; Keep the connection alive :
+-		- Get clients new packets
+-		- Process packets (eg. ping/pong)
+-		&quot;&quot;&quot;
+-		clients = self.clients
+-		for client_addr, client in clients.items():
+-			data = client.receiveNonBlocking()
+-			if data != None:
+-				self.__processData(client, data)
++    def live(self):                
++        &quot;&quot;&quot; Keep the connection alive :
++        - Get clients new packets
++        - Process packets (eg. ping/pong)
++        &quot;&quot;&quot;
++        clients = self.clients
++        for client_addr, client in clients.items():
++            data = client.receiveNonBlocking()
++            if data != None:
++                self.__processData(client, data)
+ 
+-	def __processData(self, client, data):
+-		while data != &quot;&quot;:
+-			packet = io.Packet()
+-			packet.recv_from = client
+-			data = packet.unpack(data)
+-			if not packet.isValid():
+-				print &quot;Bad data packet (%s) from %s !&quot; % (data, client.name)
+-				return
+-			if self.debug: print &quot;Received %s:%u =&gt; \&quot;%s\&quot;&quot; % (client.host, client.port, packet.data)
+-			if self.on_new_packet: self.on_new_packet(packet)
+-	
+-	def run_thread(self):
+-		&quot;&quot;&quot; Function which should be called in a thread. &quot;&quot;&quot;
+-		try:
+-			while self.__running:
+-				self.live()				
+-				time.sleep(self.thread_sleep)
+-		except Exception, msg:
+-			print &quot;EXCEPTION DANS LE THREAD IO :&quot;
+-			print msg
+-			traceback.print_exc()
+-			self.stop()
++    def __processData(self, client, data):
++        while data != &quot;&quot;:
++            packet = io.Packet()
++            packet.recv_from = client
++            data = packet.unpack(data)
++            if not packet.isValid():
++                print &quot;Bad data packet (%s) from %s !&quot; % (data, client.name)
++                return
++            if self.debug: print &quot;Received %s:%u =&gt; \&quot;%s\&quot;&quot; % (client.host, client.port, packet.data)
++            if self.on_new_packet: self.on_new_packet(packet)
++    
++    def run_thread(self):
++        &quot;&quot;&quot; Function which should be called in a thread. &quot;&quot;&quot;
++        try:
++            while self.__running:
++                self.live()                
++                time.sleep(self.thread_sleep)
++        except Exception, msg:
++            print &quot;EXCEPTION DANS LE THREAD IO :&quot;
++            print msg
++            traceback.print_exc()
++        self.stop()
+ 
+-	def stop(self):
+-		if not self.__running: return
+-		self.__running = False
+-		self.disconnect()
++    def stop(self):
++        if not self.__running: return
++        self.__running = False
++        self.disconnect()
+ 
+-	def isRunning(self): return self.__running
++    def isRunning(self): return self.__running
+ 
+-	#--- Private functions ------------------------------------------------------
++    #--- Private functions ------------------------------------------------------
+ 
+-	def __getPort(self):
+-		return self.__addr[1]
++    def __getPort(self):
++        return self.__addr[1]
+ 
+-	def __getHost(self):
+-		if self.__addr[0]=='': return &quot;localhost&quot;
+-		return self.__addr[0]
++    def __getHost(self):
++        if self.__addr[0]=='': return &quot;localhost&quot;
++        return self.__addr[0]
+ 
+-	def __getAddr(self): return self.__addr
++    def __getAddr(self): return self.__addr
+ 
+-	def __getName(self):
+-		if self.__name != None: return self.__name
+-		return self.host
+-		
+-	def __setName(self, name):
+-		self.__name = name	
++    def __getName(self):
++        if self.__name != None: return self.__name
++        return self.host
++        
++    def __setName(self, name):
++        self.__name = name    
+ 
+-	def __getClients(self):
+-		self.__clients_sema.acquire()
+-		clients = self.__clients.copy()
+-		self.__clients_sema.release()
+-		return clients
++    def __getClients(self):
++        self.__clients_sema.acquire()
++        clients = self.__clients.copy()
++        self.__clients_sema.release()
++        return clients
+ 
+-	def __getMaxClients(self):
+-		return 0
+-	
+-	def clientConnect(self, client):
+-		client.on_receive = self.on_receive
+-		client.on_send = self.on_send
+-		self.__clients_sema.acquire()
+-		self.__clients[client.addr] = client
+-		self.__clients_sema.release()
+-		if self.on_client_connect != None: self.on_client_connect (client)
+-		
+-	def clientDisconnect(self, client):
+-		if self.debug:
+-			print &quot;Client %s leave server %s.&quot; \
+-				% (client.name, self.name)
+-		self.__clients_sema.acquire()
+-		self.__clients.remove(client)
+-		self.__clients_sema.release()
+-		self.__waiter.client_disconnect(client)
+-		if self.on_client_disconnect != None: self.on_client_disconnect (client)
+-		
+-	#--- Properties -------------------------------------------------------------
++    def __getMaxClients(self):
++        return 0
++    
++    def clientConnect(self, client):
++        client.on_receive = self.on_receive
++        client.on_send = self.on_send
++        self.__clients_sema.acquire()
++        self.__clients[client.addr] = client
++        self.__clients_sema.release()
++        if self.on_client_connect != None: self.on_client_connect (client)
++        
++    def clientDisconnect(self, client):
++        if self.debug:
++            print &quot;Client %s leave server %s.&quot; \
++                % (client.name, self.name)
++        self.__clients_sema.acquire()
++        self.__clients.remove(client)
++        self.__clients_sema.release()
++        self.__waiter.client_disconnect(client)
++        if self.on_client_disconnect != None: self.on_client_disconnect (client)
++        
++    #--- Properties -------------------------------------------------------------
+ 
+-	name = property(__getName, __setName)
+-	addr = property(__getAddr)
+-	port = property(__getPort)
+-	host = property(__getHost)
+-	clients = property(__getClients)
+-	max_clients = property(__getMaxClients)
++    name = property(__getName, __setName)
++    addr = property(__getAddr)
++    port = property(__getPort)
++    host = property(__getHost)
++    clients = property(__getClients)
++    max_clients = property(__getMaxClients)
+
+Modified: happyboom/trunk/server/base_server.py
+===================================================================
+--- happyboom/trunk/server/base_server.py	2005-09-08 01:07:22 UTC (rev 126)
++++ happyboom/trunk/server/base_server.py	2005-09-08 02:55:34 UTC (rev 127)
+@@ -1,121 +1,121 @@
+-from server_agent import *
+-from stat import *
+-from common import mailing_list
+-import string
+-import time
+-import thread
+-import threading
+-import random
+-from net import net_buffer
+-from net import io
+-#from net import io_udp
+-from net import io_tcp
+-import traceback
++from bb_agent import BoomBoomAgent, BoomBoomMessage
++from agents import Character, Projectile, Weapon, World, Game
++from net import io, io_udp, io_tcp, net_buffer
++from pysma import Kernel, DummyScheduler
++import re, random, thread, traceback, time
+ 
+-class BaseServer(object):
+-	instance = None
+-	
+-	def __init__(self):
+-		BaseServer.instance = self
+-		self.agents = []
+-#		self.__view_io = io_udp.IO_UDP(is_server=True)
+-#		self.__input_io = io_udp.IO_UDP(is_server=True)
+-		self.__view_io = io_tcp.IO_TCP(is_server=True)
+-		self.__input_io = io_tcp.IO_TCP(is_server=True)
++class Gateway(BoomBoomAgent):
++    def __init__(self):
++		BoomBoomAgent.__init__(self, &quot;gateway&quot;)
++		self.nextChar = None
++
++class BaseServer:
++	def __init__(self, maxDisplay=2, displayPort=12430, maxInput=2, inputPort=12431, verbose=False, debug=False):
++		self.__protocol_version = &quot;0.1.4&quot;
++		self.__debug = debug
++		self.__verbose = verbose
+ 		self.__inputs = []
+-		self.mailing_list = mailing_list.MailingList()
+-		self.net_mailing_list = {}
+-		self.cmd_handler = {}
+-		self.quit = False
+-		self.stat = None
+-		self.debug = False
+-		self.verbose = False
++		self.__items = []
++		self.__stopped = False
++		self.__stoplock = thread.allocate_lock()
++		self.__supportedFeatures = {}
++
++        # Create IO
++		self.__io = io_tcp.IO_TCP(is_server=True)
++		self.__io.debug = debug
++		self.__io.verbose = verbose
++		self.__io_buffer = net_buffer.NetBuffer()
++
++		self.maxDisplay = maxDisplay
++		self.displayPort = displayPort
++		self.maxInput = maxInput
++		self.inputPort = inputPort
+ 		self.started = False
+-		self.__input_protocol_version = &quot;0.1.4&quot;
+-		self.__view_protocol_version = &quot;0.1.4&quot;
+-		self.__input_buffer = net_buffer.NetBuffer()
+-		self.__view_buffer = net_buffer.NetBuffer()
+ 		random.seed()
++		Kernel().addAgent(DummyScheduler(sleep=0.01))
++		
++	def born(self):
++		BoomBoomAgent.born(self)
++		self.requestActions(&quot;game&quot;)
++		self.requestActions(&quot;weapon&quot;)
++		self.requestActions(&quot;character&quot;)
++		self.requestActions(&quot;world&quot;)
++		self.requestActions(&quot;projectile&quot;)
++		
++	def start(self):
++		if self.__verbose: print &quot;[*] Starting server...&quot;
++		self.initIO()
++		self.createAgents()
++		print &quot;[*] Server started&quot;
++		
++		self.__stoplock.acquire()
++		running = not self.__stopped
++		self.__stoplock.release()
++		while running:
++			self.processInputs()
++			time.sleep(0.01)
++			self.__stoplock.acquire()
++			running = not self.__stopped
++			self.__stoplock.release()
+ 
+-	# Convert a (role,type,arg) to string (to be sent throw network)
+-	def createMsg(self, role, type, arg=None):
+-		if arg != None:
+-			return &quot;%s:%s:%s&quot; % (role, type, arg)
+-		else:
+-			return &quot;%s:%s&quot; % (role, type)
++	def stop(self):
++		self.__stoplock.acquire()
++		if self.__stopped:
++			self.__stoplock.release()
++			return
++		self.__stopped = True
++		self.__stoplock.release()
++		print &quot;[*] Stopping server...&quot;
++		Kernel.instance.stopKernel()
++		self.sendNetworkMessage(&quot;game&quot;, &quot;Stop&quot;, skippable=True)
++		self.__display_io.stop()
++		self.__input_io.stop()
++		if self.__verbose: print &quot;[*] Server stopped&quot;
+ 
+-	# A newtork client would like to receive all messages of given role
+-	def registerNetMessage(self, client, role):
+-		self.mailing_list.registerNet(role, client)
+-
+-	# A local client would like to receive all messages of given role
+-	def registerMessage(self, agent, role):
+-		self.mailing_list.register(role, agent)
+-
+-	# Create all agents
+-	def createAgents(self):
+-		pass
+-	
+-	def initIO(self, max_view, view_port, max_input, input_port):
+-		self.__view_io.name = &quot;view server&quot;
+-		self.__view_io.on_client_connect = self.openView
+-		self.__view_io.on_client_disconnect = self.closeView
+-#		self.__view_io.on_binding_error = self.bindingError
+-		self.__view_io.on_new_packet = self.recvViewPacket
+-		self.__view_io.connect('', view_port) #, max_view)
+-
++	def initIO(self):
++		if self.__verbose: print &quot;[*] Starting display server&quot;
++		self.__display_io.name = &quot;display server&quot;
++		self.__display_io.on_client_connect = self.openDisplay
++		self.__display_io.on_client_disconnect = self.closeDisplay
++		self.__display_io.on_new_packet = self.recvDisplayPacket
++		self.__display_io.connect('', self.displayPort)
++		if self.__verbose: print &quot;[*] Starting input server&quot;
+ 		self.__input_io.name = &quot;input server&quot;
+ 		self.__input_io.on_client_connect = self.openInput
+ 		self.__input_io.on_client_disconnect = self.closeInput
+-#		self.__input_io.on_binding_error = self.bindingError
+ 		self.__input_io.on_new_packet = self.recvInputPacket
+-		self.__input_io.connect('', input_port) #, max_input)
+-	
+-		thread.start_new_thread( self.run_io_thread, ())
++		self.__input_io.connect('', self.inputPort)
++		thread.start_new_thread(self.run_io_thread, ())
+ 		
+-	def recvInputPacket(self, packet):
+-		self.__input_buffer.append(packet.recv_from.addr, packet)
++	def createAgents(self):
++		if self.__verbose: print &quot;[*] Creating agents&quot;
++		Kernel.instance.addAgent(self)
++		self.addAgent(Game(debug=self.__debug))
++		self.addAgent(World(debug=self.__debug))
++		self.addAgent(Character(100, 1, debug=self.__debug))
++		self.addAgent(Character(-150, 2, debug=self.__debug))
++		self.addAgent(Weapon(debug=self.__debug))
++		self.addAgent(Projectile(debug=self.__debug))
++		self.sendBroadcastMessage(BoomBoomMessage(&quot;start&quot;, ()), &quot;game&quot;)
+ 		
+-	def recvViewPacket(self, packet):
+-		msg = packet.data
+-		self.__view_buffer.append(packet.recv_from.addr, packet)
+-	
+-	# Function which should be called in a thread
+-	def run_io_thread(self):
+-		try:
+-			while self.__input_io.isRunning() and self.__view_io.isRunning():
+-				self.__input_io.live()				
+-				self.__view_io.live()				
+-				time.sleep(0.001)
+-		except Exception, msg:
+-			print &quot;EXCEPTION IN IO THREAD :&quot;
+-			print msg
+-			print &quot;--&quot;			
+-			traceback.print_exc()
+-			self.stop()
+-			
+-	def bindingError(self, server):
+-		print &quot;Binding error for %s (port %u) !&quot; % (server.name, server.port)
+-		self.quit = True
++	def openDisplay(self, client):
++		thread.start_new_thread( self.__clientChallenge, (client,self.__do_openDisplay,&quot;DISPLAY&quot;,))
+ 
+-	def readViewAnswer(self, client):
+-		return self.__readClientAnswer(self.__view_buffer, client)
+-		
+-	def readInputAnswer(self, client):
+-		return self.__readClientAnswer(self.__input_buffer, client)
+-		
+-	def __readClientAnswer(self, buffer, client, timeout=3.000):
+-		answer = buffer.readBlocking(client.addr, timeout)
+-		if answer==None: return None
+-		answer = answer.data
+-		return answer
+-		
+-	def openView(self, client):
+-		thread.start_new_thread( self.__clientChallenge, (client,self.__do_openView,&quot;VIEW&quot;,))
+-
+ 	def openInput(self, client):
+ 		thread.start_new_thread( self.__clientChallenge, (client,self.__do_openInput,&quot;INPUT&quot;,))
++		
++	def closeInput(self, client):
++		if self.__verbose: print &quot;[*] Input %s disconnected.&quot; % (client.name)
++		if not (client in self.__inputs): return
++		self.__inputs.remove (client)
++		txt = &quot;Client %s (input) leave us.&quot; % (client.name)
++		self.sendText(txt)
+ 
++	def closeDisplay(self, client):
++		if self.__verbose: print &quot;[*] Display %s disconnected.&quot; % (client.name)
++		txt = &quot;Client %s (display) leave us.&quot; % (client.name)
++		self.sendText(txt)
++		
+ 	def __clientChallenge(self, client, func, client_type):
+ 		try:
+ 			func(client)
+@@ -125,164 +125,140 @@
+ 			print &quot;--&quot;
+ 			traceback.print_exc()
+ 			self.stop()
+-	
+-	def __do_openView(self, client):
+-		print &quot;View %s try to connect ...&quot; % (client.name)
++
++	# Function which should be called in a thread
++	def run_io_thread(self):
++		try:
++			while self.__input_io.isRunning() and self.__display_io.isRunning():
++				self.__input_io.live()				
++				self.__display_io.live()				
++				time.sleep(0.001)
++		except Exception, msg:
++			print &quot;EXCEPTION IN IO THREAD :&quot;
++			print msg
++			print &quot;--&quot;			
++			traceback.print_exc()
++			self.stop()
++
++	def __do_openDisplay(self, client):
++		if self.__verbose: print &quot;[*] Display %s try to connect ...&quot; % (client.name)
+ 		
+-		self.__view_buffer.clear(client.addr)
++		self.__display_buffer.clear(client.addr)
+ 		
+ 		# Ask protocol version
+ 		msg = self.createMsg(&quot;agent_manager&quot;, &quot;AskVersion&quot;)
+-		client.send ( io.Packet(msg) )
+-		answer = self.readViewAnswer(client)
+-		if answer != self.__view_protocol_version:
++		client.send(io.Packet(msg))
++		answer = self.readDisplayAnswer(client)
++		if answer != self.__display_protocol_version:
+ 			txt = &quot;Sorry, you don't have same protocol version (%s VS %s)&quot; \
+-				% (answer, self.__view_protocol_version)
++				% (answer, self.__display_protocol_version)
+ 			self.sendText(txt)
+ 			client.disconnect()
+ 			return
+ 		
+ 		# ask client name
+ 		msg = self.createMsg(&quot;agent_manager&quot;, &quot;AskName&quot;)
+-		client.send ( io.Packet(msg) )
+-		name = self.readViewAnswer(client)
++		client.send(io.Packet(msg))
++		name = self.readDisplayAnswer(client)
+ 		if name not in (&quot;-&quot;, &quot;&quot;): client.name = name
+ 
+-		self.registerNetMessage (client, &quot;agent_manager&quot;)
+-		self.registerNetMessage (client, &quot;game&quot;)
+-		for agent in self.agents:
+-			msg = self.createMsg(&quot;agent_manager&quot;, &quot;Create&quot;, &quot;%s:%u&quot; % (agent.type, agent.id))
+-			client.send ( io.Packet(msg) )
+-			answer = self.readViewAnswer(client)
++		self.registerFeature(client, &quot;agent_manager&quot;)
++		self.registerFeature(client, &quot;game&quot;)
++		for type, id in self.__items:
++			msg = self.createMsg(&quot;agent_manager&quot;, &quot;Create&quot;, &quot;%s:%u&quot; % (type, id))
++			client.send (io.Packet(msg))
++			answer = self.readDisplayAnswer(client)
+ 			if answer == &quot;yes&quot;: 
+-				role = self.readViewAnswer(client)
++				role = self.readDisplayAnswer(client)
+ 				while role != &quot;.&quot;:
+-					self.registerNetMessage(client, role)
+-					role = self.readViewAnswer(client)
+-				agent.sync(client)
++					self.registerFeature(client, role)
++					role = self.readDisplayAnswer(client)
+ 
+ 		msg = self.createMsg(&quot;game&quot;, &quot;Start&quot;)
+-		client.send ( io.Packet(msg) )
++		client.send(io.Packet(msg))
+ 			
+-		txt = &quot;Welcome to new (view) client : %s&quot; % (client.name)
++		txt = &quot;Welcome to new (display) client : %s&quot; % (client.name)
+ 		self.sendText(txt)
+-		print &quot;View %s connected.&quot; % (client.name)
++		if self.__verbose: print &quot;[*] Display %s connected&quot; % (client.name)
++		self.sendBBMessage(&quot;sync&quot;)
+ 
+ 	def __do_openInput(self, client):
+-		print &quot;Input %s try to connect ...&quot; % (client.name)
++		if self.__verbose: print &quot;[*] Input %s try to connect ...&quot; % (client.name)
+ 
+ 		self.__input_buffer.clear(client.addr)
+ 
+-		client.send ( io.Packet(&quot;Version?&quot;) )
++		client.send(io.Packet(&quot;Version?&quot;))
+ 		answer = self.readInputAnswer(client)
+ 		if answer == None:
+-			if self.verbose: print &quot;Client doesn't sent version&quot;
++			if self.__verbose: print &quot;[*] Client doesn't sent version&quot;
+ 			client.disconnect()
+ 			return
+ 		if answer != self.__input_protocol_version:
+ 			txt = &quot;Sorry, you don't have same protocol version (%s VS %s)&quot; \
+ 				% (answer, self.__input_protocol_version)
+-			self.sendText (txt, client)
++			self.sendText(txt, client)
+ 			client.disconnect()
+ 			return	
+-		client.send (io.Packet(&quot;OK&quot;))
++		client.send(io.Packet(&quot;OK&quot;))
+ 		
+ 		# ask client name
+-		client.send (io.Packet(&quot;Name?&quot;))
++		client.send(io.Packet(&quot;Name?&quot;))
+ 		name = self.readInputAnswer(client)
+ 		if name == None:
+-			if self.verbose: print &quot;Client doesn't sent name&quot;
++			if self.__verbose: print &quot;[*] Client doesn't sent name&quot;
+ 			client.disconnect()
+ 			return
+ 		if name not in (&quot;-&quot;, &quot;&quot;): client.name = name
+-		client.send (io.Packet(&quot;OK&quot;))
++		client.send(io.Packet(&quot;OK&quot;))
+ 
+ 		self.__inputs.append (client)
+-		print &quot;Input %s connected.&quot; % (client.name)
++		if self.__verbose: print &quot;Input %s connected.&quot; % (client.name)
+ 		txt = &quot;Welcome to new (input) client : %s&quot; % (client.name)
+ 		self.sendText(txt)
+-
+-	def closeInput(self, client):
+-		print &quot;Input %s disconnected.&quot; % (client.name)
+-		if not (client in self.__inputs): return
+-		self.__inputs.remove (client)
+-		txt = &quot;Client %s (input) leave us.&quot; % (client.name)
+-		self.sendText(txt)
+-
+-	def closeView(self, client):
+-		print &quot;View %s disconnected.&quot; % (client.name)
+-		txt = &quot;Client %s (view) leave us.&quot; % (client.name)
+-		self.sendText(txt)
+-
+-	def start(self, arg):
+-		self.stat = ServerStat(self)
+-		self.initIO(arg[&quot;max-view&quot;], arg[&quot;view-port&quot;], arg[&quot;max-input&quot;], arg[&quot;input-port&quot;])
+-		self.__view_io.on_send = self.stat.onNetSend
+-		self.__input_io.on_send = self.stat.onNetSend
+-		self.__view_io.on_receive = self.stat.onNetReceive
+-		self.__input_io.on_receive = self.stat.onNetReceive
+-
+-		self.createAgents()
+-
+-	def setDebug(self, debug):
+-		self.debug = debug
+-		self.__view_io.debug = debug
+-		self.__input_io.debug = debug
+-
+-	def setVerbose(self, verbose):
+-		self.verbose = verbose
+-		self.__view_io.verbose = verbose
+-		self.__input_io.verbose = verbose
+-
+-	def connectAgent(self, cmd, agent):
+-		if self.cmd_handler.has_key(cmd):
+-			self.cmd_handler[cmd].append (agent)
++		
++	# Convert a (role,type,arg) to string (to be sent throw network)
++	def createMsg(self, role, type, arg=None):
++		if arg != None:
++			return &quot;%s:%s:%s&quot; % (role, type, arg)
+ 		else:
+-			self.cmd_handler[cmd] = [agent]
++			return &quot;%s:%s&quot; % (role, type)
+ 		
+-	def registerAgent(self, agent):
+-		agent.id = 1+len(self.agents)
+-		agent.server = self
+-		self.agents.append(agent)
+-		agent.start()
++	def recvInputPacket(self, packet):
++		self.__input_buffer.append(packet.recv_from.addr, packet)
++		
++	def recvDisplayPacket(self, packet):
++		msg = packet.data
++		self.__display_buffer.append(packet.recv_from.addr, packet)
+ 
+-	def sendMsgToClient(self, client, role, type, arg=None, skippable=False):
+-		msg = self.createMsg(role, type, arg)
+-		p = io.Packet(msg)
+-		p.skippable = skippable
+-		client.send(p)
++	def readDisplayAnswer(self, client):
++		return self.__readClientAnswer(self.__display_buffer, client)
+ 		
++	def readInputAnswer(self, client):
++		return self.__readClientAnswer(self.__input_buffer, client)
++
++	def __readClientAnswer(self, buffer, client, timeout=3.000):
++		answer = buffer.readBlocking(client.addr, timeout)
++		if answer==None: return None
++		answer = answer.data
++		return answer
++
+ 	def sendText(self, txt, client=None):
+ 		if client != None:
+ 			msg = self.createMsg(&quot;agent_manager&quot;, &quot;Text&quot;, txt)
+-			client.send( io.Packet(msg) )
++			client.send(io.Packet(msg))
+ 		else:
+-			self.sendMsg(&quot;agent_manager&quot;, &quot;Text&quot;, txt)
++			self.sendNetworkMessage(&quot;agent_manager&quot;, &quot;Text&quot;, txt)
+ 
+-	def sendMsg(self, role, type, arg=None, skippable=False):
+-		msg = AgentMessage(role, type, arg)
+-		locals = self.mailing_list.getLocal(role)
+-		for agent in locals:
+-			agent.putMessage(msg)
+-		
+-		msg = self.createMsg(role, type, arg)
+-		clients = self.mailing_list.getNet(role)
+-		for client in clients:
+-			client.send ( io.Packet(msg, skippable = skippable) )
+-		
+-	def processCmd(self, cmd):
+-		if self.debug: print &quot;Received %s.&quot; % (cmd)
+-		if self.cmd_handler.has_key(cmd):
+-			for agent in self.cmd_handler[cmd]:
+-				print &quot;Send %s to agent %u.&quot; % (cmd, agent.id)
+-				msg = AgentMessage(agent.id, &quot;Command&quot;, cmd)
+-				agent.putMessage(msg)
+-
+-	def processInputPacket(self, new_packet):
+-		self.processInputCmd( new_packet.recv_from, new_packet.data )
+-	
+ 	def processInputCmd(self, input, cmd):
+-		pass
++		cmd_ok = (\
++			&quot;move_left&quot;, &quot;move_right&quot;, &quot;move_up&quot;, &quot;move_down&quot;,
++			&quot;shoot&quot;, )
++		if self.__verbose and cmd != &quot;Ping?&quot;:
++			print &quot;Command from %s: %s&quot; % (input.name, cmd)
++		if re.compile(&quot;^chat:(.*)$&quot;).match(cmd) != None:
++			print &quot;New chat message: %s&quot; % (r.group(1))
++			self.sendNetworkMessage(&quot;chat_server&quot;, &quot;new&quot;, r.group(1))
++		elif cmd in cmd_ok:	self.sendBroadcastMessage(BoomBoomMessage(&quot;new_command&quot;, (cmd,)), &quot;command_manager&quot;)
+ 		
+ 	def processInputs(self):
+ 		inputs = self.__inputs[:]
+@@ -290,27 +266,62 @@
+ 			packets = self.__input_buffer.readNonBlocking(client.addr)
+ 
+ 			for packet in packets:	
+-				#if len(cmd)==0: continue
+-				#if max_len&lt;len(cmd): cmd=cmd[:max_len]
+ 				self.processInputCmd (packet.recv_from, packet.data)
+ 
+-	def live(self):
+-		if not self.started:
+-			self.started = True
+-			print &quot;Server started (waiting for clients ;-))&quot;
+-			
+-		self.processInputs()
+-		for agent in self.agents:
+-			agent.live()
+-			if self.quit==True: break
++	def registerFeature(self, client, role):
++		if role in self.__supportedFeatures:
++			if client not in self.__supportedFeatures[role]:
++				self.__supportedFeatures[role].append(client)
++		else:
++			self.__supportedFeatures[role] = [client,]
+ 
+-	def stop(self):
+-		self.__view_io.stop()
+-		self.__input_io.stop()
+-		self.agents = {}				
+-		self.quit = True
+-
+-	def getNbInput(self): return len(self.__input_io.clients)
+-	def getNbView(self): return len(self.__view_io.clients)
+-	def getMaxNbInput(self): return self.__input_io.max_clients
+-	def getMaxNbView(self): return self.__view_io.max_clients
++	def sendNetworkMessage(self, role, type, arg=None, skippable=False):
++		msg = self.createMsg(role, type, arg)
++		clients = self.__supportedFeatures.get(role, ())
++		for client in clients:
++			client.send (io.Packet(msg, skippable=skippable))
++						
++	def msg_game_next_character(self, char, team):
++		if self.__debug: print &quot;Next character : %s,%s&quot; %(char, team)
++		self.nextChar = char
++						
++	def msg_game_next_turn(self):
++		if self.__debug: print &quot;Next turn : %s&quot; %self.nextChar
++		self.sendNetworkMessage(&quot;game&quot;, &quot;next_turn&quot;)
++		self.sendNetworkMessage(&quot;game&quot;, &quot;active_character&quot;, self.nextChar)
++		
++	def msg_game_collision(self, x, y):
++		if self.__debug: print &quot;Hit ground : %s,%s&quot; %(x, y)
++		self.sendNetworkMessage(&quot;projectile&quot;, &quot;hit_ground&quot;)
++	
++	def msg_projectile_move(self, x, y):
++		if self.__debug: print &quot;Projectile move : %s,%s&quot; %(x, y)
++		self.sendNetworkMessage(&quot;projectile&quot;, &quot;move&quot;, &quot;%i,%i&quot; %(x,y), True)
++		
++	def msg_projectile_activate(self, flag):
++		if self.__debug: print &quot;Projectile activate : %s&quot; %flag
++		self.sendNetworkMessage(&quot;projectile&quot;, &quot;activate&quot;, &quot;%u&quot; %(flag))
++		
++	def msg_weapon_angle(self, a):
++		if self.__debug: print &quot;Weapon angle : %s&quot; %a
++		self.sendNetworkMessage(&quot;weapon&quot;, &quot;angle&quot;, a)
++		
++	def msg_weapon_strength(self, s):
++		if self.__debug: print &quot;Weapon strength : %s&quot; %s
++		self.sendNetworkMessage(&quot;weapon&quot;, &quot;force&quot;, s)
++		
++	def msg_world_create(self, m):
++		if self.__debug: print &quot;World create : %s&quot; %m
++		self.sendNetworkMessage(&quot;world&quot;, &quot;create&quot;, m)
++		
++	def msg_character_move(self, m):
++		if self.__debug: print &quot;Character move : %s&quot; %m
++		self.sendNetworkMessage(&quot;character&quot;, &quot;move&quot;, m)
++		
++	def msg_new_item(self, type, id):
++		if self.__debug: print &quot;New item : %s,%s&quot; %(type, id)
++		self.__items.append((type, id))
++		
++	def msg_game_current_character(self, char, team):
++		if self.__debug: print &quot;Current character : %s,%s&quot; %(char, team)
++		self.sendNetworkMessage(&quot;game&quot;, &quot;active_character&quot;, char)
+
+Modified: happywarry/happywarry-server.py
+===================================================================
+--- happywarry/happywarry-server.py	2005-09-08 01:07:22 UTC (rev 126)
++++ happywarry/happywarry-server.py	2005-09-08 02:55:34 UTC (rev 127)
+@@ -8,11 +8,13 @@
+ import gettext
+ 
+ def init():
+-    # Add APIBoom to PYTHONPATH (&quot;../&quot; today, but should be improved)
++    global log
++
++    # Add HappyBoom to PYTHONPATH (&quot;../&quot; today, but should be improved)
+     import sys, os
+     file_dir = os.path.dirname(__file__)
+-    apiboomdir = os.path.join(file_dir, &quot;..&quot;)
+-    sys.path.append(apiboomdir)
++    happyboomdir = os.path.join(file_dir, &quot;../happyboom/trunk&quot;)
++    sys.path.append(happyboomdir)
+ 
+     # Get user directory 
+     from common.log import log
+@@ -39,6 +41,8 @@
+     gettext.install('happywarry', localedir, unicode=1)
+ 
+ def main():
++    global log
++
+     # Initialize the application
+     init()
+     
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000032.html">[Happyboom-svn] r126 - in languetudes: . trunk
+</A></li>
+	<LI>Next message: <A HREF="000034.html">[Happyboom-svn] r128 - poilu/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#33">[ date ]</a>
+              <a href="thread.html#33">[ thread ]</a>
+              <a href="subject.html#33">[ subject ]</a>
+              <a href="author.html#33">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

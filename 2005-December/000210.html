@@ -1,0 +1,246 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r304 - haypo
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r304%20-%20haypo&In-Reply-To=%3C200512060327.jB63RMNM025769%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000209.html">
+   <LINK REL="Next"  HREF="000211.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r304 - haypo</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r304%20-%20haypo&In-Reply-To=%3C200512060327.jB63RMNM025769%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r304 - haypo">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec  6 04:27:22 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000209.html">[Happyboom-svn] r303 - haypo
+</A></li>
+        <LI>Next message: <A HREF="000211.html">[Happyboom-svn] r305 - haypo
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#210">[ date ]</a>
+              <a href="thread.html#210">[ thread ]</a>
+              <a href="subject.html#210">[ subject ]</a>
+              <a href="author.html#210">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-06 04:27:18 +0100 (Tue, 06 Dec 2005)
+New Revision: 304
+
+Modified:
+   haypo/tachatte.py
+Log:
+Add modes &quot;moo&quot; and &quot;shit&quot;
+
+
+Modified: haypo/tachatte.py
+===================================================================
+--- haypo/tachatte.py	2005-12-06 02:27:24 UTC (rev 303)
++++ haypo/tachatte.py	2005-12-06 03:27:18 UTC (rev 304)
+@@ -9,6 +9,16 @@
+ PROGRAM=&quot;Tachatte&quot;
+ VERSION=&quot;2005-12-06&quot;
+ 
++def count_bits(n):
++    if n &lt; 2:
++        return 1
++    length = 0
++    n = n - 1
++    while 0 &lt; n:
++        n = n/2
++        length = length + 1
++    return length
++
+ class Word:
+     def __init__(self, old, new):
+         self.old = old
+@@ -19,7 +29,7 @@
+         # Options
+         self.encode_number = True
+         self.encode_string = True
+-        self.reversible = False
++        self.mode = &quot;random&quot;
+         self.eat_comments = False 
+         self.obscure = \
+             [&quot;tachatte&quot;, &quot;zob&quot;, &quot;couille&quot;, &quot;merde&quot;,
+@@ -27,7 +37,8 @@
+              &quot;batard&quot;, &quot;tarace&quot;, &quot;chameau&quot;]
+         
+         # Attributes
+-        self.uniq = 1
++        self.uniq = 0
++        self.word_generator = None
+         self.word = None
+         self.thesaurus={}
+         self.exclude = [&quot;if&quot;, &quot;else&quot;, &quot;return&quot;, &quot;for&quot;, &quot;while&quot;, &quot;do&quot;]
+@@ -48,10 +59,9 @@
+ 
+     def getHeaders(self):
+         content = self.c_include
+-        if not self.reversible:
+-            for word in self.thesaurus:
+-                item = self.thesaurus[word]
+-                content = content + &quot;#define %s %s\n&quot; % (item.new, item.old)
++        for word in self.thesaurus:
++            item = self.thesaurus[word]
++            content = content + &quot;#define %s %s\n&quot; % (item.new, item.old)
+         return content
+ 
+     def readComment(self):
+@@ -83,20 +93,38 @@
+         else:
+             self.unput(str)
+ 
+-    def generateWordReversible(self, new_thesaurus):
++    def generateWord(self, word, new_thesaurus):
++        if self.mode in (&quot;moo&quot;, &quot;tachatte&quot;):
++            return self.generateWordUniq(new_thesaurus)
++        elif self.mode == &quot;shit&quot;:
++            return self.generateWordRepeat(new_thesaurus)
++        else:
++            return self.generateWordRandom(new_thesaurus)
++
++    def generateWordRepeat(self, new_thesaurus):
++        if 1000 &lt;= self.uniq:
++            raise Exception(&quot;Too much shit! (more than %u words)&quot; % 1000)
++        start_up, start_low, repeat, end = self.word_generator
++        if self.uniq &amp; 1 == 1:
++            word = start_up + repeat * (1+self.uniq/2) + end
++        else:            
++            word = start_low + repeat * (1+self.uniq/2) + end
+         self.uniq = self.uniq + 1
+-        if 256 &lt;= self.uniq:
+-            raise Exception(&quot;No more shit!&quot;)
+-        up=&quot;TACHATTE&quot;
+-        down=&quot;tachatte&quot;
++        return word
++
++    def generateWordUniq(self, new_thesaurus):
++        up, down = self.word_generator
++        if (1 &lt;&lt; len(up)) &lt;= self.uniq:
++            raise Exception(&quot;No more shit! (more than %u words)&quot; % (1 &lt;&lt; len(up)))
+         word = &quot;&quot;
+         index = self.uniq
+-        for i in range(0,8):
++        for i in range(0,len(up)):
+             if (index &amp; 1 == 1):
+                 word = word + up[i]
+             else:
+                 word = word + down[i]
+             index = index/2
++        self.uniq = self.uniq + 1
+         return word     
+ 
+     def generateWordRandom(self, new_thesaurus):
+@@ -179,13 +207,23 @@
+         self.generateThesaurus()
+ 
+     def generateThesaurus(self):        
++        # Compute length of thesaurus in bits
++        length = count_bits( len(self.thesaurus) )
++            
++        #&#160;Choose uniq word generator
++        if self.mode == &quot;shit&quot;:
++            self.word_generator = (&quot;Sh&quot;, &quot;sh&quot;, &quot;i&quot;, &quot;t&quot;)
++        elif self.mode == &quot;moo&quot;:
++            if length&lt;3:
++                length = 3
++            self.word_generator = (&quot;M&quot;+&quot;O&quot;*(length-1), &quot;m&quot;+&quot;o&quot;*(length-1))
++        else:
++            self.word_generator = (&quot;TACHATTE&quot;, &quot;tachatte&quot;)
++
+         new_words = {}
+         for word in self.thesaurus:
+             item = self.thesaurus[word]
+-            if self.reversible:
+-                item.new = self.generateWordReversible(new_words)
+-            else:
+-                item.new = self.generateWordRandom(new_words)
++            item.new = self.generateWord(item.old, new_words)
+             new_words[item.new] = item
+ 
+ def usage():
+@@ -196,7 +234,7 @@
+     print &quot;Options :&quot;
+     print &quot;\t--help            : Print this help&quot;
+     print &quot;\t--version         : Print the software version&quot;
+-    print &quot;\t--reversible      : Use reversible mode&quot;
++    print &quot;\t--mode=MODE       : Mode (random, moo, tachatte or shit)&quot;
+     print &quot;\t--eat-comments    : Eat comments (default: off)&quot;
+     print &quot;\t--number=ENABLE   : Encode numbers? (default: on)&quot;
+     print &quot;\t--string=ENABLE   : Encode numbers? (default: on)&quot;
+@@ -218,7 +256,7 @@
+     try:
+         short = &quot;&quot;
+         long = [&quot;help&quot;, &quot;version&quot;, \
+-            &quot;reversible&quot;, &quot;eat-comments&quot;,
++            &quot;mode=&quot;, &quot;eat-comments&quot;,
+             &quot;number=&quot;, &quot;string=&quot;]
+         opts, args = getopt.getopt(sys.argv[1:], short, long)
+     except getopt.GetoptError:
+@@ -227,17 +265,22 @@
+     for o, a in opts:
+         if o == &quot;--help&quot;:
+             usage()
+-        if o == &quot;--version&quot;:
++        elif o == &quot;--version&quot;:
+             print &quot;%s version %s&quot; % (PROGRAM, VERSION)
+             sys.exit(0)
+-        if o == &quot;--reversible&quot;:
+-            tachatte.reversible = True
+-        if o == &quot;--eat-comments&quot;:
++        elif o == &quot;--mode&quot;:
++            if a not in (&quot;random&quot;, &quot;tachatte&quot;, &quot;moo&quot;, &quot;shit&quot;):
++                usage()
++            tachatte.mode = a
++        elif o == &quot;--eat-comments&quot;:
+             tachatte.eat_comments = True
+-        if o == &quot;--number&quot;:
++        elif o == &quot;--number&quot;:
+             tachatte.encode_number = arg2bool(a)
+-        if o == &quot;--string&quot;:
++        elif o == &quot;--string&quot;:
+             tachatte.encode_string = arg2bool(a)
++        else:
++            # What's the hell?!
++            usage()
+ 
+     if len(args) != 1:
+         usage()
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000209.html">[Happyboom-svn] r303 - haypo
+</A></li>
+	<LI>Next message: <A HREF="000211.html">[Happyboom-svn] r305 - haypo
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#210">[ date ]</a>
+              <a href="thread.html#210">[ thread ]</a>
+              <a href="subject.html#210">[ subject ]</a>
+              <a href="author.html#210">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

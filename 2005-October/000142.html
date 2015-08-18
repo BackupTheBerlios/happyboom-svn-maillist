@@ -1,0 +1,224 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r235 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-October/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r235%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200510300454.j9U4siHH024238%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000141.html">
+   <LINK REL="Next"  HREF="000143.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r235 - in haypo/hachoir: . plugins</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r235%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200510300454.j9U4siHH024238%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r235 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Sun Oct 30 05:54:44 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000141.html">[Happyboom-svn] r234 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000143.html">[Happyboom-svn] r236 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#142">[ date ]</a>
+              <a href="thread.html#142">[ thread ]</a>
+              <a href="subject.html#142">[ subject ]</a>
+              <a href="author.html#142">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-10-30 05:54:42 +0100 (Sun, 30 Oct 2005)
+New Revision: 235
+
+Modified:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/hachoir.py
+   haypo/hachoir/plugins/exe.py
+   haypo/hachoir/ui.py
+Log:
+Can load a new file ...
+
+
+Modified: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-10-30 04:40:08 UTC (rev 234)
++++ haypo/hachoir/chunk.py	2005-10-30 04:54:42 UTC (rev 235)
+@@ -112,7 +112,11 @@
+             display = &quot;&quot;
+             for c in data:
+                 if ord(c)&lt;32:
+-                    know = {&quot;\n&quot;: &quot;\\n&quot;, &quot;\r&quot;: &quot;\\r&quot;, &quot;\0&quot;: &quot;\\0&quot;}
++                    know = { \
++                        &quot;\n&quot;: &quot;\\n&quot;,
++                        &quot;\r&quot;: &quot;\\r&quot;,
++                        &quot;\t&quot;: &quot;\\t&quot;,
++                        &quot;\0&quot;: &quot;\\0&quot;}
+                     if c in know:
+                         display = display + know[c]
+                     else:
+
+Modified: haypo/hachoir/hachoir.py
+===================================================================
+--- haypo/hachoir/hachoir.py	2005-10-30 04:40:08 UTC (rev 234)
++++ haypo/hachoir/hachoir.py	2005-10-30 04:54:42 UTC (rev 235)
+@@ -85,30 +85,30 @@
+         import filter
+         # Look for a plugin
+         plugin = getPlugin(filename)
+-        if plugin != None:
+-            regex, plugin_name, split_func, display_func = plugin
+-            if self.verbose:
+-                print &quot;Split file \&quot;%s\&quot;: %s.&quot; % (filename, plugin_name)
+-            
+-            # Create stream
+-            stream = FileStream(filename)
++        if plugin == None:
++            print &quot;No suitable plugin for \&quot;%s\&quot;.&quot; % (filename)
++            return False
++        regex, plugin_name, split_func, display_func = plugin
++        if self.verbose:
++            print &quot;Split file \&quot;%s\&quot;: %s.&quot; % (filename, plugin_name)
++        
++        # Create stream
++        stream = FileStream(filename)
+ 
+-            # Split 
+-            filter.display_filter_actions = self.depth
+-            if 0 &lt; self.depth:
+-                print &quot;=== Split file %s ===&quot; % filename
+-            self.filter = split_func(stream)
+-            if 0 &lt; self.depth:
+-                print &quot;&quot;
+-            self.filter.display()
++        # Split 
++        filter.display_filter_actions = self.depth
++        if 0 &lt; self.depth:
++            print &quot;=== Split file %s ===&quot; % filename
++        self.filter = split_func(stream)
++        if 0 &lt; self.depth:
++            print &quot;&quot;
++        self.filter.display()
+ 
+-            # Display
+-            if self.display:
+-                print &quot;=== File %s data ===&quot; % filename
+-                display_func(self.filter)
+-        else:
+-            print &quot;No suitable plugin for \&quot;%s\&quot;.&quot; % (filename)
+-            sys.exit(1)
++        # Display
++        if self.display:
++            print &quot;=== File %s data ===&quot; % filename
++            display_func(self.filter)
++        return True
+ 
+ def main():
+     try:        
+@@ -147,10 +147,12 @@
+ You can find PyGTK at: <A HREF="http://www.pygtk.org/">http://www.pygtk.org/</A>
+ and PyGlade at: <A HREF="http://glade.gnome.org/">http://glade.gnome.org/</A>&quot;&quot;&quot; % (err)
+             sys.exit(1)
+-        ui.loadInterface()
++        ui.loadInterface(hachoir)
+         ui.ui.on_row_click = hachoir.onRowClick
+         ui.ui.on_go_parent = hachoir.onGoParent
+-        hachoir.run(filename)
++        ok = hachoir.run(filename)
++        if not ok:
++            sys.exit(1)
+         ui.ui.run()
+ 
+     except SystemExit:
+
+Modified: haypo/hachoir/plugins/exe.py
+===================================================================
+--- haypo/hachoir/plugins/exe.py	2005-10-30 04:40:08 UTC (rev 234)
++++ haypo/hachoir/plugins/exe.py	2005-10-30 04:54:42 UTC (rev 235)
+@@ -89,7 +89,7 @@
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;pe_section&quot;, &quot;PE section&quot;, stream, parent)
+         self.read(&quot;name&quot;, &quot;8s&quot;, &quot;Name&quot;)
+-        self.name = self.name.strip(&quot;\0&quot;)
++        self.name = self.name.strip(&quot; \0&quot;)
+         self.read(&quot;rva&quot;, &quot;&lt;L&quot;, &quot;RVA&quot;)
+         self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Size&quot;)
+         self.read(&quot;file_size&quot;, &quot;&lt;L&quot;, &quot;File size&quot;)
+
+Modified: haypo/hachoir/ui.py
+===================================================================
+--- haypo/hachoir/ui.py	2005-10-30 04:40:08 UTC (rev 234)
++++ haypo/hachoir/ui.py	2005-10-30 04:54:42 UTC (rev 235)
+@@ -4,13 +4,13 @@
+ import gtk
+ import gtk.glade
+ 
+-def loadInterface():
++def loadInterface(hachoir):
+     global ui 
+     glade = os.path.join(os.path.dirname(__file__), 'hachoir.glade')
+-    ui = GladeInterface(glade)
++    ui = GladeInterface(glade, hachoir)
+ 
+ class GladeInterface:
+-    def __init__(self, filename):
++    def __init__(self, filename, hachoir):
+         self.on_row_click = None # event(chunk_id)
+         self.on_go_parent = None # event(chunk_id)
+         self.xml = gtk.glade.XML(filename)
+@@ -24,6 +24,7 @@
+         self.window.connect(&quot;key-press-event&quot;, self.onKeyUp)
+         self.table = self.xml.get_widget('table')
+         self.table_store = None
++        self.hachoir = hachoir
+         self.build_him()
+ 
+     def run(self):
+@@ -90,6 +91,14 @@
+ 
+     def on_open_activate(self, widget):
+         print &quot;Open (do nothing yet)&quot;
++        chooser = gtk.FileChooserDialog( \
++            title=&quot;Choose file&quot;,
++            action=gtk.FILE_CHOOSER_ACTION_OPEN,
++            buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
++        if chooser.run() == gtk.RESPONSE_OK:
++            filename = chooser.get_filename() 
++            self.hachoir.run(filename)
++        chooser.destroy()
+ 
+     def on_about_activate(self, widget):
+         print &quot;About (do nothing yet)&quot;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000141.html">[Happyboom-svn] r234 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000143.html">[Happyboom-svn] r236 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#142">[ date ]</a>
+              <a href="thread.html#142">[ thread ]</a>
+              <a href="subject.html#142">[ subject ]</a>
+              <a href="author.html#142">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,879 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r371 - in haypo/hachoir/trunk: . broken_plugins plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r371%20-%20in%20haypo/hachoir/trunk%3A%20.%20broken_plugins%20plugins&In-Reply-To=%3C200512280535.jBS5Z6JV000146%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000272.html">
+   <LINK REL="Next"  HREF="000274.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r371 - in haypo/hachoir/trunk: . broken_plugins plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r371%20-%20in%20haypo/hachoir/trunk%3A%20.%20broken_plugins%20plugins&In-Reply-To=%3C200512280535.jBS5Z6JV000146%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r371 - in haypo/hachoir/trunk: . broken_plugins plugins">haypo at berlios.de
+       </A><BR>
+    <I>Wed Dec 28 06:35:06 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000272.html">[Happyboom-svn] r370 - in haypo/hachoir/trunk: . broken_plugins plugins stream
+</A></li>
+        <LI>Next message: <A HREF="000274.html">[Happyboom-svn] r372 - in haypo/hachoir/trunk: broken_plugins plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#273">[ date ]</a>
+              <a href="thread.html#273">[ thread ]</a>
+              <a href="subject.html#273">[ subject ]</a>
+              <a href="author.html#273">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-28 06:35:04 +0100 (Wed, 28 Dec 2005)
+New Revision: 371
+
+Added:
+   haypo/hachoir/trunk/plugins/elf.py
+   haypo/hachoir/trunk/plugins/exe.py
+Removed:
+   haypo/hachoir/trunk/broken_plugins/elf.py
+   haypo/hachoir/trunk/broken_plugins/exe.py
+Modified:
+   haypo/hachoir/trunk/text_handler.py
+Log:
+- Upgrade ELF and EXE plugin to new syntax
+- Improve EXE filters description (using updateParent())
+- EXE plugin can read timestamp, header flags, and display machine type
+
+
+Deleted: haypo/hachoir/trunk/broken_plugins/elf.py
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/elf.py	2005-12-28 04:12:28 UTC (rev 370)
++++ haypo/hachoir/trunk/broken_plugins/elf.py	2005-12-28 05:35:04 UTC (rev 371)
+@@ -1,171 +0,0 @@
+-&quot;&quot;&quot;
+-ELF filter.
+-Author: Victor Stinner
+-&quot;&quot;&quot;
+-
+-from filter import Filter, DeflateFilter
+-from plugin import registerPlugin
+-
+-def processAddr(chunk):
+-    return &quot;%08X&quot; % chunk.value
+-
+-class ElfHeader(Filter):
+-    machine = {
+-        0: &quot;No machine&quot;,
+-        1: &quot;AT&amp;T WE 32100&quot;,
+-        2: &quot;SPARC&quot;,
+-        3: &quot;Intel 80386&quot;,
+-        4: &quot;Motorolla 68000&quot;,
+-        5: &quot;Motorolla 88000&quot;,
+-        7: &quot;Intel 80860&quot;,
+-        8: &quot;MIPS RS3000&quot;
+-    }
+-
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;elf_header&quot;, &quot;ELF header&quot;, stream, parent)
+-        self.read(&quot;id&quot;, &quot;4s&quot;, &quot;Identifier&quot;)
+-        assert self[&quot;id&quot;] == (chr(127) + &quot;ELF&quot;)
+-        self.read(&quot;class&quot;, &quot;B&quot;, &quot;Class&quot;)
+-        self.read(&quot;encoding&quot;, &quot;B&quot;, &quot;Encoding&quot;)
+-        self.read(&quot;file_version&quot;, &quot;B&quot;, &quot;File version&quot;)
+-        self.read(&quot;pad&quot;, &quot;8s&quot;, &quot;Pad&quot;)
+-        self.read(&quot;nident&quot;, &quot;B&quot;, &quot;Size of ident[]&quot;)
+-        self.read(&quot;type&quot;, &quot;&lt;H&quot;, &quot;File type&quot;, post=self.getType)
+-        self.read(&quot;machine&quot;, &quot;&lt;H&quot;, &quot;Machine type&quot;, post=self.getMachine)
+-        self.read(&quot;version&quot;, &quot;&lt;L&quot;, &quot;ELF format version&quot;)
+-        self.read(&quot;entry&quot;, &quot;&lt;L&quot;, &quot;Number of entries&quot;)
+-        self.read(&quot;phoff&quot;, &quot;&lt;L&quot;, &quot;Program header offset&quot;)
+-        self.read(&quot;shoff&quot;, &quot;&lt;L&quot;, &quot;Section header offset&quot;)
+-        self.read(&quot;flags&quot;, &quot;&lt;L&quot;, &quot;Flags&quot;)
+-        self.read(&quot;ehsize&quot;, &quot;&lt;H&quot;, &quot;Elf header size (this header)&quot;)
+-        self.read(&quot;phentsize&quot;, &quot;&lt;H&quot;, &quot;Program header entry size&quot;)
+-        self.read(&quot;phnum&quot;, &quot;&lt;H&quot;, &quot;Program header entry count&quot;)
+-        self.read(&quot;shentsize&quot;, &quot;&lt;H&quot;, &quot;Section header entry size&quot;)
+-        self.read(&quot;shnum&quot;, &quot;&lt;H&quot;, &quot;Section header entre count&quot;)
+-        self.read(&quot;shstrndx&quot;, &quot;&lt;H&quot;, &quot;Section header strtab index&quot;)
+-
+-    def getType(self, chunk):
+-        type = chunk.value
+-        types = {
+-            0: &quot;No file type&quot;,
+-            1: &quot;Relocable file&quot;,
+-            2: &quot;Executable file&quot;,
+-            3: &quot;Shared object file&quot;,
+-            4: &quot;Core file&quot;,
+-            0xFF00: &quot;Processor-specific (0xFF00)&quot;,
+-            0xFFFF: &quot;Processor-specific (0xFFFF)&quot;
+-        }
+-        return types.get(type, &quot;Unknow type (%u)&quot; % type)
+-
+-    def getMachine(self, chunk):
+-        type = chunk.value
+-        return ElfHeader.machine.get(type, &quot;Unknow machine (%u)&quot; % type)
+-
+-class SectionHeader32(Filter):
+-    types = {
+-        8: &quot;BSS&quot;
+-    }
+-    
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;section_header&quot;, &quot;Section header&quot;, stream, parent)
+-        self.read(&quot;name&quot;, &quot;&lt;L&quot;, &quot;&quot;)
+-        self.read(&quot;type&quot;, &quot;&lt;L&quot;, &quot;&quot;)
+-        self.read(&quot;flags&quot;, &quot;&lt;L&quot;, &quot;&quot;)
+-        self.read(&quot;VMA&quot;, &quot;&lt;L&quot;, &quot;Virtual memory address&quot;)#, post=processAddr)
+-        self.read(&quot;LMA&quot;, &quot;&lt;L&quot;, &quot;Logical memory address (in file)&quot;)#, post=processAddr)
+-        self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;&quot;, post=processAddr)
+-        self.read(&quot;link&quot;, &quot;&lt;L&quot;, &quot;&quot;)
+-        self.read(&quot;info&quot;, &quot;&lt;L&quot;, &quot;&quot;)
+-        self.read(&quot;addralign&quot;, &quot;&lt;L&quot;, &quot;&quot;)
+-        self.read(&quot;entsize&quot;, &quot;&lt;L&quot;, &quot;&quot;)
+-
+-    def getType(self):
+-        type = self[&quot;type&quot;]
+-        return SectionHeader32.types.get(type, &quot;unknow type=%u&quot; % type)
+-
+-    def getName(self):
+-        #&#160;TODO: Look in symbol name
+-        return self[&quot;name&quot;]
+-
+-    def updateParent(self, chunk):
+-        desc = &quot;Section header (name: %s, type: %s)&quot; % (self.getName(), self.getType())
+-        chunk.description = desc
+-        self.setDescription(desc)
+-
+-class ProgramHeader32(Filter):
+-    type = {
+-        3: &quot;Dynamic library&quot;
+-    }
+-    
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;prg_header&quot;, &quot;Program header&quot;, stream, parent)
+-        self.read(&quot;type&quot;, &quot;&lt;H&quot;, &quot;&quot;)
+-        self.read(&quot;flags&quot;, &quot;&lt;H&quot;, &quot;&quot;)
+-        self.read(&quot;offset&quot;, &quot;&lt;L&quot;, &quot;&quot;)
+-        self.read(&quot;vaddr&quot;, &quot;&lt;L&quot;, &quot;&quot;, post=processAddr)
+-        self.read(&quot;paddr&quot;, &quot;&lt;L&quot;, &quot;&quot;, post=processAddr)
+-        self.read(&quot;file_size&quot;, &quot;&lt;L&quot;, &quot;&quot;)
+-        self.read(&quot;mem_size&quot;, &quot;&lt;L&quot;, &quot;&quot;)
+-        self.read(&quot;align&quot;, &quot;&lt;L&quot;, &quot;&quot;)
+-        self.read(&quot;padding&quot;, &quot;&lt;L&quot;, &quot;(padding?)&quot;)
+-
+-    def getType(self):
+-        type = self[&quot;type&quot;]
+-        return ProgramHeader32.type.get(type, &quot;unknow, %u&quot; % type)
+-
+-    def updateParent(self, chunk):
+-        desc = &quot;Program Header (%s)&quot; % self.getType() 
+-        self.setDescription(desc)
+-        chunk.description = desc 
+-
+-def seek(filter, stream, offset):
+-    current = stream.tell()
+-    if current != offset:
+-        filter.read(&quot;padding[]&quot;, &quot;%us&quot; % (offset-current), &quot;Padding&quot;)
+-
+-def sortSection(a, b):
+-    return int(a[&quot;offset&quot;] - b[&quot;offset&quot;])
+-
+-class Section(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;elf_section&quot;, &quot;Elf section&quot;, stream, parent)
+-        # TODO ...
+-        self.read(&quot;raw&quot;, &quot;%us&quot; % stream.getSize(), &quot;Raw data&quot;)
+-        
+-class Sections(Filter):
+-    def __init__(self, stream, parent, sections):
+-        Filter.__init__(self, &quot;elf_sections&quot;, &quot;ELF sections&quot;, stream, parent)
+-        for section in sections:
+-            ofs = section[&quot;offset&quot;]
+-            size = section[&quot;file_size&quot;]
+-            sub = stream.createSub(ofs, size)
+-            #self.readChild(&quot;section[]&quot;, DeflateFilter, sub, size, Section) 
+-            chunk = self.readStreamChild(&quot;section[]&quot;, sub, Section) 
+-            chunk.description = &quot;ELF section (in file: %s..%s)&quot; % (ofs, ofs+size)
+-
+-class ElfFile(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;elf_file&quot;, &quot;ELF file&quot;, stream, parent)
+-        self.readChild(&quot;elf_header&quot;, ElfHeader)
+-        elf = self[&quot;elf_header&quot;]
+-        sections = []
+-        for i in range(0, elf[&quot;phnum&quot;]):
+-            section = self.readChild(&quot;prg_header[]&quot;, ProgramHeader32)
+-            sections.append(section.getFilter())
+-
+-#        i = 1
+-#        for section in sections:
+-#            print &quot;Section %u: type %u, data in %u..%u &quot; % (i, section[&quot;type&quot;], section[&quot;offset&quot;], section[&quot;offset&quot;]+section[&quot;file_size&quot;])
+-#            i = i + 1
+-            
+-        size = elf[&quot;shoff&quot;] - stream.tell()
+-        newstream = stream.clone()
+-        chunk = self.readChild(&quot;data&quot;, DeflateFilter, newstream, size, Sections, sections) 
+-        chunk.description = &quot;Sections (use an evil hack to manage share same data on differents parts)&quot;
+-        assert stream.tell() == elf[&quot;shoff&quot;]
+-
+-        for i in range(0, elf[&quot;shnum&quot;]):
+-            chunk = self.readChild(&quot;section_header[]&quot;, SectionHeader32)
+-            assert chunk.size == 40
+-
+-registerPlugin(ElfFile, [&quot;application/x-executable&quot;, &quot;application/x-object&quot;, &quot;application/x-sharedlib&quot;])
+
+Deleted: haypo/hachoir/trunk/broken_plugins/exe.py
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/exe.py	2005-12-28 04:12:28 UTC (rev 370)
++++ haypo/hachoir/trunk/broken_plugins/exe.py	2005-12-28 05:35:04 UTC (rev 371)
+@@ -1,196 +0,0 @@
+-&quot;&quot;&quot;
+-EXE filter.
+-
+-Status: read ms-dos and pe headers
+-Todo: support resources ... and disassembler ? :-)
+-Author: Victor Stinner
+-&quot;&quot;&quot;
+-
+-from filter import Filter
+-from plugin import registerPlugin
+-
+-class PE_ResourceData(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;pe_rsrc_data&quot;, &quot;PE resource data&quot;, stream, parent)
+-        self.read(&quot;offset&quot;, &quot;&lt;L&quot;, &quot;Offset&quot;)
+-        self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Size&quot;)
+-        self.read(&quot;page_code&quot;, &quot;&lt;L&quot;, &quot;Page code (language)&quot;)
+-        self.read(&quot;language&quot;, &quot;&lt;l&quot;, &quot;Page code (language)&quot;)
+-#        self.language = -self[&quot;language&quot;]
+-        self.read(&quot;reserved&quot;, &quot;!L&quot;, &quot;Reserverd&quot;)
+-
+-        oldpos = stream.tell()
+-        
+-        #stream.seek(XXX + self.offset - self.offset_res_section)
+-        stream.seek(self[&quot;offset&quot;])
+-        stream.seek(oldpos)
+-
+-class PE_ResourceEntry(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;pe_rsrc_entry&quot;, &quot;PE resource entry&quot;, stream, parent)
+-        self.read(&quot;id&quot;, &quot;&lt;L&quot;, &quot;ID or name&quot;)
+-        self.read(&quot;offset&quot;, &quot;&lt;L&quot;, &quot;Offset&quot;)
+-        
+-class PE_ResourceDirectory(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;pe_rsrc_dir&quot;, &quot;PE resource directory&quot;, stream, parent)
+-        self.offset_res_section = stream.tell()
+-        self.read(&quot;option&quot;, &quot;&lt;L&quot;, &quot;Options&quot;)
+-        self.read(&quot;creation_date&quot;, &quot;&lt;L&quot;, &quot;Creation date&quot;)
+-        self.read(&quot;maj_ver&quot;, &quot;&lt;H&quot;, &quot;Major version&quot;)
+-        self.read(&quot;named_entries&quot;, &quot;&lt;H&quot;, &quot;Named entries&quot;)
+-        self.read(&quot;indexed_entries&quot;, &quot;&lt;H&quot;, &quot;Indexed entries&quot;)
+-
+-        stream.seek( stream.tell() + 0x10)
+-        self.readArray(&quot;item&quot;, PE_ResourceEntry, &quot;PE resource entry&quot;, self.checkEndOfRes)
+-    
+-    def checkEndOfRes(self, stream, array, dir):
+-        return len(array) == (self[&quot;named_entries&quot;] + self[&quot;indexed_entries&quot;])
+-
+-class PE_Section(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;pe_section&quot;, &quot;PE section&quot;, stream, parent)
+-        self.read(&quot;name&quot;, &quot;8s&quot;, &quot;Name&quot;)
+-        # TODO: use chunk post proces
+-        self.name = self[&quot;name&quot;].strip(&quot; \0&quot;)
+-        self.read(&quot;rva&quot;, &quot;&lt;L&quot;, &quot;RVA&quot;)
+-        self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Size&quot;)
+-        self.read(&quot;file_size&quot;, &quot;&lt;L&quot;, &quot;File size&quot;)
+-        self.read(&quot;file_offset&quot;, &quot;&lt;L&quot;, &quot;File offset&quot;)
+-        self.read(&quot;reloc_ptr&quot;, &quot;&lt;L&quot;, &quot;Relocation pointer&quot;)
+-        self.read(&quot;lines_ptr&quot;, &quot;&lt;L&quot;, &quot;File line numbers pointer&quot;)
+-        self.read(&quot;nb_reloc&quot;, &quot;&lt;H&quot;, &quot;Number of relocations&quot;)
+-        self.read(&quot;nb_lines&quot;, &quot;&lt;H&quot;, &quot;Number of file line&quot;)
+-        self.read(&quot;options&quot;, &quot;&lt;L&quot;, &quot;Options&quot;)
+-
+-class PE_Directory(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;pe_dir&quot;, &quot;PE directory&quot;, stream, parent)
+-        self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Size&quot;)
+-        self.read(&quot;rva&quot;, &quot;&lt;L&quot;, &quot;RVA&quot;)
+-
+-class PE_OptionnalHeader(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;pe_opt_hdr&quot;, &quot;PE optionnal header&quot;, stream, parent)
+-        self.read(&quot;header&quot;, &quot;&lt;H&quot;, &quot;Header&quot;)
+-        assert self[&quot;header&quot;] == 0x010B
+-        self.read(&quot;linker_maj_ver&quot;, &quot;B&quot;, &quot;Linker major version&quot;)
+-        self.read(&quot;linker_min_ver&quot;, &quot;B&quot;, &quot;Linker minor version&quot;)
+-        self.read(&quot;code_size&quot;, &quot;&lt;L&quot;, &quot;Code size (bytes)&quot;)
+-        self.read(&quot;data_size&quot;, &quot;&lt;L&quot;, &quot;Data size (bytes)&quot;)
+-        self.read(&quot;heap_size&quot;, &quot;&lt;L&quot;, &quot;Heap size (bytes)&quot;)
+-        self.read(&quot;entry_point_rva&quot;, &quot;&lt;L&quot;, &quot;Entry point offset (RVA)&quot;)
+-        self.read(&quot;code_rva&quot;, &quot;&lt;L&quot;, &quot;Code offset (RVA)&quot;)
+-        self.read(&quot;data_rva&quot;, &quot;&lt;L&quot;, &quot;Data offset (RVA)&quot;)
+-        self.read(&quot;base_image_rva&quot;, &quot;&lt;L&quot;, &quot;Base image offset (RVA)&quot;)
+-        self.read(&quot;memory_alignment&quot;, &quot;&lt;L&quot;, &quot;Memory alignment&quot;)
+-        self.read(&quot;file_alignment&quot;, &quot;&lt;L&quot;, &quot;File alignment&quot;)
+-        self.read(&quot;os_maj_ver&quot;, &quot;&lt;H&quot;, &quot;OS major version&quot;)
+-        self.read(&quot;os_min_ver&quot;, &quot;&lt;H&quot;, &quot;OS minor version&quot;)
+-        self.read(&quot;prog_maj_ver&quot;, &quot;&lt;H&quot;, &quot;Program major version&quot;)
+-        self.read(&quot;prog_min_ver&quot;, &quot;&lt;H&quot;, &quot;Program minor version&quot;)
+-        self.read(&quot;api_maj_ver&quot;, &quot;&lt;H&quot;, &quot;API major version?!&quot;)
+-        self.read(&quot;api_min_ver&quot;, &quot;&lt;H&quot;, &quot;API minor version?!&quot;)
+-        self.read(&quot;windows_ver&quot;, &quot;&lt;L&quot;, &quot;Windows version?!&quot;)
+-        self.read(&quot;image_size&quot;, &quot;&lt;L&quot;, &quot;Image size&quot;)
+-        self.read(&quot;headers_size&quot;, &quot;&lt;L&quot;, &quot;Headers size&quot;)
+-        self.read(&quot;checksum&quot;, &quot;&lt;L&quot;, &quot;Checkum&quot;)
+-        self.read(&quot;neeed_api&quot;, &quot;&lt;H&quot;, &quot;Needed API?!&quot;)
+-        self.read(&quot;dll_options&quot;, &quot;&lt;H&quot;, &quot;DLL options (only for DLL)&quot;)
+-        self.read(&quot;reserved_stack_size&quot;, &quot;&lt;L&quot;, &quot;Reserved stack size&quot;)
+-        self.read(&quot;common_stack_size&quot;, &quot;&lt;L&quot;, &quot;Common stack size&quot;)
+-        self.read(&quot;reserved_heap_size&quot;, &quot;&lt;L&quot;, &quot;Reserved heap size&quot;)
+-        self.read(&quot;common_heap_size&quot;, &quot;&lt;L&quot;, &quot;Common heap size&quot;)
+-        self.read(&quot;loader_options&quot;, &quot;&lt;L&quot;, &quot;Loader options&quot;)
+-        self.read(&quot;nb_directories&quot;, &quot;&lt;L&quot;, &quot;Number of directories (16)&quot;)
+-        assert self[&quot;nb_directories&quot;] == 16
+-        self.readArray(&quot;directories&quot;, PE_Directory, &quot;PE directories&quot;, self.checkEndOfDir)
+-
+-    def checkEndOfDir(self, stream, array, dir):
+-        return len(array) == self.nb_directories
+-
+-class PE_Filter(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;pe_header&quot;, &quot;PE header&quot;, stream, parent)
+-        self.read(&quot;header&quot;, &quot;4s&quot;, &quot;File header&quot;)
+-        assert self[&quot;header&quot;] == &quot;PE\0\0&quot;
+-        self.read(&quot;cpu_type&quot;, &quot;&lt;H&quot;, &quot;CPU type&quot;)
+-        self.read(&quot;nb_sections&quot;, &quot;&lt;H&quot;, &quot;Number of sections&quot;)
+-        self.read(&quot;creation_date&quot;, &quot;&lt;L&quot;, &quot;Creation date&quot;)
+-        self.read(&quot;ptr_to_symbols&quot;, &quot;&lt;L&quot;, &quot;Pointer to symbol table&quot;)
+-        self.read(&quot;nb_symbols&quot;, &quot;&lt;L&quot;, &quot;Number of symbols&quot;)
+-        self.read(&quot;opt_header_size&quot;, &quot;&lt;H&quot;, &quot;Optionnal header size&quot;)
+-        self.read(&quot;options&quot;, &quot;&lt;H&quot;, &quot;Options&quot;)
+-
+-    def getCpuType(self):
+-        cpu_name = {
+-            0x014C: &quot;Intel 80386 or greater&quot;,
+-            0x014D: &quot;Intel 80486 or greater&quot;,
+-            0x014E: &quot;Intel Pentium or greader&quot;, 
+-            0x0160: &quot;R3000 (MIPS), big endian&quot;,
+-            0x0162: &quot;R3000 (MIPS), little endian&quot;,
+-            0x0166: &quot;R4000 (MIPS), little endian&quot;,
+-            0x0168: &quot;R10000 (MIPS), little endian&quot;,
+-            0x0184: &quot;DEC Alpha AXP&quot;,
+-            0x01F0: &quot;IBM Power PC, little endian&quot;}
+-        return cpu_name.get(self[&quot;cpu_type&quot;], &quot;unknow&quot;)
+-
+-class MS_Dos(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;msdos_header&quot;, &quot;MS-Dos executable header&quot;, stream, parent)
+-        self.read(&quot;header&quot;, &quot;2s&quot;, &quot;File header&quot;)
+-        assert self[&quot;header&quot;] == &quot;MZ&quot;
+-        self.read(&quot;filesize_mod_512&quot;, &quot;&gt;H&quot;, &quot;Filesize mod 512&quot;)
+-        self.read(&quot;filesize_div_512&quot;, &quot;&gt;H&quot;, &quot;Filesize div 512&quot;)
+-        self.filesize = self[&quot;filesize_div_512&quot;] * 512 + self[&quot;filesize_mod_512&quot;]
+-        self.read(&quot;reloc_entries&quot;, &quot;&gt;H&quot;, &quot;Number of relocation entries&quot;)
+-        self.read(&quot;code_offset&quot;, &quot;&lt;H&quot;, &quot;Offset to the code in the file (div 16)&quot;)
+-        self.code_offset = self[&quot;code_offset&quot;] * 16
+-        self.read(&quot;needed_memory&quot;, &quot;&gt;H&quot;, &quot;Memory needed to run (div 16)&quot;)
+-        self.needed_memory = self[&quot;needed_memory&quot;] * 16
+-        self.read(&quot;max_memory&quot;, &quot;&gt;H&quot;, &quot;Maximum memory needed to run (div 16)&quot;)
+-        self.max_memory = self[&quot;max_memory&quot;] * 16
+-        self.read(&quot;init_ss_sp&quot;, &quot;&gt;L&quot;, &quot;Initial value of SP:SS registers.&quot;)
+-        self.read(&quot;checksum&quot;, &quot;&gt;H&quot;, &quot;Checksum&quot;)
+-        self.read(&quot;init_cs_ip&quot;, &quot;&gt;L&quot;, &quot;Initial value of CS:IP registers.&quot;)
+-        self.read(&quot;reloc_offset&quot;, &quot;&lt;H&quot;, &quot;Offset in file to relocation table.&quot;)
+-        self.read(&quot;overlay_number&quot;, &quot;&gt;H&quot;, &quot;Overlay number&quot;)
+-        self.read(&quot;reserved&quot;, &quot;&gt;4H&quot;, &quot;Reserverd&quot;)
+-        self.read(&quot;oem_id&quot;, &quot;&gt;H&quot;, &quot;OEM id&quot;)
+-        self.read(&quot;oem_info&quot;, &quot;&gt;H&quot;, &quot;OEM info&quot;)
+-        self.read(&quot;reserved2&quot;, &quot;!10H&quot;, &quot;Reserved&quot;)
+-        self.read(&quot;pe_offset&quot;, &quot;&lt;L&quot;, &quot;Offset to PE header&quot;)
+-
+-class ExeFile(Filter):
+-    def __init__(self, stream, parent=None):
+-        Filter.__init__(self, &quot;exe_file&quot;, &quot;EXE file&quot;, stream, parent)
+-
+-        self.readChild(&quot;ms_dos&quot;, MS_Dos)
+-
+-        if self[&quot;ms_dos&quot;][&quot;reloc_offset&quot;] == 0x40:
+-            stream.seek(self[&quot;ms_dos&quot;][&quot;pe_offset&quot;], 0)
+-
+-            self.readChild(&quot;pe&quot;, PE_Filter)
+-            self.pe = self[&quot;pe&quot;]
+-            self.readChild(&quot;pe_opt&quot;, PE_OptionnalHeader)
+-            self.readArray(&quot;pe_sections&quot;, PE_Section, &quot;PE sections&quot;, self.checkEndOfSections)
+-
+-            # TODO: Fix this ...
+-            
+-            offset_res_section = None
+-            for section in self[&quot;pe_sections&quot;]:
+-                section = section.getFilter()
+-                if section.name == &quot;.rsrc&quot;:
+-                    offset_res_section = section.file_offset
+-                    self.getStream().seek( offset_res_section )
+-                    break
+-            if offset_res_section != None:
+-                #for i in range(1): #range(self.pe.nb_sections):
+-                self.readChild(&quot;pe_resources&quot;, PE_ResourceDirectory)
+-        else:
+-            self.pe = None
+-
+-    def checkEndOfSections(self, stream, array, section):
+-        return len(array) == self[&quot;pe&quot;][&quot;nb_sections&quot;]
+-
+-registerPlugin(ExeFile, &quot;application/x-dosexec&quot;)
+
+Copied: haypo/hachoir/trunk/plugins/elf.py (from rev 351, haypo/hachoir/trunk/broken_plugins/elf.py)
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/elf.py	2005-12-26 03:53:11 UTC (rev 351)
++++ haypo/hachoir/trunk/plugins/elf.py	2005-12-28 05:35:04 UTC (rev 371)
+@@ -0,0 +1,153 @@
++&quot;&quot;&quot;
++ELF (Unix/BSD executable file format) parser.
++
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from filter import OnDemandFilter, DeflateFilter
++from chunk import FormatChunk, EnumChunk
++from plugin import registerPlugin
++from text_handler import hexadecimal
++
++class ElfHeader(OnDemandFilter):
++    machine_name = {
++        0: &quot;No machine&quot;,
++        1: &quot;AT&amp;T WE 32100&quot;,
++        2: &quot;SPARC&quot;,
++        3: &quot;Intel 80386&quot;,
++        4: &quot;Motorolla 68000&quot;,
++        5: &quot;Motorolla 88000&quot;,
++        7: &quot;Intel 80860&quot;,
++        8: &quot;MIPS RS3000&quot;
++    }
++    type_name = {
++        0: &quot;No file type&quot;,
++        1: &quot;Relocable file&quot;,
++        2: &quot;Executable file&quot;,
++        3: &quot;Shared object file&quot;,
++        4: &quot;Core file&quot;,
++        0xFF00: &quot;Processor-specific (0xFF00)&quot;,
++        0xFFFF: &quot;Processor-specific (0xFFFF)&quot;
++    }
++
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;elf_header&quot;, &quot;ELF header&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;id&quot;, &quot;Identifier&quot;, (FormatChunk, &quot;string[4]&quot;))
++        assert self[&quot;id&quot;] == &quot;\x7FELF&quot;
++        self.read(&quot;class&quot;, &quot;Class&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;encoding&quot;, &quot;Encoding&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;file_version&quot;, &quot;File version&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;pad&quot;, &quot;Pad&quot;, (FormatChunk, &quot;string[8]&quot;))
++        self.read(&quot;nb_ident&quot;, &quot;Size of ident[]&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;type&quot;, &quot;File type&quot;, (EnumChunk, &quot;uint16&quot;, ElfHeader.type_name))
++        self.read(&quot;machine&quot;, &quot;Machine type&quot;, (EnumChunk, &quot;uint16&quot;, ElfHeader.machine_name))
++        self.read(&quot;version&quot;, &quot;ELF format version&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;entry&quot;, &quot;Number of entries&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;phoff&quot;, &quot;Program header offset&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;shoff&quot;, &quot;Section header offset&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;flags&quot;, &quot;Flags&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;ehsize&quot;, &quot;Elf header size (this header)&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;phentsize&quot;, &quot;Program header entry size&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;phnum&quot;, &quot;Program header entry count&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;shentsize&quot;, &quot;Section header entry size&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;shnum&quot;, &quot;Section header entre count&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;shstrndx&quot;, &quot;Section header strtab index&quot;, (FormatChunk, &quot;uint16&quot;))
++
++class SectionHeader32(OnDemandFilter):
++    type_name = {
++        8: &quot;BSS&quot;
++    }
++    
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;section_header&quot;, &quot;Section header&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;name&quot;, &quot;Name&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;type&quot;, &quot;Type&quot;, (EnumChunk, &quot;uint32&quot;, SectionHeader32.type_name))
++        self.read(&quot;flags&quot;, &quot;Flags&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;VMA&quot;, &quot;Virtual memory address&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: hexadecimal})
++        self.read(&quot;LMA&quot;, &quot;Logical memory address (in file)&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: hexadecimal})
++        self.read(&quot;size&quot;, &quot;Size&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: hexadecimal})
++        self.read(&quot;link&quot;, &quot;Link&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;info&quot;, &quot;Information&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;addr_align&quot;, &quot;Address alignment&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;entry_size&quot;, &quot;Entry size&quot;, (FormatChunk, &quot;uint32&quot;))
++
++    def updateParent(self, chunk):
++        name = self[&quot;name&quot;]
++        type = self.getChunk(&quot;type&quot;).getDisplayData()
++        desc = &quot;Section header (name: %s, type: %s)&quot; % (name, type)
++        chunk.description = desc
++
++class ProgramHeader32(OnDemandFilter):
++    type_name = {
++        3: &quot;Dynamic library&quot;
++    }
++    
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;prg_header&quot;, &quot;Program header&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;type&quot;, &quot;Type&quot;, (EnumChunk, &quot;uint16&quot;, ProgramHeader32.type_name))
++        self.read(&quot;flags&quot;, &quot;Flags&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;offset&quot;, &quot;Offset&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;vaddr&quot;, &quot;V. address&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: hexadecimal})
++        self.read(&quot;paddr&quot;, &quot;P. address&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: hexadecimal})
++        self.read(&quot;file_size&quot;, &quot;File size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;mem_size&quot;, &quot;Memory size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;align&quot;, &quot;Alignement&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;padding&quot;, &quot;(padding?)&quot;, (FormatChunk, &quot;uint32&quot;))
++
++    def updateParent(self, chunk):
++        type = self.getChunk(&quot;type&quot;).getDisplayData() 
++        chunk.description = &quot;Program Header (%s)&quot; % type
++
++def seek(filter, stream, offset):
++    current = stream.tell()
++    if current != offset:
++        filter.read(&quot;padding[]&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[%u]&quot; % (offset-current)))
++
++def sortSection(a, b):
++    return int(a[&quot;offset&quot;] - b[&quot;offset&quot;])
++
++class Section(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;elf_section&quot;, &quot;Elf section&quot;, stream, parent, &quot;&lt;&quot;)
++        # TODO ...
++        self.read(&quot;raw&quot;, &quot;Raw data&quot;, (FormatChunk, &quot;string[%u]&quot; % stream.getSize()))
++        
++class Sections(OnDemandFilter):
++    def __init__(self, stream, parent, sections):
++        OnDemandFilter.__init__(self, &quot;elf_sections&quot;, &quot;ELF sections&quot;, stream, parent, &quot;&lt;&quot;)
++        for section in sections:
++            ofs = section[&quot;offset&quot;]
++            size = section[&quot;file_size&quot;]
++            if size != 0:
++                sub = stream.createSub(ofs, size)
++                #self.read(&quot;section[]&quot;, &quot;Section&quot;, (DeflateFilter, sub, size, Section))
++                chunk = self.doRead(&quot;section[]&quot;, &quot;Section&quot;, (Section,), {&quot;stream&quot;: sub}) 
++            else:
++                chunk = self.doRead(&quot;section[]&quot;, &quot;Section&quot;, (FormatChunk, &quot;string[0]&quot;))
++            chunk.description = &quot;ELF section (in file: %s..%s)&quot; % (ofs, ofs+size)
++
++class ElfFile(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;elf_file&quot;, &quot;ELF file&quot;, stream, parent, &quot;&lt;&quot;)
++        elf = self.doRead(&quot;header&quot;, &quot;Header&quot;, (ElfHeader,))
++        sections = []
++        for i in range(0, elf[&quot;phnum&quot;]):
++            section = self.doRead(&quot;prg_header[]&quot;, &quot;Program header&quot;, (ProgramHeader32,))
++            sections.append(section)
++
++#        i = 1
++#        for section in sections:
++#            print &quot;Section %u: type %u, data in %u..%u &quot; % (i, section[&quot;type&quot;], section[&quot;offset&quot;], section[&quot;offset&quot;]+section[&quot;file_size&quot;])
++#            i = i + 1
++            
++        size = elf[&quot;shoff&quot;] - stream.tell()
++        newstream = stream.clone()
++        chunk = self.doRead(&quot;data&quot;, &quot;Data&quot;, (DeflateFilter, newstream, size, Sections, sections))
++        chunk.description = &quot;Sections (use an evil hack to manage share same data on differents parts)&quot;
++        assert stream.tell() == elf[&quot;shoff&quot;]
++
++        for i in range(0, elf[&quot;shnum&quot;]):
++            chunk = self.doRead(&quot;section_header[]&quot;, &quot;Section header&quot;, (SectionHeader32,))
++            assert chunk.getSize() == 40
++
++registerPlugin(ElfFile, [&quot;application/x-executable&quot;, &quot;application/x-object&quot;, &quot;application/x-sharedlib&quot;])
+
+Copied: haypo/hachoir/trunk/plugins/exe.py (from rev 351, haypo/hachoir/trunk/broken_plugins/exe.py)
+===================================================================
+--- haypo/hachoir/trunk/broken_plugins/exe.py	2005-12-26 03:53:11 UTC (rev 351)
++++ haypo/hachoir/trunk/plugins/exe.py	2005-12-28 05:35:04 UTC (rev 371)
+@@ -0,0 +1,239 @@
++&quot;&quot;&quot;
++EXE filter.
++
++Status: read ms-dos and pe headers
++Todo: support resources ... and disassembler ? :-)
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from filter import OnDemandFilter
++from plugin import registerPlugin
++from chunk import FormatChunk, EnumChunk, BitsStruct, BitsChunk
++from text_handler import unixTimestamp
++from tools import humanFilesize
++
++class PE_ResourceData(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;pe_rsrc_data&quot;, &quot;PE resource data&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;offset&quot;, &quot;Offset&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;size&quot;, &quot;Size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;page_code&quot;, &quot;Page code (language)&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;language&quot;, &quot;Page code (language)&quot;, (FormatChunk, &quot;&lt;l&quot;))
++        self.read(&quot;reserved&quot;, &quot;Reserverd&quot;, (FormatChunk, &quot;!L&quot;))
++
++class PE_ResourceEntry(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;pe_rsrc_entry&quot;, &quot;PE resource entry&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;id&quot;, &quot;ID or name&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;offset&quot;, &quot;Offset&quot;, (FormatChunk, &quot;uint32&quot;))
++        
++class PE_ResourceDirectory(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;pe_rsrc_dir&quot;, &quot;PE resource directory&quot;, stream, parent, &quot;&lt;&quot;)
++        self.offset_res_section = stream.tell()
++        self.read(&quot;option&quot;, &quot;Options&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;creation_date&quot;, &quot;Creation date&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: unixTimestamp})
++        self.read(&quot;maj_ver&quot;, &quot;Major version&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;named_entries&quot;, &quot;Named entries&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;indexed_entries&quot;, &quot;Indexed entries&quot;, (FormatChunk, &quot;uint16&quot;))
++
++        self.read(&quot;xxx&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % 0x10))
++
++        n = (self[&quot;named_entries&quot;] + self[&quot;indexed_entries&quot;])
++        for i in range(0,n):
++            self.read(&quot;item[]&quot;, &quot;PE resource entry&quot;, (PE_ResourceEntry,))
++
++class PE_Section(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;pe_section&quot;, &quot;PE section&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;name&quot;, &quot;Name&quot;, (FormatChunk, &quot;string[8]&quot;))
++        # TODO: use chunk post proces
++        self.name = self[&quot;name&quot;].strip(&quot; \0&quot;)
++        self.read(&quot;rva&quot;, &quot;RVA&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;size&quot;, &quot;Size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;file_size&quot;, &quot;File size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;file_offset&quot;, &quot;File offset&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;reloc_ptr&quot;, &quot;Relocation pointer&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;lines_ptr&quot;, &quot;File line numbers pointer&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;nb_reloc&quot;, &quot;Number of relocations&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;nb_lines&quot;, &quot;Number of file line&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;options&quot;, &quot;Options&quot;, (FormatChunk, &quot;uint32&quot;))
++
++    def updateParent(self, chunk):
++        name = self[&quot;name&quot;].strip(&quot;\0&quot;)
++        chunk.description = &quot;Section: \&quot;%s\&quot; (size=%s)&quot; % (name, humanFilesize(self[&quot;size&quot;]))
++
++class PE_Directory(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;pe_dir&quot;, &quot;PE directory&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;size&quot;, &quot;Size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;rva&quot;, &quot;RVA&quot;, (FormatChunk, &quot;uint32&quot;))
++
++    def updateParent(self, chunk):
++        if self[&quot;rva&quot;] != 0:
++            chunk.description = &quot;Directory: size=%s&quot; % humanFilesize(self[&quot;size&quot;])
++        else:
++            chunk.description = &quot;Directory: (unused)&quot;
++
++class PE_OptionnalHeader(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;pe_opt_hdr&quot;, &quot;PE optionnal header&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;header&quot;, &quot;Header&quot;, (FormatChunk, &quot;uint16&quot;))
++        assert self[&quot;header&quot;] == 0x010B
++        self.read(&quot;linker_maj_ver&quot;, &quot;Linker major version&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;linker_min_ver&quot;, &quot;Linker minor version&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;code_size&quot;, &quot;Code size (bytes)&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;data_size&quot;, &quot;Data size (bytes)&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;heap_size&quot;, &quot;Heap size (bytes)&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;entry_point_rva&quot;, &quot;Entry point offset (RVA)&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;code_rva&quot;, &quot;Code offset (RVA)&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;data_rva&quot;, &quot;Data offset (RVA)&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;base_image_rva&quot;, &quot;Base image offset (RVA)&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;memory_alignment&quot;, &quot;Memory alignment&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;file_alignment&quot;, &quot;File alignment&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;os_maj_ver&quot;, &quot;OS major version&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;os_min_ver&quot;, &quot;OS minor version&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;prog_maj_ver&quot;, &quot;Program major version&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;prog_min_ver&quot;, &quot;Program minor version&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;api_maj_ver&quot;, &quot;API major version?!&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;api_min_ver&quot;, &quot;API minor version?!&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;windows_ver&quot;, &quot;Windows version?!&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;image_size&quot;, &quot;Image size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;headers_size&quot;, &quot;Headers size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;checksum&quot;, &quot;Checkum&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;neeed_api&quot;, &quot;Needed API?!&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;dll_options&quot;, &quot;DLL options (only for DLL)&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;reserved_stack_size&quot;, &quot;Reserved stack size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;common_stack_size&quot;, &quot;Common stack size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;reserved_heap_size&quot;, &quot;Reserved heap size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;common_heap_size&quot;, &quot;Common heap size&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;loader_options&quot;, &quot;Loader options&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;nb_directories&quot;, &quot;Number of directories (16)&quot;, (FormatChunk, &quot;uint32&quot;))
++        assert self[&quot;nb_directories&quot;] == 16
++        for i in range(0, self[&quot;nb_directories&quot;]):
++            self.read(&quot;directorie[]&quot;, &quot;PE directory&quot;, (PE_Directory,))
++
++class PE_Header(OnDemandFilter):
++    cpu_type_name = {
++        0x00: &quot;Unknow (any type)&quot;,
++        0x184: &quot;Alpha AXP&quot;,
++        0x1c0: &quot;ARM&quot;,
++        0x284: &quot;Alpha AXP 64 bits&quot;,
++        0x14c: &quot;Intel 386&quot;,
++        0x200: &quot;Intel IA64&quot;,
++        0x268: &quot;Motorolla 68000&quot;,
++        0x266: &quot;MIPS&quot;,
++        0x366: &quot;MIPS with FPU&quot;,
++        0x466: &quot;MIPS16 with FPU&quot;,
++        0x1f0: &quot;PowerPC little endian&quot;,
++        0x162: &quot;R3000&quot;,
++        0x166: &quot;MIPS little endian (R4000)&quot;,
++        0x168: &quot;R10000&quot;,
++        0x1a2: &quot;Hitachi SH3&quot;,
++        0x1a6: &quot;Hitachi SH4&quot;,
++        0x1c2: &quot;Thumb (?)&quot;
++    }
++    
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;pe_header&quot;, &quot;PE header&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;header&quot;, &quot;File header&quot;, (FormatChunk, &quot;string[4]&quot;))
++        assert self[&quot;header&quot;] == &quot;PE\0\0&quot;
++        self.read(&quot;cpu_type&quot;, &quot;CPU type&quot;, (EnumChunk, &quot;uint16&quot;, PE_Header.cpu_type_name))
++        self.read(&quot;nb_sections&quot;, &quot;Number of sections&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;creation_date&quot;, &quot;Creation date&quot;, (FormatChunk, &quot;uint32&quot;), {&quot;post&quot;: unixTimestamp})
++        self.read(&quot;ptr_to_symbols&quot;, &quot;Pointer to symbol table&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;nb_symbols&quot;, &quot;Number of symbols&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;opt_header_size&quot;, &quot;Optionnal header size&quot;, (FormatChunk, &quot;uint16&quot;))
++
++        bits = (
++            (1, &quot;reloc_stripped&quot;, &quot;If true, don't contain base relocations.&quot;),
++            (1, &quot;exec_image&quot;, &quot;Exectuable image?&quot;),
++            (1, &quot;line_nb_stripped&quot;, &quot;COFF line numbers stripped?&quot;),
++            (1, &quot;local_sym_stripped&quot;, &quot;COFF symbol table entries stripped?&quot;),
++            (1, &quot;aggr_ws&quot;, &quot;Aggressively trim working set&quot;),
++            (1, &quot;large_addr&quot;, &quot;Application can handle addresses greater than 2 GB&quot;),
++            (1, &quot;reserved&quot;, &quot;(reserved)&quot;),
++            (1, &quot;reverse_lo&quot;, &quot;Little endian: LSB precedes MSB in memory&quot;),
++            (1, &quot;32bit&quot;, &quot;Machine based on 32-bit-word architecture&quot;),
++            (1, &quot;debug_stripped&quot;, &quot;Debugging information removed?&quot;),
++            (1, &quot;swap&quot;, &quot;If image is on removable media, copy and run from swap file&quot;),
++            (1, &quot;reserved2&quot;, &quot;(reserved)&quot;),
++            (1, &quot;system&quot;, &quot;It's a system file&quot;),
++            (1, &quot;dll&quot;, &quot;It's a dynamic-link library (DLL)&quot;),
++            (1, &quot;up&quot;, &quot;File should be run only on a UP machine&quot;),
++            (1, &quot;reverse_hi&quot;, &quot;Big endian: MSB precedes LSB in memory&quot;),
++        )
++        self.read(&quot;options&quot;, &quot;Options&quot;, (BitsChunk, BitsStruct(bits)))
++        #self.read(&quot;options&quot;, &quot;Options&quot;, (FormatChunk, &quot;uint16&quot;))
++
++    def getCpuType(self):
++        cpu_name = {
++            0x014C: &quot;Intel 80386 or greater&quot;,
++            0x014D: &quot;Intel 80486 or greater&quot;,
++            0x014E: &quot;Intel Pentium or greader&quot;, 
++            0x0160: &quot;R3000 (MIPS), big endian&quot;,
++            0x0162: &quot;R3000 (MIPS), little endian&quot;,
++            0x0166: &quot;R4000 (MIPS), little endian&quot;,
++            0x0168: &quot;R10000 (MIPS), little endian&quot;,
++            0x0184: &quot;DEC Alpha AXP&quot;,
++            0x01F0: &quot;IBM Power PC, little endian&quot;}
++        return cpu_name.get(self[&quot;cpu_type&quot;], &quot;unknow&quot;)
++
++class MS_Dos(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;msdos_header&quot;, &quot;MS-Dos executable header&quot;, stream, parent, &quot;&gt;&quot;)
++        self.read(&quot;header&quot;, &quot;File header&quot;, (FormatChunk, &quot;string[2]&quot;))
++        assert self[&quot;header&quot;] == &quot;MZ&quot;
++        self.read(&quot;filesize_mod_512&quot;, &quot;Filesize mod 512&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;filesize_div_512&quot;, &quot;Filesize div 512&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.filesize = self[&quot;filesize_div_512&quot;] * 512 + self[&quot;filesize_mod_512&quot;]
++        self.read(&quot;reloc_entries&quot;, &quot;Number of relocation entries&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;code_offset&quot;, &quot;Offset to the code in the file (div 16)&quot;, (FormatChunk, &quot;&lt;uint16&quot;))
++        self.code_offset = self[&quot;code_offset&quot;] * 16
++        self.read(&quot;needed_memory&quot;, &quot;Memory needed to run (div 16)&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.needed_memory = self[&quot;needed_memory&quot;] * 16
++        self.read(&quot;max_memory&quot;, &quot;Maximum memory needed to run (div 16)&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.max_memory = self[&quot;max_memory&quot;] * 16
++        self.read(&quot;init_ss_sp&quot;, &quot;Initial value of SP:SS registers.&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;checksum&quot;, &quot;Checksum&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;init_cs_ip&quot;, &quot;Initial value of CS:IP registers.&quot;, (FormatChunk, &quot;uint32&quot;))
++        self.read(&quot;reloc_offset&quot;, &quot;Offset in file to relocation table.&quot;, (FormatChunk, &quot;&lt;uint16&quot;))
++        self.read(&quot;overlay_number&quot;, &quot;Overlay number&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;reserved&quot;, &quot;Reserverd&quot;, (FormatChunk, &quot;string[8]&quot;))
++        self.read(&quot;oem_id&quot;, &quot;OEM id&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;oem_info&quot;, &quot;OEM info&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;reserved2&quot;, &quot;Reserved&quot;, (FormatChunk, &quot;string[20]&quot;))
++        self.read(&quot;pe_offset&quot;, &quot;Offset to PE header&quot;, (FormatChunk, &quot;&lt;uint32&quot;))
++
++class ExeFile(OnDemandFilter):
++    def __init__(self, stream, parent=None):
++        OnDemandFilter.__init__(self, &quot;exe_file&quot;, &quot;EXE file&quot;, stream, parent, &quot;&lt;&quot;)
++
++        msdos = self.doRead(&quot;msdos_header&quot;, &quot;MS-Dos header&quot;, (MS_Dos,))
++
++        if msdos[&quot;reloc_offset&quot;] == 0x40:
++            # Read PE header
++            size = msdos[&quot;pe_offset&quot;] - stream.tell()
++            self.read(&quot;msdos_code&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++            self.pe = self.doRead(&quot;pe&quot;, &quot;PE header&quot;, (PE_Header,))
++           
++            # Read PE optionnal header
++            self.read(&quot;pe_opt&quot;, &quot;PE optionnal header&quot;, (PE_OptionnalHeader,))
++
++            # Read sections
++            sections = []
++            for i in range(0, self[&quot;pe&quot;][&quot;nb_sections&quot;]):
++                section = self.doRead(&quot;pe_section[]&quot;, &quot;PE section&quot;, (PE_Section,))
++                sections.append(section)
++
++            # TODO: Finish the code ... 
++#            for section in sections:
++#                if section.name == &quot;.rsrc&quot;:
++#                    offset_res_section = section[&quot;file_offset&quot;]
++#                    size = offset_res_section - stream.tell()
++#                    self.read(&quot;padding[]&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++#                    self.read(&quot;pe_resources&quot;, &quot;PE resources&quot;, (PE_ResourceDirectory,))
++        else:
++            self.pe = None
++
++registerPlugin(ExeFile, [&quot;application/x-dosexec&quot;, &quot;application/x-ms-dos-executable&quot;])
+
+Modified: haypo/hachoir/trunk/text_handler.py
+===================================================================
+--- haypo/hachoir/trunk/text_handler.py	2005-12-28 04:12:28 UTC (rev 370)
++++ haypo/hachoir/trunk/text_handler.py	2005-12-28 05:35:04 UTC (rev 371)
+@@ -10,7 +10,10 @@
+     day = (val &gt;&gt; 16) &amp; 31            # 5 bits: day
+     month = (val &gt;&gt; 21) &amp; 15          # 4 bits: month
+     year = 1980 + ((val &gt;&gt; 25) &amp; 127) # 7 bits: year
+-    return str(datetime.datetime(year, month, day, hour, min, sec))
++    try:
++        return str(datetime.datetime(year, month, day, hour, min, sec))
++    except:
++        return &quot;invalid msdos datetime (%s)&quot; % val
+     
+ def humanFilesize(chunk):
+     return doHumanFilesize(chunk.value)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000272.html">[Happyboom-svn] r370 - in haypo/hachoir/trunk: . broken_plugins plugins stream
+</A></li>
+	<LI>Next message: <A HREF="000274.html">[Happyboom-svn] r372 - in haypo/hachoir/trunk: broken_plugins plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#273">[ date ]</a>
+              <a href="thread.html#273">[ thread ]</a>
+              <a href="subject.html#273">[ subject ]</a>
+              <a href="author.html#273">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

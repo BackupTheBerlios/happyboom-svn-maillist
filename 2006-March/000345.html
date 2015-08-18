@@ -1,0 +1,137 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r441 - haypo/hachoir/trunk/plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r441%20-%20haypo/hachoir/trunk/plugins&In-Reply-To=%3C200603082000.k28K00Po014658%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000344.html">
+   <LINK REL="Next"  HREF="000346.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r441 - haypo/hachoir/trunk/plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r441%20-%20haypo/hachoir/trunk/plugins&In-Reply-To=%3C200603082000.k28K00Po014658%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r441 - haypo/hachoir/trunk/plugins">haypo at berlios.de
+       </A><BR>
+    <I>Wed Mar  8 21:00:00 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000344.html">[Happyboom-svn] r440 - haypo/hachoir/branches/hachoir-yield
+</A></li>
+        <LI>Next message: <A HREF="000346.html">[Happyboom-svn] r442 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/stream branches/hachoir-yield/unit_test
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#345">[ date ]</a>
+              <a href="thread.html#345">[ thread ]</a>
+              <a href="subject.html#345">[ subject ]</a>
+              <a href="author.html#345">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-08 20:59:42 +0100 (Wed, 08 Mar 2006)
+New Revision: 441
+
+Modified:
+   haypo/hachoir/trunk/plugins/id3.py
+   haypo/hachoir/trunk/plugins/tar.py
+Log:
+ * Fix TAR parser: fix FileEntry.isEmpty() for links
+ * ID3 support AlbumWrap extension
+
+
+Modified: haypo/hachoir/trunk/plugins/id3.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/id3.py	2006-03-06 18:28:05 UTC (rev 440)
++++ haypo/hachoir/trunk/plugins/id3.py	2006-03-08 19:59:42 UTC (rev 441)
+@@ -111,6 +111,10 @@
+             if chunk[&quot;size&quot;] == 0:
+                 break
+ 
++        # Check AlbumWrap
++        if True:
++            self.readAlbumWrap(stream)
++
+         # Search first byte of the MPEG file                
+         size = stream.searchLength(&quot;\xFF&quot;, False)
+         if size == -1:
+@@ -118,3 +122,25 @@
+             size = end - stream.tell()
+         if 0 &lt; size:
+             self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
++    def readAlbumWrap(self, stream):            
++        ofst = 1325 
++        oldpos = stream.tell()
++        if ofst &lt; ofst:
++            return
++        stream.seek(ofst)
++        count = stream.getN(12)
++        count = count.rstrip(&quot; &quot;)
++        stream.seek(oldpos)
++        if len(count.strip(&quot;\0&quot;)) == 0:
++            return
++        try:
++            count = int(count)
++        except ValueError:
++            return
++        size = ofst - oldpos
++        self.read(&quot;padding&quot;, &quot;Padding&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++        self.read(&quot;count&quot;, &quot;File count&quot;, (FormatChunk, &quot;string[12]&quot;))
++        for index in range(count):
++            self.read(&quot;filename[]&quot;, &quot;Filename %i&quot; % index, (FormatChunk, &quot;string[501]&quot;))
++
+
+Modified: haypo/hachoir/trunk/plugins/tar.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/tar.py	2006-03-06 18:28:05 UTC (rev 440)
++++ haypo/hachoir/trunk/plugins/tar.py	2006-03-08 19:59:42 UTC (rev 441)
+@@ -49,6 +49,7 @@
+         self.read(&quot;padding&quot;, &quot;Padding (zero)&quot;, (FormatChunk, &quot;string[167]&quot;))
+ 
+         self.name = self[&quot;name&quot;].strip(&quot;\0&quot;)
++        self.link_name = self[&quot;lname&quot;].strip(&quot;\0&quot;)
+         self.size = self.octal2int(self[&quot;size&quot;])
+         if self[&quot;type&quot;] in (0, ord(&quot;0&quot;)) and self.size != 0:
+             substream = stream.createSub(stream.tell(), self.size)
+@@ -87,7 +88,7 @@
+         return str(datetime.fromtimestamp(value))
+ 
+     def isEmpty(self):
+-        return self.name == &quot;&quot;
++        return (self.name == &quot;&quot; and self.link_name == &quot;&quot;)
+ 
+     def octal2int(self, str):
+         str = str.strip(&quot; \0&quot;)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000344.html">[Happyboom-svn] r440 - haypo/hachoir/branches/hachoir-yield
+</A></li>
+	<LI>Next message: <A HREF="000346.html">[Happyboom-svn] r442 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/stream branches/hachoir-yield/unit_test
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#345">[ date ]</a>
+              <a href="thread.html#345">[ thread ]</a>
+              <a href="subject.html#345">[ subject ]</a>
+              <a href="author.html#345">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,407 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r447 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r447%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/doc%20branches/hachoir-yield/libhachoir%20branches/hachoir-yield/libhachoir/field%20branches/hachoir-yield/libhachoir/parser/image%20branches/hachoir-yield/libhachoir/stream&In-Reply-To=%3C200603122004.k2CK41Vb023226%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000350.html">
+   <LINK REL="Next"  HREF="000352.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r447 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r447%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/doc%20branches/hachoir-yield/libhachoir%20branches/hachoir-yield/libhachoir/field%20branches/hachoir-yield/libhachoir/parser/image%20branches/hachoir-yield/libhachoir/stream&In-Reply-To=%3C200603122004.k2CK41Vb023226%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r447 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream">haypo at berlios.de
+       </A><BR>
+    <I>Sun Mar 12 21:04:01 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000350.html">[Happyboom-svn] r446 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/archive branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream branches/hachoir-yield/unit_test
+</A></li>
+        <LI>Next message: <A HREF="000352.html">[Happyboom-svn] r448 - in haypo/hachoir: . branches/hachoir-yield/libhachoir/field
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#351">[ date ]</a>
+              <a href="thread.html#351">[ thread ]</a>
+              <a href="subject.html#351">[ subject ]</a>
+              <a href="author.html#351">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-12 21:03:49 +0100 (Sun, 12 Mar 2006)
+New Revision: 447
+
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/doc/1-basic.txt
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/bit_field.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/character.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/field.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/float.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/string_field.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/mime.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/bmp.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/stream/input.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/stream/output.py
+   haypo/hachoir/branches/hachoir-yield/text_ui.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r61 at haypopc</A>:  haypo | 2006-03-09 23:16:17 +0100
+ It's possible to recreate a file from a field set :-)
+  * In InputStream, rename get*() to read*(), and endian is no optionnal anymore
+    for function readBits(). Update documentation for this changes.
+  * Add Field.writeInto() method
+  * OutputStream: fix writeBits() method, add copyBitsFrom() and copyBytesFrom()
+  * displayFieldSet(): only display field set description ... if it has an
+    description
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:60
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:61
+
+Modified: haypo/hachoir/branches/hachoir-yield/doc/1-basic.txt
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/doc/1-basic.txt	2006-03-12 20:03:26 UTC (rev 446)
++++ haypo/hachoir/branches/hachoir-yield/doc/1-basic.txt	2006-03-12 20:03:49 UTC (rev 447)
+@@ -9,16 +9,16 @@
+ ``FileInputStream`` function (needs a filename) or ``StringInputStream``
+ (needs a string). Here is a small example to create a stream:
+ 
+-&gt;&gt;&gt; from stream import StringInputStream
++&gt;&gt;&gt; from libhachoir.stream import StringInputStream
+ &gt;&gt;&gt; stream = StringInputStream(&quot;\x03abc&quot;)
+ 
+ Most interesting methods are:
+ 
+-&gt;&gt;&gt; stream.size            # get size in bits
++&gt;&gt;&gt; stream.size                   # get size in bits
+ 32
+-&gt;&gt;&gt; stream.getBits(0, 8)   # get 8 bits at address 0
++&gt;&gt;&gt; stream.readBits(0, 8, True)  # get 8 bits at address 0 in big endian
+ 3
+-&gt;&gt;&gt; stream.getBytes(8, 3)  # get 3 bytes at address 8
++&gt;&gt;&gt; stream.readBytes(8, 3)        # get 3 bytes at address 8
+ 'abc'
+ 
+ Support your own format using FieldSet
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/bit_field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/bit_field.py	2006-03-12 20:03:26 UTC (rev 446)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/bit_field.py	2006-03-12 20:03:49 UTC (rev 447)
+@@ -10,7 +10,7 @@
+ 
+     def _getValue(self):
+         if self._value == None:
+-            self._value = self.parent.stream.getBits(
++            self._value = self.parent.stream.readBits(
+                 self.absolute_address, self._size, self.big_endian) 
+         return self._value
+     value = property(_getValue, Field._setValue)
+@@ -18,6 +18,9 @@
+     def _getDisplay(self):
+         return self.value
+     display = property(_getDisplay)
++    
++    def writeInto(self, output):
++        output.copyBitsFrom(self.parent.stream, self.absolute_address, self._size, self.big_endian)
+ 
+ class Bit(Bits):
+     def __init__(self, parent, name, description=None):
+@@ -25,7 +28,7 @@
+ 
+     def _getValue(self):
+         if self._value == None:
+-            data = self.parent.stream.getBits(
++            data = self.parent.stream.readBits(
+                 self.absolute_address, 1, True) 
+             self._value = (data == 1)
+         return self._value
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/character.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/character.py	2006-03-12 20:03:26 UTC (rev 446)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/character.py	2006-03-12 20:03:49 UTC (rev 447)
+@@ -7,7 +7,7 @@
+ 
+     def _getValue(self):
+         if self._value == None:
+-            byte = self.parent.stream.getBits(
++            byte = self.parent.stream.readBits(
+                 self.absolute_address, 8, True) 
+             self._value = chr(byte)
+         return self._value
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/field.py	2006-03-12 20:03:26 UTC (rev 446)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/field.py	2006-03-12 20:03:49 UTC (rev 447)
+@@ -68,3 +68,7 @@
+     def _getSize(self):
+         return self._size
+     size = property(_getSize)
++
++    def writeInto(self, output):
++        raise NotImplementedError()
++
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py	2006-03-12 20:03:26 UTC (rev 446)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py	2006-03-12 20:03:49 UTC (rev 447)
+@@ -65,8 +65,9 @@
+             assert parent != None
+             self.stream = parent.stream
+         else:
++#            assert isinstance(stream, InputStream)
++#            assert issubclass(stream.__class__, InputStream)
+             self.stream = stream
+-        assert isinstance(stream, InputStream)
+         self.fields = IndexedDict()
+         self._event_handler = None
+         self._field_generator = self.createFields()
+@@ -231,3 +232,7 @@
+     def createFields(self):
+         raise NotImplementedError
+ 
++    def writeInto(self, output):
++        for field in self:
++            field.writeInto(output)
++
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/float.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/float.py	2006-03-12 20:03:26 UTC (rev 446)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/float.py	2006-03-12 20:03:49 UTC (rev 447)
+@@ -15,7 +15,7 @@
+     def _getValue(self):
+         if self._value == None:
+             assert (self._size % 8) == 0
+-            raw = self.parent.stream.getBytes(
++            raw = self.parent.stream.readBytes(
+                 self.absolute_address, self._size/8)
+             raw = struct.unpack(self.format, raw)
+             assert len(raw) == 1
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/string_field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/string_field.py	2006-03-12 20:03:26 UTC (rev 446)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/string_field.py	2006-03-12 20:03:49 UTC (rev 447)
+@@ -13,10 +13,10 @@
+         truncated = False
+         if self._value == None:
+             if max_bytes &lt; length:
+-                display = self.parent.stream.getBytes( \
++                display = self.parent.stream.readBytes( \
+                     address, max_bytes)
+             else:
+-                self._value = self.parent.stream.getBytes( \
++                self._value = self.parent.stream.readBytes( \
+                     address, length)
+                 display = self._value
+         else:
+@@ -33,11 +33,14 @@
+     def _getValue(self):
+         if self._value == None:
+             assert (self._size % 8) == 0
+-            self._value = self.parent.stream.getBytes( \
++            self._value = self.parent.stream.readBytes( \
+                 self.absolute_address, self._size / 8)
+         return self._value
+     value = property(_getValue, Field._setValue)        
+ 
++    def writeInto(self, output):
++        output.copyBytesFrom(self.parent.stream, self.absolute_address, self._size/8)
++
+ class String(RawBytes):
+     def __init__(self, parent, name, format, description=None, \
+             strip=None, text_handler=None):
+@@ -86,7 +89,7 @@
+     def _getValue(self):
+         if self._value == None:
+             assert (self._size % 8) == 0
+-            self._value = self.parent.stream.getBytes( \
++            self._value = self.parent.stream.readBytes( \
+                 self.absolute_address + self._begin_offset*8, self._length)
+             self._value = self._processData(self._value, False)
+         return self._value
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/mime.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/mime.py	2006-03-12 20:03:26 UTC (rev 446)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/mime.py	2006-03-12 20:03:49 UTC (rev 447)
+@@ -81,7 +81,7 @@
+     nb_bytes = stream.size/8
+     if 4096 &lt; nb_bytes:
+         nb_bytes = 4096
+-    data = stream.getBytes(0, nb_bytes)
++    data = stream.readBytes(0, nb_bytes)
+     return getBufferMime(data, stream.filename)
+ 
+ def getAnotherBufferMime(content):    
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/bmp.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/bmp.py	2006-03-12 20:03:26 UTC (rev 446)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/bmp.py	2006-03-12 20:03:49 UTC (rev 447)
+@@ -18,7 +18,7 @@
+     }        
+     
+     def createFields(self):
+-        yield RawBytes(self, &quot;header&quot;, &quot;string[2]&quot;, &quot;Header (\&quot;BM\&quot;)&quot;)
++        yield RawBytes(self, &quot;header&quot;, 2, &quot;Header (\&quot;BM\&quot;)&quot;)
+         if self[&quot;header&quot;].value != &quot;BM&quot;: 
+             raise ParserError(
+                 &quot;BMP picture parser error: indentifier is uncorrect&quot;)
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/stream/input.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/stream/input.py	2006-03-12 20:03:26 UTC (rev 446)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/stream/input.py	2006-03-12 20:03:49 UTC (rev 447)
+@@ -31,7 +31,7 @@
+         return self._size
+     size = property(_getSize, doc=&quot;Size of the stream in bits&quot;)
+ 
+-    def getBits(self, address, nbits, big_endian=False):
++    def readBits(self, address, nbits, big_endian):
+         data = self._getRawBits(address, nbits)        
+         if (address % 8) != 0 or (nbits % 8) != 0:
+             mask = (1 &lt;&lt; nbits) - 1
+@@ -67,7 +67,7 @@
+             value = value &amp; mask
+         return value
+ 
+-    def getBytes(self, address, nb_bytes):
++    def readBytes(self, address, nb_bytes):
+         if address % 8 != 0:
+             data = self._getRawBits(address, nb_bytes*8)
+             nbits = address % 8
+@@ -121,7 +121,7 @@
+         if max&lt;doublesize:
+             doublesize = max/8 
+             size = 0 
+-        buffer = self.getBytes(address, doublesize)
++        buffer = self.readBytes(address, doublesize)
+ 
+         new_address = address + size
+         while len(buffer) != 0:
+@@ -133,7 +133,7 @@
+                 size = end_address - address
+             if size == 0:
+                 break
+-            buffer = buffer[size:] + self.getBytes(address, size)
++            buffer = buffer[size:] + self.readBytes(address, size)
+             new_address = address + size 
+         return None
+ 
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/stream/output.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/stream/output.py	2006-03-12 20:03:26 UTC (rev 446)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/stream/output.py	2006-03-12 20:03:49 UTC (rev 447)
+@@ -53,7 +53,7 @@
+                 self._byte = 0
+             else:
+                 if self._big_endian:
+-                    self._byte |= (value &lt;&lt; (8-self._bit_pos-count))
++                    self._byte |= (value &lt;&lt; (7-self._bit_pos-count))
+                 else:
+                     self._byte |= (value &lt;&lt; self._bit_pos)
+                 self._bit_pos += count 
+@@ -83,6 +83,38 @@
+             assert value == 0
+             self._byte = 0
+ 
++    def copyBitsFrom(self, input, address, nb_bits, big_endian):
++        if (nb_bits % 8) == 0 and big_endian:
++            self.copyBytesFrom(input, address, nb_bits/8)
++        else:
++            # Arbitrary limit (because we should use a buffer, like copyBytesFrom(),
++            # but with endianess problem
++            assert nb_bits &lt;= 128
++            buffer = input.readBits(address, nb_bits, big_endian)
++            self.writeBits(nb_bits, buffer)
++    
++    def copyBytesFrom(self, input, address, nb_bytes):
++        buffer_size = 1 &lt;&lt; 16 # 64 KB
++        while 0 &lt; nb_bytes:
++            # Compute buffer size
++            if nb_bytes &lt; buffer_size:
++                buffer_size = nb_bytes
++                
++            # Read
++            buffer = input.readBytes(address, buffer_size)
++            
++            # Write
++            self.writeBytes(buffer)
++
++            # Move address
++            address += buffer_size*8
++            nb_bytes -= buffer_size
++
++    def writeBytes(self, bytes):           
++        if self._bit_pos != 0:
++            raise NotImplementedError()
++        self._output.write(bytes)
++
+     def paddingToByte(self, bit=False):
+         n = 0
+         while self._bit_pos != 0:
+
+Modified: haypo/hachoir/branches/hachoir-yield/text_ui.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-03-12 20:03:26 UTC (rev 446)
++++ haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-03-12 20:03:49 UTC (rev 447)
+@@ -1,5 +1,5 @@
+ def displayFieldSet(field_set, max_depth=2, depth=0, options={}):
+-    display_parent_addr = options.get(&quot;parent-addr&quot;, True)
++    display_parent_addr = options.get(&quot;parent-addr&quot;, False)
+     display_parent_size = options.get(&quot;parent-size&quot;, False)
+     display_parent_desc = options.get(&quot;parent-desc&quot;, True)
+     indent = &quot; &quot; * (3*depth)
+@@ -22,7 +22,7 @@
+             if display_parent_size:
+                 info.append( &quot;size=%s bytes&quot; % (field_set.size/8) )
+         text += &quot; (%s)&quot; % (&quot;, &quot;.join(info))
+-    if display_parent_desc:
++    if display_parent_desc and field_set.description != None:
+         text += &quot; (%s)&quot; % field_set.description
+     print text
+     if max_depth == None or max_depth &lt; 0 or depth &lt; max_depth:
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000350.html">[Happyboom-svn] r446 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/archive branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream branches/hachoir-yield/unit_test
+</A></li>
+	<LI>Next message: <A HREF="000352.html">[Happyboom-svn] r448 - in haypo/hachoir: . branches/hachoir-yield/libhachoir/field
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#351">[ date ]</a>
+              <a href="thread.html#351">[ thread ]</a>
+              <a href="subject.html#351">[ subject ]</a>
+              <a href="author.html#351">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

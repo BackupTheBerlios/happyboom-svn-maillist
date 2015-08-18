@@ -1,0 +1,101 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r98 - in happyboom/trunk/boomboom: . client
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-August/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r98%20-%20in%20happyboom/trunk/boomboom%3A%20.%20client&In-Reply-To=%3C200508060014.j760EtSO004732%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000004.html">
+   <LINK REL="Next"  HREF="000006.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r98 - in happyboom/trunk/boomboom: . client</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r98%20-%20in%20happyboom/trunk/boomboom%3A%20.%20client&In-Reply-To=%3C200508060014.j760EtSO004732%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r98 - in happyboom/trunk/boomboom: . client">haypo at berlios.de
+       </A><BR>
+    <I>Sat Aug  6 02:14:55 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000004.html">[Happyboom-svn] r96 - in happyboom/trunk: . boomboom
+</A></li>
+        <LI>Next message: <A HREF="000006.html">[Happyboom-svn] r99 - in happyboom/trunk: boomboom boomboom/client/items boomboom/server net/io_tcp net/io_udp
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5">[ date ]</a>
+              <a href="thread.html#5">[ thread ]</a>
+              <a href="subject.html#5">[ subject ]</a>
+              <a href="author.html#5">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-08-06 02:14:54 +0200 (Sat, 06 Aug 2005)
+New Revision: 98
+
+Modified:
+   happyboom/trunk/boomboom/client/bb_drawer.py
+   happyboom/trunk/boomboom/makedoc
+Log:
+Mega patch
+
+
+Modified: happyboom/trunk/boomboom/client/bb_drawer.py
+===================================================================
+--- happyboom/trunk/boomboom/client/bb_drawer.py	2005-08-05 10:33:46 UTC (rev 97)
++++ happyboom/trunk/boomboom/client/bb_drawer.py	2005-08-06 00:14:54 UTC (rev 98)
+@@ -82,7 +82,7 @@
+             self.surface = pygame.Surface((width,height))
+         else:
+             self.type = &quot;window&quot;
+-            self.surface = pygame.display.set_mode((width,height))
++            self.surface = pygame.display.set_mode((width,height), pygame.HWSURFACE | pygame.DOUBLEBUF)
+         self.pos = (0,0)
+         self.view_pos = (0,0)
+         self.scale = 1
+@@ -91,4 +91,4 @@
+ 
+     def blit(self, surface, pos):
+         new_pos = (pos[0] - self.view_pos[0], pos[1] - self.view_pos[1],)
+-        self.surface.blit(surface, new_pos)
+\ No newline at end of file
++        self.surface.blit(surface, new_pos)
+
+Modified: happyboom/trunk/boomboom/makedoc
+===================================================================
+--- happyboom/trunk/boomboom/makedoc	2005-08-05 10:33:46 UTC (rev 97)
++++ happyboom/trunk/boomboom/makedoc	2005-08-06 00:14:54 UTC (rev 98)
+@@ -1 +1,2 @@
++mkdir doc
+ epydoc $* -o doc/api -n &quot;BoomBoom 0.2&quot; --private-css blue client common net server
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000004.html">[Happyboom-svn] r96 - in happyboom/trunk: . boomboom
+</A></li>
+	<LI>Next message: <A HREF="000006.html">[Happyboom-svn] r99 - in happyboom/trunk: boomboom boomboom/client/items boomboom/server net/io_tcp net/io_udp
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5">[ date ]</a>
+              <a href="thread.html#5">[ thread ]</a>
+              <a href="subject.html#5">[ subject ]</a>
+              <a href="author.html#5">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

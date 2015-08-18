@@ -1,0 +1,140 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r418 - in haypo/hachoir: . branches/hachoir-yield/field branches/hachoir-yield/unit_test
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-February/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r418%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield/field%20branches/hachoir-yield/unit_test&In-Reply-To=%3C200602281253.k1SCrB9q006420%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000321.html">
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r418 - in haypo/hachoir: . branches/hachoir-yield/field branches/hachoir-yield/unit_test</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r418%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield/field%20branches/hachoir-yield/unit_test&In-Reply-To=%3C200602281253.k1SCrB9q006420%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r418 - in haypo/hachoir: . branches/hachoir-yield/field branches/hachoir-yield/unit_test">haypo at berlios.de
+       </A><BR>
+    <I>Tue Feb 28 13:53:11 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000321.html">[Happyboom-svn] r417 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/unit_test
+</A></li>
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#322">[ date ]</a>
+              <a href="thread.html#322">[ thread ]</a>
+              <a href="subject.html#322">[ subject ]</a>
+              <a href="author.html#322">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-02-28 13:52:41 +0100 (Tue, 28 Feb 2006)
+New Revision: 418
+
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/field/field_set.py
+   haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r11 at haypopc</A>:  haypo | 2006-02-28 13:52:42 +0100
+ Fix about &quot;../&quot; path in FieldSet
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:9
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:11
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-02-28 12:20:24 UTC (rev 417)
++++ haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-02-28 12:52:41 UTC (rev 418)
+@@ -98,6 +98,9 @@
+             names = names[1:]
+         else:
+             field = self
++        # For path like &quot;../&quot; =&gt; delete last (useless) &quot;/&quot;
++        if 1 &lt;= len(names) and names[-1] == '':
++            del names[-1]
+         for name in names:
+             if name==&quot;&quot; or not field.is_field_set:
+                 raise FieldDoesExist(&quot;Field '%s' doesn't exist in %s&quot; \
+@@ -129,14 +132,12 @@
+             % (name, self.path))
+ 
+     def __contains__(self, name):
+-        if &quot;/&quot; in name:
+-            names = name.split(&quot;/&quot;)
+-            field = self
+-            for name in names:
+-                if name==&quot;&quot; or not field.is_field_set:
+-                    return False
+-                field = field[name]
+-            return True
++        if &quot;/&quot; in name or name.startswith(&quot;..&quot;):
++            try:
++                field = self.getChunkByPath(name)
++                return True
++            except FieldDoesExist:
++                return False
+         else:
+             if self._field_generator != None:
+                 field = self._feedUntil(name)
+
+Modified: haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py	2006-02-28 12:20:24 UTC (rev 417)
++++ haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py	2006-02-28 12:52:41 UTC (rev 418)
+@@ -23,12 +23,19 @@
+     document = Document(None, &quot;document&quot;, stream)
+     
+     # Test path starting with &quot;/&quot;
++    assert &quot;/body&quot; in document
++    assert &quot;/header&quot; in document
+     assert id(document[&quot;/header&quot;]) == id(document[&quot;header&quot;])
+     header = document[&quot;/header&quot;]
++    body = document[&quot;/body&quot;]
++    assert id(document[&quot;/header/width&quot;]) == id(header[&quot;width&quot;])
+ 
+     # Test path starting with &quot;..&quot;
++    assert &quot;..&quot; in header
++    assert &quot;../&quot; in header
+     assert id(header[&quot;..&quot;]) == id(document)
+     assert id(header[&quot;../header&quot;]) == id(header)
++    assert id(body[&quot;../header/width&quot;]) == id(header[&quot;width&quot;])
+ 
+ def runTests():
+     print &quot;Test FieldSet.__getitem__&quot;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000321.html">[Happyboom-svn] r417 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/unit_test
+</A></li>
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#322">[ date ]</a>
+              <a href="thread.html#322">[ thread ]</a>
+              <a href="subject.html#322">[ subject ]</a>
+              <a href="author.html#322">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

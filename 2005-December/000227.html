@@ -1,0 +1,257 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r321 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r321%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200512121744.jBCHiPX4022596%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000226.html">
+   <LINK REL="Next"  HREF="000228.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r321 - in haypo/hachoir: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r321%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200512121744.jBCHiPX4022596%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r321 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Mon Dec 12 18:44:25 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000226.html">[Happyboom-svn] r320 - haypo/hachoir/plugins
+</A></li>
+        <LI>Next message: <A HREF="000228.html">[Happyboom-svn] r322 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#227">[ date ]</a>
+              <a href="thread.html#227">[ thread ]</a>
+              <a href="subject.html#227">[ subject ]</a>
+              <a href="author.html#227">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-12 18:44:22 +0100 (Mon, 12 Dec 2005)
+New Revision: 321
+
+Modified:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/filter.py
+   haypo/hachoir/plugins/pdf.py
+   haypo/hachoir/plugins/xcf.py
+Log:
+Improve StringChunk: add &quot;Pascal32&quot; string type, and also &quot;strip&quot; argument.
+
+
+Modified: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-12-12 17:19:17 UTC (rev 320)
++++ haypo/hachoir/chunk.py	2005-12-12 17:44:22 UTC (rev 321)
+@@ -141,9 +141,21 @@
+ 
+ class StringChunk(Chunk):
+     regex_eol_nr = re.compile(&quot;[\n\r]&quot;)
++    names = {
++        &quot;C&quot;: &quot;c-string&quot;,
++        &quot;MacLine&quot;: &quot;mac line&quot;,
++        &quot;UnixLine&quot;: &quot;unix line&quot;,
++        &quot;AutoLine&quot;: &quot;line&quot;,
++        &quot;Pascal32&quot;: &quot;pascal32&quot;,
++        &quot;WindowsLine&quot;: &quot;windows line&quot;
++    }
+ 
+-    def __init__(self, id, description, stream, str_type, parent):
+-        assert str_type in (&quot;C&quot;, &quot;UnixLine&quot;, &quot;WindowsLine&quot;, &quot;MacLine&quot;, &quot;AutoLine&quot;)
++    def __init__(self, id, description, stream, str_type, parent, strip=None):
++        &quot;&quot;&quot;
++        Strip: if strip=None, call read text.strip()
++               if strip is a string, call read text.strip(self.strip)
++        &quot;&quot;&quot;
++        assert str_type in StringChunk.names
+         Chunk.__init__(self, id, description, stream, stream.tell(), 0, parent)
+         self._str_type = str_type
+         self.eol = None
+@@ -151,20 +163,20 @@
+         self._cache_addr = None
+         self._cache_max_size = None
+         self._cache_value = None
++        self.strip = strip
+ 
+     def getFormat(self):
+-        names = {
+-            &quot;C&quot;: &quot;c-string&quot;,
+-            &quot;MacLine&quot;: &quot;mac line&quot;,
+-            &quot;UnixLine&quot;: &quot;unix line&quot;,
+-            &quot;AutoLine&quot;: &quot;line&quot;,
+-            &quot;WindowsLine&quot;: &quot;windows line&quot;
+-        }
+-        assert self._str_type in names
+-        return names[self._str_type]
++        assert self._str_type in StringChunk.names
++        return StringChunk.names[self._str_type]
+ 
+     def _findSize(self):
+         self._stream.seek(self.addr)
++        if self._str_type == &quot;Pascal32&quot;:
++            self.length = self._stream.getFormat(&quot;!L&quot;)[0]
++            self._size = 4 + self.length
++            self.eol = &quot;&quot;
++            return
++            
+         if self._str_type == &quot;AutoLine&quot;:
+             self._size = self._stream.searchLength(StringChunk.regex_eol_nr, True)
+             assert self._size != -1
+@@ -196,12 +208,21 @@
+         self._cache_max_size = max_size
+ 
+         self._stream.seek(self.addr)
+-        size = self._size - len(self.eol)
++        if self._str_type == &quot;Pascal32&quot;:
++            self._stream.seek(4,1)
++            size = self.length
++        else:
++            size = self._size - len(self.eol)
+         if max_size != None and max_size&lt;size:
+             text = self._stream.getN(max_size)+&quot;(...)&quot;
+         else:
+             text = self._stream.getN(size)
+         self._stream.seek(self.addr + self._size)
++        if self.strip != None:
++            if self.strip == True:
++                text = text.strip()
++            else:
++                text = text.strip(self.strip)
+         self._cache_value = text
+         return text
+ 
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-12-12 17:19:17 UTC (rev 320)
++++ haypo/hachoir/filter.py	2005-12-12 17:44:22 UTC (rev 321)
+@@ -360,9 +360,9 @@
+         chunk.postProcess()
+         return chunk
+     
+-    def readString(self, id, format, description, post=None):
++    def readString(self, id, format, description, post=None, strip=None):
+         &quot;&quot;&quot; Returns chunk &quot;&quot;&quot;
+-        chunk = StringChunk(id, description, self._stream, format, self)
++        chunk = StringChunk(id, description, self._stream, format, self, strip=strip)
+         self.appendChunk(chunk)
+         self._stream.seek(chunk.addr + chunk.size)
+         chunk.post_process = post
+
+Modified: haypo/hachoir/plugins/pdf.py
+===================================================================
+--- haypo/hachoir/plugins/pdf.py	2005-12-12 17:19:17 UTC (rev 320)
++++ haypo/hachoir/plugins/pdf.py	2005-12-12 17:44:22 UTC (rev 321)
+@@ -9,14 +9,11 @@
+ def isEnd(stream, array, last):
+     return stream.eof()
+ 
+-def stripLine(chunk):
+-    return convertDataToPrintableString(chunk.value.strip())
+-
+ class PdfObject(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;pdf_obj&quot;, &quot;PDF object&quot;, stream, parent)
+         self.metadata = {}
+-        chunk = self.readString(&quot;header&quot;, &quot;AutoLine&quot;, &quot;Object header&quot;, post=stripLine)
++        chunk = self.readString(&quot;header&quot;, &quot;AutoLine&quot;, &quot;Object header&quot;, strip=True)
+         header = chunk.value 
+         assert header != &quot;&quot;
+         if header == &quot;xref&quot;:
+@@ -51,7 +48,7 @@
+         deflate = False
+         while text not in (&quot;endobj&quot;, &quot;stream&quot;):
+             self.processLine(text)
+-            chunk = self.readString(&quot;line[]&quot;, &quot;AutoLine&quot;, &quot;&quot;, post=stripLine)
++            chunk = self.readString(&quot;line[]&quot;, &quot;AutoLine&quot;, &quot;&quot;, strip=True)
+             text = chunk.value
+             if re.match(r&quot;.*/Filter /FlateDecode.*&quot;, chunk.value) != None:
+                 deflate = True
+@@ -89,22 +86,22 @@
+             assert self.getStream().tell() == (start+size)
+             
+             self.readString(&quot;data_end[]&quot;, &quot;AutoLine&quot;, &quot;Data end&quot;)
+-            self.readString(&quot;endobj&quot;, &quot;AutoLine&quot;, &quot;Object end&quot;, post=stripLine)
++            self.readString(&quot;endobj&quot;, &quot;AutoLine&quot;, &quot;Object end&quot;, strip=True)
+         ver = self.getParent().version
+         eol = self.getStream().read(1, seek=False)
+         if eol in (&quot;\n&quot;, &quot;\r&quot;):
+             self.readString(&quot;emptyline&quot;, &quot;AutoLine&quot;, &quot;&quot;)
+ 
+     def readXref(self):
+-        chunk = self.readString(&quot;xref_header&quot;, &quot;AutoLine&quot;, &quot;XRef header&quot;, post=stripLine)
++        chunk = self.readString(&quot;xref_header&quot;, &quot;AutoLine&quot;, &quot;XRef header&quot;, strip=True)
+         m = re.match(r&quot;^[0-9]+ ([0-9]+)$&quot;, chunk.value)
+         assert m != None
+         nb_ref = int(m.group(1)) - 1
+         n = 0
+         while n&lt;nb_ref:
+-            chunk = self.readString(&quot;ref[]&quot;, &quot;AutoLine&quot;, &quot;Reference&quot;, post=stripLine)
++            chunk = self.readString(&quot;ref[]&quot;, &quot;AutoLine&quot;, &quot;Reference&quot;, strip=True)
+             n = n + 1
+-        self.readString(&quot;endobj&quot;, &quot;AutoLine&quot;, &quot;Object end&quot;, post=stripLine)
++        self.readString(&quot;endobj&quot;, &quot;AutoLine&quot;, &quot;Object end&quot;, strip=True)
+ 
+     def processLine(self, line):
+         tests = {
+
+Modified: haypo/hachoir/plugins/xcf.py
+===================================================================
+--- haypo/hachoir/plugins/xcf.py	2005-12-12 17:19:17 UTC (rev 320)
++++ haypo/hachoir/plugins/xcf.py	2005-12-12 17:44:22 UTC (rev 321)
+@@ -42,6 +42,9 @@
+         self.read(&quot;unit&quot;, &quot;!L&quot;, &quot;Unit&quot;)
+ 
+ def readString(filter, stream, name, description):
++    filter.readString(name, &quot;Pascal32&quot;, description, strip=&quot;\0&quot;)
++    return
++    
+     chunk = filter.read(name+&quot;_size&quot;, &quot;!L&quot;, description+&quot; length&quot;)
+     filter.read(name, &quot;%us&quot; % chunk.value, description)
+ 
+@@ -119,6 +122,11 @@
+         self.readChild(&quot;hierarchie&quot;, XcfHierarchie)
+         # TODO: Read layer mask if needed: self[&quot;mask_ofs&quot;] != 0
+ 
++    def updateParent(self, chunk):
++        desc = &quot;Layer \&quot;%s\&quot;&quot; % self[&quot;name&quot;]
++        chunk.description = desc
++        self.setDescription(desc)
++
+ class XcfParasites(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;parasites&quot;, &quot;Parasites&quot;, stream, parent)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000226.html">[Happyboom-svn] r320 - haypo/hachoir/plugins
+</A></li>
+	<LI>Next message: <A HREF="000228.html">[Happyboom-svn] r322 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#227">[ date ]</a>
+              <a href="thread.html#227">[ thread ]</a>
+              <a href="subject.html#227">[ subject ]</a>
+              <a href="author.html#227">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

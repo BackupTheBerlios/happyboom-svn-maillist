@@ -1,0 +1,254 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r107 - languetudes
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r107%20-%20languetudes&In-Reply-To=%3C200509021444.j82EiPBq019980%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000013.html">
+   <LINK REL="Next"  HREF="000017.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r107 - languetudes</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r107%20-%20languetudes&In-Reply-To=%3C200509021444.j82EiPBq019980%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r107 - languetudes">dboucard at berlios.de
+       </A><BR>
+    <I>Fri Sep  2 16:44:25 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000013.html">[Happyboom-svn] r106 - / happyboom/trunk/boomboom/client languetudes languetudes/src
+</A></li>
+        <LI>Next message: <A HREF="000017.html">[Happyboom-svn] r108 - / lamer lamer/tool lamer/tool/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14">[ date ]</a>
+              <a href="thread.html#14">[ thread ]</a>
+              <a href="subject.html#14">[ subject ]</a>
+              <a href="author.html#14">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-02 16:44:25 +0200 (Fri, 02 Sep 2005)
+New Revision: 107
+
+Added:
+   languetudes/languetudes.test.sql
+Log:
+jeu de donnees pour tester le programme
+
+Added: languetudes/languetudes.test.sql
+===================================================================
+--- languetudes/languetudes.test.sql	2005-09-02 13:38:18 UTC (rev 106)
++++ languetudes/languetudes.test.sql	2005-09-02 14:44:25 UTC (rev 107)
+@@ -0,0 +1,178 @@
++-- MySQL dump 9.11
++--
++-- Host: localhost    Database: languetudes
++-- ------------------------------------------------------
++-- Server version	4.0.23_Debian-3ubuntu2-log
++
++--
++-- Table structure for table `__dictionnaire`
++--
++
++DROP TABLE IF EXISTS `__dictionnaire`;
++CREATE TABLE `__dictionnaire` (
++  `id` int(9) NOT NULL auto_increment,
++  `intitule` varchar(63) default NULL,
++  `langue` int(9) default NULL,
++  PRIMARY KEY  (`id`),
++  UNIQUE KEY `langue` (`langue`,`intitule`)
++) TYPE=MyISAM;
++
++--
++-- Dumping data for table `__dictionnaire`
++--
++
++
++/*!40000 ALTER TABLE `__dictionnaire` DISABLE KEYS */;
++LOCK TABLES `__dictionnaire` WRITE;
++INSERT INTO `__dictionnaire` VALUES (13,'nombres',5),(7,'test',7),(12,'lecon no1',8),(10,'test2',7),(11,'nombres',6);
++UNLOCK TABLES;
++/*!40000 ALTER TABLE `__dictionnaire` ENABLE KEYS */;
++
++--
++-- Table structure for table `__langue`
++--
++
++DROP TABLE IF EXISTS `__langue`;
++CREATE TABLE `__langue` (
++  `id` int(9) NOT NULL auto_increment,
++  `intitule` varchar(31) NOT NULL default '',
++  PRIMARY KEY  (`id`),
++  UNIQUE KEY `intitule` (`intitule`)
++) TYPE=MyISAM;
++
++--
++-- Dumping data for table `__langue`
++--
++
++
++/*!40000 ALTER TABLE `__langue` DISABLE KEYS */;
++LOCK TABLES `__langue` WRITE;
++INSERT INTO `__langue` VALUES (5,'roumain'),(6,'anglais'),(7,'esperanto'),(8,'chinois');
++UNLOCK TABLES;
++/*!40000 ALTER TABLE `__langue` ENABLE KEYS */;
++
++--
++-- Table structure for table `dico10`
++--
++
++DROP TABLE IF EXISTS `dico10`;
++CREATE TABLE `dico10` (
++  `id` int(9) NOT NULL auto_increment,
++  `francais` varchar(63) NOT NULL default '',
++  `etranger` varchar(63) NOT NULL default '',
++  PRIMARY KEY  (`id`),
++  UNIQUE KEY `francais` (`francais`,`etranger`),
++  KEY `etranger` (`etranger`,`francais`)
++) TYPE=MyISAM;
++
++--
++-- Dumping data for table `dico10`
++--
++
++
++/*!40000 ALTER TABLE `dico10` DISABLE KEYS */;
++LOCK TABLES `dico10` WRITE;
++INSERT INTO `dico10` VALUES (1,'un','unu'),(2,'deux','du'),(3,'trois','tri'),(4,'quatre','kvar'),(5,'cinq','kvin'),(6,'six','ses'),(7,'sept','sep'),(8,'huit','ok'),(9,'neuf','naux'),(10,'dix','dek');
++UNLOCK TABLES;
++/*!40000 ALTER TABLE `dico10` ENABLE KEYS */;
++
++--
++-- Table structure for table `dico11`
++--
++
++DROP TABLE IF EXISTS `dico11`;
++CREATE TABLE `dico11` (
++  `id` int(9) NOT NULL auto_increment,
++  `francais` varchar(63) NOT NULL default '',
++  `etranger` varchar(63) NOT NULL default '',
++  PRIMARY KEY  (`id`),
++  UNIQUE KEY `francais` (`francais`,`etranger`),
++  KEY `etranger` (`etranger`,`francais`)
++) TYPE=MyISAM;
++
++--
++-- Dumping data for table `dico11`
++--
++
++
++/*!40000 ALTER TABLE `dico11` DISABLE KEYS */;
++LOCK TABLES `dico11` WRITE;
++INSERT INTO `dico11` VALUES (1,'un','one'),(2,'deux','two'),(3,'trois','three'),(4,'quatre','four'),(5,'cinq','five'),(6,'six','six'),(7,'sept','seven'),(8,'huit','eight'),(9,'neuf','nine'),(10,'dix','ten');
++UNLOCK TABLES;
++/*!40000 ALTER TABLE `dico11` ENABLE KEYS */;
++
++--
++-- Table structure for table `dico12`
++--
++
++DROP TABLE IF EXISTS `dico12`;
++CREATE TABLE `dico12` (
++  `id` int(9) NOT NULL auto_increment,
++  `francais` varchar(63) NOT NULL default '',
++  `etranger` varchar(63) NOT NULL default '',
++  PRIMARY KEY  (`id`),
++  UNIQUE KEY `francais` (`francais`,`etranger`),
++  KEY `etranger` (`etranger`,`francais`)
++) TYPE=MyISAM;
++
++--
++-- Dumping data for table `dico12`
++--
++
++
++/*!40000 ALTER TABLE `dico12` DISABLE KEYS */;
++LOCK TABLES `dico12` WRITE;
++INSERT INTO `dico12` VALUES (1,'tu','ni'),(2,'bien','hao'),(3,'vieux','lao'),(4,'roi','wang'),(5,'cheval','ma'),(6,'je','wo'),(7,'assez','hen'),(8,'petit','xiao'),(9,'il','ta'),(10,'et ... ?','ne'),(11,'elle','ta'),(12,'aussi','ye'),(13,'et','he'),(14,'demander','wen');
++UNLOCK TABLES;
++/*!40000 ALTER TABLE `dico12` ENABLE KEYS */;
++
++--
++-- Table structure for table `dico13`
++--
++
++DROP TABLE IF EXISTS `dico13`;
++CREATE TABLE `dico13` (
++  `id` int(9) NOT NULL auto_increment,
++  `francais` varchar(63) NOT NULL default '',
++  `etranger` varchar(63) NOT NULL default '',
++  PRIMARY KEY  (`id`),
++  UNIQUE KEY `francais` (`francais`,`etranger`),
++  KEY `etranger` (`etranger`,`francais`)
++) TYPE=MyISAM;
++
++--
++-- Dumping data for table `dico13`
++--
++
++
++/*!40000 ALTER TABLE `dico13` DISABLE KEYS */;
++LOCK TABLES `dico13` WRITE;
++INSERT INTO `dico13` VALUES (1,'un','unu'),(2,'deux','doi'),(3,'trois','trei'),(4,'quatre','patru'),(5,'cinq','cinci'),(6,'six','sase'),(7,'sept','sapte'),(8,'huit','opt'),(9,'neuf','noua'),(10,'dix','zece');
++UNLOCK TABLES;
++/*!40000 ALTER TABLE `dico13` ENABLE KEYS */;
++
++--
++-- Table structure for table `dico7`
++--
++
++DROP TABLE IF EXISTS `dico7`;
++CREATE TABLE `dico7` (
++  `id` int(9) NOT NULL auto_increment,
++  `francais` varchar(63) NOT NULL default '',
++  `etranger` varchar(63) NOT NULL default '',
++  PRIMARY KEY  (`id`),
++  UNIQUE KEY `francais` (`francais`,`etranger`),
++  KEY `etranger` (`etranger`,`francais`)
++) TYPE=MyISAM;
++
++--
++-- Dumping data for table `dico7`
++--
++
++
++/*!40000 ALTER TABLE `dico7` DISABLE KEYS */;
++LOCK TABLES `dico7` WRITE;
++INSERT INTO `dico7` VALUES (1,'eau','akvo'),(2,'tasse','taso'),(3,'cafe','kafo'),(4,'homme','viro'),(5,'fils','filo'),(6,'garcon','knabo'),(7,'the','teo'),(8,'ami','amiko'),(9,'etre','esti'),(10,'nouveau','nova'),(11,'en bonne sante','sana'),(12,'je','mi'),(13,'tu','vi'),(14,'il','li'),(15,'elle','sxi'),(16,'nous','ni'),(17,'vous','vi'),(19,'ils','ili'),(20,'elles','ili'),(21,'on','oni'),(22,'soi-meme','si');
++UNLOCK TABLES;
++/*!40000 ALTER TABLE `dico7` ENABLE KEYS */;
++
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000013.html">[Happyboom-svn] r106 - / happyboom/trunk/boomboom/client languetudes languetudes/src
+</A></li>
+	<LI>Next message: <A HREF="000017.html">[Happyboom-svn] r108 - / lamer lamer/tool lamer/tool/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14">[ date ]</a>
+              <a href="thread.html#14">[ thread ]</a>
+              <a href="subject.html#14">[ subject ]</a>
+              <a href="author.html#14">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

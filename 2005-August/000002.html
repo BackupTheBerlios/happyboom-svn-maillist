@@ -1,0 +1,103 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r94 - happyboom/trunk/boomboom/client/items
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-August/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r94%20-%20happyboom/trunk/boomboom/client/items&In-Reply-To=%3C200508050905.j7595cHY015971%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000001.html">
+   <LINK REL="Next"  HREF="000003.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r94 - happyboom/trunk/boomboom/client/items</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r94%20-%20happyboom/trunk/boomboom/client/items&In-Reply-To=%3C200508050905.j7595cHY015971%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r94 - happyboom/trunk/boomboom/client/items">dboucard at berlios.de
+       </A><BR>
+    <I>Fri Aug  5 11:05:38 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000001.html">[Happyboom-svn] r93 - happyboom/trunk/boomboom/client
+</A></li>
+        <LI>Next message: <A HREF="000003.html">[Happyboom-svn] r95 - in happyboom/trunk: . boomboom boomboom/server boomboom/server/agents
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2">[ date ]</a>
+              <a href="thread.html#2">[ thread ]</a>
+              <a href="subject.html#2">[ subject ]</a>
+              <a href="author.html#2">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-08-05 11:05:36 +0200 (Fri, 05 Aug 2005)
+New Revision: 94
+
+Modified:
+   happyboom/trunk/boomboom/client/items/character.py
+Log:
+bug fix: for retrieving existing game instance
+
+
+Modified: happyboom/trunk/boomboom/client/items/character.py
+===================================================================
+--- happyboom/trunk/boomboom/client/items/character.py	2005-08-05 04:35:13 UTC (rev 93)
++++ happyboom/trunk/boomboom/client/items/character.py	2005-08-05 09:05:36 UTC (rev 94)
+@@ -35,6 +35,7 @@
+         self.__id = id
+         self.__name = name
+         self.visual = VisualObject(os.path.join(&quot;data&quot;, &quot;gorilla.png&quot;))
++        self.active = False
+         self.registerEvent(bb_events.characterMove)
+         self.registerEvent(bb_events.activeCharacter)
+         
+@@ -48,6 +49,8 @@
+         self.__x = int(x)
+         self.__y = int(y)
+         self.visual.move(self.__x, self.__y)
++        if self.active:
++            self.launchEvent(bb_events.activeCharAbs, self.__x)
+         
+     def evt_game_active_character(self, event):
+         &quot;&quot;&quot; Active character event handler.
+@@ -56,4 +59,6 @@
+         @type event: C{L{common.simple_event.Event}}
+         &quot;&quot;&quot;
+         if self.__id == int(event.content):
+-            self.launchEvent(bb_events.activeCharAbs, self.__x)
+\ No newline at end of file
++            self.active = True
++            if self.__x != None:
++                self.launchEvent(bb_events.activeCharAbs, self.__x)
+\ No newline at end of file
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000001.html">[Happyboom-svn] r93 - happyboom/trunk/boomboom/client
+</A></li>
+	<LI>Next message: <A HREF="000003.html">[Happyboom-svn] r95 - in happyboom/trunk: . boomboom boomboom/server boomboom/server/agents
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2">[ date ]</a>
+              <a href="thread.html#2">[ thread ]</a>
+              <a href="subject.html#2">[ subject ]</a>
+              <a href="author.html#2">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

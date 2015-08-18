@@ -1,0 +1,108 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r352 - haypo/hachoir/trunk
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r352%20-%20haypo/hachoir/trunk&In-Reply-To=%3C200512260440.jBQ4etGh019021%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000298.html">
+   <LINK REL="Next"  HREF="000256.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r352 - haypo/hachoir/trunk</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r352%20-%20haypo/hachoir/trunk&In-Reply-To=%3C200512260440.jBQ4etGh019021%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r352 - haypo/hachoir/trunk">haypo at berlios.de
+       </A><BR>
+    <I>Mon Dec 26 05:40:55 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000298.html">[Happyboom-svn] r351 - in haypo/hachoir/trunk: . broken_plugins generic plugins ui
+</A></li>
+        <LI>Next message: <A HREF="000256.html">[Happyboom-svn] r353 - haypo/hachoir/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#255">[ date ]</a>
+              <a href="thread.html#255">[ thread ]</a>
+              <a href="subject.html#255">[ subject ]</a>
+              <a href="author.html#255">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-26 05:40:55 +0100 (Mon, 26 Dec 2005)
+New Revision: 352
+
+Added:
+   haypo/hachoir/trunk/NEWS
+Log:
+Add NEWS file.
+
+
+Added: haypo/hachoir/trunk/NEWS
+===================================================================
+--- haypo/hachoir/trunk/NEWS	2005-12-26 03:53:11 UTC (rev 351)
++++ haypo/hachoir/trunk/NEWS	2005-12-26 04:40:55 UTC (rev 352)
+@@ -0,0 +1,31 @@
++News in version 2005-12-26
++    o Some speed up:
++      - use more caches (eg. for format operations like getting format size)
++      - merge FormatChunkCache and FormatChunk to limit function calls
++    o New command line options: &quot;--use-profiler&quot; and &quot;--debug&quot;
++    o Hide backtrace by default (need &quot;--debug&quot; command line option)
++    o Delete ArrayFilter class, replace it with classical while Python
++      structure.
++    o Add &quot;copy to clipboard&quot; in user interface
++    o Add AVI (written with a new author, Aur&#233;lien Jacobs), MP3, ID3, MBR,
++      EXT2, PCX, BMP, WORMS2 plugins. RPM plugin can now read all headers
++      and also file content.
++    o Kill arbitrary limits (address/size) ;-) (in Chunk/Filter classes and in UI)
++    o Don't support FormatChunk dynamic format (like &quot;{size}s&quot;),
++      nor &quot;@end@&quot; keyword anymore
++    o Start work on &quot;on demand filter&quot;: create OnlyFormatsChunkFilter class
++      which only instanciate objects when needed. It's only used
++      in EXT2 plugin yet.
++
++News in version 2005-12-11 (svn commit 314)
++    o First public release
++    o Use GTK+ interface with Glade XML files (dynamically loaded) 
++    o Available plugins : jpeg, ar, email, bzip2, exif, elf, exe, gif,
++      pdf, png, rpm, tar, xcf, zip, gzip, asn1, 3ds
++    o Support three types of chunks: FormatChunk, FilterChunk, StringChunk.
++      String format can be: C, UnixLine, WindowsLine, MacLine, AutoLine.
++    o Use cache for FormatChunk value and FileStream access.
++    o Use MIME type detection to choose the best filter.
++    o Development features:
++      - it's possible to edit chunks list: create, edit, remove chunk
++      - it's possible to store and load a filter into/from XML file
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000298.html">[Happyboom-svn] r351 - in haypo/hachoir/trunk: . broken_plugins generic plugins ui
+</A></li>
+	<LI>Next message: <A HREF="000256.html">[Happyboom-svn] r353 - haypo/hachoir/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#255">[ date ]</a>
+              <a href="thread.html#255">[ thread ]</a>
+              <a href="subject.html#255">[ subject ]</a>
+              <a href="author.html#255">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

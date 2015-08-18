@@ -1,0 +1,130 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r421 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r421%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/field&In-Reply-To=%3C200603040017.k240HeDr030160%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000324.html">
+   <LINK REL="Next"  HREF="000342.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r421 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r421%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/field&In-Reply-To=%3C200603040017.k240HeDr030160%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r421 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field">haypo at berlios.de
+       </A><BR>
+    <I>Sat Mar  4 01:17:40 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000324.html">[Happyboom-svn] r420 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file/image branches/hachoir-yield/generic
+</A></li>
+        <LI>Next message: <A HREF="000342.html">[Happyboom-svn] r422 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/fallback branches/hachoir-yield/field branches/hachoir-yield/file branches/hachoir-yield/file/image branches/hachoir-yield/file/system branches/hachoir-yield/generic
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#325">[ date ]</a>
+              <a href="thread.html#325">[ thread ]</a>
+              <a href="subject.html#325">[ subject ]</a>
+              <a href="author.html#325">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-04 01:17:26 +0100 (Sat, 04 Mar 2006)
+New Revision: 421
+
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/field/field_set.py
+   haypo/hachoir/branches/hachoir-yield/hachoir.py
+   haypo/hachoir/branches/hachoir-yield/text_ui.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r15 at haypopc</A>:  haypo | 2006-03-01 02:43:49 +0100
+ FieldSet.__iter__() now use yield too
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:14
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:15
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-03-04 00:16:19 UTC (rev 420)
++++ haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-03-04 00:17:26 UTC (rev 421)
+@@ -169,8 +169,14 @@
+ 
+     def __iter__(self):
+         if self._field_generator != None:
+-            self._feedAll()
+-        return iter(self.fields)
++            try:
++                while True:
++                    yield self._feed()
++            except StopIteration:
++                self._stopFeeding()
++        else:
++            for field in self.fields:
++                yield field
+ 
+     def createFields(self):
+         raise NotImplementedError
+
+Modified: haypo/hachoir/branches/hachoir-yield/hachoir.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:16:19 UTC (rev 420)
++++ haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:17:26 UTC (rev 421)
+@@ -16,8 +16,8 @@
+     if filename.endswith(&quot;.png&quot;):
+         png = PngFile(None, &quot;png_file&quot;, stream)
+         print &quot;[Picture %s]&quot; % filename
++        displayFieldSet(png, 3)
+         meta = PngMetaData(png) ; print meta
+-#        displayFieldSet(png)
+     elif filename.endswith(&quot;.pcx&quot;):
+         pcx = PcxFile(None, &quot;pcx_file&quot;, stream)
+         displayFieldSet(pcx, 2)
+
+Modified: haypo/hachoir/branches/hachoir-yield/text_ui.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-03-04 00:16:19 UTC (rev 420)
++++ haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-03-04 00:17:26 UTC (rev 421)
+@@ -1,4 +1,4 @@
+-def displayFieldSet(field_set, max_depth=None, depth=0):
++def displayFieldSet(field_set, max_depth=2, depth=0):
+     indent = &quot; &quot; * (3*depth)
+     addr = field_set.absolute_address
+     print &quot;%s--- %s --- (addr=%u.%u, size=%s bits)&quot; \
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000324.html">[Happyboom-svn] r420 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file/image branches/hachoir-yield/generic
+</A></li>
+	<LI>Next message: <A HREF="000342.html">[Happyboom-svn] r422 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/fallback branches/hachoir-yield/field branches/hachoir-yield/file branches/hachoir-yield/file/image branches/hachoir-yield/file/system branches/hachoir-yield/generic
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#325">[ date ]</a>
+              <a href="thread.html#325">[ thread ]</a>
+              <a href="subject.html#325">[ subject ]</a>
+              <a href="author.html#325">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

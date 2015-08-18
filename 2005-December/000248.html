@@ -1,0 +1,154 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r343 - haypo/hachoir
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r343%20-%20haypo/hachoir&In-Reply-To=%3C200512201351.jBKDp6IQ027462%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000247.html">
+   <LINK REL="Next"  HREF="000249.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r343 - haypo/hachoir</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r343%20-%20haypo/hachoir&In-Reply-To=%3C200512201351.jBKDp6IQ027462%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r343 - haypo/hachoir">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec 20 14:51:06 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000247.html">[Happyboom-svn] r342 - haypo/hachoir/plugins
+</A></li>
+        <LI>Next message: <A HREF="000249.html">[Happyboom-svn] r344 - in haypo/hachoir: . plugins stream ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#248">[ date ]</a>
+              <a href="thread.html#248">[ thread ]</a>
+              <a href="subject.html#248">[ subject ]</a>
+              <a href="author.html#248">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-20 14:51:03 +0100 (Tue, 20 Dec 2005)
+New Revision: 343
+
+Modified:
+   haypo/hachoir/hachoir.py
+   haypo/hachoir/hachoir_class.py
+Log:
+Small fixes in Hachoir class: add padding (again) if needed after parsing a
+file. Add some print to display launching progression.
+
+
+Modified: haypo/hachoir/hachoir.py
+===================================================================
+--- haypo/hachoir/hachoir.py	2005-12-20 13:48:54 UTC (rev 342)
++++ haypo/hachoir/hachoir.py	2005-12-20 13:51:03 UTC (rev 343)
+@@ -99,6 +99,7 @@
+             setattr(hachoir, key, opt[key])
+         if hachoir.load_ui:
+             try:
++                print &quot;Load user interface&quot;
+                 ui.loadInterface(hachoir)
+             except ImportError, err:
+                 error(&quot;&quot;&quot;Error: a Python module is missing:
+@@ -119,13 +120,12 @@
+             else:
+                 str_filename = &quot;None&quot;
+             profile.run('global hachoir; hachoir.run(%s)' % str_filename, stat_filename)
+-            # .sort_stats('time')
+-            pstats.Stats(stat_filename).sort_stats('cumulative').print_stats()
++            #pstats.Stats(stat_filename).sort_stats('cumulative').print_stats()
++            pstats.Stats(stat_filename).sort_stats('time').print_stats()
+             os.unlink(stat_filename)
+         else:
+             hachoir.run(filename)
+ 
+-
+     except SystemExit:
+         pass
+     except Exception, err:
+
+Modified: haypo/hachoir/hachoir_class.py
+===================================================================
+--- haypo/hachoir/hachoir_class.py	2005-12-20 13:48:54 UTC (rev 342)
++++ haypo/hachoir/hachoir_class.py	2005-12-20 13:51:03 UTC (rev 343)
+@@ -28,7 +28,6 @@
+         self._main_filter = filter
+         self._filter = filter
+         if filter != None:
+-#            self._addPadding()
+             if self.load_ui:
+                 self._filter.display()
+                 self.ui.window.info.updateFilter(filter)
+@@ -85,19 +84,15 @@
+         my.exportPython(filename)
+         
+     def _addPadding(self):
+-        filter_size = self._filter.getSize()
+-        stream_size = self._filter.getStream().getSize()
++        filter_size = self._main_filter.getSize()
++        stream_size = self._main_filter.getStream().getSize()
+         diff_size = filter_size - stream_size
+         if diff_size &lt; 0:
+-            chunks = self._filter.getChunks()
+-            if len(chunks) != 0:
+-                last_chunk = chunks[-1]
+-            else:
+-                last_chunk = None
+-            self._filter.addRawChunk(last_chunk, &quot;end&quot;, &quot;%u&quot; % (-diff_size), &quot;&quot;)
++            self._main_filter.read(&quot;end&quot;, &quot;%us&quot; % (-diff_size), &quot;Raw data&quot;)
+ 
+     def loadFile(self, filename):
+         try:
++            print &quot;Load file %s&quot; % filename
+             file = open(filename, 'r')
+             stream = FileStream(file, filename)
+         except IOError, err:
+@@ -122,6 +117,8 @@
+                 % (filename, msg))
+             stream.seek(0)
+             filter = DefaultFilter(stream)
++        self._main_filter = filter
++        self._addPadding()
+         self.setFilter(filter)
+ 
+     def loadScript(self, filename):
+@@ -141,4 +138,5 @@
+         elif filename != None:
+             self.loadFile(filename)
+         if self.load_ui:
++            print &quot;Run user interface ...&quot;
+             self.ui.run()      
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000247.html">[Happyboom-svn] r342 - haypo/hachoir/plugins
+</A></li>
+	<LI>Next message: <A HREF="000249.html">[Happyboom-svn] r344 - in haypo/hachoir: . plugins stream ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#248">[ date ]</a>
+              <a href="thread.html#248">[ thread ]</a>
+              <a href="subject.html#248">[ subject ]</a>
+              <a href="author.html#248">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

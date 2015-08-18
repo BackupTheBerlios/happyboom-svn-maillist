@@ -1,0 +1,146 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r177 - happyboom/trunk/client
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r177%20-%20happyboom/trunk/client&In-Reply-To=%3C200509152243.j8FMhpX7026190%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000083.html">
+   <LINK REL="Next"  HREF="000085.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r177 - happyboom/trunk/client</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r177%20-%20happyboom/trunk/client&In-Reply-To=%3C200509152243.j8FMhpX7026190%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r177 - happyboom/trunk/client">dboucard at berlios.de
+       </A><BR>
+    <I>Fri Sep 16 00:43:51 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000083.html">[Happyboom-svn] r176 - happyboom/trunk/server
+</A></li>
+        <LI>Next message: <A HREF="000085.html">[Happyboom-svn] r178 - boomboom boomboom/client boomboom/server happyboom/trunk/common happyboom/trunk/server
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#84">[ date ]</a>
+              <a href="thread.html#84">[ thread ]</a>
+              <a href="subject.html#84">[ subject ]</a>
+              <a href="author.html#84">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-16 00:43:49 +0200 (Fri, 16 Sep 2005)
+New Revision: 177
+
+Modified:
+   happyboom/trunk/client/base_client.py
+Log:
+gateway management
+
+
+Modified: happyboom/trunk/client/base_client.py
+===================================================================
+--- happyboom/trunk/client/base_client.py	2005-09-15 22:37:59 UTC (rev 176)
++++ happyboom/trunk/client/base_client.py	2005-09-15 22:43:49 UTC (rev 177)
+@@ -1,11 +1,15 @@
+ from net import io_udp
++from common.happyboom_protocol import HappyboomProtocol
++from common.event import EventLauncher, EventListener
+ import struct
+ 
+-class HappyBoomClient(object):
++class Client(object, EventListener, EventLauncher):
+     
+     def __init__(self, args):
++        EventLauncher.__init__(self)
++        EventListener.__init__(self) # TODO : Fix me (with good arguments)
+         self.host = args.get(&quot;host&quot;, &quot;127.0.0.1&quot;)
+-        self.port = args.get(&quot;port&quot;, &quot;12430&quot;)
++        self.port = args.get(&quot;port&quot;, 12430)
+         self.verbose = args.get(&quot;verbose&quot;, False)
+         self.debug = args.get(&quot;debug&quot;, False)
+         protocol = args.get(&quot;protocol&quot;, None)
+@@ -18,7 +22,8 @@
+         self.__stoplock = thread.allocate_lock()
+         
+         self.signature = None
+-        self.gateway = Gateway(self.__io, protocol)
++        self.presentation = common.HappyboomProtocol(protocol)
++        self.gateway = Gateway()
+         
+     def start(self):
+         &quot;&quot;&quot; Starts the client : connection to the server, etc. &quot;&quot;&quot;
+@@ -91,5 +96,39 @@
+         p.writeStr(str)
+         self.__io.send(p)
+         
++class Gateway(EventLauncher, EventListener):
++    def __init__(self):
++        EventLauncher.__init__(self)
++        EventListener.__init__(self, &quot;evt_&quot;)
++        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;connection&quot;, self.processConnection)
++        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;disconnection&quot;, self.processDisconnection)
++        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;create_item&quot;, self.processConnection)
++        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;destroy_item&quot;, self.processConnection)
++        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;recv_event&quot;, self.processConnection)
++        self.registerEvent(&quot;happyboom&quot;)
++        
++    def processConnection(self, version, signature):
++        self.launchEvent(&quot;happyboom&quot;, &quot;signature&quot;, signature)
++        
++    def processDisconnection(self, reason):
++        self.launchEvent(&quot;happyboom&quot;, &quot;stop&quot;, reason)
++    
++    def processCreateItem(self, feature, id):
++        self.launchEvent(feature, &quot;new&quot;, id)
++    
++    def processDestroyItem(self, id):
++        self.launchEvent(feature, &quot;delete&quot;, id)
++    
++    def processEvent(self, feature, event, args):
++        self.launchEvent(feature, event, *args)
+ 
+-
++    def evt_happyboom_features(self, feature):
++        if feature not in self.features:
++            self.features.append(feature)
++            self.registerEvent(feature)
++            
++    def processEvent(self, event):
++        if self.type != &quot;happyboom&quot;:
++            self.launchEvent(&quot;happyboom&quot;, &quot;send&quot;, *event.content)
++            
++    
+\ No newline at end of file
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000083.html">[Happyboom-svn] r176 - happyboom/trunk/server
+</A></li>
+	<LI>Next message: <A HREF="000085.html">[Happyboom-svn] r178 - boomboom boomboom/client boomboom/server happyboom/trunk/common happyboom/trunk/server
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#84">[ date ]</a>
+              <a href="thread.html#84">[ thread ]</a>
+              <a href="subject.html#84">[ subject ]</a>
+              <a href="author.html#84">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

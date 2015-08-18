@@ -1,0 +1,233 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r236 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-October/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r236%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200510301421.j9UEL2U8032578%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000142.html">
+   <LINK REL="Next"  HREF="000144.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r236 - in haypo/hachoir: . plugins</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r236%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200510301421.j9UEL2U8032578%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r236 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Sun Oct 30 15:21:02 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000142.html">[Happyboom-svn] r235 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000144.html">[Happyboom-svn] r237 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#143">[ date ]</a>
+              <a href="thread.html#143">[ thread ]</a>
+              <a href="subject.html#143">[ subject ]</a>
+              <a href="author.html#143">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-10-30 15:21:02 +0100 (Sun, 30 Oct 2005)
+New Revision: 236
+
+Modified:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/filter.py
+   haypo/hachoir/plugins/gif.py
+   haypo/hachoir/plugins/tar.py
+Log:
+Fix array chunk size, and manage chunk read max size differently.
+
+
+Modified: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-10-30 04:54:42 UTC (rev 235)
++++ haypo/hachoir/chunk.py	2005-10-30 14:21:02 UTC (rev 236)
+@@ -31,9 +31,16 @@
+     size = property(_getSize)        
+     
+ class ArrayChunk(Chunk):
+-    def __init__(self, id, description, stream, addr, size, array, parent):
+-        Chunk.__init__(self, id, description, stream, addr, size, parent)
++    def __init__(self, id, description, stream, array, parent):
++        Chunk.__init__(self, id, description, stream, stream.tell(), 0, parent)
+         self._array = array
++
++    def _getSize(self):
++        size = 0
++        for item in self._array:
++            size = size + item.size
++        return size
++    size = property(_getSize)        
+     
+     def getData(self, max_size=None):
+         return self._array
+@@ -62,7 +69,6 @@
+         self.__addr = addr
+         self.__format = format
+         self.value = None
+-        self.truncate = False
+ 
+     def _getSize(self):
+         return struct.calcsize(self._getRealFormat())
+@@ -83,8 +89,6 @@
+     def getRawData(self, max_size=None):
+         &quot;&quot;&quot; max_size can be None &quot;&quot;&quot;
+         self.__stream.seek(self.addr)
+-        if max_size == None and self.truncate:
+-            max_size = 40
+         if (max_size == None or self.size&lt;max_size) or not self.isString():
+             data = self.__stream.getN(self.size)
+             return data, False
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-10-30 04:54:42 UTC (rev 235)
++++ haypo/hachoir/filter.py	2005-10-30 14:21:02 UTC (rev 236)
+@@ -104,7 +104,7 @@
+         line = getattr(self, id)
+         setattr(self, id, line[:-len(eol)])
+ 
+-    def _appendChunk(self, chunk):
++    def _appendChunk(self, chunk, can_truncate=False):
+         self._chunks.append(chunk)
+         id = chunk.id
+         if id != None:
+@@ -124,7 +124,11 @@
+             else:
+                 if hasattr(self, id):
+                     raise Exception(&quot;Chunk identifier \&quot;%s\&quot; already exist!&quot; % id)
+-                setattr(self, id, chunk.getData())
++                if can_truncate:
++                    data = chunk.getData(40)
++                else:
++                    data = chunk.getData()
++                setattr(self, id, data)
+                 self._chunks_dict[id] = chunk
+ 
+     def readChild(self, id, filter_class, description): 
+@@ -135,9 +139,8 @@
+         self._stream.seek(chunk.addr + chunk.size)
+ 
+     def readArray(self, id, filter_class, description, end_func): 
+-        addr = self._stream.tell()
+         array = []
+-        array_chunk = ArrayChunk(id, description, self._stream, addr, self._stream.tell() - addr, array, self)
++        array_chunk = ArrayChunk(id, description, self._stream, array, self)
+         self._appendChunk(array_chunk)
+ 
+         nb = 0
+@@ -152,7 +155,7 @@
+ 
+         for chunk in array:
+             chunk.getFilter().updateParent(self, chunk)
+-        self._stream.seek(chunk.addr + chunk.size)
++        self._stream.seek(array_chunk.addr + array_chunk.size)
+     
+     def read(self, id, format, description, can_truncate=True):
+         &quot;&quot;&quot; Returns chunk &quot;&quot;&quot;
+@@ -163,9 +166,8 @@
+ #        else:
+ #            data = chunk_data.getData(None)
+         chunk = FormatChunk(id, description, self._stream, self._stream.tell(), format, self)
+-        chunk.truncate = can_truncate 
+         self._stream.seek(chunk.size, 1)
+-        self._appendChunk(chunk)
++        self._appendChunk(chunk, can_truncate)
+         self._stream.seek(chunk.addr + chunk.size)
+         return chunk
+ 
+
+Modified: haypo/hachoir/plugins/gif.py
+===================================================================
+--- haypo/hachoir/plugins/gif.py	2005-10-30 04:54:42 UTC (rev 235)
++++ haypo/hachoir/plugins/gif.py	2005-10-30 14:21:02 UTC (rev 236)
+@@ -111,6 +111,7 @@
+         else:
+             self.color_map = None
+             
++        self.images = []
+         while True:
+             code = self.read(None, &quot;c&quot;, &quot;Separator code&quot;)
+             code = code.getData()
+
+Modified: haypo/hachoir/plugins/tar.py
+===================================================================
+--- haypo/hachoir/plugins/tar.py	2005-10-30 04:54:42 UTC (rev 235)
++++ haypo/hachoir/plugins/tar.py	2005-10-30 14:21:02 UTC (rev 236)
+@@ -40,9 +40,9 @@
+         print &quot;[ File %s ]&quot; % file.name
+         displayFile(file)
+ 
+-class TarFile(Filter):
++class TarFileEntry(Filter):
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;tar_file&quot;,&quot;Tar file&quot;, stream, parent)
++        Filter.__init__(self, &quot;tar_file_entry&quot;,&quot;Tar file entry&quot;, stream, parent)
+         self.read(&quot;name&quot;, &quot;!100s&quot;, &quot;Name&quot;, False)
+         self.name = self.name.strip(&quot;\0&quot;)
+         self.read(&quot;mode&quot;, &quot;!8s&quot;, &quot;Mode&quot;)
+@@ -70,7 +70,7 @@
+         #self.read(None, &quot;!167s&quot;, &quot;Padding (zero)&quot;)
+         self.read(None, &quot;!167s&quot;, &quot;Padding (zero)&quot;)
+         if self.type in (&quot;\0&quot;, &quot;0&quot;):
+-            self.read(&quot;filedata&quot;, &quot;!{size}s&quot;, &quot;File data&quot;)
++            self.read(&quot;filedata&quot;, &quot;!{size}s&quot;, &quot;File data&quot;, True)
+         if stream.tell() % 512 != 0:
+             padding = 512 - stream.tell() % 512
+             self.read(None, &quot;!%ss&quot; % padding, &quot;Padding (512 align)&quot;)
+@@ -107,11 +107,11 @@
+             text = &quot;Tar File (terminator, empty header)&quot;
+         chunk.description = self.description = text
+ 
+-class TarFilter(Filter):
++class TarFile(Filter):
+     def __init__(self, stream):
+-        Filter.__init__(self, &quot;tar_archive&quot;, &quot;Tar archive&quot;, stream)
++        Filter.__init__(self, &quot;tar_file&quot;, &quot;TAR archive file&quot;, stream)
+ 
+-        self.readArray(&quot;files&quot;, TarFile, &quot;Tar Files&quot;, self.checkEndOfChunks)
++        self.readArray(&quot;files&quot;, TarFileEntry, &quot;Tar Files&quot;, self.checkEndOfChunks)
+         
+         padding = 4096 - stream.tell() % 4096
+         self.read(None, &quot;!%ss&quot; % padding, &quot;Padding (4096 align)&quot;)
+@@ -123,4 +123,4 @@
+             if file.isEmpty(): return True
+         return stream.eof()
+         
+-registerPlugin(&quot;^.*\.tar$&quot;, &quot;Tar archive&quot;, TarFilter, displayTar)
++registerPlugin(&quot;^.*\.tar$&quot;, &quot;Tar archive&quot;, TarFile, displayTar)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000142.html">[Happyboom-svn] r235 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000144.html">[Happyboom-svn] r237 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#143">[ date ]</a>
+              <a href="thread.html#143">[ thread ]</a>
+              <a href="subject.html#143">[ subject ]</a>
+              <a href="author.html#143">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

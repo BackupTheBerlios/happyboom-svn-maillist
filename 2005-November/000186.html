@@ -1,0 +1,308 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r279 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r279%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511280058.jAS0wUJg007003%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000185.html">
+   <LINK REL="Next"  HREF="000187.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r279 - in haypo/hachoir: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r279%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511280058.jAS0wUJg007003%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r279 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Mon Nov 28 01:58:30 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000185.html">[Happyboom-svn] r278 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000187.html">[Happyboom-svn] r280 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#186">[ date ]</a>
+              <a href="thread.html#186">[ thread ]</a>
+              <a href="subject.html#186">[ subject ]</a>
+              <a href="author.html#186">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-28 01:58:10 +0100 (Mon, 28 Nov 2005)
+New Revision: 279
+
+Added:
+   haypo/hachoir/plugins/3ds.py
+Modified:
+   haypo/hachoir/format.py
+   haypo/hachoir/plugins/elf.py
+   haypo/hachoir/plugins/tar.py
+Log:
+- Supports float and double in FormatChunk (&quot;f&quot; and &quot;d&quot;).
+- Create 3DS (3D Studio Max) parser
+- Fix TAR plugin
+
+
+Modified: haypo/hachoir/format.py
+===================================================================
+--- haypo/hachoir/format.py	2005-11-27 23:23:58 UTC (rev 278)
++++ haypo/hachoir/format.py	2005-11-28 00:58:10 UTC (rev 279)
+@@ -1,11 +1,11 @@
+ import re
+ 
+ def checkFormat(format):
+-    m = re.compile(&quot;^[!&lt;&gt;]?(?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?[BHLsc]$&quot;).match(format)
++    m = re.compile(&quot;^[!&lt;&gt;]?(?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?[BHLscfd]$&quot;).match(format)
+     return m != None
+ 
+ def splitFormat(format):
+-    m = re.compile(&quot;^([!&lt;&gt;]?)((?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?)([BHLsc])$&quot;).match(format)
++    m = re.compile(&quot;^([!&lt;&gt;]?)((?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?)([BHLscfd])$&quot;).match(format)
+     if m == None: return None
+     endian = m.group(1)
+     if endian==&quot;&quot;: endian=&quot;!&quot;
+
+Added: haypo/hachoir/plugins/3ds.py
+===================================================================
+--- haypo/hachoir/plugins/3ds.py	2005-11-27 23:23:58 UTC (rev 278)
++++ haypo/hachoir/plugins/3ds.py	2005-11-28 00:58:10 UTC (rev 279)
+@@ -0,0 +1,142 @@
++&quot;&quot;&quot;
++3D Studio Max file (.3ds) parser.
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from filter import Filter
++from plugin import registerPlugin
++
++def readTextureFilename(filter, stream):
++    filter.readString(&quot;filename&quot;, &quot;C&quot;, &quot;Texture filename&quot;)
++
++def readVersion(filter, stream):
++    filter.read(&quot;version&quot;, &quot;&lt;L&quot;, &quot;Version&quot;)
++
++def readMaterial(filter, stream):
++    filter.readString(&quot;name&quot;, &quot;C&quot;, &quot;Material name&quot;)
++    while not stream.eof():
++        filter.readChild(&quot;chunk[]&quot;, Filter_3DS_Chunk)
++
++def readObject(filter, stream):
++    filter.readString(&quot;name&quot;, &quot;C&quot;, &quot;Object name&quot;)
++    while not stream.eof():
++        filter.readChild(&quot;chunk[]&quot;, Filter_3DS_Chunk)
++
++class Filter_3DS_MapUV(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;3ds_map&quot;, &quot;3DS UV map&quot;, stream, parent)
++        self.read(&quot;u&quot;, &quot;f&quot;, &quot;Map U&quot;)
++        self.read(&quot;v&quot;, &quot;f&quot;, &quot;Map V&quot;)
++
++class Filter_3DS_Vertex(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;3ds_vertex&quot;, &quot;3DS vertex&quot;, stream, parent)
++        self.read(&quot;x&quot;, &quot;f&quot;, &quot;X&quot;)
++        self.read(&quot;y&quot;, &quot;f&quot;, &quot;Y&quot;)
++        self.read(&quot;z&quot;, &quot;f&quot;, &quot;Z&quot;)
++
++class Filter_3DS_Polygon(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;3ds_polygon&quot;, &quot;3DS polygon&quot;, stream, parent)
++        self.read(&quot;a&quot;, &quot;&lt;H&quot;, &quot;Vertex A&quot;)
++        self.read(&quot;b&quot;, &quot;&lt;H&quot;, &quot;Vertex B&quot;)
++        self.read(&quot;c&quot;, &quot;&lt;H&quot;, &quot;Vertex C&quot;)
++        self.read(&quot;flags&quot;, &quot;&lt;H&quot;, &quot;Flags&quot;)
++    
++def readMapList(filter, stream):
++    filter.read(&quot;count&quot;, &quot;&lt;H&quot;, &quot;Map count&quot;)
++    while not stream.eof():
++        filter.readChild(&quot;map[]&quot;, Filter_3DS_MapUV)
++
++def readColor(filter, stream):
++    filter.read(&quot;red&quot;, &quot;B&quot;, &quot;Red componant&quot;)
++    filter.read(&quot;green&quot;, &quot;B&quot;, &quot;Green componant&quot;)
++    filter.read(&quot;blue&quot;, &quot;B&quot;, &quot;Blue componant&quot;)
++
++def readVertexList(filter, stream):
++    filter.read(&quot;count&quot;, &quot;&lt;H&quot;, &quot;Vertex count&quot;)
++    while not stream.eof():
++        filter.readChild(&quot;vertex[]&quot;, Filter_3DS_Vertex)
++    
++def readPolygonList(filter, stream):
++    filter.read(&quot;count&quot;, &quot;&lt;H&quot;, &quot;Vertex count&quot;)
++    while not stream.eof():
++        filter.readChild(&quot;polygon[]&quot;, Filter_3DS_Polygon)
++
++class Filter_3DS_Chunk(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;3ds_chunk&quot;, &quot;3DS chunk&quot;, stream, parent)
++        chunk = self.read(&quot;type&quot;, &quot;&lt;H&quot;, &quot;Chunk type&quot;, post=self.toHex)
++        chunk.description = &quot;Chunk type (%s)&quot; % self.getType()
++        self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Chunk size&quot;)
++        types = {
++            0xA000: readMaterial,
++            0x4000: readObject,
++            0xA300: readTextureFilename,
++            0x0011: readColor,
++#            0x4110: readVertexList,
++#            0x4120: readPolygonList,
++#            0x4140: readMapList,
++            0x0002: readVersion
++        }
++        size = self[&quot;size&quot;] - 6
++        type = self[&quot;type&quot;] 
++        end = stream.tell() + size
++        if type in (0x4D4D, 0x4100, 0x3D3D, 0xAFFF, 0xA200, 0xA010, 0xA030, 0xA020):
++            while stream.tell() &lt; end:
++                self.readChild(&quot;chunk[]&quot;, Filter_3DS_Chunk)
++            assert stream.tell() == end 
++        else:
++            if type in types: 
++                substream = stream.createSub(size=size)
++                types[type] (self, substream)
++            else:
++                self.read(&quot;data&quot;, &quot;%us&quot; % size, &quot;Raw data&quot;)
++
++    def checkEnd(self, stream, array, last):
++        return stream.eof()
++
++    def updateParent(self, chunk):
++        type = self.getType()
++        chunk.description = &quot;Chunk of type \&quot;%s\&quot;&quot; % type
++        self.setDescription(&quot;Chunk type (%s)&quot; % type)
++        self.setId(&quot;chunk_%04x&quot; % self[&quot;type&quot;])
++
++    def toHex(self, chunk):
++        return &quot;%04X&quot; % chunk.value
++        
++    def getType(self):
++        type = self[&quot;type&quot;]
++        know = {
++            0x0011: &quot;Color&quot;,
++            0x4D4D: &quot;Main chunk&quot;,
++            0x0002: &quot;File version&quot;,
++            0x3D3D: &quot;Materials and objects&quot;,
++            0x4000: &quot;Object&quot;,
++            0x4100: &quot;Mesh (triangular)&quot;,
++            0x4110: &quot;Vertices list&quot;,
++            0x4120: &quot;Polygon (faces) list&quot;,
++            0x4140: &quot;Map UV list&quot;,
++            0x4130: &quot;Object material&quot;,
++            0xAFFF: &quot;New material&quot;,
++            0xA000: &quot;New material (name)&quot;,
++            0xA010: &quot;Material ambiant&quot;,
++            0xA020: &quot;Material diffuse&quot;,
++            0xA030: &quot;Texture specular&quot;,
++            0xA200: &quot;Texture&quot;,
++            0xA300: &quot;Texture filename&quot;
++        }
++        if type in know:
++            return know[type]
++        else:
++            return &quot;%04X&quot; % type 
++
++class Filter_3DS_File(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;3ds_file&quot;, &quot;3DS file&quot;, stream, parent)
++        while not stream.eof():
++            self.readChild(&quot;chunk[]&quot;, Filter_3DS_Chunk)
++
++# TODO: What the is that!? =&gt; image/tiff
++# What's the right MIME type?
++registerPlugin(Filter_3DS_File, &quot;image/tiff&quot;)
+
+Modified: haypo/hachoir/plugins/elf.py
+===================================================================
+--- haypo/hachoir/plugins/elf.py	2005-11-27 23:23:58 UTC (rev 278)
++++ haypo/hachoir/plugins/elf.py	2005-11-28 00:58:10 UTC (rev 279)
+@@ -10,8 +10,7 @@
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;default&quot;, &quot;default&quot;, stream, parent)
+         self.read(&quot;id&quot;, &quot;4s&quot;, &quot;Identifier&quot;)
+-        good_id = chr(127) + &quot;ELF&quot;
+-        assert self[&quot;id&quot;] == good_id 
++        assert self[&quot;id&quot;] == (chr(127) + &quot;ELF&quot;)
+         self.read(&quot;class&quot;, &quot;B&quot;, &quot;Class&quot;)
+         self.read(&quot;encoding&quot;, &quot;B&quot;, &quot;Encoding&quot;)
+         self.read(&quot;file_version&quot;, &quot;B&quot;, &quot;File version&quot;)
+
+Modified: haypo/hachoir/plugins/tar.py
+===================================================================
+--- haypo/hachoir/plugins/tar.py	2005-11-27 23:23:58 UTC (rev 278)
++++ haypo/hachoir/plugins/tar.py	2005-11-28 00:58:10 UTC (rev 279)
+@@ -80,12 +80,12 @@
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;tar_file_entry&quot;,&quot;Tar file entry&quot;, stream, parent)
+         self.read(&quot;name&quot;, &quot;!100s&quot;, &quot;Name&quot;, truncate=False, post=self.stripNul)
+-        self.name = self.name.strip(&quot;\0&quot;)
++        self.name = self[&quot;name&quot;].strip(&quot;\0&quot;)
+         self.read(&quot;mode&quot;, &quot;!8s&quot;, &quot;Mode&quot;, post=self.convertOctal)
+         self.read(&quot;uid&quot;, &quot;!8s&quot;, &quot;User ID&quot;, post=self.convertOctal)
+         self.read(&quot;gid&quot;, &quot;!8s&quot;, &quot;Group ID&quot;, post=self.convertOctal)
+         self.read(&quot;size&quot;, &quot;!12s&quot;, &quot;Size&quot;, post=self.convertOctal)
+-        self.size = self.octal2int(self.size)
++        self.size = self.octal2int(self[&quot;size&quot;])
+         self.read(&quot;mtime&quot;, &quot;!12s&quot;, &quot;Modification time&quot;, self.getTime)
+         self.read(&quot;check_sum&quot;, &quot;!8s&quot;, &quot;Check sum&quot;)
+         self.read(&quot;type&quot;, &quot;!c&quot;, &quot;Type&quot;)
+@@ -96,7 +96,7 @@
+         self.read(&quot;devmajor&quot;, &quot;!8s&quot;, &quot;Dev major&quot;)
+         self.read(&quot;devminor&quot;, &quot;!8s&quot;, &quot;Dev minor&quot;)
+         self.read(&quot;header_padding&quot;, &quot;!167s&quot;, &quot;Padding (zero)&quot;)
+-        if self.type in (&quot;\0&quot;, &quot;0&quot;):
++        if self[&quot;type&quot;] in (&quot;\0&quot;, &quot;0&quot;):
+             substream = stream.createSub(stream.tell(), self.size)
+             plugin = guessPlugin(substream, self.name)
+ 
+@@ -139,8 +139,7 @@
+             &quot;6&quot;: &quot;FIFO special file&quot;,
+             &quot;7&quot;: &quot;Contiguous file&quot;
+         }
+-        if self.type not in name: return &quot;Unknow type (%02X)&quot; % ord(self.type)
+-        return name[self.type]
++        name.get(self[&quot;type&quot;], &quot;Unknow type (%02X)&quot; % ord(self[&quot;type&quot;]))
+ 
+     def updateParent(self, chunk):
+         if not self.isEmpty():
+@@ -148,7 +147,8 @@
+                 % (self.name, self.getType(), humanFilesize(self.size))
+         else:
+             text = &quot;Tar File (terminator, empty header)&quot;
+-        chunk.description = self.description = text
++        chunk.description = text
++        self.setDescription(text)
+ 
+ class TarFile(Filter):
+     def __init__(self, stream, parent=None):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000185.html">[Happyboom-svn] r278 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000187.html">[Happyboom-svn] r280 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#186">[ date ]</a>
+              <a href="thread.html#186">[ thread ]</a>
+              <a href="subject.html#186">[ subject ]</a>
+              <a href="author.html#186">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

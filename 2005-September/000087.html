@@ -1,0 +1,153 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r180 - happyboom/trunk/client
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r180%20-%20happyboom/trunk/client&In-Reply-To=%3C200509152329.j8FNTcDB026515%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000086.html">
+   <LINK REL="Next"  HREF="000088.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r180 - happyboom/trunk/client</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r180%20-%20happyboom/trunk/client&In-Reply-To=%3C200509152329.j8FNTcDB026515%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r180 - happyboom/trunk/client">dboucard at berlios.de
+       </A><BR>
+    <I>Fri Sep 16 01:29:38 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000086.html">[Happyboom-svn] r179 - boomboom/client boomboom/server/agents happyboom/trunk/common happyboom/trunk/server
+</A></li>
+        <LI>Next message: <A HREF="000088.html">[Happyboom-svn] r181 - in happyboom/trunk/net: io io_tcp io_udp
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#87">[ date ]</a>
+              <a href="thread.html#87">[ thread ]</a>
+              <a href="subject.html#87">[ subject ]</a>
+              <a href="author.html#87">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-16 01:29:36 +0200 (Fri, 16 Sep 2005)
+New Revision: 180
+
+Modified:
+   happyboom/trunk/client/base_client.py
+Log:
+
+
+Modified: happyboom/trunk/client/base_client.py
+===================================================================
+--- happyboom/trunk/client/base_client.py	2005-09-15 23:28:07 UTC (rev 179)
++++ happyboom/trunk/client/base_client.py	2005-09-15 23:29:36 UTC (rev 180)
+@@ -1,7 +1,7 @@
+ from net import io_udp
+ from common.happyboom_protocol import HappyboomProtocol
+ from common.event import EventLauncher, EventListener
+-import struct
++import struct, string
+ 
+ class Client(object, EventListener, EventLauncher):
+     
+@@ -106,29 +106,61 @@
+         self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;destroy_item&quot;, self.processConnection)
+         self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;recv_event&quot;, self.processConnection)
+         self.registerEvent(&quot;happyboom&quot;)
++        self.features = []
++        self.items = {}
++        #self.gamepath = None
++        self.module = __import__(&quot;items&quot;)
+         
+     def processConnection(self, version, signature):
+         self.launchEvent(&quot;happyboom&quot;, &quot;signature&quot;, signature)
++        self.launchEvent(&quot;happyboom&quot;, &quot;sendFeatures&quot;, self.features)
+         
+     def processDisconnection(self, reason):
+         self.launchEvent(&quot;happyboom&quot;, &quot;stop&quot;, reason)
+     
+     def processCreateItem(self, feature, id):
++        assert feature in self.features, &quot;Unexpected feature&quot;
++        classname = self.getClassnameByFeature(feature)
++        assert hasattr(self.module, classname), &quot;Item class not found : %s&quot; %classname
++        itemclass = getattr(self.module, classname)
++        item = itemclass(id)
++        self.items[id] = item
+         self.launchEvent(feature, &quot;new&quot;, id)
+     
+     def processDestroyItem(self, id):
++        assert id in self.items, &quot;Unknown item identifier %s&quot; %id
+         self.launchEvent(feature, &quot;delete&quot;, id)
+-    
++        del self.items[id]
++        
+     def processEvent(self, feature, event, args):
+         self.launchEvent(feature, event, *args)
+ 
++    def getClassnameByFeature(self, feature):
++        classname = &quot;&quot;
++        prefix = True
++        space = True
++        for i in range(len(feature)):
++            if feature[i] not in string.ascii_letters:
++                if prefix:
++                    classname = classname + feature[i]
++                space = True
++            else:
++                prefix = False
++                if space:
++                    classname = classname + feature[i].upper()
++                else:
++                    classname = classname + feature[i]
++        return classname
++
+     def evt_happyboom_features(self, feature):
+         if feature not in self.features:
+             self.features.append(feature)
+             self.registerEvent(feature)
+-            
+-    def processEvent(self, event):
++        
++#    def evt_happyboom_gamepath(self, path):
++#        self.gamepath = path
++        
++    def eventPerformed(self, event):
+         if self.type != &quot;happyboom&quot;:
+             self.launchEvent(&quot;happyboom&quot;, &quot;send&quot;, *event.content)
+-            
+-    
+\ No newline at end of file
++            
+\ No newline at end of file
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000086.html">[Happyboom-svn] r179 - boomboom/client boomboom/server/agents happyboom/trunk/common happyboom/trunk/server
+</A></li>
+	<LI>Next message: <A HREF="000088.html">[Happyboom-svn] r181 - in happyboom/trunk/net: io io_tcp io_udp
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#87">[ date ]</a>
+              <a href="thread.html#87">[ thread ]</a>
+              <a href="subject.html#87">[ subject ]</a>
+              <a href="author.html#87">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,333 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r426 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r426%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/field&In-Reply-To=%3C200603040025.k240PcNH032347%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000328.html">
+   <LINK REL="Next"  HREF="000330.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r426 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r426%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/field&In-Reply-To=%3C200603040025.k240PcNH032347%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r426 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field">haypo at berlios.de
+       </A><BR>
+    <I>Sat Mar  4 01:25:38 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000328.html">[Happyboom-svn] r425 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field
+</A></li>
+        <LI>Next message: <A HREF="000330.html">[Happyboom-svn] r427 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/file/image
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#329">[ date ]</a>
+              <a href="thread.html#329">[ thread ]</a>
+              <a href="subject.html#329">[ subject ]</a>
+              <a href="author.html#329">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-04 01:25:12 +0100 (Sat, 04 Mar 2006)
+New Revision: 426
+
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/doc.txt
+   haypo/hachoir/branches/hachoir-yield/field/field_set.py
+   haypo/hachoir/branches/hachoir-yield/field/string_field.py
+   haypo/hachoir/branches/hachoir-yield/test_doc.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r20 at haypopc</A>:  haypo | 2006-03-03 01:11:17 +0100
+  * Rename exception FieldDoesExist to MissingField
+  * Improve String field class: store it's value when it's read by _getDisplay
+    (but only if full value is read, not truncated)
+  * Write new sections in documentation
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:19
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:20
+
+Modified: haypo/hachoir/branches/hachoir-yield/doc.txt
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/doc.txt	2006-03-04 00:24:41 UTC (rev 425)
++++ haypo/hachoir/branches/hachoir-yield/doc.txt	2006-03-04 00:25:12 UTC (rev 426)
+@@ -119,24 +119,137 @@
+ &gt;&gt;&gt; field.address
+ 8
+ 
+-Documentation: TODO
+-===================
++Some Hachoir internals
++======================
+ 
+-Internals of a FieldSet
+------------------------
++When a field is really created?
++-------------------------------
+ 
+-... static_size ... endian ...
++A field is created when someone ask to access it, or when another field is
++asked and the field is before it. So if you use a field in your field set
++constructor, one or more fields will be created.
+ 
+-... create of the fields: get len, get size, iterator, contains, ...
++Example:
++&gt;&gt;&gt; from field import FieldSet, Integer, String
++&gt;&gt;&gt; class Point(FieldSet):
++...     def __init__(self, parent, name, stream, description=&quot;Point&quot;):
++...         FieldSet.__init__(self, parent, name, stream, description)
++...         if self[&quot;color&quot;].value == -1:
++...             self.description += &quot; (no color)&quot;
++...
++...     def createFields(self):
++...         yield Integer(self, &quot;color&quot;, &quot;int8&quot;, &quot;Point color (-1 for none)&quot;)
++...         yield Integer(self, &quot;use_3d&quot;, &quot;int8&quot;, &quot;Does it use Z axis?&quot;)
++...         yield Integer(self, &quot;x&quot;, &quot;int8&quot;, &quot;X axis value&quot;)
++...         yield Integer(self, &quot;y&quot;, &quot;int8&quot;, &quot;Y axis value&quot;)
++...         if self[&quot;use_3d&quot;] == 1:
++...             yield Integer(self, &quot;z&quot;, &quot;int8&quot;, &quot;Z axis value&quot;)
++...
+ 
++In the constructor, the field &quot;color&quot; is asked. So the field list will
++contains one field (color):
++&gt;&gt;&gt; stream = FileStream(StringIO(&quot;\x2A\x00\x04\x05&quot;), None)
++&gt;&gt;&gt; p = Point(None, &quot;point&quot;, stream)
++&gt;&gt;&gt; len(p.fields)
++1
++
++WARNING: Only access 'fields' attribute if you know what you are doing.
++
++If you access another field, the field list will grow up until the requested
++field is reached:
++&gt;&gt;&gt; x = p[&quot;x&quot;].value
++&gt;&gt;&gt; len(p.fields)
++3
++
++Some field set methods which create new fields:
++ * __getitem__(): feed field list until requested field is reached
++   (or raise MissingField exception) ;
++ * __len__(): create all fields ;
++ * __iter__(): begin to iterate in existing fields, and the iterate in new
++   fields until all fields are created ;
++ * __contains__(): feed field list until requested field is reached, may
++   create all fields if the field is missing.
++
++The size attribute also interact with field list creation, but it's mechanism
++is little bit more complex. By default, the whole field list have to be built
++before size value can be read. But you can specify field list size:
++ * if field list is fixed, use class attribute static_size ;
++ * else you can set _size instance attribute in the constructor.
++
++Two examples:
++&gt;&gt;&gt; class FourBytes(FieldSet):
++...     static_size = 32
++...     def createFields(self):
++...         yield Integer(self, &quot;four&quot;, &quot;uint32&quot;)
++...
++&gt;&gt;&gt; class DynamicSize(FieldSet):
++...     def __init__(self, parent, name, stream, nb_items, description=&quot;Point&quot;):
++...         FieldSet.__init__(self, parent, name, stream, description)
++...         self.nb_items = nb_items
++...         self._size = nb_items * 32   # 32 is the size of one item
++...
++...     def createFields(self):
++...         for index in range(self.nb_items):
++...             yield Integer(self, &quot;item[]&quot;, &quot;uint32&quot;)
++...
++
++When the value of a field is read?
++----------------------------------
++
++When a field is created, the value of the field doesn't exist (equals to
++None). The value is really read when you read the field value using '.value'
++or '.display' field attributes. The value is then stored in the field.
++
++Details about field name
++------------------------
++
++The name of a field have to be unique in a field set because it is used as
++key in the field list. The argument 'name' of the Field constructor can be
++changed in the the constructor, but should not (and can no) be changed after
++that.
++
++For arrays, you can use the 'magic' prefix &#171; [] &#187; (eg. &quot;item[]&quot;) which will
++be replaced by &#171; [index] &#187; where the number index is a counter starting a
++zero.
++
++Endian
++------
++
++The &quot;endian&quot; is the way in which ''bytes'' are stored. There are two important
++orders:
++ * &#171; Big endian &#187; in which _big_ numbers are written first (Intel x86 CPU)
++ * &#171; Little endian &#187; in which _little_ numbers are written first (PowerPC CPU)
++
++The number 0x1020 whill be stored &quot;\x10\x20&quot; in big endian and &quot;\x20\x10&quot; in
++little endian.
++
++The endian is global to a FieldSet and is a class attribute. Two allowed
++values are &quot;&lt;&quot; (little endian) and &quot;&gt;&quot; (big endian). Default value is the
++international network order: &quot;&lt;&quot;, big endian.
++
++Example to set endian:
++&gt;&gt;&gt; class UseLittleEndian(FieldSet):
++...     endian = &quot;&gt;&quot;
++...     # (...)
++...
++
+ Explore a field set using it's path
+ -----------------------------------
+ 
+-... path ... image[&quot;/header/width&quot;] ...
++Fields are stored in a tree. To explore the tree you have differents tools:
++ * attribute root of a field which go to tree root ;
++ * attribute parent go to field parent (is None for tree root) ;
++ * and you can specify a path in __getitem__() argument.
+ 
+-... root, parent ...
++There are differents valid syntax of a path:
++ * path to a child of current node: field[&quot;content&quot;] ;
++ * path to a child of the parent: field[&quot;../brother&quot;] ;
++ * path from the root: field[&quot;/header/key&quot;].
+ 
+ Event handling
+ --------------
+ 
+-... connect(event, handler) .... raiseEvent(event,  arg1, arg2, ...) ...
++Code is not finished yet, so don't need documentation :-) See:
++ * FieldSet.connect(event, handler)
++ * FieldSet.raiseEvent(event,  arg1, arg2, ...)
++
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-03-04 00:24:41 UTC (rev 425)
++++ haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-03-04 00:25:12 UTC (rev 426)
+@@ -3,7 +3,7 @@
+ from indexed_dict import IndexedDict
+ import config
+ 
+-class FieldDoesExist(KeyError):
++class MissingField(KeyError):
+     pass
+ 
+ class ParserError(Exception):
+@@ -137,7 +137,7 @@
+             names = names[1:]
+         elif names[0] == '..':
+             if self.parent == None:
+-                raise FieldDoesExist(&quot;Field '%s' has no parent (can't get field %s)!&quot; \
++                raise MissingField(&quot;Field '%s' has no parent (can't get field %s)!&quot; \
+                     % (path, self.path))
+             field = self.parent
+             names = names[1:]
+@@ -148,7 +148,7 @@
+             del names[-1]
+         for name in names:
+             if name==&quot;&quot; or not field.is_field_set:
+-                raise FieldDoesExist(&quot;Field '%s' doesn't exist in %s&quot; \
++                raise MissingField(&quot;Field '%s' doesn't exist in %s&quot; \
+                     % (path, self.path))
+             field = field[name]
+         return field
+@@ -172,7 +172,7 @@
+             field = self._feedUntil(name)
+             if field != None:
+                 return field
+-        raise FieldDoesExist(&quot;Field '%s' doesn't exist in %s&quot; \
++        raise MissingField(&quot;Field '%s' doesn't exist in %s&quot; \
+             % (name, self.path))
+ 
+     def __contains__(self, name):
+@@ -180,7 +180,7 @@
+             try:
+                 field = self.getChunkByPath(name)
+                 return True
+-            except FieldDoesExist:
++            except MissingField:
+                 return False
+         else:
+             if self._field_generator != None:
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/string_field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/string_field.py	2006-03-04 00:24:41 UTC (rev 425)
++++ haypo/hachoir/branches/hachoir-yield/field/string_field.py	2006-03-04 00:25:12 UTC (rev 426)
+@@ -10,19 +10,21 @@
+         Field.__init__(self, parent, name, None, size, description=description)
+         
+     def _getDisplay(self):
+-        max = 20*8
++        max = 20
+         if self._value == None:
+             assert (self.size % 8) == 0
+-            if max &lt; self._size:
++            if max &lt; self._size/8:
+                 display = self.parent.stream.getBytes( \
+-                    self.absolute_address, max / 8)
++                    self.absolute_address, max)
++                display += &quot;(...)&quot;
+             else:
+-                display = self.parent.stream.getBytes( \
++                self._value = self.parent.stream.getBytes( \
+                     self.absolute_address, self._size / 8)
++                display = self._value
+         else:
+             display = self._value[:max]
+-        if max &lt; self._size:
+-            display += &quot;(...)&quot;
++            if max &lt; self._size/8:
++                display += &quot;(...)&quot;
+         return convertDataToPrintableString(display)
+     display = property(_getDisplay)        
+     
+
+Modified: haypo/hachoir/branches/hachoir-yield/test_doc.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/test_doc.py	2006-03-04 00:24:41 UTC (rev 425)
++++ haypo/hachoir/branches/hachoir-yield/test_doc.py	2006-03-04 00:25:12 UTC (rev 426)
+@@ -1,5 +1,5 @@
+ import doctest
+-filename = 'mydoc.txt'
++filename = 'doc.txt'
+ print &quot;Run test in %s&quot; % filename
+ doctest.testfile(filename, optionflags=doctest.ELLIPSIS)
+ print &quot;End of all tests of %s&quot; % filename
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000328.html">[Happyboom-svn] r425 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field
+</A></li>
+	<LI>Next message: <A HREF="000330.html">[Happyboom-svn] r427 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/file/image
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#329">[ date ]</a>
+              <a href="thread.html#329">[ thread ]</a>
+              <a href="subject.html#329">[ subject ]</a>
+              <a href="author.html#329">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

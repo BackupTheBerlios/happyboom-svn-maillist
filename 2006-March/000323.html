@@ -1,0 +1,403 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r419 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file branches/hachoir-yield/file/image branches/hachoir-yield/generic
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r419%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/field%20branches/hachoir-yield/file%20branches/hachoir-yield/file/image%20branches/hachoir-yield/generic&In-Reply-To=%3C200603040016.k240G590029802%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="000324.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r419 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file branches/hachoir-yield/file/image branches/hachoir-yield/generic</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r419%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/field%20branches/hachoir-yield/file%20branches/hachoir-yield/file/image%20branches/hachoir-yield/generic&In-Reply-To=%3C200603040016.k240G590029802%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r419 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file branches/hachoir-yield/file/image branches/hachoir-yield/generic">haypo at berlios.de
+       </A><BR>
+    <I>Sat Mar  4 01:16:05 CET 2006</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="000324.html">[Happyboom-svn] r420 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file/image branches/hachoir-yield/generic
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#323">[ date ]</a>
+              <a href="thread.html#323">[ thread ]</a>
+              <a href="subject.html#323">[ subject ]</a>
+              <a href="author.html#323">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-04 01:15:36 +0100 (Sat, 04 Mar 2006)
+New Revision: 419
+
+Added:
+   haypo/hachoir/branches/hachoir-yield/file/__init__.py
+   haypo/hachoir/branches/hachoir-yield/file/image/__init__.py
+   haypo/hachoir/branches/hachoir-yield/generic/
+   haypo/hachoir/branches/hachoir-yield/generic/__init__.py
+   haypo/hachoir/branches/hachoir-yield/generic/image.py
+   haypo/hachoir/branches/hachoir-yield/metadata.py
+Removed:
+   haypo/hachoir/branches/hachoir-yield/field/bits_field.py
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/field/__init__.py
+   haypo/hachoir/branches/hachoir-yield/field/field.py
+   haypo/hachoir/branches/hachoir-yield/field/field_set.py
+   haypo/hachoir/branches/hachoir-yield/file/image/png.py
+   haypo/hachoir/branches/hachoir-yield/hachoir.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r13 at haypopc</A>:  haypo | 2006-03-01 01:47:35 +0100
+  * Create MetaData and ImageMetaData classes
+  * Create PngMetaData which read PNG file meta data
+  * PNG parser can read the palette
+  * Delete now useless Bits field (replaced by Integer and bit address
+    granularity)
+  * Field constructor check parent type
+  * Create error 'ParserError' which should be used in file parser
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:11
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:13
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/__init__.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/__init__.py	2006-02-28 12:52:41 UTC (rev 418)
++++ haypo/hachoir/branches/hachoir-yield/field/__init__.py	2006-03-04 00:15:36 UTC (rev 419)
+@@ -1,5 +1,4 @@
+ from field import Field
+-#from bits_field import Bits
+ from integer import Integer, IntegerHex, Bits, Bit
+ from string_field import String
+-from field_set import FieldSet
++from field_set import FieldSet, ParserError
+
+Deleted: haypo/hachoir/branches/hachoir-yield/field/bits_field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/bits_field.py	2006-02-28 12:52:41 UTC (rev 418)
++++ haypo/hachoir/branches/hachoir-yield/field/bits_field.py	2006-03-04 00:15:36 UTC (rev 419)
+@@ -1,74 +0,0 @@
+-from bits import sized_long2bin, str2long
+-from field import Field
+-from cIOString import IOString
+-from indexed_dict import IndexedDict
+-
+-class BitField(Field):
+-    def __init__(self, parent, name, size, description=None):
+-        assert 0 &lt; size
+-        Field.__init__(self, parent, name, None, size, description=description)
+-
+-    def _getDisplay(self):
+-        return sized_long2bin(self.size, self.value)
+-    display = property(_getDisplay)
+-
+-    def _getValue(self):
+-        if self._value == None:
+-            self._value = self.parent.readBits(self.address, self.size)
+-        return self._value
+-    value = property(_getValue, Field._setValue)
+-
+-class BitsSet(object):
+-    def __init__(self, source, items=None, do_reverse=False):
+-        self._items = IndexedDict()
+-        self._size = 0
+-        self._source = source
+-        if do_reverse:
+-            items = reversed(items)
+-        for item in items:
+-            field = BitField(self, item[1], item[0], item[2])
+-            self._items.append(field.name, field)
+-            self._size += field.size
+-        assert (0 &lt; self._size) and ((self._size % 8) == 0)
+-
+-    def newFieldAskAddress(self):
+-        return self._size
+-
+-    def readBits(self, address, size):
+-        data = self._source.readRawContent()
+-        start = address / 8
+-        mask = (1 &lt;&lt; size) - 1
+-        byte_size = (size + (address % 8) + 7) / 8
+-        shift = address - start*8
+-        data = data[start:start+byte_size]
+-        value = str2long(data)
+-        value = (value &gt;&gt; shift) &amp; mask
+-        if size == 1:
+-            return value == 1
+-        else:
+-            return value
+-
+-    def _getSize(self):
+-        return self._size / 8
+-    size = property(_getSize)
+-
+-    def __iter__(self):
+-        return iter(self._items)
+-
+-class BitsSet(Field):
+-    is_field_set = True
+-
+-    def __init__(self, parent, name, bits, description=None):
+-        self.bits = BitsSet(self, bits)
+-        Field.__init__(self, parent, name, None, self.bits.size, description=description)
+-
+-    def __iter__(self):
+-        return iter(self.bits)
+-
+-    def __getitem__(self, name):
+-        return self.bits[name]
+-
+-    def _getDisplay(self):
+-        return &quot;&lt;bits&gt;&quot;
+-    display = property(_getDisplay)
+-
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/field.py	2006-02-28 12:52:41 UTC (rev 418)
++++ haypo/hachoir/branches/hachoir-yield/field/field.py	2006-03-04 00:15:36 UTC (rev 419)
+@@ -2,6 +2,7 @@
+     is_field_set = False
+     
+     def __init__(self, parent, name, value, size=None, address=None, description=None):
++        assert parent == None or issubclass(parent.__class__, Field)
+         self.parent = parent
+         self._name = name 
+         self._value = value
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-02-28 12:52:41 UTC (rev 418)
++++ haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-03-04 00:15:36 UTC (rev 419)
+@@ -5,6 +5,9 @@
+ class FieldDoesExist(KeyError):
+     pass
+ 
++class ParserError(Exception):
++    pass
++
+ class FieldSet(Field):
+     &quot;&quot;&quot;
+     Ordered list of fields. Use operator [] to access fields using their
+
+Added: haypo/hachoir/branches/hachoir-yield/file/__init__.py
+===================================================================
+
+Added: haypo/hachoir/branches/hachoir-yield/file/image/__init__.py
+===================================================================
+
+Modified: haypo/hachoir/branches/hachoir-yield/file/image/png.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/file/image/png.py	2006-02-28 12:52:41 UTC (rev 418)
++++ haypo/hachoir/branches/hachoir-yield/file/image/png.py	2006-03-04 00:15:36 UTC (rev 419)
+@@ -1,5 +1,28 @@
+-from field import FieldSet, Integer, String, IntegerHex, Bit, Bits
++from field import FieldSet, Integer, String, IntegerHex, Bit, Bits, ParserError
++from generic.image import RGB
++from bits import str2hex
++from metadata import ImageMetaData
+ 
++class PngMetaData(ImageMetaData):
++    def __init__(self, png):
++        header = png[&quot;/header/content&quot;]
++        color_type = header[&quot;color_type&quot;]
++        width, height = header[&quot;width&quot;].value, header[&quot;height&quot;].value
++        bpp = header[&quot;bpp&quot;].value
++        if color_type[&quot;palette&quot;].value:
++            nb_colors = png[&quot;/palette/content&quot;].nb_colors
++        else:
++            nb_colors = None
++        if color_type[&quot;alpha&quot;].value:
++            format = &quot;RGBA&quot;
++        else:
++            format = &quot;RGB&quot;
++#        if header[&quot;compression&quot;].value != 0:
++#            compression = &quot;(compressed)&quot;
++#        else:
++#            compression = &quot;No&quot;
++        ImageMetaData.__init__(self, format, width, height, bpp, nb_colors=nb_colors)
++
+ class HeaderFlags(FieldSet):
+     def createFields(self):
+         yield Bit(self, &quot;palette&quot;, &quot;Palette used?&quot;)
+@@ -21,12 +44,26 @@
+         chunk.description = &quot;Header: %ux%u pixels and %u bits/pixel&quot; \
+             % (self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;bpp&quot;])
+ 
++class Palette(FieldSet):
++    def __init__(self, parent, name, stream, description=None):
++        size = parent[&quot;size&quot;].value
++        if (size % 3) != 0:
++            raise ParserError(&quot;Palette have invalid size (%s), should be 3*n.&quot; % size)
++        self.nb_colors = size / 3
++        if description == None:
++            description = &quot;Palette: %u colors&quot; % self.nb_colors
++        FieldSet.__init__(self, parent, name, stream, description)
++
++    def createFields(self):
++        for i in range(self.nb_colors):
++            yield RGB(self, &quot;color[]&quot;, self.stream)
++
+ class Chunk(FieldSet):
+     handler = {
+ #        &quot;tIME&quot;: Time,
+ #        &quot;pHYs&quot;: Physical,
+         &quot;IHDR&quot;: Header,
+-#        &quot;PLTE&quot;: Palette,
++        &quot;PLTE&quot;: Palette,
+ #        &quot;gAMA&quot;: Gamma,
+ #        &quot;tEXt&quot;: Text
+     }
+@@ -60,16 +97,18 @@
+ #            oldpos = self._stream.tell()
+ #            sub = stream.createLimited(size=size)
+             cls = self.handler[type]
+-            yield cls(self, &quot;data&quot;, self.stream)
++            yield cls(self, &quot;content&quot;, self.stream)
+ #            assert stream.tell() == (oldpos + size) 
+         else:
+-            yield String(self, &quot;data&quot;, &quot;string[%u]&quot; % self[&quot;size&quot;].value, &quot;Data&quot;)
++            yield String(self, &quot;content&quot;, &quot;string[%u]&quot; % self[&quot;size&quot;].value, &quot;Data&quot;)
+         yield IntegerHex(self, &quot;crc32&quot;, &quot;uint32&quot;, &quot;CRC32&quot;)
+ 
+ class PngFile(FieldSet):
+     def createFields(self):
+         yield String(self, &quot;id&quot;, &quot;string[8]&quot;, &quot;PNG identifier&quot;) 
+-        assert self[&quot;id&quot;].value == &quot;\x89PNG\r\n\x1A\n&quot;
++        if self[&quot;id&quot;].value != &quot;\x89PNG\r\n\x1A\n&quot;:
++            raise ParserError(&quot;Png parser: file identifier looks wrong (%s instead of %s)&quot; % \
++                (str2hex(self[&quot;id&quot;].value), str2hex(&quot;\x89PNG\r\n\x1A\n&quot;)))
+         while True:
+             field = Chunk(self, &quot;chunks[]&quot;, self.stream)
+             yield field
+
+Added: haypo/hachoir/branches/hachoir-yield/generic/__init__.py
+===================================================================
+
+Added: haypo/hachoir/branches/hachoir-yield/generic/image.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/generic/image.py	2006-02-28 12:52:41 UTC (rev 418)
++++ haypo/hachoir/branches/hachoir-yield/generic/image.py	2006-03-04 00:15:36 UTC (rev 419)
+@@ -0,0 +1,27 @@
++from field import FieldSet, Integer
++
++class RGB(FieldSet):
++    color_name = {
++        0x000000: &quot;Black&quot;,
++        0xFFFFFF: &quot;White&quot;
++    }
++    
++    def __init__(self, parent, name, stream, description=None):
++        FieldSet.__init__(self, parent, name, stream, description)
++        if self.description == None:
++            self.description = self.getColorName()
++        self._size = 3
++
++    def createFields(self):
++        yield Integer(self, &quot;red&quot;, &quot;uint8&quot;, &quot;Red&quot;)
++        yield Integer(self, &quot;green&quot;, &quot;uint8&quot;, &quot;Green&quot;)
++        yield Integer(self, &quot;blue&quot;, &quot;uint8&quot;, &quot;Blue&quot;)
++
++    def getColorName(self):
++        value = (self[&quot;red&quot;].value &lt;&lt; 16) + (self[&quot;green&quot;].value &lt;&lt; 8) + self[&quot;blue&quot;].value
++        if value in RGB.color_name:
++            return &quot;RGB color: &quot;+RGB.color_name[value]
++        else:
++            return &quot;RGB color: #%02X%02X%02X&quot; % \
++                (self[&quot;red&quot;].value, self[&quot;green&quot;].value, self[&quot;blue&quot;].value)
++
+
+Modified: haypo/hachoir/branches/hachoir-yield/hachoir.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-02-28 12:52:41 UTC (rev 418)
++++ haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:15:36 UTC (rev 419)
+@@ -1,14 +1,20 @@
+ #!/usr/bin/env python
+ 
+-from file.image.png import PngFile
++from file.image.png import PngFile, PngMetaData
+ from stream.file import FileStream
+ from text_ui import displayFieldSet
++import sys
+ 
+ def main():
+-    filename = &quot;/home/haypo/exemple/png.png&quot;
++    if 2 &lt;= len(sys.argv):
++        filename = sys.argv[1]
++    else:
++        filename = &quot;/home/haypo/exemple/png.png&quot;
+     stream = FileStream(open(filename, 'r'), filename)
+     png = PngFile(None, &quot;png_file&quot;, stream)
+-    displayFieldSet(png)
++    print &quot;[Picture %s]&quot; % filename
++    meta = PngMetaData(png) ; print meta
++#    displayFieldSet(png)
+ 
+ if __name__ == &quot;__main__&quot;:
+     main()
+
+Added: haypo/hachoir/branches/hachoir-yield/metadata.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/metadata.py	2006-02-28 12:52:41 UTC (rev 418)
++++ haypo/hachoir/branches/hachoir-yield/metadata.py	2006-03-04 00:15:36 UTC (rev 419)
+@@ -0,0 +1,24 @@
++class MetaData:
++    pass
++
++class ImageMetaData(MetaData):
++    def __init__(self, format, width, height, bits_per_pixel, **kw):
++        self.format = format
++        self.width = width
++        self.height = height
++        self.bits_per_pixel = bits_per_pixel
++
++        # Optionnals
++        self.nb_colors = kw.get(&quot;nb_colors&quot;, None)
++        self.compression = kw.get(&quot;compression&quot;, None)
++
++    def __str__(self):
++        text = &quot;ImageMetaData &lt;format=%s, size=%sx%s, bpp=%s&quot; % \
++            (self.format, self.width, self.height, self.bits_per_pixel)
++        if self.nb_colors != None:
++            text += &quot;, nb_colors=%s&quot; % self.nb_colors
++        if self.compression != None:
++            text += &quot;, compression=%s&quot; % self.compression
++        return text+&quot;&gt;&quot;
++    
++
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="000324.html">[Happyboom-svn] r420 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file/image branches/hachoir-yield/generic
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#323">[ date ]</a>
+              <a href="thread.html#323">[ thread ]</a>
+              <a href="subject.html#323">[ subject ]</a>
+              <a href="author.html#323">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

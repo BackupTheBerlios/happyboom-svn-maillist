@@ -1,0 +1,1165 @@
+From haypo at mail.berlios.de  Wed Jun 27 01:03:56 2007
+From: haypo at mail.berlios.de (haypo at mail.berlios.de)
+Date: Wed, 27 Jun 2007 01:03:56 +0200
+Subject: [Happyboom-svn] r456 - haypo/lamer
+Message-ID: <200706262303.l5QN3umu018353@sheep.berlios.de>
+
+Author: haypo
+Date: 2007-06-27 01:03:42 +0200 (Wed, 27 Jun 2007)
+New Revision: 456
+
+Modified:
+   haypo/lamer/mod_pypi.sh
+Log:
+Smarter pypi output
+
+
+Modified: haypo/lamer/mod_pypi.sh
+===================================================================
+--- haypo/lamer/mod_pypi.sh	2006-05-08 03:55:54 UTC (rev 455)
++++ haypo/lamer/mod_pypi.sh	2007-06-26 23:03:42 UTC (rev 456)
+@@ -3,6 +3,4 @@
+ IN=~/.pypirc
+ if [ ! -e $IN ]; then exit 0; fi
+ tool/common.sh
+-echo "http://cheeseshop.python.org/"
+-echo $(grep username $IN)
+-echo $(grep password $IN)
++echo "http://cheeseshop.python.org/ -- $(grep username $IN) -- $(grep password $IN)"
+
+
+
+From haypo at mail.berlios.de  Wed Jun 27 01:17:56 2007
+From: haypo at mail.berlios.de (haypo at mail.berlios.de)
+Date: Wed, 27 Jun 2007 01:17:56 +0200
+Subject: [Happyboom-svn] r457 - in haypo/lamer: . tool
+Message-ID: <200706262317.l5QNHu5i008653@sheep.berlios.de>
+
+Author: haypo
+Date: 2007-06-27 01:17:45 +0200 (Wed, 27 Jun 2007)
+New Revision: 457
+
+Added:
+   haypo/lamer/mod_svn.sh
+   haypo/lamer/tool/parse_svn_simple.py
+Log:
+Add subversion module
+
+
+Added: haypo/lamer/mod_svn.sh
+===================================================================
+--- haypo/lamer/mod_svn.sh	2007-06-26 23:03:42 UTC (rev 456)
++++ haypo/lamer/mod_svn.sh	2007-06-26 23:17:45 UTC (rev 457)
+@@ -0,0 +1,8 @@
++#!/bin/bash
++export MOD=svn
++IN=~/.subversion/auth
++if [ ! -d $IN ]; then exit 0; fi
++tool/common.sh
++for filename in $(ls $IN/svn.simple/*); do
++  tool/parse_svn_simple.py $filename;
++done
+
+
+Property changes on: haypo/lamer/mod_svn.sh
+___________________________________________________________________
+Name: svn:executable
+   + *
+Name: svn:mime-type
+   + text/x-sh
+Name: svn:eol-style
+   + LF
+
+Added: haypo/lamer/tool/parse_svn_simple.py
+===================================================================
+--- haypo/lamer/tool/parse_svn_simple.py	2007-06-26 23:03:42 UTC (rev 456)
++++ haypo/lamer/tool/parse_svn_simple.py	2007-06-26 23:17:45 UTC (rev 457)
+@@ -0,0 +1,40 @@
++#!/usr/bin/python
++from sys import stderr, argv, exit
++import re
++
++def parse(filename):
++    infos = {
++        'username': None,
++        'password': None,
++        'svn:realmstring': None,
++    }
++    next = None
++    skip = False
++    for line in open(filename):
++        if skip:
++            skip = False
++            continue
++        line = line.strip()
++        if line in infos.keys():
++            next = line
++            skip = True
++        elif next:
++            infos[next] = line
++            next = None
++    server = infos["svn:realmstring"]
++    if not server:
++        return
++    server = re.sub("^<(.+)> .+$", r"\1", server)
++
++    print "%s -- username=%s -- password=%s" % (
++        server, infos["username"], infos["password"])
++
++def main():
++    if len(argv) != 2:
++        print >>stderr, "usage: %s filename" % argv[0]
++        exit(1)
++    parse(argv[1])
++
++if __name__ == "__main__":
++    main()
++
+
+
+Property changes on: haypo/lamer/tool/parse_svn_simple.py
+___________________________________________________________________
+Name: svn:executable
+   + *
+Name: svn:eol-style
+   + native
+
+
+
+From haypo at mail.berlios.de  Wed Jun 27 01:19:56 2007
+From: haypo at mail.berlios.de (haypo at mail.berlios.de)
+Date: Wed, 27 Jun 2007 01:19:56 +0200
+Subject: [Happyboom-svn] r458 - in haypo/lamer: . tool
+Message-ID: <200706262319.l5QNJu3D017738@sheep.berlios.de>
+
+Author: haypo
+Date: 2007-06-27 01:19:54 +0200 (Wed, 27 Jun 2007)
+New Revision: 458
+
+Modified:
+   haypo/lamer/mod_pypi.sh
+   haypo/lamer/tool/parse_svn_simple.py
+Log:
+Smarter output
+
+
+Modified: haypo/lamer/mod_pypi.sh
+===================================================================
+--- haypo/lamer/mod_pypi.sh	2007-06-26 23:17:45 UTC (rev 457)
++++ haypo/lamer/mod_pypi.sh	2007-06-26 23:19:54 UTC (rev 458)
+@@ -3,4 +3,4 @@
+ IN=~/.pypirc
+ if [ ! -e $IN ]; then exit 0; fi
+ tool/common.sh
+-echo "http://cheeseshop.python.org/ -- $(grep username $IN) -- $(grep password $IN)"
++echo "Pypi at http://cheeseshop.python.org/ -- $(grep username $IN) -- $(grep password $IN)"
+
+Modified: haypo/lamer/tool/parse_svn_simple.py
+===================================================================
+--- haypo/lamer/tool/parse_svn_simple.py	2007-06-26 23:17:45 UTC (rev 457)
++++ haypo/lamer/tool/parse_svn_simple.py	2007-06-26 23:19:54 UTC (rev 458)
+@@ -26,7 +26,7 @@
+         return
+     server = re.sub("^<(.+)> .+$", r"\1", server)
+ 
+-    print "%s -- username=%s -- password=%s" % (
++    print "svn co %s --username=%s --password=%s" % (
+         server, infos["username"], infos["password"])
+ 
+ def main():
+
+
+
+From haypo at mail.berlios.de  Wed Jun 27 01:41:37 2007
+From: haypo at mail.berlios.de (haypo at mail.berlios.de)
+Date: Wed, 27 Jun 2007 01:41:37 +0200
+Subject: [Happyboom-svn] r459 - haypo/lamer
+Message-ID: <200706262341.l5QNfbMx025216@sheep.berlios.de>
+
+Author: haypo
+Date: 2007-06-27 01:41:35 +0200 (Wed, 27 Jun 2007)
+New Revision: 459
+
+Added:
+   haypo/lamer/mod_gajim.py
+Log:
+Add gajim module
+
+
+Added: haypo/lamer/mod_gajim.py
+===================================================================
+--- haypo/lamer/mod_gajim.py	2007-06-26 23:19:54 UTC (rev 458)
++++ haypo/lamer/mod_gajim.py	2007-06-26 23:41:35 UTC (rev 459)
+@@ -0,0 +1,59 @@
++#!/usr/bin/python
++from errno import ENOENT
++from sys import stderr
++import re
++from os.path import normpath, expanduser
++
++class Lamer:
++    def __init__(self, name, verbose):
++        self.name = name
++        self.verbose = verbose
++        if self.verbose:
++            print >>stderr, "[ Module %s ]" % self.name
++
++    def extract(self):
++        try:
++            self._extract()
++        except IOError, err:
++            if err.errno == ENOENT:
++                print err
++                pass
++            else:
++                raise
++
++    def open(self, filename, mode='r'):
++        filename = expanduser(filename)
++        filename = normpath(filename)
++        return open(filename, mode)
++
++    def readText(self, filename):
++        for line in self.open("~/.gajim/config"):
++            yield line.rstrip()
++
++class Gajim(Lamer):
++    def __init__(self, verbose):
++        Lamer.__init__(self, "gajim", verbose)
++
++    def _extract(self):
++        accounts = {}
++        for line in self.readText("~/.gajim/config"):
++            match = re.match("^accounts\.([a-z0-9.-]+)\.([a-z0-9-]+) = (.*)$", line)
++            if match:
++                account = match.group(1)
++                key = match.group(2)
++                value = match.group(3)
++                if not account in accounts:
++                    accounts[account] = {}
++                accounts[account][key] = value
++        for account in accounts.itervalues():
++            self.displayAccount(account)
++
++    def displayAccount(self, data):
++        try:
++            print "Jabber: login=%s@%s -- password=%s" % (
++                data["name"], data["hostname"], data["password"])
++        except LookupError:
++            pass
++
++Gajim(True).extract()
++
+
+
+Property changes on: haypo/lamer/mod_gajim.py
+___________________________________________________________________
+Name: svn:executable
+   + *
+Name: svn:eol-style
+   + native
+
+
+
+From haypo at mail.berlios.de  Wed Jun 27 01:42:15 2007
+From: haypo at mail.berlios.de (haypo at mail.berlios.de)
+Date: Wed, 27 Jun 2007 01:42:15 +0200
+Subject: [Happyboom-svn] r460 - haypo/lamer
+Message-ID: <200706262342.l5QNgFPk025258@sheep.berlios.de>
+
+Author: haypo
+Date: 2007-06-27 01:42:14 +0200 (Wed, 27 Jun 2007)
+New Revision: 460
+
+Modified:
+   haypo/lamer/mod_gajim.py
+Log:
+gajim is not verbose
+
+
+Modified: haypo/lamer/mod_gajim.py
+===================================================================
+--- haypo/lamer/mod_gajim.py	2007-06-26 23:41:35 UTC (rev 459)
++++ haypo/lamer/mod_gajim.py	2007-06-26 23:42:14 UTC (rev 460)
+@@ -55,5 +55,5 @@
+         except LookupError:
+             pass
+ 
+-Gajim(True).extract()
++Gajim(False).extract()
+ 
+
+
+
+From haypo at mail.berlios.de  Wed Jun 27 02:47:25 2007
+From: haypo at mail.berlios.de (haypo at mail.berlios.de)
+Date: Wed, 27 Jun 2007 02:47:25 +0200
+Subject: [Happyboom-svn] r461 - in haypo/lamer: . tool
+Message-ID: <200706270047.l5R0lPSA003986@sheep.berlios.de>
+
+Author: haypo
+Date: 2007-06-27 02:47:21 +0200 (Wed, 27 Jun 2007)
+New Revision: 461
+
+Added:
+   haypo/lamer/lamer.py
+   haypo/lamer/mod_konversation.py
+   haypo/lamer/mod_svn.py
+Removed:
+   haypo/lamer/mod_svn.sh
+   haypo/lamer/tool/parse_svn_simple.py
+Modified:
+   haypo/lamer/mod_gajim.py
+Log:
+ * Rewrite mod_svn in Python
+ * Add mod_konversation
+ * Create Lamer Python class
+
+
+Added: haypo/lamer/lamer.py
+===================================================================
+--- haypo/lamer/lamer.py	2007-06-26 23:42:14 UTC (rev 460)
++++ haypo/lamer/lamer.py	2007-06-27 00:47:21 UTC (rev 461)
+@@ -0,0 +1,40 @@
++from errno import ENOENT
++from os.path import normpath, expanduser
++from sys import stderr
++from glob import glob
++
++class Lamer:
++    def __init__(self, name, verbose):
++        self.name = name
++        self.verbose = verbose
++        if self.verbose:
++            print >>stderr, "[ Module %s ]" % self.name
++
++    def extract(self):
++        try:
++            self._extract()
++        except IOError, err:
++            if err.errno == ENOENT:
++                print err
++                pass
++            else:
++                raise
++
++    def normpath(self, filename):
++        filename = expanduser(filename)
++        filename = normpath(filename)
++        return filename
++
++    def glob(self, pattern):
++        return glob(self.normpath(pattern))
++
++    def open(self, filename, mode='r'):
++        return open(self.normpath(filename), mode)
++
++    def readText(self, filename):
++        for line in self.open("~/.gajim/config"):
++            yield line.rstrip()
++
++    def write(self, text):
++        print "[%s] %s" % (self.name, text)
++
+
+
+Property changes on: haypo/lamer/lamer.py
+___________________________________________________________________
+Name: svn:eol-style
+   + native
+
+Modified: haypo/lamer/mod_gajim.py
+===================================================================
+--- haypo/lamer/mod_gajim.py	2007-06-26 23:42:14 UTC (rev 460)
++++ haypo/lamer/mod_gajim.py	2007-06-27 00:47:21 UTC (rev 461)
+@@ -1,35 +1,7 @@
+ #!/usr/bin/python
+-from errno import ENOENT
+-from sys import stderr
+ import re
+-from os.path import normpath, expanduser
++from lamer import Lamer
+ 
+-class Lamer:
+-    def __init__(self, name, verbose):
+-        self.name = name
+-        self.verbose = verbose
+-        if self.verbose:
+-            print >>stderr, "[ Module %s ]" % self.name
+-
+-    def extract(self):
+-        try:
+-            self._extract()
+-        except IOError, err:
+-            if err.errno == ENOENT:
+-                print err
+-                pass
+-            else:
+-                raise
+-
+-    def open(self, filename, mode='r'):
+-        filename = expanduser(filename)
+-        filename = normpath(filename)
+-        return open(filename, mode)
+-
+-    def readText(self, filename):
+-        for line in self.open("~/.gajim/config"):
+-            yield line.rstrip()
+-
+ class Gajim(Lamer):
+     def __init__(self, verbose):
+         Lamer.__init__(self, "gajim", verbose)
+
+Added: haypo/lamer/mod_konversation.py
+===================================================================
+--- haypo/lamer/mod_konversation.py	2007-06-26 23:42:14 UTC (rev 460)
++++ haypo/lamer/mod_konversation.py	2007-06-27 00:47:21 UTC (rev 461)
+@@ -0,0 +1,137 @@
++#!/usr/bin/python
++from lamer import Lamer
++from ConfigParser import RawConfigParser
++
++class Identity:
++    def __init__(self, data):
++        self.name = data["name"]
++        self.nicknames = data["nicknames"]
++        self.password = data["password"]
++
++class Channel:
++    def __init__(self, data):
++        self.name = data["name"]
++        self.password = data["password"]
++
++class Server:
++    def __init__(self, data):
++        self.port = int(data["port"])
++        self.password = data["password"]
++        self.server = data["server"]
++
++    def __str__(self):
++        return "%s:%s" % (self.server, self.port)
++
++    def __repr__(self):
++        return "<Server %s>" % self
++
++class ServerGroup:
++    def __init__(self, data):
++        self.channels = set(data["autojoinchannels"].split(",")) | set(data["channelhistory"].split(","))
++        self.name = data["name"]
++        self.identity = data["identity"]
++        if "serverlist" in data:
++            self.server_list = data["serverlist"].split(",")
++        else:
++            self.server_list = []
++
++class Konversation(Lamer):
++    def __init__(self, verbose):
++        Lamer.__init__(self, "konversation", verbose)
++
++    def configDict(self, config, section):
++        data = {}
++        for key,value in config.items(section):
++            key = unicode(key, "UTF-8")
++            value = unicode(value, "UTF-8")
++            data[key] = value
++        return data
++
++    def _extract(self):
++        rc = self.open("~/.kde/share/config/konversationrc")
++        config = RawConfigParser()
++        config.readfp(rc)
++        self.identities = {}
++        self.channels = {}
++        self.server_groups = {}
++        self.servers = {}
++        for section in config.sections():
++            section = unicode(section, "UTF-8")
++            server = None
++            channel = None
++            password = None
++            if section.startswith("Channel "):
++                data = self.configDict(config, section)
++                try:
++                    channel = Channel(data)
++                    if channel.password:
++                        self.channels[section] = channel
++                except KeyError:
++                    pass
++
++            elif section.startswith("Identity "):
++                data = self.configDict(config, section)
++                try:
++                    identity = Identity(data)
++                    if identity.password:
++                        self.identities[identity.name] = identity
++                except KeyError:
++                    pass
++
++            elif section.startswith("ServerGroup "):
++                data = self.configDict(config, section)
++                try:
++                    self.server_groups[section] = ServerGroup(data)
++                except KeyError, err:
++                    pass
++
++            elif section.startswith("Server "):
++                data = self.configDict(config, section)
++                try:
++                    self.servers[section] = Server(data)
++                except KeyError:
++                    pass
++
++        for server_id, server_group in self.server_groups.iteritems():
++            # Create server list
++            servers = []
++            if server_group.server_list:
++                for server_id in server_group.server_list:
++                    try:
++                        server = self.servers[server_id]
++                        servers.append(server)
++                    except KeyError:
++                        pass
++            else:
++                try:
++                    server_id = "Server %s" % (server_id.split(" ",1)[1])
++                    server = self.servers[server_id]
++                    servers.append(server)
++                except KeyError:
++                    pass
++
++            # Search identity
++            try:
++                identity = self.identities[server_group.identity]
++            except LookupError:
++                identity = None
++
++            # Search channels
++            channels = []
++            for channel_id, channel in self.channels.iteritems():
++                if channel_id in server_group.channels:
++                    channels.append(channel)
++
++            if not(identity or channels):
++                continue
++            if identity:
++                self.dump(servers, 'identify -- nicknames=%s -- password=%s' % (identity.nicknames, identity.password))
++            for channel in channels:
++                self.dump(servers, "/join %s %s" % (channel.name, channel.password))
++
++    def dump(self, servers, text):
++        servers = ", ".join(str(item) for item in servers)
++        self.write("%s: %s" % (servers, text))
++
++Konversation(False).extract()
++
+
+
+Property changes on: haypo/lamer/mod_konversation.py
+___________________________________________________________________
+Name: svn:executable
+   + *
+Name: svn:eol-style
+   + native
+
+Added: haypo/lamer/mod_svn.py
+===================================================================
+--- haypo/lamer/mod_svn.py	2007-06-26 23:42:14 UTC (rev 460)
++++ haypo/lamer/mod_svn.py	2007-06-27 00:47:21 UTC (rev 461)
+@@ -0,0 +1,46 @@
++#!/usr/bin/python
++from sys import stderr, argv, exit
++import re
++from lamer import Lamer
++from glob import glob
++
++class Subversion(Lamer):
++    def __init__(self, verbose):
++        Lamer.__init__(self, "subversion", verbose)
++
++    def parse(self, filename):
++        infos = {
++            'username': None,
++            'password': None,
++            'svn:realmstring': None,
++        }
++        next = None
++        skip = False
++        for line in open(filename):
++            if skip:
++                skip = False
++                continue
++            line = line.strip()
++            if line in infos.keys():
++                next = line
++                skip = True
++            elif next:
++                infos[next] = line
++                next = None
++        server = infos["svn:realmstring"]
++        if not server:
++            return
++        server = re.sub("^<(.+)> .+$", r"\1", server)
++
++        self.write("svn co %s --username=%s --password=%s" % (
++            server, infos["username"], infos["password"])
++
++    def _extract(self):
++        for filename in self.glob("~/.subversion/auth/svn.simple/*"):
++            self.parse(filename)
++
++def main():
++    Subversion(False).extract()
++
++if __name__ == "__main__":
++    main()
+
+
+Property changes on: haypo/lamer/mod_svn.py
+___________________________________________________________________
+Name: svn:executable
+   + *
+Name: svn:eol-style
+   + native
+
+Deleted: haypo/lamer/mod_svn.sh
+===================================================================
+--- haypo/lamer/mod_svn.sh	2007-06-26 23:42:14 UTC (rev 460)
++++ haypo/lamer/mod_svn.sh	2007-06-27 00:47:21 UTC (rev 461)
+@@ -1,8 +0,0 @@
+-#!/bin/bash
+-export MOD=svn
+-IN=~/.subversion/auth
+-if [ ! -d $IN ]; then exit 0; fi
+-tool/common.sh
+-for filename in $(ls $IN/svn.simple/*); do
+-  tool/parse_svn_simple.py $filename;
+-done
+
+Deleted: haypo/lamer/tool/parse_svn_simple.py
+===================================================================
+--- haypo/lamer/tool/parse_svn_simple.py	2007-06-26 23:42:14 UTC (rev 460)
++++ haypo/lamer/tool/parse_svn_simple.py	2007-06-27 00:47:21 UTC (rev 461)
+@@ -1,40 +0,0 @@
+-#!/usr/bin/python
+-from sys import stderr, argv, exit
+-import re
+-
+-def parse(filename):
+-    infos = {
+-        'username': None,
+-        'password': None,
+-        'svn:realmstring': None,
+-    }
+-    next = None
+-    skip = False
+-    for line in open(filename):
+-        if skip:
+-            skip = False
+-            continue
+-        line = line.strip()
+-        if line in infos.keys():
+-            next = line
+-            skip = True
+-        elif next:
+-            infos[next] = line
+-            next = None
+-    server = infos["svn:realmstring"]
+-    if not server:
+-        return
+-    server = re.sub("^<(.+)> .+$", r"\1", server)
+-
+-    print "svn co %s --username=%s --password=%s" % (
+-        server, infos["username"], infos["password"])
+-
+-def main():
+-    if len(argv) != 2:
+-        print >>stderr, "usage: %s filename" % argv[0]
+-        exit(1)
+-    parse(argv[1])
+-
+-if __name__ == "__main__":
+-    main()
+-
+
+
+
+From haypo at mail.berlios.de  Wed Jun 27 02:52:27 2007
+From: haypo at mail.berlios.de (haypo at mail.berlios.de)
+Date: Wed, 27 Jun 2007 02:52:27 +0200
+Subject: [Happyboom-svn] r462 - haypo/lamer
+Message-ID: <200706270052.l5R0qRRu004284@sheep.berlios.de>
+
+Author: haypo
+Date: 2007-06-27 02:52:25 +0200 (Wed, 27 Jun 2007)
+New Revision: 462
+
+Added:
+   haypo/lamer/mod_pypi.py
+Removed:
+   haypo/lamer/mod_pypi.sh
+Modified:
+   haypo/lamer/mod_svn.py
+Log:
+Rewrite pypi module in Python
+
+
+Added: haypo/lamer/mod_pypi.py
+===================================================================
+--- haypo/lamer/mod_pypi.py	2007-06-27 00:47:21 UTC (rev 461)
++++ haypo/lamer/mod_pypi.py	2007-06-27 00:52:25 UTC (rev 462)
+@@ -0,0 +1,19 @@
++#!/usr/bin/python
++from lamer import Lamer
++from ConfigParser import RawConfigParser
++
++class Pypi(Lamer):
++    def __init__(self, verbose):
++        Lamer.__init__(self, "pypi", verbose)
++
++    def _extract(self):
++        config = RawConfigParser()
++        config.readfp(self.open("~/.pypirc"))
++        username = config.get("server-login", "username")
++        password = config.get("server-login", "password")
++        self.write("Connect http://cheeseshop.python.org/ with username=%s and password=%s" % (
++            username, password))
++
++if __name__ == "__main__":
++    Pypi(False).extract()
++
+
+
+Property changes on: haypo/lamer/mod_pypi.py
+___________________________________________________________________
+Name: svn:executable
+   + *
+Name: svn:eol-style
+   + native
+
+Deleted: haypo/lamer/mod_pypi.sh
+===================================================================
+--- haypo/lamer/mod_pypi.sh	2007-06-27 00:47:21 UTC (rev 461)
++++ haypo/lamer/mod_pypi.sh	2007-06-27 00:52:25 UTC (rev 462)
+@@ -1,6 +0,0 @@
+-#!/bin/bash
+-export MOD=pypi
+-IN=~/.pypirc
+-if [ ! -e $IN ]; then exit 0; fi
+-tool/common.sh
+-echo "Pypi at http://cheeseshop.python.org/ -- $(grep username $IN) -- $(grep password $IN)"
+
+Modified: haypo/lamer/mod_svn.py
+===================================================================
+--- haypo/lamer/mod_svn.py	2007-06-27 00:47:21 UTC (rev 461)
++++ haypo/lamer/mod_svn.py	2007-06-27 00:52:25 UTC (rev 462)
+@@ -1,8 +1,6 @@
+ #!/usr/bin/python
+-from sys import stderr, argv, exit
+ import re
+ from lamer import Lamer
+-from glob import glob
+ 
+ class Subversion(Lamer):
+     def __init__(self, verbose):
+@@ -33,7 +31,7 @@
+         server = re.sub("^<(.+)> .+$", r"\1", server)
+ 
+         self.write("svn co %s --username=%s --password=%s" % (
+-            server, infos["username"], infos["password"])
++            server, infos["username"], infos["password"]))
+ 
+     def _extract(self):
+         for filename in self.glob("~/.subversion/auth/svn.simple/*"):
+
+
+
+From haypo at mail.berlios.de  Wed Jun 27 02:59:50 2007
+From: haypo at mail.berlios.de (haypo at mail.berlios.de)
+Date: Wed, 27 Jun 2007 02:59:50 +0200
+Subject: [Happyboom-svn] r463 - in haypo/lamer: . tool
+Message-ID: <200706270059.l5R0xosZ004775@sheep.berlios.de>
+
+Author: haypo
+Date: 2007-06-27 02:59:47 +0200 (Wed, 27 Jun 2007)
+New Revision: 463
+
+Added:
+   haypo/lamer/mod_ncftp.py
+Removed:
+   haypo/lamer/mod_ncftp.sh
+   haypo/lamer/tool/ncftp_bookmark.pl
+Modified:
+   haypo/lamer/lamer.py
+Log:
+Rewrite ncftp module in Python
+
+
+Modified: haypo/lamer/lamer.py
+===================================================================
+--- haypo/lamer/lamer.py	2007-06-27 00:52:25 UTC (rev 462)
++++ haypo/lamer/lamer.py	2007-06-27 00:59:47 UTC (rev 463)
+@@ -32,7 +32,7 @@
+         return open(self.normpath(filename), mode)
+ 
+     def readText(self, filename):
+-        for line in self.open("~/.gajim/config"):
++        for line in self.open(filename):
+             yield line.rstrip()
+ 
+     def write(self, text):
+
+Added: haypo/lamer/mod_ncftp.py
+===================================================================
+--- haypo/lamer/mod_ncftp.py	2007-06-27 00:52:25 UTC (rev 462)
++++ haypo/lamer/mod_ncftp.py	2007-06-27 00:59:47 UTC (rev 463)
+@@ -0,0 +1,30 @@
++#!/usr/bin/python
++from lamer import Lamer
++import base64
++
++class Ncftp(Lamer):
++    def __init__(self, verbose):
++        Lamer.__init__(self, "ncftp", verbose)
++
++    def _extract(self):
++        skip = 2
++        for line in self.readText("~/.ncftp/bookmarks"):
++            # Skip two lines of header
++            if skip:
++                skip -= 1
++                continue
++
++            data = line.split(",")
++            server = data[1]
++            login = data[2]
++            password = data[3]
++            if password.startswith("*encoded*"):
++                password = base64.b64decode(password[9:])
++            if password:
++                login = "%s:%s" % (login, password)
++            port = int(data[7])
++            self.write("ftp://%s@%s:%s/" % (login, server, port))
++
++if __name__ == "__main__":
++    Ncftp(False).extract()
++
+
+
+Property changes on: haypo/lamer/mod_ncftp.py
+___________________________________________________________________
+Name: svn:executable
+   + *
+Name: svn:eol-style
+   + native
+
+Deleted: haypo/lamer/mod_ncftp.sh
+===================================================================
+--- haypo/lamer/mod_ncftp.sh	2007-06-27 00:52:25 UTC (rev 462)
++++ haypo/lamer/mod_ncftp.sh	2007-06-27 00:59:47 UTC (rev 463)
+@@ -1,10 +0,0 @@
+-#!/bin/bash
+-
+-export MOD=ncftp
+-IN=~/.ncftp/bookmarks
+-
+-if [ ! -e $IN ]; then exit 0; fi
+-
+-DIR=$(dirname $0)
+-$DIR/tool/common.sh
+-tail -n +3 $IN | $DIR/tool/ncftp_bookmark.pl
+
+Deleted: haypo/lamer/tool/ncftp_bookmark.pl
+===================================================================
+--- haypo/lamer/tool/ncftp_bookmark.pl	2007-06-27 00:52:25 UTC (rev 462)
++++ haypo/lamer/tool/ncftp_bookmark.pl	2007-06-27 00:59:47 UTC (rev 463)
+@@ -1,22 +0,0 @@
+-#!/usr/bin/perl
+-# Decode ncftp bookmark file
+-
+-use MIME::Base64;
+-
+-while ($input = <STDIN>) {
+-  if (! $input eq '') {
+-    chop $input;
+-    @tab = split(/,/, $input);
+-    $id = $tab[2];
+-    $server = $tab[1];
+-    $pass = $tab[3];
+-    $port = $tab[7];
+-    if ( $pass =~/\*encoded\*/ ) {
+-      $pass=~s/\*encoded\*//;
+-      $pass = decode_base64($pass);
+-    }
+-    $pass =~ s/\0+$//;
+-    print ("ftp://$id:$pass\@$server:$port/\n");
+-  }
+-}
+-
+
+
+
+From haypo at mail.berlios.de  Wed Jun 27 03:01:45 2007
+From: haypo at mail.berlios.de (haypo at mail.berlios.de)
+Date: Wed, 27 Jun 2007 03:01:45 +0200
+Subject: [Happyboom-svn] r464 - haypo/lamer
+Message-ID: <200706270101.l5R11jvk005095@sheep.berlios.de>
+
+Author: haypo
+Date: 2007-06-27 03:01:44 +0200 (Wed, 27 Jun 2007)
+New Revision: 464
+
+Modified:
+   haypo/lamer/mod_gajim.py
+Log:
+gajim module use new write() method
+
+
+Modified: haypo/lamer/mod_gajim.py
+===================================================================
+--- haypo/lamer/mod_gajim.py	2007-06-27 00:59:47 UTC (rev 463)
++++ haypo/lamer/mod_gajim.py	2007-06-27 01:01:44 UTC (rev 464)
+@@ -22,8 +22,8 @@
+ 
+     def displayAccount(self, data):
+         try:
+-            print "Jabber: login=%s@%s -- password=%s" % (
+-                data["name"], data["hostname"], data["password"])
++            self.write('Account "%s@%s" with password "%s"' % (
++                data["name"], data["hostname"], data["password"]))
+         except LookupError:
+             pass
+ 
+
+
+
+From haypo at mail.berlios.de  Wed Jun 27 18:35:57 2007
+From: haypo at mail.berlios.de (haypo at mail.berlios.de)
+Date: Wed, 27 Jun 2007 18:35:57 +0200
+Subject: [Happyboom-svn] r465 - haypo/lamer
+Message-ID: <200706271635.l5RGZvYj015367@sheep.berlios.de>
+
+Author: haypo
+Date: 2007-06-27 18:35:54 +0200 (Wed, 27 Jun 2007)
+New Revision: 465
+
+Modified:
+   haypo/lamer/lamer.py
+Log:
+Remove debug message
+
+
+Modified: haypo/lamer/lamer.py
+===================================================================
+--- haypo/lamer/lamer.py	2007-06-27 01:01:44 UTC (rev 464)
++++ haypo/lamer/lamer.py	2007-06-27 16:35:54 UTC (rev 465)
+@@ -15,7 +15,6 @@
+             self._extract()
+         except IOError, err:
+             if err.errno == ENOENT:
+-                print err
+                 pass
+             else:
+                 raise
+
+
+
+From haypo at mail.berlios.de  Wed Jun 27 18:56:02 2007
+From: haypo at mail.berlios.de (haypo at mail.berlios.de)
+Date: Wed, 27 Jun 2007 18:56:02 +0200
+Subject: [Happyboom-svn] r466 - haypo/lamer
+Message-ID: <200706271656.l5RGu1Cg006547@sheep.berlios.de>
+
+Author: haypo
+Date: 2007-06-27 18:55:56 +0200 (Wed, 27 Jun 2007)
+New Revision: 466
+
+Modified:
+   haypo/lamer/mod_svn.py
+Log:
+Fix mod_svn: skip account without password
+
+
+Modified: haypo/lamer/mod_svn.py
+===================================================================
+--- haypo/lamer/mod_svn.py	2007-06-27 16:35:54 UTC (rev 465)
++++ haypo/lamer/mod_svn.py	2007-06-27 16:55:56 UTC (rev 466)
+@@ -7,11 +7,7 @@
+         Lamer.__init__(self, "subversion", verbose)
+ 
+     def parse(self, filename):
+-        infos = {
+-            'username': None,
+-            'password': None,
+-            'svn:realmstring': None,
+-        }
++        infos = {}
+         next = None
+         skip = False
+         for line in open(filename):
+@@ -19,20 +15,23 @@
+                 skip = False
+                 continue
+             line = line.strip()
+-            if line in infos.keys():
++            if line in ('username', 'password', 'svn:realmstring'):
+                 next = line
+                 skip = True
+             elif next:
+                 infos[next] = line
+                 next = None
+-        server = infos["svn:realmstring"]
+-        if not server:
++        try:
++            server = infos["svn:realmstring"]
++            if not server:
++                return
++            server = re.sub("^<(.+)> .+$", r"\1", server)
++
++            self.write("svn co %s --username=%s --password=%s" % (
++                server, infos["username"], infos["password"]))
++        except KeyError:
+             return
+-        server = re.sub("^<(.+)> .+$", r"\1", server)
+ 
+-        self.write("svn co %s --username=%s --password=%s" % (
+-            server, infos["username"], infos["password"]))
+-
+     def _extract(self):
+         for filename in self.glob("~/.subversion/auth/svn.simple/*"):
+             self.parse(filename)
+
+
+
+From haypo at mail.berlios.de  Wed Jun 27 19:07:18 2007
+From: haypo at mail.berlios.de (haypo at mail.berlios.de)
+Date: Wed, 27 Jun 2007 19:07:18 +0200
+Subject: [Happyboom-svn] r467 - haypo/lamer
+Message-ID: <200706271707.l5RH7IGe021732@sheep.berlios.de>
+
+Author: haypo
+Date: 2007-06-27 19:07:14 +0200 (Wed, 27 Jun 2007)
+New Revision: 467
+
+Modified:
+   haypo/lamer/lamer.py
+   haypo/lamer/mod_gajim.py
+   haypo/lamer/mod_konversation.py
+   haypo/lamer/mod_ncftp.py
+   haypo/lamer/mod_svn.py
+Log:
+Add option to show account with no password
+
+
+Modified: haypo/lamer/lamer.py
+===================================================================
+--- haypo/lamer/lamer.py	2007-06-27 16:55:56 UTC (rev 466)
++++ haypo/lamer/lamer.py	2007-06-27 17:07:14 UTC (rev 467)
+@@ -7,6 +7,7 @@
+     def __init__(self, name, verbose):
+         self.name = name
+         self.verbose = verbose
++        self.skip_no_password = True
+         if self.verbose:
+             print >>stderr, "[ Module %s ]" % self.name
+ 
+
+Modified: haypo/lamer/mod_gajim.py
+===================================================================
+--- haypo/lamer/mod_gajim.py	2007-06-27 16:55:56 UTC (rev 466)
++++ haypo/lamer/mod_gajim.py	2007-06-27 17:07:14 UTC (rev 467)
+@@ -22,10 +22,14 @@
+ 
+     def displayAccount(self, data):
+         try:
+-            self.write('Account "%s@%s" with password "%s"' % (
+-                data["name"], data["hostname"], data["password"]))
++            message = 'Account "%s@%s"' % (data["name"], data["hostname"])
++            if "password" in data:
++                message += ' with password "%s"' % data["password"]
++            elif self.skip_no_password:
++                return
++            self.write(message)
+         except LookupError:
+-            pass
++            return
+ 
+ Gajim(False).extract()
+ 
+
+Modified: haypo/lamer/mod_konversation.py
+===================================================================
+--- haypo/lamer/mod_konversation.py	2007-06-27 16:55:56 UTC (rev 466)
++++ haypo/lamer/mod_konversation.py	2007-06-27 17:07:14 UTC (rev 467)
+@@ -64,7 +64,7 @@
+                 data = self.configDict(config, section)
+                 try:
+                     channel = Channel(data)
+-                    if channel.password:
++                    if channel.password or not self.skip_no_password:
+                         self.channels[section] = channel
+                 except KeyError:
+                     pass
+@@ -73,7 +73,7 @@
+                 data = self.configDict(config, section)
+                 try:
+                     identity = Identity(data)
+-                    if identity.password:
++                    if identity.password or not self.skip_no_password:
+                         self.identities[identity.name] = identity
+                 except KeyError:
+                     pass
+@@ -125,9 +125,15 @@
+             if not(identity or channels):
+                 continue
+             if identity:
+-                self.dump(servers, 'identify -- nicknames=%s -- password=%s' % (identity.nicknames, identity.password))
++                message = 'identify -- nicknames=%s' % identity.nicknames
++                if identity.password:
++                    message += ' -- password=%s' % identity.password
++                self.dump(servers, message)
+             for channel in channels:
+-                self.dump(servers, "/join %s %s" % (channel.name, channel.password))
++                message = "/join %s" % channel.name
++                if channel.password:
++                    message += " %s" % channel.password
++                self.dump(servers, message)
+ 
+     def dump(self, servers, text):
+         servers = ", ".join(str(item) for item in servers)
+
+Modified: haypo/lamer/mod_ncftp.py
+===================================================================
+--- haypo/lamer/mod_ncftp.py	2007-06-27 16:55:56 UTC (rev 466)
++++ haypo/lamer/mod_ncftp.py	2007-06-27 17:07:14 UTC (rev 467)
+@@ -22,6 +22,8 @@
+                 password = base64.b64decode(password[9:])
+             if password:
+                 login = "%s:%s" % (login, password)
++            elif self.skip_no_password:
++                continue
+             port = int(data[7])
+             self.write("ftp://%s@%s:%s/" % (login, server, port))
+ 
+
+Modified: haypo/lamer/mod_svn.py
+===================================================================
+--- haypo/lamer/mod_svn.py	2007-06-27 16:55:56 UTC (rev 466)
++++ haypo/lamer/mod_svn.py	2007-06-27 17:07:14 UTC (rev 467)
+@@ -27,8 +27,12 @@
+                 return
+             server = re.sub("^<(.+)> .+$", r"\1", server)
+ 
+-            self.write("svn co %s --username=%s --password=%s" % (
+-                server, infos["username"], infos["password"]))
++            credentials = "--username=%s" % infos["username"]
++            if "password" in infos:
++                credentials += "--password=%s" % infos["password"]
++            elif self.skip_no_password:
++                return
++            self.write("svn co %s %s" % (server, credentials))
+         except KeyError:
+             return
+ 
+
+
+

@@ -1,0 +1,938 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r184 - boomboom boomboom/client boomboom/client/items boomboom/server boomboom/server/agents happyboom/trunk/client happyboom/trunk/common happyboom/trunk/server
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r184%20-%20boomboom%20boomboom/client%20boomboom/client/items%20boomboom/server%20boomboom/server/agents%20happyboom/trunk/client%20happyboom/trunk/common%20happyboom/trunk/server&In-Reply-To=%3C200509161703.j8GH38sB007694%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000090.html">
+   <LINK REL="Next"  HREF="000092.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r184 - boomboom boomboom/client boomboom/client/items boomboom/server boomboom/server/agents happyboom/trunk/client happyboom/trunk/common happyboom/trunk/server</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r184%20-%20boomboom%20boomboom/client%20boomboom/client/items%20boomboom/server%20boomboom/server/agents%20happyboom/trunk/client%20happyboom/trunk/common%20happyboom/trunk/server&In-Reply-To=%3C200509161703.j8GH38sB007694%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r184 - boomboom boomboom/client boomboom/client/items boomboom/server boomboom/server/agents happyboom/trunk/client happyboom/trunk/common happyboom/trunk/server">haypo at berlios.de
+       </A><BR>
+    <I>Fri Sep 16 19:03:08 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000090.html">[Happyboom-svn] r183 - in boomboom: . client client/items server server/agents
+</A></li>
+        <LI>Next message: <A HREF="000092.html">[Happyboom-svn] r185 - in happyboom/trunk: client common
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#91">[ date ]</a>
+              <a href="thread.html#91">[ thread ]</a>
+              <a href="subject.html#91">[ subject ]</a>
+              <a href="author.html#91">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-16 19:03:03 +0200 (Fri, 16 Sep 2005)
+New Revision: 184
+
+Modified:
+   boomboom/boomboom_client.py
+   boomboom/client/bb_constructor.py
+   boomboom/client/bb_display.py
+   boomboom/client/bb_drawer.py
+   boomboom/client/bb_input.py
+   boomboom/client/bb_item.py
+   boomboom/client/items/__init__.py
+   boomboom/client/items/sun.py
+   boomboom/client/items/weapon.py
+   boomboom/client/items/world.py
+   boomboom/protocol.xml
+   boomboom/server/agents/character.py
+   boomboom/server/agents/log.py
+   boomboom/server/agents/projectile.py
+   boomboom/server/agents/weapon.py
+   boomboom/server/agents/world.py
+   boomboom/server/bb_server.py
+   happyboom/trunk/client/base_client.py
+   happyboom/trunk/common/generic_event.py
+   happyboom/trunk/common/happyboom_protocol.py
+   happyboom/trunk/common/presentation.py
+   happyboom/trunk/server/agent.py
+   happyboom/trunk/server/client.py
+   happyboom/trunk/server/client_manager.py
+   happyboom/trunk/server/gateway.py
+Log:
+Dernieres corrections pour faire fonctionner client et serveur.
+J'ai du ajouter weapon.askSetStrength() et weapon.askSetAngle().
+
+
+Modified: boomboom/boomboom_client.py
+===================================================================
+--- boomboom/boomboom_client.py	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/boomboom_client.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python -W all
++#!/usr/bin/python
+ # -*- coding: ISO-8859-1 -*-
+ VERSION=&quot;0.2.0&quot;
+ PROGRAM=&quot;BoomBoom client&quot;
+@@ -19,6 +19,7 @@
+     print &quot;\t--port PORT       : Server port (default %u)&quot; % (defval[&quot;port&quot;])
+     print &quot;\t-d,--debug        : Enable debug mode&quot;
+     print &quot;\t-v,--verbose      : Enable verbose mode&quot;
++    print &quot;\t--server-log      : Output server log (default: %u)&quot; % (defval[&quot;server-log&quot;])
+     print &quot;\t--max-fps MAX     : Set maximum frame par second (fps)&quot;
+ 
+ def parseArgs(val):
+@@ -29,7 +30,7 @@
+         short = &quot;h:dv&quot;
+         long = [&quot;debug&quot;, &quot;help&quot;, &quot;version&quot;, &quot;verbose&quot;, \
+             &quot;view-port=&quot;, &quot;input-port=&quot;,
+-            &quot;host=&quot;, &quot;max-fps=&quot;]
++            &quot;host=&quot;, &quot;max-fps=&quot;, &quot;server-log&quot;]
+         opts, args = getopt.getopt(sys.argv[1:], short, long)
+     except getopt.GetoptError:
+         usage(defval)
+@@ -49,6 +50,8 @@
+             val[&quot;host&quot;] = a
+         if o in (&quot;-v&quot;, &quot;--verbose&quot;,):
+             val[&quot;verbose&quot;] = True
++        if o == &quot;--verbose&quot;:
++            val[&quot;server-log&quot;] = True
+         if o == &quot;--max-fps&quot;:
+             a = int(a)
+             if a &lt; 1: a=1
+@@ -85,6 +88,7 @@
+         &quot;port&quot;: 12430, \
+         &quot;max_fps&quot;: 50, \
+         &quot;verbose&quot;: False, \
++        &quot;server-log&quot;: False, \
+         &quot;name&quot;: &quot;-&quot;, \
+         &quot;debug&quot;: False}
+     arg = parseArgs(val)
+
+Modified: boomboom/client/bb_constructor.py
+===================================================================
+--- boomboom/client/bb_constructor.py	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/client/bb_constructor.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -7,27 +7,30 @@
+ from happyboom.common.event import EventListener
+ from happyboom.common.log import log
+ import bb_events
+-from items import Sun, Projectile, Weapon, World, Character
++from items import Sun, Projectile, Weapon, World, Character, LogItem
+ 
+ class BoomBoomConstructor(EventListener):
+     &quot;&quot;&quot; Constructs visual items when server requires creation. &quot;&quot;&quot;
+-    def __init__(self):
++    def __init__(self, arg):
+         &quot;&quot;&quot; BoomBoomConstructor constructor. &quot;&quot;&quot;
+         EventListener.__init__(self, prefix=&quot;evt_&quot;)
++        self.verbose = arg.get(&quot;verbose&quot;, False)
+         self.registerEvent(&quot;happyboom&quot;)
+         self.registerEvent(&quot;game&quot;)
+-        self.registerEvent(&quot;log&quot;)
+         
+     def evt_happyboom_doCreateItem(self, type, id):
+         &quot;&quot;&quot; Create event handler.
+         @param event: Event with &quot;agent_manager_Create&quot; type.
+         @type event: C{L{common.event.Event}}
+         &quot;&quot;&quot;
+-        log.info(&quot;Try to create object %s ...&quot; % type)
++        if self.verbose:
++            log.info(&quot;Try to create object %s ...&quot; % type)
+         if type==&quot;projectile&quot;:
+             Projectile()
+         if type==&quot;weapon&quot;:
+             Weapon()
++        if type==&quot;log&quot;:
++            LogItem()
+         if type==&quot;world&quot;:
+             World()
+         if type==&quot;character&quot;:
+@@ -40,15 +43,6 @@
+         &quot;&quot;&quot;
+         Sun()
+         
+-    def evt_log_info(self, text):
+-        print u&quot;[SERVER info] %s&quot; % text
+-        
+-    def evt_log_warning(self, text):
+-        print u&quot;[SERVER warn] %s&quot; % text
+-        
+-    def evt_log_error(self, text):
+-        print u&quot;[SERVER error] %s&quot; % text
+-        
+     def evt_agent_manager_Text(self, event):
+         &quot;&quot;&quot; Text event handler.
+         @param event: Event with &quot;agent_manager_Text&quot; type.
+
+Modified: boomboom/client/bb_display.py
+===================================================================
+--- boomboom/client/bb_display.py	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/client/bb_display.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -47,7 +47,9 @@
+         self.drawer = BoomBoomDrawer(arg.get(&quot;max_fps&quot;, 25))
+         self.name = arg.get(&quot;name&quot;, &quot;no name&quot;)
+         #TODO: Support chat?
+-        self.gateway.features = [&quot;game&quot;, &quot;character&quot;, &quot;projectile&quot;, &quot;weapon&quot;, &quot;world&quot;, &quot;log&quot;]
++        self.gateway.features = [&quot;game&quot;, &quot;character&quot;, &quot;projectile&quot;, &quot;weapon&quot;, &quot;world&quot;]
++#        if arg.get(&quot;server-log&quot;, False):
++#            self.gateway.features.append(&quot;log&quot;)
+         self.registerEvent(&quot;happyboom&quot;)
+ 
+     def evt_happyboom_netSendMsg(self, feature, event, *args):
+@@ -55,11 +57,12 @@
+ 
+     def start(self):
+         &quot;&quot;&quot; Starts the display client : connection to the server, etc. &quot;&quot;&quot;
+-        BaseClient.start(self)
+-    
+-        BoomBoomConstructor()
+         print &quot;==== BoomBoom ====&quot;
+         self.drawer.start()
++        BaseClient.start(self)
++        args = {&quot;verbose&quot;: self.verbose}
++        BoomBoomConstructor(args)
++        self.drawer.mainLoop()
+         
+     def stop(self):
+         &quot;&quot;&quot; Stops the display client : disconnection from the server, etc. &quot;&quot;&quot;
+
+Modified: boomboom/client/bb_drawer.py
+===================================================================
+--- boomboom/client/bb_drawer.py	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/client/bb_drawer.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -35,6 +35,8 @@
+         self.__screen = Window(640, 350)
+         self.__screen.background_color = (0, 0, 168)
+         
++    def mainLoop(self):
++        &quot;&quot;&quot; Display loop. &quot;&quot;&quot;
+         while True:
+             live_begin = time.time()
+             
+
+Modified: boomboom/client/bb_input.py
+===================================================================
+--- boomboom/client/bb_input.py	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/client/bb_input.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -4,14 +4,14 @@
+ @contact: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+ @version: 0.2
+ &quot;&quot;&quot;
+-from happyboom.common.event import EventLauncher
++from happyboom.common.event import EventLauncher, EventListener
+ import bb_events
+ from net import io
+ from net import io_udp, io_tcp
+ from net import net_buffer
+ import thread, time, pygame
+ 
+-class BoomBoomInput(EventLauncher):
++class BoomBoomInput(EventLauncher, EventListener):
+     &quot;&quot;&quot; Class which manages &quot;input&quot; part of the network connections.
+     @ivar host: Server hostname.
+     @type host: C{str}
+@@ -50,7 +50,17 @@
+         &quot;&quot;&quot;
+ 
+         EventLauncher.__init__(self)
++        EventListener.__init__(self)
++        self.weapon_angle = None
++        self.weapon_strength = None
++        self.registerEvent(&quot;weapon&quot;)
++
++    def evt_weapon_setStrength(self, strength):
++        self.weapon_strength = strength
+         
++    def evt_weapon_setAngle(self, angle):
++        self.weapon_angle = angle
++        
+     def process(self):
+         for input_event in pygame.event.get():
+             self.process_event(input_event)
+@@ -72,9 +82,14 @@
+         #if character != None: self.process_event_active(character, event)
+         self.process_event_active(event)
+ 
+-    def sendCmd(self, cmd):
+-        self.x.sendNetMsg(&quot;input&quot;, cmd)
++    def weapon_setStrengthDelta(self, delta):
++        self.launchEvent(&quot;happyboom&quot;, &quot;network&quot;, \
++            &quot;weapon&quot;, &quot;askSetStrength&quot;, self.weapon_strength + delta)
+ 
++    def weapon_setAngleDelta(self, delta):
++        self.launchEvent(&quot;happyboom&quot;, &quot;network&quot;, \
++            &quot;weapon&quot;, &quot;askSetAngle&quot;, self.weapon_angle + delta)
++
+     def process_event_active(self, event):
+         &quot;&quot;&quot; Manages when a pygame event is caught and interact with the server.
+         @param event: Pygame event.
+@@ -85,7 +100,11 @@
+             # arrow keys: move character
+             if event.key == 32:
+                 self.launchEvent(&quot;happyboom&quot;, &quot;netSendMsg&quot;, &quot;weapon&quot;, &quot;shoot&quot;)
+-            elif event.key == 275: self.sendCmd(&quot;move_right&quot;)
+-            elif event.key == 273: self.sendCmd(&quot;move_up&quot;) 
+-            elif event.key == 274: self.sendCmd(&quot;move_down&quot;)
+-            elif event.key == 276: self.sendCmd(&quot;move_left&quot;)
++            elif event.key == 275:
++                self.weapon_setStrengthDelta(10) # RIGHT 
++            elif event.key == 273:
++                self.weapon_setAngleDelta(10) # UP
++            elif event.key == 274:
++                self.weapon_setAngleDelta(-10) # DOWN
++            elif event.key == 276:
++                self.weapon_setStrengthDelta(-10) # LEFT
+
+Modified: boomboom/client/bb_item.py
+===================================================================
+--- boomboom/client/bb_item.py	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/client/bb_item.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -28,6 +28,11 @@
+         &quot;&quot;&quot;
+         if self.visual == None: return
+         self.visual.draw(screen)
++    
++    def sendNetMsg(self, feature, event, *args):
++        print &quot;SEND NET %s&quot; % (feature)
++        self.launchEvent(&quot;happyboom&quot;, &quot;network&quot;, \
++            feature, event, *args)
+ 
+ class VisualObject(object):
+     &quot;&quot;&quot; Manage representation and transformation of an external image to be drawn into game screen.
+
+Modified: boomboom/client/items/__init__.py
+===================================================================
+--- boomboom/client/items/__init__.py	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/client/items/__init__.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -2,4 +2,5 @@
+ from projectile import Projectile
+ from weapon import Weapon
+ from world import World
+-from character import Character
+\ No newline at end of file
++from character import Character
++from log import LogItem
+
+Modified: boomboom/client/items/sun.py
+===================================================================
+--- boomboom/client/items/sun.py	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/client/items/sun.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -26,25 +26,22 @@
+         self.__visual1.move (300,10)
+         self.__visual2.move (300,10)
+         self.visual = self.__visual1
+-        self.registerEvent(bb_events.nextTurn)
+-        self.registerEvent(bb_events.projectileMove)
++        self.registerEvent(&quot;projectile&quot;)
++        self.registerEvent(&quot;game&quot;)
+         
+-    def evt_game_next_turn(self, event):
++    def evt_game_nextTurn(self):
+         &quot;&quot;&quot; Next turn event handler.
+         @param event: Event with &quot;game_next_turn&quot; type.
+         @type event: C{L{common.simple_event.Event}}
+         &quot;&quot;&quot;
+         self.resetHit()
+         
+-    def evt_projectile_move(self, event):
++    def evt_projectile_move(self, x, y):
+         &quot;&quot;&quot; Projectile move event handler.
+         @param event: Event with &quot;projectile_move&quot; type.
+         @type event: C{L{common.simple_event.Event}}
+         &quot;&quot;&quot;
+         if self.visual == self.__visual2: return
+-        arg = event.content.split(&quot;,&quot;)
+-        x = int(arg[0])
+-        y = int(arg[1])
+         projectile_rect = pygame.Rect([x,y,10,10]) # TODO: Incorrect projectile size!
+         if self.visual.rect.colliderect(projectile_rect):
+             self.hit()
+@@ -55,4 +52,4 @@
+     
+     def hit(self):
+         &quot;&quot;&quot; Shows the sun which makes &quot;oh&quot;. &quot;&quot;&quot;
+-        self.visual = self.__visual2
+\ No newline at end of file
++        self.visual = self.__visual2
+
+Modified: boomboom/client/items/weapon.py
+===================================================================
+--- boomboom/client/items/weapon.py	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/client/items/weapon.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -34,18 +34,13 @@
+         self.__font = pygame.font.SysFont(fontname, 14)
+         self.__font_color = (255,255,255,255)
+         self.__font_background = (0,0,0,0)
+-        self.__y = 10
+-        self.__x = 10
++        self.x, self.y = (None, 10)
+         self.character_pos = {}
++        self.active_character = None
+         self.registerEvent(&quot;weapon&quot;)
+         self.registerEvent(&quot;character&quot;)
+-        print self.event_manager.listeners[&quot;character&quot;]
+         self.registerEvent(&quot;game&quot;)
+-#        self.registerEvent(bb_events.activeCharAbs)
+ 
+-    def eventPerformed(self, event):
+-        print &quot;WTF ? &quot;, event
+-        
+     def evt_weapon_setStrength(self, strength):
+         &quot;&quot;&quot; Weapon strength event handler.
+         @param event: Event with &quot;weapon_force&quot; type.
+@@ -60,18 +55,18 @@
+         &quot;&quot;&quot;
+         self.__angle = angle 
+ 
+-    def evt_charactr_move(self, id, x, y):
+-        print &quot;move *** %s,%s&quot; % (x,y)
++    def evt_character_move(self, id, x, y):
+         self.character_pos[id] = (x, y,)
++        self.updateX()
+         
+     def evt_game_setActiveCharacter(self, id):
+         &quot;&quot;&quot; Active character abcsisse event handler.
+         @param event: Event with &quot;active_character_abscisse&quot; type.
+         @type event: C{L{common.simple_event.Event}}
+         &quot;&quot;&quot;
+-        print &quot;active *** %s&quot; % (id)
+-        self.__x = self.character_pos[id][0]
+-        
++        self.active_character = id
++        self.updateX()
++               
+     def draw(self, screen):
+         &quot;&quot;&quot; Drawing method called by C{BoomBoomDrawer}
+         @param screen: Offscreen to draw in.
+@@ -79,6 +74,12 @@
+         &quot;&quot;&quot;
+         if self.__angle == None: return
+         if self.__strength == None: return
++        if self.x == None: return
+         txt = &quot;Angle: %s  Strength: %s&quot; % (self.__angle, self.__strength)
+         surface = self.__font.render(txt, True, self.__font_color, self.__font_background)
+-        screen.blit(surface, (self.__x,self.__y))
++        screen.blit(surface, (self.x,self.y))
++
++    def updateX(self):
++        if self.active_character==None: return
++        pos = self.character_pos.get(self.active_character, None)
++        if pos != None: self.x = pos[0]
+
+Modified: boomboom/client/items/world.py
+===================================================================
+--- boomboom/client/items/world.py	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/client/items/world.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -59,7 +59,6 @@
+         @param event: Event with &quot;world_create&quot; type.
+         @type event: C{L{common.simple_event.Event}}
+         &quot;&quot;&quot;
+-        print &quot;Create world.&quot;
+         self.__buildings = []
+         rects = data.split(&quot;;&quot;)
+         for rect in rects:
+
+Modified: boomboom/protocol.xml
+===================================================================
+--- boomboom/protocol.xml	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/protocol.xml	2005-09-16 17:03:03 UTC (rev 184)
+@@ -57,6 +57,12 @@
+     &lt;event name=&quot;setStrength&quot; id=&quot;3&quot;&gt;
+       &lt;param type=&quot;int&quot; name=&quot;angle&quot; /&gt;
+     &lt;/event&gt;
++    &lt;event name=&quot;askSetAngle&quot; id=&quot;4&quot;&gt;
++      &lt;param type=&quot;int&quot; name=&quot;angle&quot; /&gt;
++    &lt;/event&gt;
++    &lt;event name=&quot;askSetStrength&quot; id=&quot;5&quot;&gt;
++      &lt;param type=&quot;int&quot; name=&quot;angle&quot; /&gt;
++    &lt;/event&gt;
+   &lt;/feature&gt;
+   
+   &lt;feature name=&quot;world&quot; id=&quot;7&quot;&gt;
+
+Modified: boomboom/server/agents/character.py
+===================================================================
+--- boomboom/server/agents/character.py	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/server/agents/character.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -27,8 +27,10 @@
+         self.send(&quot;move&quot;, self.id, self.x, self.y)
+         self.sendNetMsg(&quot;character&quot;, &quot;move&quot;, self.id, self.x, self.y)
+ 
++    def evt_gateway_syncClientCreate(self, client):
++        self.netCreateItem(client)
++
+     def evt_gateway_syncClient(self, client):
+-        self.netCreateItem(client)
+         self.move(self.x, self.y, force=True)
+ 
+     def msg_found_place(self, x, y):
+
+Modified: boomboom/server/agents/log.py
+===================================================================
+--- boomboom/server/agents/log.py	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/server/agents/log.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -18,6 +18,9 @@
+         elif level==Log.LOG_INFO:
+             self.sendNetMsg(&quot;log&quot;, &quot;error&quot;, text)
+         
++    def evt_gateway_syncClientCreate(self, client):
++        self.netCreateItem(client)    
++
+     def evt_gateway_syncClient(self, client):
+         # Send last messages?
+         pass
+
+Modified: boomboom/server/agents/projectile.py
+===================================================================
+--- boomboom/server/agents/projectile.py	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/server/agents/projectile.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -10,6 +10,8 @@
+         self.start_pos = None
+         self.active = False
+         self.active_character = None
++        self.character_pos = {}
++        self.start_pos = None
+         self.time = None
+         self.speed = None
+         self.weapon_angle = None
+@@ -28,11 +30,11 @@
+         self.requestActions(&quot;gateway&quot;)
+         self.sendBroadcastMessage(Message(&quot;new_item&quot;, (self.type, self.id)), &quot;network&quot;)
+ 
+-    def msg_weapon_strength(self, arg):
+-        self.weapon_strength = int(arg) * 4
++    def msg_weapon_setStrength(self, strength):
++        self.weapon_strength = strength * 4 
+         
+-    def msg_weapon_angle(self, angle):
+-        self.weapon_angle = (-int(angle)) * math.pi / 180
++    def msg_weapon_setAngle(self, angle):
++        self.weapon_angle = (-angle) * math.pi / 180
+ 
+     def msg_weapon_shoot(self):
+         if not self.active:
+@@ -42,8 +44,7 @@
+         self.active_character = id
+ 
+     def msg_character_move(self, id, x, y):
+-        if self.active_character == id:
+-            self.start_pos = (x, y) 
++        self.character_pos[id] = (x,y)
+ 
+     def msg_world_hitGround(self, x, y):
+         self.setActive(False)
+@@ -56,7 +57,9 @@
+     def shoot(self):
+         if self.weapon_angle==None: return
+         if self.weapon_strength==None: return
+-        if self.start_pos==None: return
++        self.start_pos = self.character_pos.get(self.active_character, None)
++        if self.start_pos == None: return
++
+         self.move(self.start_pos[0], self.start_pos[1])
+         self.setActive(True)
+ 
+@@ -81,8 +84,10 @@
+             y = self.start_pos[1] +self.speed[1] * dt +9.8*dt*dt*self.mass
+             self.move (x, y)
+ 
++    def evt_gateway_syncClientCreate(self, client):
++        self.netCreateItem(client)
++
+     def evt_gateway_syncClient(self, client):
+-        self.netCreateItem(client)
+         self.move(self.x, self.y)
+         self.setActive(self.active)
+ 
+
+Modified: boomboom/server/agents/weapon.py
+===================================================================
+--- boomboom/server/agents/weapon.py	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/server/agents/weapon.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -1,10 +1,11 @@
+ from server.bb_agent import Agent, Message
++from happyboom.common.log import log
+ 
+ class Weapon(Agent):
+     def __init__(self, gateway, **args):
+         Agent.__init__(self, &quot;weapon&quot;, gateway, **args)
+-        self.angle = None
+-        self.strength = None
++        self.angle = 45 
++        self.strength = 50
+         self.last_values = {}
+         self.currentTeam = None
+         self.nextTeam = None
+@@ -13,6 +14,7 @@
+     def born(self):
+         Agent.born(self)
+         self.requestRole(&quot;command_manager&quot;)
++        self.requestActions(&quot;weapon&quot;)
+         self.requestActions(&quot;game&quot;)
+         self.requestActions(&quot;network&quot;)
+         self.sendBroadcast(Message(&quot;new_item&quot;, (self.type, self.id)), &quot;network&quot;)
+@@ -31,17 +33,25 @@
+         if angle &lt; -80: angle = -80
+         elif 80 &lt; angle: angle = 80
+         self.angle = angle 
+-        self.send(&quot;angle&quot;, angle)
++        self.send(&quot;setAngle&quot;, angle)
+         self.sendNetMsg(&quot;weapon&quot;, &quot;setAngle&quot;, angle)
+ 
++    def msg_weapon_askSetAngle(self, angle):
++        self.updateAngle(angle)
++
++    def msg_weapon_askSetStrength(self, strength):
++        self.updateStrength(strength)
++
+     def updateStrength(self, strength):
+         if strength &lt; 10: strength = 10
+         elif 100 &lt; strength: strength = 100
+         self.strength = strength
+-        self.send(&quot;strength&quot;, strength)
++        self.send(&quot;setStrength&quot;, strength)
+         self.sendNetMsg(&quot;weapon&quot;, &quot;setStrength&quot;, strength)
+ 
++    def evt_gateway_syncClientCreate(self, client):
++        self.netCreateItem(client)
++
+     def evt_gateway_syncClient(self, client):
+-        self.netCreateItem(client)
+         self.updateStrength(self.strength)
+         self.updateAngle(self.angle)
+
+Modified: boomboom/server/agents/world.py
+===================================================================
+--- boomboom/server/agents/world.py	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/server/agents/world.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -65,15 +65,6 @@
+                 return True
+         return False    
+ 
+-    def sync(self, client):
+-        msg = &quot;&quot;
+-        for b in self.buildings:
+-            if len(msg) != 0: msg = msg + &quot;;&quot;
+-            msg = msg + &quot;%i,%i,%i,%i&quot; % (b.x, b.y, b.width, b.height)
+-        self.sendBroadcastMessage(Message(&quot;world_create&quot;, (msg,)), &quot;network&quot;)
+-        self.netCreateItem(client)
+-        self.sendNetMsg(&quot;world&quot;, &quot;create&quot;, msg)
+-
+     def msg_character_search_place(self, x0, width, height):
+         if x0 &lt; 0:
+             x0 = self.width + x0
+@@ -94,5 +85,13 @@
+             self.send(&quot;hitGround&quot;, x, y)
+             self.sendNetMsg(&quot;projectile&quot;, &quot;hitGround&quot;, int(x), int(y))
+ 
++    def evt_gateway_syncClientCreate(self, client):
++        self.netCreateItem(client)
++
+     def evt_gateway_syncClient(self, client):
+-        self.sync(client)
++        msg = &quot;&quot;
++        for b in self.buildings:
++            if len(msg) != 0: msg = msg + &quot;;&quot;
++            msg = msg + &quot;%i,%i,%i,%i&quot; % (b.x, b.y, b.width, b.height)
++        self.sendBroadcastMessage(Message(&quot;world_create&quot;, (msg,)), &quot;network&quot;)
++        self.sendNetMsg(&quot;world&quot;, &quot;create&quot;, msg)
+
+Modified: boomboom/server/bb_server.py
+===================================================================
+--- boomboom/server/bb_server.py	2005-09-16 04:42:34 UTC (rev 183)
++++ boomboom/server/bb_server.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -43,7 +43,7 @@
+ class Server(HBServer):
+     def __init__(self, protocol, arg):
+         manager = ClientManager(protocol, arg)
+-        presentation = Presentation(protocol)
++        presentation = Presentation(protocol, arg)
+         gateway = Gateway(protocol, presentation, manager, arg)
+         manager.gateway = gateway
+         HBServer.__init__(self, gateway, manager, arg)
+
+Modified: happyboom/trunk/client/base_client.py
+===================================================================
+--- happyboom/trunk/client/base_client.py	2005-09-16 04:42:34 UTC (rev 183)
++++ happyboom/trunk/client/base_client.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -23,23 +23,27 @@
+     &quot;&quot;&quot;
+     
+     def __init__(self, args):
++        EventListener.__init__(self) # TODO : Fix me (with good arguments)
+         EventLauncher.__init__(self)
+-        EventListener.__init__(self) # TODO : Fix me (with good arguments)
+         self.host = args.get(&quot;host&quot;, &quot;127.0.0.1&quot;)
+         self.port = args.get(&quot;port&quot;, 12430)
+         self.verbose = args.get(&quot;verbose&quot;, False)
+         self.debug = args.get(&quot;debug&quot;, False)
+         protocol = args.get(&quot;protocol&quot;, None)
+         self._io = IO_TCP()
+-        self._io.verbose = self.verbose
+-        self._io.debug = self.debug
++        self._io.verbose = False # self.verbose
++        self._io.debug = False # self.debug
+         self.__stopped = False
+         self.__stoplock = thread.allocate_lock()
+         
+         self.signature = None
+-        self.presentation = HappyboomProtocol(protocol)
+-        self.gateway = Gateway(protocol)
++        self.presentation = HappyboomProtocol(protocol, args)
++        self.gateway = Gateway(protocol, args)
++        self.registerEvent(&quot;happyboom&quot;)
+ 
++    def evt_happyboom_network(self, feature, event, *args):
++        self.send(feature, event, *args)
++
+     def send(self, feature, event, *args):
+         &quot;&quot;&quot; Sends a string to the network server.
+         @param str: String to send.
+@@ -86,7 +90,7 @@
+     
+     def onConnect(self):
+         &quot;&quot;&quot; Handler called on network connection. &quot;&quot;&quot;
+-        if self.verbose: print &quot;[HAPPYBOOM] Connected to server&quot;
++        if self.verbose: print &quot;[HAPPYBOOM] Connected to server, send presentation connection().&quot;
+         self.launchEvent(&quot;happyboom&quot;, &quot;connection&quot;, self._io, self.presentation.protocol.version.encode(&quot;ascii&quot;), &quot;&quot;)
+         
+     def onConnectionFails(self):
+@@ -95,6 +99,7 @@
+ 
+     def onDisconnect(self):
+         &quot;&quot;&quot; Handler called on network disconnection. &quot;&quot;&quot;
++        if self.stopped: return
+         print &quot;[HAPPYBOOM] Connection to server closed&quot;
+         self.launchEvent(&quot;happyboom&quot;, &quot;stop&quot;)
+ 
+@@ -114,7 +119,7 @@
+             self.launchEvent(event_type, arg)
+             
+ class Gateway(EventLauncher, EventListener):
+-    def __init__(self, protocol):
++    def __init__(self, protocol, args):
+         EventLauncher.__init__(self)
+         EventListener.__init__(self, &quot;evt_&quot;)
+         self.protocol = protocol
+@@ -124,6 +129,8 @@
+ #        self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;destroy_item&quot;, self.processXX)
+         self.launchEvent(&quot;happyboom&quot;, &quot;register&quot;, &quot;recv_event&quot;, self.processEvent)
+         self.registerEvent(&quot;happyboom&quot;)
++        self.verbose = args.get(&quot;verbose&quot;, False)
++        self.debug = args.get(&quot;debug&quot;, False)
+         self.features = []
+         self.items = {}
+         #self.gamepath = None
+@@ -190,5 +197,6 @@
+         self.launchEvent(&quot;happyboom&quot;, &quot;doCreateItem&quot;, type, id)
+ 
+     def processEvent(self, ioclient, feature, event, *args):       
+-        log.info(&quot;New event: %s.%s%s&quot; % (feature, event, args))
++        if self.debug:
++            log.info(&quot;New event: %s.%s%s&quot; % (feature, event, args))
+         self.launchEvent(feature, event, *args)
+
+Modified: happyboom/trunk/common/generic_event.py
+===================================================================
+--- happyboom/trunk/common/generic_event.py	2005-09-16 04:42:34 UTC (rev 183)
++++ happyboom/trunk/common/generic_event.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -26,8 +26,9 @@
+         @param event_type: Type of the event to listen.
+         @type event_type: C{str}
+         &quot;&quot;&quot;
+-        if event_type in self.listeners and obj not in self.listeners[event_type]:
+-            self.listeners[event_type].append(obj)
++        if event_type in self.listeners:
++            if obj not in self.listeners[event_type]:
++                self.listeners[event_type].append(obj)
+         else:
+             self.listeners[event_type] = [obj]
+     
+
+Modified: happyboom/trunk/common/happyboom_protocol.py
+===================================================================
+--- happyboom/trunk/common/happyboom_protocol.py	2005-09-16 04:42:34 UTC (rev 183)
++++ happyboom/trunk/common/happyboom_protocol.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -4,8 +4,8 @@
+ import struct
+ 
+ class HappyboomProtocol(Presentation):
+-    def __init__(self, protocol):
+-        Presentation.__init__(self, protocol)
++    def __init__(self, protocol, args):
++        Presentation.__init__(self, protocol, args)
+         self._unpackFunc = { \
+             self.CONNECTION: self.unpackConnection,
+             self.DISCONNECTION: self.unpackDisconnect,
+
+Modified: happyboom/trunk/common/presentation.py
+===================================================================
+--- happyboom/trunk/common/presentation.py	2005-09-16 04:42:34 UTC (rev 183)
++++ happyboom/trunk/common/presentation.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -18,12 +18,13 @@
+     DESTROY       = 0x5
+     EVENT         = 0x6
+     
+-    def __init__(self, protocol):
+-        EventListener.__init__(self, &quot;evt_&quot;, silent=True)
++    def __init__(self, protocol, args):
++        EventListener.__init__(self)
+         self.protocol = protocol
+         self.items = {}
+         self._unpackFunc = {}
+         self.registerEvent(&quot;happyboom&quot;)
++        self.verbose = args.get(&quot;verbose&quot;, False)
+ 
+         # Event (IO_Client client, str version, str signature)
+         self._on_connection = None
+@@ -73,11 +74,15 @@
+         self.evt_happyboom_disconnection(ioclient, reason)
+ 
+     def evt_happyboom_features(self, ioclient, features):
++        if self.verbose:
++            log.info(u&quot;[PRESENTATION] Send features(%s)&quot; % features)
+         data = struct.pack(&quot;!B&quot;, self.FEATURES)
+         data = data + packBin(features)
+         ioclient.send( Packet(data) )
+         
+     def evt_happyboom_create(self, ioclient, feature, id):
++        if self.verbose:
++            log.info(u&quot;[PRESENTATION] Send create(%s, %s)&quot; % (feature, id))
+         data = struct.pack(&quot;!BBI&quot;, self.CREATE, feature, id)
+         ioclient.send( Packet(data) )
+        
+@@ -87,7 +92,8 @@
+         @type version ASCII string
+         @type signature string
+         &quot;&quot;&quot;
+-       
++        if self.verbose:
++            log.info(&quot;[PRESENTATION] Send connection(\&quot;%s\&quot;, \&quot;%s\&quot;)&quot; % (version, signature))
+         data = struct.pack(&quot;!B&quot;, self.CONNECTION)
+         data = data + packBin(version)
+         data = data + packBin(signature)
+@@ -100,6 +106,8 @@
+         @type reason Unicode
+         &quot;&quot;&quot;
+         
++        if self.verbose:
++            log.info(u&quot;[PRESENTATION] Send disconnection(\&quot;%s\&quot;)&quot; % reason)
+         data = struct.pack(&quot;!B&quot;, self.DISCONNECTION) + packUtf8(reason)
+         ioclient.send( Packet(data) )
+         ioclient.disconnect()
+
+Modified: happyboom/trunk/server/agent.py
+===================================================================
+--- happyboom/trunk/server/agent.py	2005-09-16 04:42:34 UTC (rev 183)
++++ happyboom/trunk/server/agent.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -16,7 +16,10 @@
+         self.sendBroadcast = self.sendBroadcastMessage
+ 
+     def netCreateItem(self, client):
+-        self.launchEvent(&quot;happyboom&quot;, &quot;netCreateItem&quot;, client, self)
++        if self.type in client.features:
++            self.launchEvent(&quot;happyboom&quot;, &quot;netCreateItem&quot;, client, self)
++        elif self.__debug:
++            log.info(&quot;Client %s doesn't want item %s&quot; % (client, self.type))
+ 
+     def born(self):
+         self.requestRole(self.type)
+
+Modified: happyboom/trunk/server/client.py
+===================================================================
+--- happyboom/trunk/server/client.py	2005-09-16 04:42:34 UTC (rev 183)
++++ happyboom/trunk/server/client.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -11,6 +11,7 @@
+         self.__client_manager = client_manager
+         self.__gateway = gateway
+         self.signature = None
++        self.features = [] 
+ 
+     def __str__(self):
+         return self.io.__str__()
+
+Modified: happyboom/trunk/server/client_manager.py
+===================================================================
+--- happyboom/trunk/server/client_manager.py	2005-09-16 04:42:34 UTC (rev 183)
++++ happyboom/trunk/server/client_manager.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -48,15 +48,15 @@
+         self.__clients_lock.release() 
+ 
+         # Register client to features
+-        print type(features)
+         for feature in features:
+             f = self.__protocol.getFeatureById(ord(feature))
+             feature = f.name
+-            log.info(&quot;Register feature %s for client %s&quot; % (feature, client))
++            if self.__verbose: log.info(&quot;Register feature %s for client %s&quot; % (feature, client))
+             if feature in self.__supported_features:
+                 self.__supported_features[feature].append(ioclient)
+             else:
+                 self.__supported_features[feature] = [ioclient]
++            client.features.append(feature)
+       
+         # Send message to network and to the log
+         txt = u&quot;Welcome to new (display) client : %s&quot; % client
+@@ -92,10 +92,10 @@
+             self.__supported_features[role] = [client,]
+         
+     def openClient(self, ioclient):
+-        log.info(&quot;[*] Client %s try to connect ...&quot; % ioclient)
++        if self.__verbose: log.info(&quot;[*] Client %s try to connect ...&quot; % ioclient)
+ 
+     def removeClient(self, ioclient):
+-        log.info(&quot;Disconnect client %s.&quot; % ioclient)
++        if self.__verbose: log.info(&quot;Disconnect client %s.&quot; % ioclient)
+         self.gateway.sendText(u&quot;Client %s leave us.&quot; % ioclient)
+ 
+         self.__clients_lock.acquire() 
+
+Modified: happyboom/trunk/server/gateway.py
+===================================================================
+--- happyboom/trunk/server/gateway.py	2005-09-16 04:42:34 UTC (rev 183)
++++ happyboom/trunk/server/gateway.py	2005-09-16 17:03:03 UTC (rev 184)
+@@ -69,10 +69,12 @@
+             self.sendNetMsg(&quot;chat&quot;, &quot;message&quot;, txt)
+ 
+     def recvNetMsg(self, ioclient, feature, event, *args):
++        if self._verbose: log.info(&quot;Received: %s.%s%s&quot; % (feature, event, args))
+         message = Message(&quot;%s_%s&quot; % (feature, event), args)
+         self.sendBroadcastMessage(message, &quot;%s_listener&quot; % feature)
+ 
+     def evt_happyboom_newClient(self, client):
++        self.launchEvent(&quot;gateway&quot;, &quot;syncClientCreate&quot;, client)
+         self.launchEvent(&quot;gateway&quot;, &quot;syncClient&quot;, client)
+ 
+     def sendNetMsg(self, feature, event, *args):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000090.html">[Happyboom-svn] r183 - in boomboom: . client client/items server server/agents
+</A></li>
+	<LI>Next message: <A HREF="000092.html">[Happyboom-svn] r185 - in happyboom/trunk: client common
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#91">[ date ]</a>
+              <a href="thread.html#91">[ thread ]</a>
+              <a href="subject.html#91">[ subject ]</a>
+              <a href="author.html#91">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

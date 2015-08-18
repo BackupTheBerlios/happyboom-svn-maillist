@@ -1,0 +1,198 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r255 - in haypo: . mediawiki
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r255%20-%20in%20haypo%3A%20.%20mediawiki&In-Reply-To=%3C200511172034.jAHKYnbc007699%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000161.html">
+   <LINK REL="Next"  HREF="000163.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r255 - in haypo: . mediawiki</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r255%20-%20in%20haypo%3A%20.%20mediawiki&In-Reply-To=%3C200511172034.jAHKYnbc007699%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r255 - in haypo: . mediawiki">haypo at berlios.de
+       </A><BR>
+    <I>Thu Nov 17 21:34:49 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000161.html">[Happyboom-svn] r254 - haypo/hachoir/plugins
+</A></li>
+        <LI>Next message: <A HREF="000163.html">[Happyboom-svn] r256 - haypo/mediawiki
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#162">[ date ]</a>
+              <a href="thread.html#162">[ thread ]</a>
+              <a href="subject.html#162">[ subject ]</a>
+              <a href="author.html#162">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-17 21:34:48 +0100 (Thu, 17 Nov 2005)
+New Revision: 255
+
+Added:
+   haypo/mediawiki/
+   haypo/mediawiki/import_pages.py
+Log:
+New program: python script to download pages.
+
+
+Added: haypo/mediawiki/import_pages.py
+===================================================================
+--- haypo/mediawiki/import_pages.py	2005-11-16 01:28:09 UTC (rev 254)
++++ haypo/mediawiki/import_pages.py	2005-11-17 20:34:48 UTC (rev 255)
+@@ -0,0 +1,114 @@
++#!/usr/bin/python
++# -*- coding: ISO-8859-1 -*-
++
++import sys, os, re, types
++#from elementtree.ElementTree import ElementTree
++from xml.dom.minidom import parseString
++from xml.dom.minidom import parseString
++from xml.parsers.expat import ParserCreate
++from xml import sax
++from subprocess import Popen, PIPE
++import urllib
++
++def usage():
++    print &quot;Usage: %s import &lt;base url&gt;&quot; % sys.argv[0]
++    print &quot;    or %s export &lt;base url&gt;&quot; % sys.argv[0]
++    print &quot;&quot;
++    print &quot;Eg. of base url: <A HREF="http://www.haypocalc.com/wiki/">http://www.haypocalc.com/wiki/</A>&quot;
++    print &quot;    =&gt; will use <A HREF="http://www.haypocalc.com/wiki/Special:Allpages">http://www.haypocalc.com/wiki/Special:Allpages</A>&quot;
++    sys.exit(1)
++
++def escapeshellarg(arg):
++    # TODO (use os.&lt;the right function&gt;)
++    arg = arg.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;)
++    return &quot;'&quot;+arg+&quot;'&quot;
++
++def warning(msg):
++    print msg
++
++def download(url, params={}):
++    params = urllib.urlencode(params)
++    f = urllib.urlopen(url, params)
++    return f.read()
++
++def getAllpages(url, namespace):
++    pages = download(url+&quot;Special:Allpages&quot;, {&quot;namespace&quot;: namespace})
++    if pages == None:
++        return None
++
++    # Work around MediaWiki 1.4 bug (don't escape &quot;&amp;&quot; chararacter)
++    pages = re.sub(&quot;&amp;([^a-zA-Z])&quot;, r&quot;&amp;\1&quot;, pages)
++
++    xml = parseString(pages)
++    root = xml.documentElement
++    tables = root.getElementsByTagName('table')
++    assert len(tables) == 2
++    table = tables[1]
++    links = table.getElementsByTagName('a')
++    pages = []
++    for link in links:
++        page = link.getAttribute('href').encode(&quot;ASCII&quot;)
++        page = page.split(&quot;/&quot;)
++        pages.append( page[-1] )
++    return pages
++
++def cleanupUrl(url):
++    name = urllib.unquote(url)
++    if type(name) != types.UnicodeType:
++        name = unicode(name,&quot;UTF-8&quot;)
++    return name.replace(&quot;_&quot;, &quot; &quot;)
++
++def importNamespace(url, dir, namespace, only_last):
++    print &quot;Download list of pages ...&quot;
++    pages = getAllpages(url, namespace)
++    if pages == None:
++        print &quot;Error: Can't get list of pages.&quot;
++        sys.exit(1)
++    i = 1
++    for page in pages:
++        print &quot;Download \&quot;%s\&quot; (%u/%u) ...&quot; \
++                % (cleanupUrl(page), i, len(pages))
++        args = {&quot;action&quot;: &quot;submit&quot;, &quot;pages&quot;: page}
++        if only_last:
++            args[&quot;curonly&quot;] = &quot;on&quot;
++        data = download(url+&quot;Special:Export&quot;, args)
++        if data == None:
++            error(&quot;Fail to download page \&quot;%s\&quot;.&quot; % page)
++            sys.exit(1)
++        filename = os.path.join(dir, page)
++        f = open(filename, 'w')
++        f.write(data)
++        f.close()
++#        print &quot;  \--&gt; saved into \&quot;%s\&quot;.&quot; % (filename) 
++        i = i + 1
++
++def importPages(url, only_last=False):
++    if url[-1] != &quot;/&quot;:
++        url = url + &quot;/&quot;
++    dir = &quot;pages&quot;
++    try:
++      os.mkdir(dir)
++    except OSError, err:
++        if err[0] != 17:
++            raise
++    nb_namespace = 16            
++    for i in range(0,nb_namespace):    
++        print &quot;================== Import namespace %u/%u ============== &quot; \
++                % (i, nb_namespace-1)
++        importNamespace(url, dir, i, only_last)
++
++def exportPages(url):
++    print &quot;TODO&quot;
++
++def main():
++    if len(sys.argv) != 2:
++        usage()
++    url = sys.argv[1]
++    try:
++        importPages(url)
++    except KeyboardInterrupt:
++        print &quot;Interrupted (CTRL+C): be carefull, download incomplete!&quot;
++        sys.exit(1)
++
++if __name__==&quot;__main__&quot;:
++    main()        
+
+
+Property changes on: haypo/mediawiki/import_pages.py
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000161.html">[Happyboom-svn] r254 - haypo/hachoir/plugins
+</A></li>
+	<LI>Next message: <A HREF="000163.html">[Happyboom-svn] r256 - haypo/mediawiki
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#162">[ date ]</a>
+              <a href="thread.html#162">[ thread ]</a>
+              <a href="subject.html#162">[ subject ]</a>
+              <a href="author.html#162">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

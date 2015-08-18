@@ -1,0 +1,508 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r263 - in haypo/hachoir: . broken_plugins plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r263%20-%20in%20haypo/hachoir%3A%20.%20broken_plugins%20plugins&In-Reply-To=%3C200511230236.jAN2aZS1019388%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000167.html">
+   <LINK REL="Next"  HREF="000169.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r263 - in haypo/hachoir: . broken_plugins plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r263%20-%20in%20haypo/hachoir%3A%20.%20broken_plugins%20plugins&In-Reply-To=%3C200511230236.jAN2aZS1019388%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r263 - in haypo/hachoir: . broken_plugins plugins">haypo at berlios.de
+       </A><BR>
+    <I>Wed Nov 23 03:36:35 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000167.html">[Happyboom-svn] r262 - haypo/hachoir
+</A></li>
+        <LI>Next message: <A HREF="000169.html">[Happyboom-svn] r264 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#168">[ date ]</a>
+              <a href="thread.html#168">[ thread ]</a>
+              <a href="subject.html#168">[ subject ]</a>
+              <a href="author.html#168">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-23 03:36:34 +0100 (Wed, 23 Nov 2005)
+New Revision: 263
+
+Added:
+   haypo/hachoir/broken_plugins/
+   haypo/hachoir/broken_plugins/ncftp.py
+   haypo/hachoir/release.sh
+Removed:
+   haypo/hachoir/plugins/ncftp.py
+Modified:
+   haypo/hachoir/hachoir_class.py
+   haypo/hachoir/mime.py
+   haypo/hachoir/plugin.py
+   haypo/hachoir/plugins/exe.py
+   haypo/hachoir/plugins/gif.py
+   haypo/hachoir/plugins/gzip.py
+   haypo/hachoir/plugins/jpeg.py
+   haypo/hachoir/plugins/pdf.py
+   haypo/hachoir/plugins/png.py
+   haypo/hachoir/plugins/tar.py
+   haypo/hachoir/plugins/zip.py
+Log:
+Gzip and tar begin to be able to split sub-files (file compressed in gz/tar).
+
+
+Copied: haypo/hachoir/broken_plugins/ncftp.py (from rev 260, haypo/hachoir/plugins/ncftp.py)
+
+Modified: haypo/hachoir/hachoir_class.py
+===================================================================
+--- haypo/hachoir/hachoir_class.py	2005-11-23 01:51:32 UTC (rev 262)
++++ haypo/hachoir/hachoir_class.py	2005-11-23 02:36:34 UTC (rev 263)
+@@ -1,5 +1,5 @@
+ from stream import FileStream
+-from plugin import getPlugin
++from plugin import getPluginByFile
+ from chunk import FilterChunk
+ from default import DefaultFilter
+ from user_filter import UserFilterDescriptor, loadUserFilter
+@@ -82,28 +82,24 @@
+             return
+ 
+         # Look for a plugin
+-        plugin = getPlugin(filename)
+-        if plugin == None:
+-            regex, plugin_name, split_func, display_func = None, &quot;default&quot;, DefaultFilter, None
++        plugin = getPluginByFile(filename)
++        if plugin != None:
++            split_class = plugin
+         else:
+-            regex, plugin_name, split_func, display_func = plugin
++            split_class = DefaultFilter
+             
+         # Split 
+         try:
+-            filter = split_func(stream)
++            filter = split_class(stream)
+         except Exception, msg:
+-            error(&quot;Exception while processing file %s with filter %s:\n%s\n%s&quot; \
+-                % (filename, plugin_name, msg, getBacktrace()))
+-            display_func = None
++            error(&quot;Exception while processing file %s:\n%s\n%s&quot; \
++                % (filename, msg, getBacktrace()))
+             stream.seek(0)
+             filter = DefaultFilter(stream)
+         self.main_filter = self.filter = filter
+         self._addPadding()
+         self.filter.display()
+ 
+-        # Display
+-        if self.display and display_func != None:
+-            display_func(self.filter)
+         self.ui.window.updateToolbar()
+ 
+     def loadScript(self, filename):
+
+Modified: haypo/hachoir/mime.py
+===================================================================
+--- haypo/hachoir/mime.py	2005-11-23 01:51:32 UTC (rev 262)
++++ haypo/hachoir/mime.py	2005-11-23 02:36:34 UTC (rev 263)
+@@ -26,4 +26,4 @@
+ def getBufferMime(buffer):
+     magic = getInstance()
+     type = magic.buffer(buffer)
+-    return type
++    return type.split(&quot;,&quot;)
+
+Modified: haypo/hachoir/plugin.py
+===================================================================
+--- haypo/hachoir/plugin.py	2005-11-23 01:51:32 UTC (rev 262)
++++ haypo/hachoir/plugin.py	2005-11-23 02:36:34 UTC (rev 263)
+@@ -1,14 +1,42 @@
+ import re
++from mime import getFileMime, getBufferMime
+ 
+-def getPlugin(filename):
++def guessPlugin(stream):
++    oldpos = stream.tell()
++    buffer = stream.getN(4096)
++    plugin = getPluginByBuffer(buffer)
++    stream.seek(oldpos)
++    return plugin
++
++def getPluginByMime(mime):
+     global hachoir_plugins
+-    for plugin in hachoir_plugins:
+-        if plugin[0].match(filename) != None: return plugin
+-    return None
++    mime = mime[0]
++    if mime not in hachoir_plugins:
++        return None
++    plugins = hachoir_plugins[mime]
++    if 1&lt;len(plugins):
++        warning(&quot;More than one plugin have same MIME...&quot;)
++    return plugins[0]       
+     
+-def registerPlugin(regex, name, splitFunc, displayFunc):
++def getPluginByBuffer(buffer):
++    mime = getBufferMime(buffer)
++    return getPluginByMime(mime)
++
++def getPluginByStream(stream):
++    stream.seek(0)
++    data = stream.getN(4096)
++    mime = getBufferMime(data)
++    return getPluginByMime(mime)
++
++def getPluginByFile(filename):
++    mime = getFileMime(filename)
++    return getPluginByMime(mime)
++    
++def registerPlugin(filter_class, mime):
+     global hachoir_plugins
+-    regex = re.compile(regex)
+-    hachoir_plugins.append( (regex, name, splitFunc, displayFunc,) )
++    if mime in hachoir_plugins:
++        hachoir_plugins[mime].append(filter_class)
++    else:
++        hachoir_plugins[mime] = [filter_class]
+ 
+-hachoir_plugins = [] 
++hachoir_plugins = {} 
+
+Modified: haypo/hachoir/plugins/exe.py
+===================================================================
+--- haypo/hachoir/plugins/exe.py	2005-11-23 01:51:32 UTC (rev 262)
++++ haypo/hachoir/plugins/exe.py	2005-11-23 02:36:34 UTC (rev 263)
+@@ -196,8 +196,8 @@
+         self.read(&quot;pe_offset&quot;, &quot;&lt;L&quot;, &quot;Offset to PE header&quot;)
+ 
+ class ExeFile(Filter):
+-    def __init__(self, stream):
+-        Filter.__init__(self, &quot;exe_file&quot;, &quot;EXE file&quot;, stream, None)
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;exe_file&quot;, &quot;EXE file&quot;, stream, parent)
+ 
+         self.readChild(&quot;ms_dos&quot;, MS_Dos)
+ 
+@@ -226,4 +226,4 @@
+     def checkEndOfSections(self, stream, array, section):
+         return len(array) == self.pe.nb_sections
+ 
+-registerPlugin(&quot;^.*\.(exe|EXE)$&quot;, &quot;MS-Dos / Windows executable filter&quot;, ExeFile, displayExe)
++registerPlugin(ExeFile, &quot;application/x-dosexec&quot;)
+
+Modified: haypo/hachoir/plugins/gif.py
+===================================================================
+--- haypo/hachoir/plugins/gif.py	2005-11-23 01:51:32 UTC (rev 262)
++++ haypo/hachoir/plugins/gif.py	2005-11-23 02:36:34 UTC (rev 263)
+@@ -9,16 +9,6 @@
+ from plugin import registerPlugin
+ from error import warning
+ 
+-def displayGif(gif):
+-    print &quot;Format: %s&quot; % (gif.header)
+-    print &quot;Size: %ux%u&quot; % (gif.screen.width, gif.screen.height)
+-    print &quot;Colormap: %s&quot; % (gif.color_map)
+-    i = 0
+-    for image in gif.images:
+-        image = image.getFilter()
+-        print &quot;Image %u: %s&quot; % (i, image)
+-        i = i + 1
+-
+ class GifColor(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;gif_color&quot;, &quot;GIF color (RGB)&quot;, stream, parent)
+@@ -109,8 +99,8 @@
+         return text + &quot;color res=%u, bits/pixel=%u&quot; % (self.color_res, self.bits_per_pixel)
+         
+ class GifFile(Filter):
+-    def __init__(self, stream):
+-        Filter.__init__(self, &quot;gif_file&quot;, &quot;GIF picture file&quot;, stream, None)
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;gif_file&quot;, &quot;GIF picture file&quot;, stream, parent)
+         # Header
+         self.read(&quot;header&quot;, &quot;6s&quot;, &quot;File header&quot;)
+         assert (self.header == &quot;GIF87a&quot;) or (self.header == &quot;GIF89a&quot;)
+@@ -138,4 +128,4 @@
+             else:
+                 raise Exception(&quot;Wrong GIF image separator: ASCII %02X.&quot; % ord(code))
+ 
+-registerPlugin(&quot;^.*\.(gif|GIF)$&quot;, &quot;GIF picture&quot;, GifFile, displayGif)
++registerPlugin(GifFile, &quot;image/gif&quot;)
+
+Modified: haypo/hachoir/plugins/gzip.py
+===================================================================
+--- haypo/hachoir/plugins/gzip.py	2005-11-23 01:51:32 UTC (rev 262)
++++ haypo/hachoir/plugins/gzip.py	2005-11-23 02:36:34 UTC (rev 263)
+@@ -9,7 +9,9 @@
+ from filter import Filter
+ from plugin import registerPlugin
+ from gunzip_stream import GunzipStream
+-from plugins.tar import TarFile
++from plugin import getPluginByStream
++from error import error
++from default import DefaultFilter
+    
+ class GunzipFilter(Filter):
+     def __init__(self, stream, parent, start, size, filter_class):
+@@ -55,11 +57,22 @@
+         if self.flags &amp; 2 == 2:
+             self.readString(&quot;crc16&quot;, &quot;!H&quot;, &quot;CRC16&quot;)
+ 
++        oldpos = stream.tell()
++        size = stream.getSize() - oldpos - 8
++        try:
++            # TODO: Fix this fucking GunzipStream (use something better)
++            stream.seek(0)
++            data = stream.getN(stream.getSize())
++            stream = GunzipStream(data)
++            stream.seek(oldpos)
++            plugin = getPluginByStream(stream)
++            # END OF TODO
+ 
+-
+-        size = stream.getSize() - stream.tell() - 8
+-#        self.read(&quot;data&quot;, &quot;!%us&quot; % size, &quot;Compressed data&quot;, truncate=True)
+-        self.readChild(&quot;data&quot;, GunzipFilter, stream.tell(), size, TarFile) 
++            self.readChild(&quot;data&quot;, GunzipFilter, oldpos, size, plugin) 
++        except Exception, msg:
++            error(&quot;Error while processing file in gzip: %s&quot; % msg)
++            stream.seek(oldpos)
++            self.read(&quot;data&quot;, &quot;!%us&quot; % size, &quot;Compressed data&quot;, truncate=True)
+         
+         self.read(&quot;crc32&quot;, &quot;&lt;L&quot;, &quot;CRC32&quot;)
+         self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Uncompressed size&quot;)
+@@ -103,4 +116,4 @@
+         val = chunk.value
+         return os.get(val, &quot;Unknow (%s)&quot; % val)
+         
+-registerPlugin(&quot;^.*\.gz$&quot;, &quot;GZIP archive file&quot;, GzipFile, None)
++registerPlugin(GzipFile, &quot;application/octet-stream&quot;)
+
+Modified: haypo/hachoir/plugins/jpeg.py
+===================================================================
+--- haypo/hachoir/plugins/jpeg.py	2005-11-23 01:51:32 UTC (rev 262)
++++ haypo/hachoir/plugins/jpeg.py	2005-11-23 02:36:34 UTC (rev 263)
+@@ -65,11 +65,11 @@
+         if chunk != None and chunk.header[1] == 0xDA: return True
+         return stream.eof()
+ 
+-    def __init__(self, stream):
+-        Filter.__init__(self, &quot;jpeg_file&quot;, &quot;JPEG file&quot;, stream, None)
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;jpeg_file&quot;, &quot;JPEG file&quot;, stream, parent)
+         self.read(&quot;header&quot;, &quot;!2B&quot;, &quot;Header \&quot;start of image\&quot; (0xFF, 0xD8)&quot;)
+         assert self.header == (0xFF, 0xD8)
+         self.readArray(&quot;chunk&quot;, JpegChunk, &quot;Chunks&quot;, self.checkEndOfChunks)
+         self.read(&quot;data&quot;, &quot;!{@end@}s&quot;, &quot;JPEG data&quot;)
+         
+-registerPlugin(&quot;^.*\.(jpg|jpeg|JPG|JPEG)$&quot;, &quot;JPEG picture&quot;, JpegFile, None)
++registerPlugin(JpegFile, &quot;image/jpeg&quot;)
+
+Deleted: haypo/hachoir/plugins/ncftp.py
+===================================================================
+--- haypo/hachoir/plugins/ncftp.py	2005-11-23 01:51:32 UTC (rev 262)
++++ haypo/hachoir/plugins/ncftp.py	2005-11-23 02:36:34 UTC (rev 263)
+@@ -1,50 +0,0 @@
+-&quot;&quot;&quot;
+-Ncftp bookmarks filter.
+-
+-Status: Read most import fields.
+-Author: Victor Stinner
+-&quot;&quot;&quot;
+-
+-import re, base64
+-from filter import Filter
+-from plugin import registerPlugin
+-from stream import LimitedFileStream
+-
+-def displayNcftp(data):
+-    print &quot;Ncftp saved bookmarks:&quot;
+-    for bc in data.bookmarks:
+-        b = bc.getFilter()
+-        print &quot;o %s (port %s): u=%s, p=\&quot;%s\&quot;&quot; % \
+-            (b.server, b.port, b.username, b.password)
+-
+-class NcftpBookmark(Filter):
+-    def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;ncftp_bookmark&quot;, &quot;NCFTP bookmark&quot;, stream, parent)
+-        self.readField(&quot;name&quot;, &quot;Bookmark name&quot;, &quot;,&quot;)
+-        self.readField(&quot;server&quot;, &quot;Server name/ip&quot;, &quot;,&quot;)
+-        self.readField(&quot;username&quot;, &quot;Username&quot;, &quot;,&quot;)
+-        self.readField(&quot;password&quot;, &quot;Password&quot;, &quot;,&quot;)
+-        self.readField(&quot;notused1&quot;, &quot;Not used (1)&quot;, &quot;,&quot;)
+-        self.readField(&quot;last_dir&quot;, &quot;Last directory&quot;, &quot;,&quot;)
+-        self.readField(&quot;notused&quot;, &quot;Not used?&quot;, &quot;,&quot;)
+-        self.readField(&quot;port&quot;, &quot;Server port&quot;, &quot;,&quot;)
+-        self.readLine(&quot;eol&quot;, &quot;End of line&quot;, &quot;\n&quot;)
+-        self.password = self.crackPass(self.password)
+-        
+-    def crackPass(self, password):
+-        m = re.compile(&quot;^\*encoded\*(.*)$&quot;).match(password)
+-        if m == None: return password
+-        password = base64.decodestring(m.group(1))
+-        return password.strip(&quot;\0&quot;)
+-
+-class NcftpFile(Filter):
+-    def __init__(self, stream):
+-        Filter.__init__(self, &quot;ncftp_file&quot;, &quot;NCFTP bookmark file&quot;, stream, None)
+-        self.readLine(&quot;header&quot;, &quot;Header (first line&quot;)
+-        self.readLine(&quot;nb_bookmark&quot;, &quot;Number of bookmarks&quot;)
+-        self.readArray(&quot;bookmarks&quot;, NcftpBookmark, &quot;Bookmarks&quot;, self.checkEOF)
+-
+-    def checkEOF(self, stream, array, bookmark):
+-        return stream.eof()
+-
+-registerPlugin(&quot;^.*bookmarks$&quot;, &quot;NcFTP bookmarks&quot;, NcftpFile, displayNcftp)
+
+Modified: haypo/hachoir/plugins/pdf.py
+===================================================================
+--- haypo/hachoir/plugins/pdf.py	2005-11-23 01:51:32 UTC (rev 262)
++++ haypo/hachoir/plugins/pdf.py	2005-11-23 02:36:34 UTC (rev 263)
+@@ -137,4 +137,4 @@
+                 print getBacktrace()
+                 return
+ 
+-registerPlugin(&quot;^.*\.(PDF|pdf)$&quot;, &quot;PDF document file&quot;, PdfFile, None)
++registerPlugin(PdfFile, &quot;application/pdf&quot;)
+
+Modified: haypo/hachoir/plugins/png.py
+===================================================================
+--- haypo/hachoir/plugins/png.py	2005-11-23 01:51:32 UTC (rev 262)
++++ haypo/hachoir/plugins/png.py	2005-11-23 02:36:34 UTC (rev 263)
+@@ -90,8 +90,8 @@
+     Split a PNG file into chunks.
+     &quot;&quot;&quot;
+ 
+-    def __init__(self, stream):
+-        Filter.__init__(self, &quot;png_file&quot;, &quot;PNG file&quot;, stream, None)
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;png_file&quot;, &quot;PNG file&quot;, stream, parent)
+         self.read(&quot;header&quot;, &quot;!8s&quot;, &quot;File header&quot;)
+         assert self.header == &quot;\x89\x50\x4E\x47\x0D\x0A\x1A\x0A&quot;
+         self.readArray(&quot;chunks&quot;, PngChunk, &quot;Png chunks&quot;, self.checkEndOfChunks)
+@@ -127,4 +127,4 @@
+     def __str__(self):
+         return &quot;PngChunk &lt;size=%u, type=%s&gt;&quot; % (self.size, self.type)
+ 
+-registerPlugin(&quot;^.*\.(PNG|png)$&quot;, &quot;PNG picture&quot;, PngFile, displayPng)
++registerPlugin(PngFile, &quot;image/png&quot;)
+
+Modified: haypo/hachoir/plugins/tar.py
+===================================================================
+--- haypo/hachoir/plugins/tar.py	2005-11-23 01:51:32 UTC (rev 262)
++++ haypo/hachoir/plugins/tar.py	2005-11-23 02:36:34 UTC (rev 263)
+@@ -11,6 +11,8 @@
+ from plugin import registerPlugin
+ from tools import convertDataToPrintableString
+ from default import EmptyFilter
++from plugin import guessPlugin 
++from error import error
+ 
+ def displayModeItem(mode):
+     if mode &amp; 4 == 4: r=&quot;r&quot;
+@@ -94,9 +96,22 @@
+         self.read(&quot;devminor&quot;, &quot;!8s&quot;, &quot;Dev minor&quot;)
+         self.read(&quot;header_padding&quot;, &quot;!167s&quot;, &quot;Padding (zero)&quot;)
+         if self.type in (&quot;\0&quot;, &quot;0&quot;):
+-            chunk = self.readChild(&quot;filedata&quot;, EmptyFilter)
+-            filter = chunk.getFilter()
+-            filter.read(&quot;filedata&quot;, &quot;!%us&quot; % self.size, &quot;File data&quot;, truncate=True)
++            plugin = guessPlugin(stream)
++            ok = False
++            if plugin != None:
++                oldpos = stream.tell()
++                try:
++                    # TODO: Fix child stream start &amp; end (size)
++                    chunk = self.readChild(&quot;filedata&quot;, plugin)
++                    ok = True
++                except Exception, msg:
++                    error(&quot;Error while processing tar file: %s&quot; % msg)
++                    stream.seek(oldpos)
++
++            if not ok:
++                chunk = self.readChild(&quot;filedata&quot;, EmptyFilter)
++                filter = chunk.getFilter()
++                filter.read(&quot;filedata&quot;, &quot;!%us&quot; % self.size, &quot;File data&quot;, truncate=True)
+         if stream.tell() % 512 != 0:
+             padding = 512 - stream.tell() % 512
+             self.read(&quot;padding&quot;, &quot;!%ss&quot; % padding, &quot;Padding (512 align)&quot;, truncate=True)
+@@ -150,4 +165,4 @@
+             if file.isEmpty(): return True
+         return stream.eof()
+         
+-registerPlugin(&quot;^.*\.tar$&quot;, &quot;Tar archive&quot;, TarFile, None)
++registerPlugin(TarFile, &quot;application/x-tar&quot;)
+
+Modified: haypo/hachoir/plugins/zip.py
+===================================================================
+--- haypo/hachoir/plugins/zip.py	2005-11-23 01:51:32 UTC (rev 262)
++++ haypo/hachoir/plugins/zip.py	2005-11-23 02:36:34 UTC (rev 263)
+@@ -112,4 +112,4 @@
+             else:
+                 raise Exception(&quot;Error, unknow ZIP header (0x%08X).&quot; % header)
+         
+-registerPlugin(&quot;^.*\.(zip|ZIP)$&quot;, &quot;ZIP (compressed archive)&quot;, ZipFile, displayZip)
++registerPlugin(ZipFile, &quot;application/x-zip&quot;)
+
+Added: haypo/hachoir/release.sh
+===================================================================
+--- haypo/hachoir/release.sh	2005-11-23 01:51:32 UTC (rev 262)
++++ haypo/hachoir/release.sh	2005-11-23 02:36:34 UTC (rev 263)
+@@ -0,0 +1,16 @@
++PACKAGE=hachoir
++VERSION=20051115
++ARCHIVE=$PACKAGE-$VERSION.tar.bz2
++TMP_DIR=/tmp
++DIR=$PWD
++if [ -e $TMP_DIR/$PACKAGE ]; then
++        rm -rf $TMP_DIR/$PACKAGE
++fi
++
++echo &quot;* Export data&quot;
++svn export . $TMP_DIR/$PACKAGE
++
++echo &quot;* Create $ARCHIVE&quot;
++(cd $TMP_DIR &amp;&amp; tar cjf $DIR/$ARCHIVE $PACKAGE)
++
++echo &quot;$DIR/$ARCHIVE wrote.&quot;
+
+
+Property changes on: haypo/hachoir/release.sh
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000167.html">[Happyboom-svn] r262 - haypo/hachoir
+</A></li>
+	<LI>Next message: <A HREF="000169.html">[Happyboom-svn] r264 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#168">[ date ]</a>
+              <a href="thread.html#168">[ thread ]</a>
+              <a href="subject.html#168">[ subject ]</a>
+              <a href="author.html#168">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

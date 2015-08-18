@@ -1,0 +1,333 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r164 - happyboom/trunk/common
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r164%20-%20happyboom/trunk/common&In-Reply-To=%3C200509151928.j8FJStNX026724%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000070.html">
+   <LINK REL="Next"  HREF="000072.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r164 - happyboom/trunk/common</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r164%20-%20happyboom/trunk/common&In-Reply-To=%3C200509151928.j8FJStNX026724%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r164 - happyboom/trunk/common">dboucard at berlios.de
+       </A><BR>
+    <I>Thu Sep 15 21:28:55 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000070.html">[Happyboom-svn] r163 - happyboom/trunk/common
+</A></li>
+        <LI>Next message: <A HREF="000072.html">[Happyboom-svn] r165 - happyboom/trunk/common
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#71">[ date ]</a>
+              <a href="thread.html#71">[ thread ]</a>
+              <a href="subject.html#71">[ subject ]</a>
+              <a href="author.html#71">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-15 21:28:53 +0200 (Thu, 15 Sep 2005)
+New Revision: 164
+
+Added:
+   happyboom/trunk/common/event.py
+   happyboom/trunk/common/generic_event.py
+Removed:
+   happyboom/trunk/common/event.py
+Log:
+happyboom generic event system
+
+
+Deleted: happyboom/trunk/common/event.py
+===================================================================
+--- happyboom/trunk/common/event.py	2005-09-15 18:15:58 UTC (rev 163)
++++ happyboom/trunk/common/event.py	2005-09-15 19:28:53 UTC (rev 164)
+@@ -1,176 +0,0 @@
+-&quot;&quot;&quot;
+-Module to use event-system very easily.
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at author</A>: Damien Boucard
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at license</A>: Gnu/GPL v2 or later, see LICENSE file.
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at contact</A>: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">- at version</A>: 1.0
+-&quot;&quot;&quot;
+-class EventManager:
+-    &quot;&quot;&quot; Manages the event-system.
+-    This class is instanciated on importing the module,
+-    so it is not needed to use it directly but via EventLaunch and EventListener.
+-    @cvar instance: The instance created on importing the module.
+-    @type instance: C{L{EventManager}}
+-    @ivar listeners: Dictionnary with keys of type C{str} representing a event type and with values of type C{list} representing a collection of C{EventListener}.
+-    @type listeners: C{dict&lt;str, list&lt;L{EventListener}&gt;&gt;}
+-    &quot;&quot;&quot;
+-    def __init__(self):
+-        &quot;&quot;&quot; EventManager constructor. &quot;&quot;&quot;
+-        EventManager.instance = self
+-        self.listeners = {}
+-        
+-    def addListener(self, obj, event_type):
+-        &quot;&quot;&quot; Add a listener to a specific event.
+-        @param obj: Listener to add.
+-        @type obj: C{L{EventListener}}
+-        @param event_type: Type of the event to listen.
+-        @type event_type: C{str}
+-        &quot;&quot;&quot;
+-        if event_type in self.listeners and obj not in self.listeners[event_type]:
+-            self.listeners[event_type].append(obj)
+-        else:
+-            self.listeners[event_type] = [obj]
+-    
+-    def removeListener(self, obj, event_type):
+-        &quot;&quot;&quot; Remove a listener from a specific event.
+-        @param obj: Listener to remove.
+-        @type obj: C{L{EventListener}}
+-        @param event_type: Type of the event that was listening.
+-        @type event_type: C{str}
+-        &quot;&quot;&quot;
+-        if event_type in self.listeners and obj in self.listeners[event_type]:
+-            self.listeners[event_type].remove(obj)
+-    
+-    def dispatchEvent(self, event):
+-        &quot;&quot;&quot; Dispatch a launched event to all affected listeners.
+-        @param event: Event launched.
+-        @type event: C{L{Event}}
+-        &quot;&quot;&quot;
+-        if event.type in self.listeners:
+-            for obj in self.listeners[event.type]:
+-                # Try to call event-specific handle method
+-                fctname = obj.pattern %(event.type)
+-                if hasattr(obj, fctname):
+-                    function = getattr(obj, fctname)
+-                    if callable(function):
+-                        function(event)
+-                        continue
+-                # Try to call default handle method
+-                if hasattr(obj, obj.default):
+-                    function = getattr(obj, obj.default)
+-                    if callable(function):
+-                        function(event)
+-                        continue
+-                # No handle method found, raise error ?
+-                if not obj.silent:
+-                    raise UnhandledEventError(&quot;%s has no method to handle %s&quot; %(obj, event))
+-        else:
+-            print(&quot;Pas de event.type %s&quot; % event.type)
+-
+-EventManager()
+-    
+-class EventListener:
+-    &quot;&quot;&quot; Generic class for listening to events.
+-    
+-    It is just needed to herite from this class and register to events to listen easily events.
+-    It is also needed to write handler methods with event-specific and/or C{L{default}} function.
+-    
+-    Event-specific functions have name as the concatenation of the C{prefix} parameter + the listened event type + the C{suffix} parameter.
+-    
+-    If it does not exist, the default function is called as defined by the C{L{default}} parameter/attribute.
+-    
+-    If the event cannot be handled, a C{L{UnhandledEventError}} is raised, except if C{L{silent}} flag is C{True}.
+-    @ivar manager: The event manager instance.
+-    @type manager: C{L{EventManager}}
+-    @ivar pattern: Event-specific handler pattern.
+-    @type pattern: C{str}
+-    @ivar default: Default handler function name.
+-    @type default: C{str}
+-    @ivar silent: Silent flag. If C{False}, C{L{UnhandledEventError}} is raised if an event cannot be handled. If C{True}, do nothing, listener does not handle the event.
+-    @type silent: C{str}
+-    &quot;&quot;&quot;
+-    def __init__(self, prefix=&quot;evt&quot;, suffix=&quot;&quot;, default=&quot;eventPerformed&quot;, silent=False):
+-        &quot;&quot;&quot; EventListener constructor.
+-        @param prefix: Prefix for all event-specific handler function name.
+-        @type prefix: C{str}
+-        @param suffix: Suffix for all event-specific handler function name.
+-        @type suffix: C{str}
+-        @param default: Default handler function name.
+-        @type default: C{str}
+-        @param silent: Silent flag.
+-        @type silent: C{bool}
+-        &quot;&quot;&quot;
+-        self.manager = EventManager.instance
+-        self.pattern = prefix + &quot;%s&quot; + suffix
+-        self.default = default
+-        self.silent = silent
+-        
+-    def registerEvent(self, event_type):
+-        &quot;&quot;&quot; Registers itself to a new event.
+-        @param event_type: Type of the event to listen.
+-        @type event_type: C{str}
+-        &quot;&quot;&quot;
+-        self.manager.addListener(self, event_type)
+-        
+-    def unregisterEvent(self, event_type):
+-        &quot;&quot;&quot; Unregisters itself from a event.
+-        @param event_type: Type of the event which was listening.
+-        @type event_type: C{str}
+-        &quot;&quot;&quot;
+-        self.manager.removeListener(self, event_type)
+-
+-
+-class EventLauncher:
+-    &quot;&quot;&quot; Generic class for launching events.
+-    It is just needed to herite from this class to launch easily events.
+-    @ivar manager: The event manager instance.
+-    @type manager: C{L{EventManager}}
+-    &quot;&quot;&quot;
+-    def __init__(self):
+-        &quot;&quot;&quot; EventLauncher constructor. &quot;&quot;&quot;
+-        self.manager = EventManager.instance
+-        
+-        
+-    def launchEvent(self, event_type, content=None):
+-        &quot;&quot;&quot; Launches a new event to the listeners.
+-        @param event_type: Type of the event to launch.
+-        @type event_type: C{str}
+-        @param content: Content to attach with the event (Optional).
+-        @type content: any
+-        &quot;&quot;&quot;
+-        self.manager.dispatchEvent(Event(event_type, self, content))
+-    
+-    
+-class Event:
+-    &quot;&quot;&quot; Represents an event entity.
+-    @ivar type: Type of the event.
+-    @type type: C{str}
+-    @ivar source: Instance which launched the event.
+-    @type source: C{L{EventLauncher}}
+-    @ivar content: Content attached to the event (C{None} if none).
+-    @type content: any
+-    &quot;&quot;&quot;
+-    def __init__(self, type, source, content):
+-        &quot;&quot;&quot; Event constructor.
+-        @param type: Type of the event.
+-        @type type: C{str}
+-        @param source: Instance which launched the event.
+-        @type source: C{L{EventLauncher}}
+-        @param content: Content attached to the event (C{None} if none).
+-        @type content: any
+-        &quot;&quot;&quot;
+-        self.type = type
+-        self.source = source
+-        self.content = content
+-    
+-    def __str__(self):
+-        &quot;&quot;&quot; Converts object itself to string.
+-        @return: Object converted string.
+-        @rtype: C{str}
+-        &quot;&quot;&quot;
+-        return &quot;&lt;bb_events.BoomBoomEvent type=%s source=%s content=%s&gt;&quot; %(self.type, self.source, self.content)
+-    
+-    
+-class UnhandledEventError(AttributeError):
+-    &quot;&quot;&quot; Error raised when an event cannot be handled, except if C{L{silent&lt;EventListener.silent&gt;}} flag is C{True}. &quot;&quot;&quot;
+-    pass
+
+Added: happyboom/trunk/common/event.py
+===================================================================
+--- happyboom/trunk/common/event.py	2005-09-15 18:15:58 UTC (rev 163)
++++ happyboom/trunk/common/event.py	2005-09-15 19:28:53 UTC (rev 164)
+@@ -0,0 +1,68 @@
++&quot;&quot;&quot;
++Module to use event-system very easily.
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">+ at author</A>: Damien Boucard
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">+ at license</A>: Gnu/GPL v2 or later, see LICENSE file.
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">+ at contact</A>: See U{<A HREF="http://developer.berlios.de/projects/happyboom/">http://developer.berlios.de/projects/happyboom/</A>}
+<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">+ at version</A>: 1.0
++&quot;&quot;&quot;
++import generic_event as evt
++
++class EventListener(evt.EventListener):
++    &quot;&quot;&quot; Happyboom generic class for listening to events.
++    &quot;&quot;&quot;
++    def __init__(self, prefix=&quot;evt&quot;, suffix=&quot;&quot;, default=&quot;eventPerformed&quot;, silent=False):
++        &quot;&quot;&quot; EventListener constructor.
++        &quot;&quot;&quot;
++        evt.EventListener.__init__(self, prefix, suffix, __eventPerformed, silent)
++        self.hb_default = default
++        
++    def getEventName(self, feature, event):
++        return &quot;%s_%s&quot; %(feature, event)
++        
++    def __eventPerformed(self, event):
++        if issubclass(event, Event):
++            # Try to call event-specific handle method
++            fctname = self.pattern %(self.getEventName(event.type, event.event))
++            if hasattr(self, fctname):
++                function = getattr(self, fctname)
++                if callable(function):
++                    function(event)
++                    return
++        # Try to call default handle method
++        if hasattr(self, self.hb_default):
++            function = getattr(self, self.hb_default)
++            if callable(function):
++                function(event)
++                return
++        # No handle method found, raise error ?
++        if not obj.silent:
++            raise UnhandledEventError(&quot;%s has no method to handle %s&quot; %(obj, event))
++
++class EventLauncher(evt.EventLauncher):
++    &quot;&quot;&quot; Happyboom generic class for launching events.
++    &quot;&quot;&quot;
++    def __init__(self):
++        &quot;&quot;&quot; EventLauncher constructor. &quot;&quot;&quot;
++        self.manager = EventManager.instance
++        
++    def launchEvent(self, feature, event, *args):
++        &quot;&quot;&quot; Launches a new event to the listeners.
++        &quot;&quot;&quot;
++        self.manager.dispatchEvent(Event(feature, event, self, args))
++
++class Event(evt.Event):
++    &quot;&quot;&quot; Represents an happyboom event entity.
++    &quot;&quot;&quot;
++    def __init__(self, feature, event, source, content):
++        &quot;&quot;&quot; Event constructor.
++        &quot;&quot;&quot;
++        evt.Event.__init__(self, feature, source, content)
++        self.event = event
++    
++    def __str__(self):
++        &quot;&quot;&quot; Converts object itself to string.
++        @return: Object converted string.
++        @rtype: C{str}
++        &quot;&quot;&quot;
++        return &quot;&lt;event.Event feature=%s event=%s source=%s content=%s&gt;&quot; %(self.type, self.event, self.source, self.content)
++    
+\ No newline at end of file
+
+Copied: happyboom/trunk/common/generic_event.py (from rev 163, happyboom/trunk/common/event.py)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000070.html">[Happyboom-svn] r163 - happyboom/trunk/common
+</A></li>
+	<LI>Next message: <A HREF="000072.html">[Happyboom-svn] r165 - happyboom/trunk/common
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#71">[ date ]</a>
+              <a href="thread.html#71">[ thread ]</a>
+              <a href="subject.html#71">[ subject ]</a>
+              <a href="author.html#71">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

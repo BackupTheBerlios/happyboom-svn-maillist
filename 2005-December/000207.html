@@ -1,0 +1,240 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r301 - haypo
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r301%20-%20haypo&In-Reply-To=%3C200512060109.jB619RLT023036%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000206.html">
+   <LINK REL="Next"  HREF="000208.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r301 - haypo</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r301%20-%20haypo&In-Reply-To=%3C200512060109.jB619RLT023036%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r301 - haypo">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec  6 02:09:27 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000206.html">[Happyboom-svn] r300 - in haypo: . greycstoration_gimp greycstoration_gimp/po
+</A></li>
+        <LI>Next message: <A HREF="000208.html">[Happyboom-svn] r302 - haypo
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#207">[ date ]</a>
+              <a href="thread.html#207">[ thread ]</a>
+              <a href="subject.html#207">[ subject ]</a>
+              <a href="author.html#207">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-06 02:09:22 +0100 (Tue, 06 Dec 2005)
+New Revision: 301
+
+Modified:
+   haypo/tachatte.py
+Log:
+Add reversible mode to tachatte.
+
+
+Modified: haypo/tachatte.py
+===================================================================
+--- haypo/tachatte.py	2005-12-06 00:48:08 UTC (rev 300)
++++ haypo/tachatte.py	2005-12-06 01:09:22 UTC (rev 301)
+@@ -6,6 +6,8 @@
+ # Author: Victor Stinner
+ 
+ import sys, re, random, string
++PROGRAM=&quot;Tachatte&quot;
++VERSION=&quot;2005-12-06&quot;
+ 
+ class Word:
+     def __init__(self, old, new):
+@@ -13,27 +15,28 @@
+         self.new = new
+ 
+ class Tachatter:
+-    def __init__(self, file):
++    def __init__(self):
+         # Options
+         self.encode_number = True
+         self.encode_string = True
++        self.reversible = False
+         self.obscure = \
+             [&quot;tachatte&quot;, &quot;zob&quot;, &quot;couille&quot;, &quot;merde&quot;,
+              &quot;poil&quot;, &quot;grossepute&quot;, &quot;putain&quot;, &quot;encule&quot;,
+              &quot;batard&quot;, &quot;tarace&quot;, &quot;chameau&quot;]
+         
+         # Attributes
+-        self.word=None
++        self.uniq = 1
++        self.word = None
+         self.thesaurus={}
+         self.exclude = [&quot;if&quot;, &quot;else&quot;, &quot;return&quot;, &quot;for&quot;, &quot;while&quot;, &quot;do&quot;]
+-        self.file = file
++        self.file = None
+         self.regex_c_include = re.compile(&quot;^include&quot;)
+         self.c_include = &quot;&quot;
+         self.start_word = &quot;abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ&quot;
+         if self.encode_number:
+             self.start_word = self.start_word + &quot;0123456789&quot;
+         self.content = []
+-        self.process()
+ 
+     def getContent(self):
+         text = &quot;&quot;
+@@ -46,9 +49,10 @@
+ 
+     def getHeaders(self):
+         content = self.c_include
+-        for word in self.thesaurus:
+-            item = self.thesaurus[word]
+-            content = content + &quot;#define %s %s\n&quot; % (item.new, item.old)
++        if not self.reversible:
++            for word in self.thesaurus:
++                item = self.thesaurus[word]
++                content = content + &quot;#define %s %s\n&quot; % (item.new, item.old)
+         return content
+ 
+     def readComment(self):
+@@ -73,13 +77,23 @@
+         else:
+             self.unput(str)
+ 
+-    def process(self, c):
+-        if self.word != None:
+-            self.word = self.word + c
+-        else:
+-            self.word = c
++    def generateWordReversible(self, new_thesaurus):
++        self.uniq = self.uniq + 1
++        if 256 &lt;= self.uniq:
++            raise Exception(&quot;No more shit!&quot;)
++        up=&quot;TACHATTE&quot;
++        down=&quot;tachatte&quot;
++        word = &quot;&quot;
++        index = self.uniq
++        for i in range(0,8):
++            if (index &amp; 1 == 1):
++                word = word + up[i]
++            else:
++                word = word + down[i]
++            index = index/2
++        return word     
+ 
+-    def generateWord(self, new_thesaurus):
++    def generateWordRandom(self, new_thesaurus):
+         tries = 0
+         while tries &lt; 100:
+             tries = tries + 1
+@@ -116,7 +130,8 @@
+         if c != None:
+             self.unput(c)
+ 
+-    def process(self):       
++    def process(self, file):
++        self.file = file
+         while True:
+             c = self.file.read(1)
+             if c == '':
+@@ -152,19 +167,61 @@
+         new_words = {}
+         for word in self.thesaurus:
+             item = self.thesaurus[word]
+-            item.new = self.generateWord(new_words)
++            if self.reversible:
++                item.new = self.generateWordReversible(new_words)
++            else:
++                item.new = self.generateWordRandom(new_words)
+             new_words[item.new] = item
+ 
+ def usage():
+-    print &quot;Usage: %s file.c&quot; % sys.argv[0]
+-    sys.exit(1)
++    print &quot;%s version %s&quot; % (PROGRAM, VERSION)
++    print &quot;&quot;
++    print &quot;Usage: %s [options] file.c&quot; % (sys.argv[0])
++    print
++    print &quot;Options :&quot;
++    print &quot;\t--help            : Print this help&quot;
++    print &quot;\t--version         : Print the software version&quot;
++    print &quot;\t--reversible      : Use reversible mode&quot;
++    sys.exit(2)
+ 
++def parseArgs(tachatte):
++    import getopt
++
++    try:
++        short = &quot;&quot;
++        long = [&quot;help&quot;, &quot;version&quot;, \
++            &quot;reversible&quot;]
++        opts, args = getopt.getopt(sys.argv[1:], short, long)
++    except getopt.GetoptError:
++        usage()
++        
++    for o, a in opts:
++        if o == &quot;--help&quot;:
++            usage()
++        if o == &quot;--version&quot;:
++            print &quot;%s version %s&quot; % (PROGRAM, VERSION)
++            sys.exit(0)
++        if o == &quot;--reversible&quot;:
++            tachatte.reversible = True
++
++    if len(args) != 1:
++        usage()
++
++    return args[0]
++
+ if __name__==&quot;__main__&quot;:
+     if len(sys.argv)&lt;2:
+         usage()
+-    f=open(sys.argv[1])
++
++    # Prepare
++    t=Tachatter()
++    filename = parseArgs(t)
+     random.seed()
+-    t=Tachatter(f)
++
++    # Process file
++    file = open(filename)
++    t.process(file)
++
++    # Display result
+     sys.stdout.write(t.getHeaders())
+     sys.stdout.write(t.getContent())
+-    f.close()
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000206.html">[Happyboom-svn] r300 - in haypo: . greycstoration_gimp greycstoration_gimp/po
+</A></li>
+	<LI>Next message: <A HREF="000208.html">[Happyboom-svn] r302 - haypo
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#207">[ date ]</a>
+              <a href="thread.html#207">[ thread ]</a>
+              <a href="subject.html#207">[ subject ]</a>
+              <a href="author.html#207">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

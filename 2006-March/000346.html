@@ -1,0 +1,540 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r442 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/stream branches/hachoir-yield/unit_test
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r442%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/libhachoir%20branches/hachoir-yield/libhachoir/stream%20branches/hachoir-yield/unit_test&In-Reply-To=%3C200603122002.k2CK2JYn022353%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000345.html">
+   <LINK REL="Next"  HREF="000347.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r442 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/stream branches/hachoir-yield/unit_test</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r442%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/libhachoir%20branches/hachoir-yield/libhachoir/stream%20branches/hachoir-yield/unit_test&In-Reply-To=%3C200603122002.k2CK2JYn022353%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r442 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/stream branches/hachoir-yield/unit_test">haypo at berlios.de
+       </A><BR>
+    <I>Sun Mar 12 21:02:19 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000345.html">[Happyboom-svn] r441 - haypo/hachoir/trunk/plugins
+</A></li>
+        <LI>Next message: <A HREF="000347.html">[Happyboom-svn] r443 - in haypo/hachoir: . branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/3d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#346">[ date ]</a>
+              <a href="thread.html#346">[ thread ]</a>
+              <a href="subject.html#346">[ subject ]</a>
+              <a href="author.html#346">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-12 21:02:15 +0100 (Sun, 12 Mar 2006)
+New Revision: 442
+
+Added:
+   haypo/hachoir/branches/hachoir-yield/libhachoir/stream/
+   haypo/hachoir/branches/hachoir-yield/libhachoir/stream/input.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/stream/output.py
+Removed:
+   haypo/hachoir/branches/hachoir-yield/libhachoir/stream.py
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/run_unit_test.py
+   haypo/hachoir/branches/hachoir-yield/test_doc.py
+   haypo/hachoir/branches/hachoir-yield/unit_test/__init__.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r56 at haypopc</A>:  haypo | 2006-03-04 05:23:32 +0100
+  * Move stream.py to stream/input.py
+  * Create output streams
+  * Write unit test for output stream
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:54
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:56
+
+Added: haypo/hachoir/branches/hachoir-yield/libhachoir/stream/input.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/stream/input.py	2006-03-08 19:59:42 UTC (rev 441)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/stream/input.py	2006-03-12 20:02:15 UTC (rev 442)
+@@ -0,0 +1,139 @@
++from cStringIO import StringIO
++
++class InputStreamError(Exception):
++    pass
++
++def FileInputStream(filename):
++    input = open(filename, 'r')
++    input.seek(0, 2)
++    size = input.tell() * 8
++    input.seek(0)
++    return InputStream(input, filename=filename, size=size)
++
++def StringInputStream(content):
++    input = StringIO(content)
++    return InputStream(input, filename=None, size=len(content)*8)
++
++class InputStream:
++    def __init__(self, input, filename=None, size=None):
++        self.filename = filename
++        if size == 0:
++            raise InputStreamError(&quot;Error: input size is nul (filename='%s')!&quot; % filename)
++        self._size = size
++
++        # TODO: Doesn't support computation of last byte address with bit
++        # address
++        assert (self._size % 8) == 0
++        self._last_byte_address = self._size / 8 - 1
++        self._input = input 
++        
++    def _getSize(self):
++        return self._size
++    size = property(_getSize, doc=&quot;Size of the stream in bits&quot;)
++
++    def getBits(self, address, nbits, big_endian=False):
++        data = self._getRawBits(address, nbits)        
++        if (address % 8) != 0 or (nbits % 8) != 0:
++            mask = (1 &lt;&lt; nbits) - 1
++            shift = address &amp; 7 
++        else:
++            shift = 0
++            mask = None
++        value = 0
++        if not big_endian:
++            if shift != 0:
++                byte = ord(data[0])
++                value += (byte &gt;&gt; shift)
++                data = data[1:]
++                shift = nbits-shift
++            else:
++                shift = nbits-8
++                if shift &lt; 0:
++                    shift += 8
++            for character in data:
++                byte = ord(character)
++                value += (byte &lt;&lt; shift) 
++                shift -= 8
++        else:
++            if shift != 0:
++                byte = ord(data[0])
++                value += (byte &gt;&gt; shift)
++                data = data[1:]
++            for character in data:
++                byte = ord(character)
++                value += (byte &lt;&lt; shift) 
++                shift += 8
++        if mask != None:
++            value = value &amp; mask
++        return value
++
++    def getBytes(self, address, nbytes):
++        if address % 8 != 0:
++            data = self._getRawBits(address, nbytes*8)
++            nbits = address % 8
++            shift1 = nbits
++            shift2 = 8 - nbits
++            mask = (1 &lt;&lt; nbits) - 1
++            newdata = &quot;&quot;
++            for i in range(0, len(data)-1):
++                byte1 = ord(data[i])
++                byte2 = ord(data[i+1])
++                new = chr((byte1 &gt;&gt; shift1) + ((byte2 &amp; mask) &lt;&lt; shift2))
++                newdata += new 
++            data = newdata
++        else:
++            data = self._getRawBits(address, nbytes*8)
++        return data
++    
++    def _getRawBits(self, address, nb_bits):
++        nb_bytes = (nb_bits + (address &amp; 7) + 7) / 8
++        self._input.seek(address / 8)
++        data = self._input.read(nb_bytes)
++        if len(data) != nb_bytes:
++            raise InputStreamError(
++                &quot;Can't read %u bytes at address %u (got %u bytes)!&quot; % \
++                (nb_bytes, address/8, len(data)))
++        return data
++
++    def searchBytes(self, needle, start_address=0, end_address=None):
++        &quot;&quot;&quot;
++        Search some bytes between start_address and end_address
++
++        Returns the address of the bytes if founded, None else
++        &quot;&quot;&quot;
++
++        if end_address == None:
++            end_address = self._last_byte_address * 8
++        if end_address &lt; start_address:
++            return None
++        
++        # TODO: Doesn't suppport bit address yet :-(
++        assert (start_address % 8) == 0
++        assert (end_address % 8) == 0
++
++        size = 2048 
++        if size &lt;= len(needle):
++            raise InputStreamError(&quot;Search string too big.&quot;)
++        doublesize = size * 2
++
++        address = start_address 
++        max = end_address - start_address + 1
++        if max&lt;doublesize:
++            doublesize = max/8 
++            size = 0 
++        buffer = self.getBytes(address, doublesize)
++
++        new_address = address + size
++        while len(buffer) != 0:
++            found = buffer.find(needle)
++            if found != -1:
++                return address + found*8
++            address = new_address
++            if end_address &lt; address + size:
++                size = end_address - address
++            if size == 0:
++                break
++            buffer = buffer[size:] + self.getBytes(address, size)
++            new_address = address + size 
++        return None
++
+
+Added: haypo/hachoir/branches/hachoir-yield/libhachoir/stream/output.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/stream/output.py	2006-03-08 19:59:42 UTC (rev 441)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/stream/output.py	2006-03-12 20:02:15 UTC (rev 442)
+@@ -0,0 +1,98 @@
++from cStringIO import StringIO
++from libhachoir.bits import countBits
++
++def FileOutputStream(filename, big_endian=True):
++    output = open(filename, 'w')
++    return OutputStream(output, big_endian=big_endian, filename=filename)
++
++class OutputStream(object):
++    def __init__(self, output, big_endian=True, filename=None):
++        self._output = output
++        self._filename = filename
++        self._bit_pos = 0
++        self._byte = 0
++        self._big_endian = big_endian
++
++    def _getFilename(self):
++        return self._filename
++    filename = property(_getFilename)
++
++    def writeBit(self, state):
++        if self._bit_pos == 7:
++            self._bit_pos = 0
++            if state:
++                if self._big_endian:
++                    self._byte |= 1
++                else:
++                    self._byte |= 128
++            self._output.write(chr(self._byte))
++            self._byte = 0
++        else:
++            if state:
++                if self._big_endian:
++                    self._byte |= (1 &lt;&lt; (7-self._bit_pos))
++                else:
++                    self._byte |= (1 &lt;&lt; self._bit_pos)
++            self._bit_pos += 1
++
++    def writeBits(self, count, value):
++        assert countBits(value) &lt;= count
++
++        # Feed bits to align to byte address
++        if self._bit_pos != 0:
++            n = 8 - self._bit_pos
++            if n &lt;= count:
++                count -= n
++                if self._big_endian:
++                    self._byte |= (value &gt;&gt; count)
++                    value &amp;= ((1 &lt;&lt; count) - 1)
++                else:
++                    self._byte |= (value &amp; ((1 &lt;&lt; n)-1)) &lt;&lt; self._bit_pos
++                    value &gt;&gt;= n
++                self._output.write(chr(self._byte))
++                self._byte = 0
++            else:
++                if self._big_endian:
++                    self._byte |= (value &lt;&lt; (8-self._bit_pos-count))
++                else:
++                    self._byte |= (value &lt;&lt; self._bit_pos)
++                self._bit_pos += count 
++                return
++
++        # Write byte per byte
++        while 8 &lt;= count:
++            count -= 8
++            if self._big_endian:
++                byte = (value &gt;&gt; count)
++                value &amp;= ((1 &lt;&lt; count) - 1)
++            else:
++                byte = (value &amp; 0xFF)
++                value &gt;&gt;= 8
++            self._output.write(chr(byte))
++
++        # Keep last bits
++        assert 0 &lt;= count and count &lt; 8
++        self._bit_pos = count
++        if 0 &lt; count:
++            assert countBits(value) &lt;= count
++            if self._big_endian:
++                self._byte = value &lt;&lt; (8-count)
++            else:
++                self._byte = value
++        else:
++            assert value == 0
++            self._byte = 0
++
++    def paddingToByte(self, bit=False):
++        n = 0
++        while self._bit_pos != 0:
++            self.writeBit(bit)
++            n += 1
++        return n
++
++class StringOutputStream(OutputStream):
++    def __init__(self, big_endian=True):
++        self.string = StringIO()
++        OutputStream.__init__(self, self.string, \
++            big_endian=big_endian, filename=None)
++
+
+Deleted: haypo/hachoir/branches/hachoir-yield/libhachoir/stream.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/stream.py	2006-03-08 19:59:42 UTC (rev 441)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/stream.py	2006-03-12 20:02:15 UTC (rev 442)
+@@ -1,139 +0,0 @@
+-from cStringIO import StringIO
+-
+-class InputStreamError(Exception):
+-    pass
+-
+-def FileInputStream(filename):
+-    input = open(filename, 'r')
+-    input.seek(0, 2)
+-    size = input.tell() * 8
+-    input.seek(0)
+-    return InputStream(input, filename=filename, size=size)
+-
+-def StringInputStream(content):
+-    input = StringIO(content)
+-    return InputStream(input, filename=None, size=len(content)*8)
+-
+-class InputStream:
+-    def __init__(self, input, filename=None, size=None):
+-        self.filename = filename
+-        if size == 0:
+-            raise InputStreamError(&quot;Error: input size is nul (filename='%s')!&quot; % filename)
+-        self._size = size
+-
+-        # TODO: Doesn't support computation of last byte address with bit
+-        # address
+-        assert (self._size % 8) == 0
+-        self._last_byte_address = self._size / 8 - 1
+-        self._input = input 
+-        
+-    def _getSize(self):
+-        return self._size
+-    size = property(_getSize, doc=&quot;Size of the stream in bits&quot;)
+-
+-    def getBits(self, address, nbits, big_endian=False):
+-        data = self._getRawBits(address, nbits)        
+-        if (address % 8) != 0 or (nbits % 8) != 0:
+-            mask = (1 &lt;&lt; nbits) - 1
+-            shift = address &amp; 7 
+-        else:
+-            shift = 0
+-            mask = None
+-        value = 0
+-        if not big_endian:
+-            if shift != 0:
+-                byte = ord(data[0])
+-                value += (byte &gt;&gt; shift)
+-                data = data[1:]
+-                shift = nbits-shift
+-            else:
+-                shift = nbits-8
+-                if shift &lt; 0:
+-                    shift += 8
+-            for character in data:
+-                byte = ord(character)
+-                value += (byte &lt;&lt; shift) 
+-                shift -= 8
+-        else:
+-            if shift != 0:
+-                byte = ord(data[0])
+-                value += (byte &gt;&gt; shift)
+-                data = data[1:]
+-            for character in data:
+-                byte = ord(character)
+-                value += (byte &lt;&lt; shift) 
+-                shift += 8
+-        if mask != None:
+-            value = value &amp; mask
+-        return value
+-
+-    def getBytes(self, address, nbytes):
+-        if address % 8 != 0:
+-            data = self._getRawBits(address, nbytes*8)
+-            nbits = address % 8
+-            shift1 = nbits
+-            shift2 = 8 - nbits
+-            mask = (1 &lt;&lt; nbits) - 1
+-            newdata = &quot;&quot;
+-            for i in range(0, len(data)-1):
+-                byte1 = ord(data[i])
+-                byte2 = ord(data[i+1])
+-                new = chr((byte1 &gt;&gt; shift1) + ((byte2 &amp; mask) &lt;&lt; shift2))
+-                newdata += new 
+-            data = newdata
+-        else:
+-            data = self._getRawBits(address, nbytes*8)
+-        return data
+-    
+-    def _getRawBits(self, address, nb_bits):
+-        nb_bytes = (nb_bits + (address &amp; 7) + 7) / 8
+-        self._input.seek(address / 8)
+-        data = self._input.read(nb_bytes)
+-        if len(data) != nb_bytes:
+-            raise InputStreamError(
+-                &quot;Can't read %u bytes at address %u (got %u bytes)!&quot; % \
+-                (nb_bytes, address/8, len(data)))
+-        return data
+-
+-    def searchBytes(self, needle, start_address=0, end_address=None):
+-        &quot;&quot;&quot;
+-        Search some bytes between start_address and end_address
+-
+-        Returns the address of the bytes if founded, None else
+-        &quot;&quot;&quot;
+-
+-        if end_address == None:
+-            end_address = self._last_byte_address * 8
+-        if end_address &lt; start_address:
+-            return None
+-        
+-        # TODO: Doesn't suppport bit address yet :-(
+-        assert (start_address % 8) == 0
+-        assert (end_address % 8) == 0
+-
+-        size = 2048 
+-        if size &lt;= len(needle):
+-            raise InputStreamError(&quot;Search string too big.&quot;)
+-        doublesize = size * 2
+-
+-        address = start_address 
+-        max = end_address - start_address + 1
+-        if max&lt;doublesize:
+-            doublesize = max/8 
+-            size = 0 
+-        buffer = self.getBytes(address, doublesize)
+-
+-        new_address = address + size
+-        while len(buffer) != 0:
+-            found = buffer.find(needle)
+-            if found != -1:
+-                return address + found*8
+-            address = new_address
+-            if end_address &lt; address + size:
+-                size = end_address - address
+-            if size == 0:
+-                break
+-            buffer = buffer[size:] + self.getBytes(address, size)
+-            new_address = address + size 
+-        return None
+-
+
+Modified: haypo/hachoir/branches/hachoir-yield/run_unit_test.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/run_unit_test.py	2006-03-08 19:59:42 UTC (rev 441)
++++ haypo/hachoir/branches/hachoir-yield/run_unit_test.py	2006-03-12 20:02:15 UTC (rev 442)
+@@ -1,12 +1,12 @@
+-from unit_test import create_fields
+-from unit_test import field_set_get_item
+-from unit_test import stream_search
++from unit_test import (create_fields, 
++    field_set_get_item, stream_search, output_stream)
+ import sys, os
+ 
+ def runAllTests():
+     create_fields.runTests()
+     field_set_get_item.runTests()
+     stream_search.runTests()
++    output_stream.runTests()
+ 
+ def main():
+     # Load Hachoir library
+
+Modified: haypo/hachoir/branches/hachoir-yield/test_doc.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/test_doc.py	2006-03-08 19:59:42 UTC (rev 441)
++++ haypo/hachoir/branches/hachoir-yield/test_doc.py	2006-03-12 20:02:15 UTC (rev 442)
+@@ -1,6 +1,8 @@
+-import doctest, sys, os
++import doctest, sys, os, re
+ from stat import S_ISREG, ST_MODE
+ 
++regex_doc_filename = re.compile(&quot;^[a-z0-9_-]+\.txt$&quot;)
++
+ def testDoc(filename, name=None):
+     print &quot;--- %s: Run tests&quot; % filename
+     doctest.testfile(filename, optionflags=doctest.ELLIPSIS, name=name)
+@@ -16,7 +18,8 @@
+     documents.sort()
+     for doc in documents:
+         filename = os.path.join(doc_dir, doc)
+-        if S_ISREG(os.stat(filename)[ST_MODE]):
++        if S_ISREG(os.stat(filename)[ST_MODE]) \
++        and regex_doc_filename.match(doc) != None:
+             testDoc(filename)
+ 
+ if __name__ == &quot;__main__&quot;:
+
+Modified: haypo/hachoir/branches/hachoir-yield/unit_test/__init__.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/unit_test/__init__.py	2006-03-08 19:59:42 UTC (rev 441)
++++ haypo/hachoir/branches/hachoir-yield/unit_test/__init__.py	2006-03-12 20:02:15 UTC (rev 442)
+@@ -1,3 +1,4 @@
+ import create_fields
+ import field_set_get_item
++import output_stream
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000345.html">[Happyboom-svn] r441 - haypo/hachoir/trunk/plugins
+</A></li>
+	<LI>Next message: <A HREF="000347.html">[Happyboom-svn] r443 - in haypo/hachoir: . branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/3d
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#346">[ date ]</a>
+              <a href="thread.html#346">[ thread ]</a>
+              <a href="subject.html#346">[ subject ]</a>
+              <a href="author.html#346">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

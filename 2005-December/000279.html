@@ -1,0 +1,219 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r377 - haypo/hachoir/trunk/plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r377%20-%20haypo/hachoir/trunk/plugins&In-Reply-To=%3C200512291335.jBTDZRq7002892%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000278.html">
+   <LINK REL="Next"  HREF="000280.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r377 - haypo/hachoir/trunk/plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r377%20-%20haypo/hachoir/trunk/plugins&In-Reply-To=%3C200512291335.jBTDZRq7002892%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r377 - haypo/hachoir/trunk/plugins">haypo at berlios.de
+       </A><BR>
+    <I>Thu Dec 29 14:35:27 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000278.html">[Happyboom-svn] r376 - in haypo/hachoir/trunk: . generic plugins
+</A></li>
+        <LI>Next message: <A HREF="000280.html">[Happyboom-svn] r378 - haypo/hachoir/trunk/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#279">[ date ]</a>
+              <a href="thread.html#279">[ thread ]</a>
+              <a href="subject.html#279">[ subject ]</a>
+              <a href="author.html#279">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-29 14:35:25 +0100 (Thu, 29 Dec 2005)
+New Revision: 377
+
+Modified:
+   haypo/hachoir/trunk/plugins/worms2.py
+Log:
+Worms2 plugin: improve sprite parser.
+
+
+Modified: haypo/hachoir/trunk/plugins/worms2.py
+===================================================================
+--- haypo/hachoir/trunk/plugins/worms2.py	2005-12-29 01:54:53 UTC (rev 376)
++++ haypo/hachoir/trunk/plugins/worms2.py	2005-12-29 13:35:25 UTC (rev 377)
+@@ -47,82 +47,77 @@
+         chunk.description = &quot;Image: %ux%u pixels&quot; % \
+             (self[&quot;width&quot;], self[&quot;height&quot;])
+ 
++class SpriteItem(OnDemandFilter):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;sprite_item&quot;, &quot;Sprite item&quot;, stream, parent, &quot;&lt;&quot;)
++        self.read(&quot;a&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;b&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;c&quot;, &quot;???&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;x&quot;, &quot;Offset X&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;y&quot;, &quot;Offset Y&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;width&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;))
++        self.read(&quot;height&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;))
++
++    def updateParent(self, chunk):            
++        chunk.description = &quot;Sprite item: %ux%u pixels at (%u,%u)&quot; % \
++            (self[&quot;width&quot;], self[&quot;height&quot;], self[&quot;x&quot;], self[&quot;y&quot;])
++
+ class Sprite(OnDemandFilter):
+     def __init__(self, stream, parent):
+         OnDemandFilter.__init__(self, &quot;sprite&quot;, &quot;Sprite&quot;, stream, parent, &quot;&lt;&quot;)
+         name = parent.name
+         self.read(&quot;palette&quot;, &quot;Palette&quot;, (Palette, 81))
++        self.read(&quot;header116&quot;, &quot;Header 116&quot;, (FormatChunk, &quot;uint8&quot;))
++        assert self[&quot;header116&quot;] == 116 
++        self.read(&quot;type&quot;, &quot;Type?&quot;, (FormatChunk, &quot;uint8&quot;))
++        self.read(&quot;zero[]&quot;, &quot;???&quot;, (FormatChunk, &quot;string[9]&quot;))
++        self.read(&quot;flags[]&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;), {&quot;post&quot;: binary})
++        self.read(&quot;zero[]&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;))
++        import re
++        marker = False
++        if re.match(&quot;^Tv&quot;, name) != None:
++            size = 2
++        elif re.match(&quot;^Holy&quot;, name) != None:
++            size = 26
++        elif re.match(&quot;^Banana&quot;, name) != None:
++            size = 29-15+2
++        elif re.match(&quot;^Homing&quot;, name) != None:
++            size = 29-15+3+8-1+2
++        elif re.match(&quot;^Marker&quot;, name) != None:
++            marker = True
++            size = 29+2-15 
++        else:
++            size = 29-15
++        flags = self.doRead(&quot;flags[]&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;), {&quot;post&quot;: binary}).value
+         if True:
+-            self.read(&quot;header116&quot;, &quot;Header 116&quot;, (FormatChunk, &quot;uint8&quot;))
+-            assert self[&quot;header116&quot;] == 116 
+-            self.read(&quot;type&quot;, &quot;Type?&quot;, (FormatChunk, &quot;uint8&quot;))
+-            self.read(&quot;zero&quot;, &quot;Zeros&quot;, (FormatChunk, &quot;string[9]&quot;))
+-            assert self[&quot;zero&quot;] == (&quot;\0&quot; * 9)
+-            if False:
+-                bits = (
+-                    (1, &quot;info1&quot;, &quot;&quot;),
+-                    (1, &quot;various1&quot;, &quot;&quot;),
+-                    (1, &quot;info2&quot;, &quot;&quot;),
+-                    (3, &quot;various2&quot;, &quot;&quot;),
+-                    (3, &quot;zero&quot;, &quot;&quot;),
+-                    (3, &quot;various3&quot;, &quot;&quot;),
+-                    (1, &quot;info3&quot;, &quot;&quot;),
+-                    (1, &quot;one&quot;, &quot;&quot;),
+-                    (2, &quot;various4&quot;, &quot;&quot;)
+-                )
+-                flags = self.doRead(&quot;flags&quot;, &quot;Flags&quot;, (BitsChunk, BitsStruct(bits)))
+-                assert flags[&quot;zero&quot;] == 0
+-                assert flags[&quot;one&quot;] == True
+-            else:
+-                self.read(&quot;flags&quot;, &quot;???&quot;, (FormatChunk, &quot;uint16&quot;), {&quot;post&quot;: binary})
+-            self.read(&quot;zero2&quot;, &quot;Zero2&quot;, (FormatChunk, &quot;uint16&quot;))
+-            assert self[&quot;zero2&quot;] == 0
+-            import re
+-            if re.match(&quot;^Tv&quot;, name) != None:
+-                size = 2
+-            elif re.match(&quot;^Holy&quot;, name) != None:
+-                size = 26
+-            elif re.match(&quot;^Banana&quot;, name) != None:
+-                size = 29-15+2
+-            elif re.match(&quot;^Homing&quot;, name) != None:
+-                size = 29-15+3+8-1+2
+-            elif re.match(&quot;^Marker&quot;, name) != None:
+-                size = 29+2-15 
+-            else:
+-                size = 29-15
+-            self.read(&quot;end_of_header&quot;, &quot;End of mysterious header&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+-            if True: 
+-                self.x = self.doRead(&quot;offset_x[]&quot;, &quot;Offset X&quot;, (FormatChunk, &quot;uint16&quot;)).value
+-                self.y = self.doRead(&quot;offset_y[]&quot;, &quot;Offset Y&quot;, (FormatChunk, &quot;uint16&quot;)).value
+-                self.width = self.doRead(&quot;width[]&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;)).value
+-                self.height = self.doRead(&quot;height[]&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;)).value
+-                size = (self.width - self.x) * (self.height - self.y)
+-                if size &lt;= (stream.getLastPos() - stream.tell()+1-1):
+-                    self.read(&quot;image_data[]&quot;, &quot;Data&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+-            else:
+-                image = self.doRead(&quot;image[]&quot;, &quot;Image&quot;, (ImageData,))
+-                self.width = image.width
+-                self.height = image.height
++            if flags != 0:
++                size = 12
++                if re.match(&quot;^Batrope&quot;, name) != None:
++                    size += 24
++                self.read(&quot;zero[]&quot;, &quot;???&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++            self.x = self.doRead(&quot;x[]&quot;, &quot;Offset X&quot;, (FormatChunk, &quot;uint16&quot;)).value
++            self.y = self.doRead(&quot;y[]&quot;, &quot;Offset Y&quot;, (FormatChunk, &quot;uint16&quot;)).value
++            self.width = self.doRead(&quot;width[]&quot;, &quot;Width&quot;, (FormatChunk, &quot;uint16&quot;)).value
++            self.height = self.doRead(&quot;height[]&quot;, &quot;Height&quot;, (FormatChunk, &quot;uint16&quot;)).value
++            self.count = self.doRead(&quot;count&quot;, &quot;Item count&quot;, (FormatChunk, &quot;uint16&quot;)).value
++            for i in range(0, self.count):
++                self.read(&quot;item[]&quot;, &quot;Item&quot;, (SpriteItem,))
++#                real_width = self.width - self.x
++#                real_height = self.height - self.y
++#                size = real_width * real_height
++#                if size &lt;= (stream.getLastPos() - stream.tell()+1-1):
++#                    self.read(&quot;image_data[]&quot;, &quot;Data (%ux%u pixels)&quot; % (real_width, real_height), (FormatChunk, &quot;string[%u]&quot; % size))
+ 
+-            #print &quot;Sprite % 20s: x=%s, header=% 2s, header=%s | %s&quot; \
+-            #    % (name, x, size, str2bin(self[&quot;end_of_header&quot;][:2]), str2hex(self[&quot;end_of_header&quot;]))
+-            #print &quot;Sprite % 20s: a=%s, header=% 2s, header=%s&quot; \
+-            #    % (name, self[&quot;a&quot;], size, str2hex(self[&quot;end_of_header&quot;]))
+-
+-#            print &quot;Sprite % 20s, a=%s, header=% 2s, flags=%s (%s), size=%ux%u at (%u,%u)&quot; \
+-#                % (name, self[&quot;a&quot;], size, str2bin(self.getChunk(&quot;flags&quot;).getRaw()), self[&quot;flags&quot;], width, height, x, y)
+-
+-        else:                
+-            self.read(&quot;data&quot;, &quot;Data&quot;, (FormatChunk, &quot;string[40]&quot;))
+-            print &quot;Sprite % 20s: %s&quot; \
+-                % (name, str2hex(self[&quot;data&quot;]))
+-            
+         size = stream.getLastPos() - stream.tell() + 1
+         self.read(&quot;end&quot;, &quot;Raw end&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
+ 
+     def updateParent(self, chunk):            
+-        chunk.description = &quot;Sprite: %ux%u pixels&quot; % \
+-            (self.width, self.height)
++        if self.count is not None:
++            chunk.description = &quot;Animation: %ux%u pixels, %u frame(s)&quot; % \
++                (self.width, self.height, self.count)
++        else:                
++            chunk.description = &quot;Sprite: %ux%u pixels&quot; % \
++                (self.width, self.height)
+ 
+ class Font(OnDemandFilter):
+     def __init__(self, stream, parent):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000278.html">[Happyboom-svn] r376 - in haypo/hachoir/trunk: . generic plugins
+</A></li>
+	<LI>Next message: <A HREF="000280.html">[Happyboom-svn] r378 - haypo/hachoir/trunk/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#279">[ date ]</a>
+              <a href="thread.html#279">[ thread ]</a>
+              <a href="subject.html#279">[ subject ]</a>
+              <a href="author.html#279">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

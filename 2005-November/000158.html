@@ -1,0 +1,641 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r251 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r251%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511050451.jA54pvUK022349%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000157.html">
+   <LINK REL="Next"  HREF="000159.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r251 - in haypo/hachoir: . plugins</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r251%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511050451.jA54pvUK022349%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r251 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Sat Nov  5 05:51:57 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000157.html">[Happyboom-svn] r250 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000159.html">[Happyboom-svn] r252 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#158">[ date ]</a>
+              <a href="thread.html#158">[ thread ]</a>
+              <a href="subject.html#158">[ subject ]</a>
+              <a href="author.html#158">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-05 05:51:54 +0100 (Sat, 05 Nov 2005)
+New Revision: 251
+
+Added:
+   haypo/hachoir/gunzip_stream.py
+   haypo/hachoir/ui_new_string.py
+Modified:
+   haypo/hachoir/Makefile
+   haypo/hachoir/default.py
+   haypo/hachoir/hachoir.glade
+   haypo/hachoir/hachoir_class.py
+   haypo/hachoir/plugins/gzip.py
+   haypo/hachoir/plugins/pdf.py
+   haypo/hachoir/plugins/tar.py
+   haypo/hachoir/stream.py
+   haypo/hachoir/ui_popup.py
+Log:
+Support deflate decompression for PDF file, and gzip decompression for gzip
+file. Ask string format when adding a new string (and also id+desc. but they
+aren't used yet).
+
+
+Modified: haypo/hachoir/Makefile
+===================================================================
+--- haypo/hachoir/Makefile	2005-11-05 03:52:03 UTC (rev 250)
++++ haypo/hachoir/Makefile	2005-11-05 04:51:54 UTC (rev 251)
+@@ -1,2 +1,2 @@
+ clean:
+-	rm -f *.pyc plugins/*.pyc
++	rm -f *.pyc plugins/*.pyc hachoir.gladep *.bak
+
+Modified: haypo/hachoir/default.py
+===================================================================
+--- haypo/hachoir/default.py	2005-11-05 03:52:03 UTC (rev 250)
++++ haypo/hachoir/default.py	2005-11-05 04:51:54 UTC (rev 251)
+@@ -1,9 +1,10 @@
+ from filter import Filter
+ 
+-def displayDefault(data):
+-    pass
++class EmptyFilter(Filter):
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;empty&quot;, &quot;Empty filter&quot;, stream, parent)
+ 
+ class DefaultFilter(Filter):
+-    def __init__(self, stream):
+-        Filter.__init__(self, &quot;default&quot;, &quot;Default filter&quot;, stream, None)
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;default&quot;, &quot;Default filter&quot;, stream, parent)
+         self.read(&quot;data&quot;, &quot;!{@end@}s&quot;, &quot;Data&quot;, truncate=True)
+
+Added: haypo/hachoir/gunzip_stream.py
+===================================================================
+--- haypo/hachoir/gunzip_stream.py	2005-11-05 03:52:03 UTC (rev 250)
++++ haypo/hachoir/gunzip_stream.py	2005-11-05 04:51:54 UTC (rev 251)
+@@ -0,0 +1,10 @@
++import gzip
++from StringIO import StringIO
++from stream import FileStream
++
++def GunzipStream(data):
++    io = StringIO(data)
++    io = gzip.GzipFile(None, &quot;r&quot;, None, io)
++    data = io.read()
++    io = StringIO(data)
++    return FileStream(io)
+
+Modified: haypo/hachoir/hachoir.glade
+===================================================================
+--- haypo/hachoir/hachoir.glade	2005-11-05 03:52:03 UTC (rev 250)
++++ haypo/hachoir/hachoir.glade	2005-11-05 04:51:54 UTC (rev 251)
+@@ -1201,4 +1201,257 @@
+   &lt;/child&gt;
+ &lt;/widget&gt;
+ 
++&lt;widget class=&quot;GtkDialog&quot; id=&quot;new_string&quot;&gt;
++  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++  &lt;property name=&quot;title&quot; translatable=&quot;yes&quot;&gt;New string&lt;/property&gt;
++  &lt;property name=&quot;type&quot;&gt;GTK_WINDOW_TOPLEVEL&lt;/property&gt;
++  &lt;property name=&quot;window_position&quot;&gt;GTK_WIN_POS_NONE&lt;/property&gt;
++  &lt;property name=&quot;modal&quot;&gt;False&lt;/property&gt;
++  &lt;property name=&quot;resizable&quot;&gt;True&lt;/property&gt;
++  &lt;property name=&quot;destroy_with_parent&quot;&gt;False&lt;/property&gt;
++  &lt;property name=&quot;decorated&quot;&gt;True&lt;/property&gt;
++  &lt;property name=&quot;skip_taskbar_hint&quot;&gt;False&lt;/property&gt;
++  &lt;property name=&quot;skip_pager_hint&quot;&gt;False&lt;/property&gt;
++  &lt;property name=&quot;type_hint&quot;&gt;GDK_WINDOW_TYPE_HINT_DIALOG&lt;/property&gt;
++  &lt;property name=&quot;gravity&quot;&gt;GDK_GRAVITY_NORTH_WEST&lt;/property&gt;
++  &lt;property name=&quot;focus_on_map&quot;&gt;True&lt;/property&gt;
++  &lt;property name=&quot;has_separator&quot;&gt;True&lt;/property&gt;
++
++  &lt;child internal-child=&quot;vbox&quot;&gt;
++    &lt;widget class=&quot;GtkVBox&quot; id=&quot;vbox4&quot;&gt;
++      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++      &lt;property name=&quot;homogeneous&quot;&gt;False&lt;/property&gt;
++      &lt;property name=&quot;spacing&quot;&gt;0&lt;/property&gt;
++
++      &lt;child internal-child=&quot;action_area&quot;&gt;
++	&lt;widget class=&quot;GtkHButtonBox&quot; id=&quot;hbuttonbox1&quot;&gt;
++	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	  &lt;property name=&quot;layout_style&quot;&gt;GTK_BUTTONBOX_END&lt;/property&gt;
++
++	  &lt;child&gt;
++	    &lt;widget class=&quot;GtkButton&quot; id=&quot;button1&quot;&gt;
++	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;can_default&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;label&quot;&gt;gtk-cancel&lt;/property&gt;
++	      &lt;property name=&quot;use_stock&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;relief&quot;&gt;GTK_RELIEF_NORMAL&lt;/property&gt;
++	      &lt;property name=&quot;focus_on_click&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;response_id&quot;&gt;-6&lt;/property&gt;
++	    &lt;/widget&gt;
++	  &lt;/child&gt;
++
++	  &lt;child&gt;
++	    &lt;widget class=&quot;GtkButton&quot; id=&quot;button2&quot;&gt;
++	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;can_default&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;label&quot;&gt;gtk-ok&lt;/property&gt;
++	      &lt;property name=&quot;use_stock&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;relief&quot;&gt;GTK_RELIEF_NORMAL&lt;/property&gt;
++	      &lt;property name=&quot;focus_on_click&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;response_id&quot;&gt;-5&lt;/property&gt;
++	    &lt;/widget&gt;
++	  &lt;/child&gt;
++	&lt;/widget&gt;
++	&lt;packing&gt;
++	  &lt;property name=&quot;padding&quot;&gt;0&lt;/property&gt;
++	  &lt;property name=&quot;expand&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;fill&quot;&gt;True&lt;/property&gt;
++	  &lt;property name=&quot;pack_type&quot;&gt;GTK_PACK_END&lt;/property&gt;
++	&lt;/packing&gt;
++      &lt;/child&gt;
++
++      &lt;child&gt;
++	&lt;widget class=&quot;GtkLabel&quot; id=&quot;label15&quot;&gt;
++	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	  &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Choose new string format :&lt;/property&gt;
++	  &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
++	  &lt;property name=&quot;wrap&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;selectable&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;xalign&quot;&gt;0.5&lt;/property&gt;
++	  &lt;property name=&quot;yalign&quot;&gt;0.5&lt;/property&gt;
++	  &lt;property name=&quot;xpad&quot;&gt;0&lt;/property&gt;
++	  &lt;property name=&quot;ypad&quot;&gt;0&lt;/property&gt;
++	  &lt;property name=&quot;ellipsize&quot;&gt;PANGO_ELLIPSIZE_NONE&lt;/property&gt;
++	  &lt;property name=&quot;width_chars&quot;&gt;-1&lt;/property&gt;
++	  &lt;property name=&quot;single_line_mode&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
++	&lt;/widget&gt;
++	&lt;packing&gt;
++	  &lt;property name=&quot;padding&quot;&gt;6&lt;/property&gt;
++	  &lt;property name=&quot;expand&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;fill&quot;&gt;False&lt;/property&gt;
++	&lt;/packing&gt;
++      &lt;/child&gt;
++
++      &lt;child&gt;
++	&lt;widget class=&quot;GtkTable&quot; id=&quot;table4&quot;&gt;
++	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	  &lt;property name=&quot;n_rows&quot;&gt;3&lt;/property&gt;
++	  &lt;property name=&quot;n_columns&quot;&gt;2&lt;/property&gt;
++	  &lt;property name=&quot;homogeneous&quot;&gt;False&lt;/property&gt;
++	  &lt;property name=&quot;row_spacing&quot;&gt;6&lt;/property&gt;
++	  &lt;property name=&quot;column_spacing&quot;&gt;6&lt;/property&gt;
++
++	  &lt;child&gt;
++	    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label16&quot;&gt;
++	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Format:&lt;/property&gt;
++	      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
++	      &lt;property name=&quot;wrap&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;selectable&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;xalign&quot;&gt;0.5&lt;/property&gt;
++	      &lt;property name=&quot;yalign&quot;&gt;0.5&lt;/property&gt;
++	      &lt;property name=&quot;xpad&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;ypad&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;ellipsize&quot;&gt;PANGO_ELLIPSIZE_NONE&lt;/property&gt;
++	      &lt;property name=&quot;width_chars&quot;&gt;-1&lt;/property&gt;
++	      &lt;property name=&quot;single_line_mode&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
++	    &lt;/widget&gt;
++	    &lt;packing&gt;
++	      &lt;property name=&quot;left_attach&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;right_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;top_attach&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;bottom_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
++	      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
++	    &lt;/packing&gt;
++	  &lt;/child&gt;
++
++	  &lt;child&gt;
++	    &lt;widget class=&quot;GtkComboBoxEntry&quot; id=&quot;format&quot;&gt;
++	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;items&quot; translatable=&quot;yes&quot;&gt;C
++UnixLine
++WindowsLine
++MacLine
++AutoLine&lt;/property&gt;
++	      &lt;property name=&quot;add_tearoffs&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;has_frame&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;focus_on_click&quot;&gt;True&lt;/property&gt;
++	    &lt;/widget&gt;
++	    &lt;packing&gt;
++	      &lt;property name=&quot;left_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;right_attach&quot;&gt;2&lt;/property&gt;
++	      &lt;property name=&quot;top_attach&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;bottom_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
++	      &lt;property name=&quot;y_options&quot;&gt;fill&lt;/property&gt;
++	    &lt;/packing&gt;
++	  &lt;/child&gt;
++
++	  &lt;child&gt;
++	    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label19&quot;&gt;
++	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Id:&lt;/property&gt;
++	      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
++	      &lt;property name=&quot;wrap&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;selectable&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;xalign&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;yalign&quot;&gt;0.5&lt;/property&gt;
++	      &lt;property name=&quot;xpad&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;ypad&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;ellipsize&quot;&gt;PANGO_ELLIPSIZE_NONE&lt;/property&gt;
++	      &lt;property name=&quot;width_chars&quot;&gt;-1&lt;/property&gt;
++	      &lt;property name=&quot;single_line_mode&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
++	    &lt;/widget&gt;
++	    &lt;packing&gt;
++	      &lt;property name=&quot;left_attach&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;right_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;top_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;bottom_attach&quot;&gt;2&lt;/property&gt;
++	      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
++	      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
++	    &lt;/packing&gt;
++	  &lt;/child&gt;
++
++	  &lt;child&gt;
++	    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label20&quot;&gt;
++	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Desc.:&lt;/property&gt;
++	      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
++	      &lt;property name=&quot;wrap&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;selectable&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;xalign&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;yalign&quot;&gt;0.5&lt;/property&gt;
++	      &lt;property name=&quot;xpad&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;ypad&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;ellipsize&quot;&gt;PANGO_ELLIPSIZE_NONE&lt;/property&gt;
++	      &lt;property name=&quot;width_chars&quot;&gt;-1&lt;/property&gt;
++	      &lt;property name=&quot;single_line_mode&quot;&gt;False&lt;/property&gt;
++	      &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
++	    &lt;/widget&gt;
++	    &lt;packing&gt;
++	      &lt;property name=&quot;left_attach&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;right_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;top_attach&quot;&gt;2&lt;/property&gt;
++	      &lt;property name=&quot;bottom_attach&quot;&gt;3&lt;/property&gt;
++	      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
++	      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
++	    &lt;/packing&gt;
++	  &lt;/child&gt;
++
++	  &lt;child&gt;
++	    &lt;widget class=&quot;GtkEntry&quot; id=&quot;description&quot;&gt;
++	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;editable&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;visibility&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;max_length&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;text&quot; translatable=&quot;yes&quot;&gt;&lt;/property&gt;
++	      &lt;property name=&quot;has_frame&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;invisible_char&quot;&gt;*&lt;/property&gt;
++	      &lt;property name=&quot;activates_default&quot;&gt;False&lt;/property&gt;
++	    &lt;/widget&gt;
++	    &lt;packing&gt;
++	      &lt;property name=&quot;left_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;right_attach&quot;&gt;2&lt;/property&gt;
++	      &lt;property name=&quot;top_attach&quot;&gt;2&lt;/property&gt;
++	      &lt;property name=&quot;bottom_attach&quot;&gt;3&lt;/property&gt;
++	      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
++	    &lt;/packing&gt;
++	  &lt;/child&gt;
++
++	  &lt;child&gt;
++	    &lt;widget class=&quot;GtkEntry&quot; id=&quot;id&quot;&gt;
++	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;editable&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;visibility&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;max_length&quot;&gt;0&lt;/property&gt;
++	      &lt;property name=&quot;text&quot; translatable=&quot;yes&quot;&gt;&lt;/property&gt;
++	      &lt;property name=&quot;has_frame&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;invisible_char&quot;&gt;*&lt;/property&gt;
++	      &lt;property name=&quot;activates_default&quot;&gt;False&lt;/property&gt;
++	    &lt;/widget&gt;
++	    &lt;packing&gt;
++	      &lt;property name=&quot;left_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;right_attach&quot;&gt;2&lt;/property&gt;
++	      &lt;property name=&quot;top_attach&quot;&gt;1&lt;/property&gt;
++	      &lt;property name=&quot;bottom_attach&quot;&gt;2&lt;/property&gt;
++	      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
++	    &lt;/packing&gt;
++	  &lt;/child&gt;
++	&lt;/widget&gt;
++	&lt;packing&gt;
++	  &lt;property name=&quot;padding&quot;&gt;6&lt;/property&gt;
++	  &lt;property name=&quot;expand&quot;&gt;True&lt;/property&gt;
++	  &lt;property name=&quot;fill&quot;&gt;True&lt;/property&gt;
++	&lt;/packing&gt;
++      &lt;/child&gt;
++    &lt;/widget&gt;
++  &lt;/child&gt;
++&lt;/widget&gt;
++
+ &lt;/glade-interface&gt;
+
+Modified: haypo/hachoir/hachoir_class.py
+===================================================================
+--- haypo/hachoir/hachoir_class.py	2005-11-05 03:52:03 UTC (rev 250)
++++ haypo/hachoir/hachoir_class.py	2005-11-05 04:51:54 UTC (rev 251)
+@@ -1,7 +1,7 @@
+ from stream import FileStream
+ from plugin import getPlugin
+ from chunk import FilterChunk
+-from default import DefaultFilter, displayDefault
++from default import DefaultFilter
+ from user_filter import UserFilterDescriptor, loadUserFilter
+ from error import error
+ from tools import getBacktrace
+@@ -75,7 +75,8 @@
+ 
+     def load(self, filename):
+         try:
+-            stream = FileStream(filename)
++            file = open(filename, 'r')
++            stream = FileStream(file, filename)
+         except IOError, err:
+             error(&quot;Can't load file %s:\n%s&quot; % (filename, err))
+             return
+@@ -83,7 +84,7 @@
+         # Look for a plugin
+         plugin = getPlugin(filename)
+         if plugin == None:
+-            regex, plugin_name, split_func, display_func = None, &quot;default&quot;, DefaultFilter, displayDefault 
++            regex, plugin_name, split_func, display_func = None, &quot;default&quot;, DefaultFilter, None
+         else:
+             regex, plugin_name, split_func, display_func = plugin
+             
+
+Modified: haypo/hachoir/plugins/gzip.py
+===================================================================
+--- haypo/hachoir/plugins/gzip.py	2005-11-05 03:52:03 UTC (rev 250)
++++ haypo/hachoir/plugins/gzip.py	2005-11-05 04:51:54 UTC (rev 251)
+@@ -8,10 +8,35 @@
+ import datetime
+ from filter import Filter
+ from plugin import registerPlugin
++from gunzip_stream import GunzipStream
++from plugins.tar import TarFile
++   
++class GunzipFilter(Filter):
++    def __init__(self, stream, parent, start, size, filter_class):
++        # Read data
++        self._parent_stream = stream
++        self._parent_stream.seek(0)
++        data = stream.getN(self._parent_stream.getSize())
++        
++        # Create a new stream
++        stream = GunzipStream(data)
++        self._compressed_size = size 
++        self._decompressed_size = stream.getSize()
+ 
++        # Create filter
++        self._parent_stream.seek(start)
++        Filter.__init__(self, &quot;deflate&quot;, &quot;Deflate&quot;, stream, parent)
++        self._addr = self._parent_stream.tell()
++
++#        self.read(&quot;raw&quot;, &quot;!{@end@}s&quot;, &quot;&quot;)
++        self.readChild(&quot;tar&quot;, filter_class)
++
++    def getSize(self):
++        return self._compressed_size
++
+ class GzipFile(Filter):
+-    def __init__(self, stream):
+-        Filter.__init__(self, &quot;gzip_file&quot;, &quot;GZIP archive file&quot;, stream, None)
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;gzip_file&quot;, &quot;GZIP archive file&quot;, stream, parent)
+         self.read(&quot;id&quot;, &quot;!2B&quot;, &quot;Identifier (31,139)&quot;)
+         assert self.id == (31, 139)
+         self.read(&quot;comp_method&quot;, &quot;!B&quot;, &quot;Compression method&quot;, post=self.getCompressionMethod)
+@@ -30,8 +55,12 @@
+         if self.flags &amp; 2 == 2:
+             self.readString(&quot;crc16&quot;, &quot;!H&quot;, &quot;CRC16&quot;)
+ 
++
++
+         size = stream.getSize() - stream.tell() - 8
+-        self.read(&quot;data&quot;, &quot;!%us&quot; % size, &quot;Compressed data&quot;, truncate=True)
++#        self.read(&quot;data&quot;, &quot;!%us&quot; % size, &quot;Compressed data&quot;, truncate=True)
++        self.readChild(&quot;data&quot;, GunzipFilter, stream.tell(), size, TarFile) 
++        
+         self.read(&quot;crc32&quot;, &quot;&lt;L&quot;, &quot;CRC32&quot;)
+         self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Uncompressed size&quot;)
+ 
+
+Modified: haypo/hachoir/plugins/pdf.py
+===================================================================
+--- haypo/hachoir/plugins/pdf.py	2005-11-05 03:52:03 UTC (rev 250)
++++ haypo/hachoir/plugins/pdf.py	2005-11-05 04:51:54 UTC (rev 251)
+@@ -3,6 +3,7 @@
+ import re
+ from stream import StreamError
+ from tools import convertDataToPrintableString, getBacktrace
++from deflate import DeflateFilter
+ 
+ def isEnd(stream, array, last):
+     return stream.eof()
+@@ -53,11 +54,17 @@
+                 self.processLine(chunk.value)
+         chunk = self.readString(&quot;endobj&quot;, &quot;AutoLine&quot;, &quot;Object end&quot;, post=stripLine)
+         if chunk.value == &quot;stream&quot;:
++            start = self.getStream().tell()
+             chunk.id = &quot;xref&quot;
+-            lg = self._stream.searchLength(&quot;endstream&quot;, False)
+-            if lg == -1:
++            size = self._stream.searchLength(&quot;endstream&quot;, False)
++            if size == -1:
+                 raise Exception(&quot;Delimiter \&quot;%s\&quot; not found for %s (%s)!&quot; % (delimiter, id, description))
+-            self.read(&quot;data[]&quot;, &quot;!%us&quot; % lg, &quot;Data&quot;)
++
++            old = self.getStream().tell()
++            self.readChild(&quot;deflate&quot;, DeflateFilter, start, size)
++            print &quot;%s+%s/%s&quot; % (start, size, self.getStream().tell())
++            assert self.getStream().tell() == (start+size)
++            
+             self.readString(&quot;data_end[]&quot;, &quot;AutoLine&quot;, &quot;Data end&quot;)
+             self.readString(&quot;endobj&quot;, &quot;AutoLine&quot;, &quot;Object end&quot;, post=stripLine)
+         self.readString(&quot;emptyline&quot;, &quot;AutoLine&quot;, &quot;&quot;)
+
+Modified: haypo/hachoir/plugins/tar.py
+===================================================================
+--- haypo/hachoir/plugins/tar.py	2005-11-05 03:52:03 UTC (rev 250)
++++ haypo/hachoir/plugins/tar.py	2005-11-05 04:51:54 UTC (rev 251)
+@@ -10,6 +10,7 @@
+ from filter import Filter
+ from plugin import registerPlugin
+ from tools import convertDataToPrintableString
++from default import EmptyFilter
+ 
+ def displayModeItem(mode):
+     if mode &amp; 4 == 4: r=&quot;r&quot;
+@@ -93,7 +94,9 @@
+         self.read(&quot;devminor&quot;, &quot;!8s&quot;, &quot;Dev minor&quot;)
+         self.read(&quot;header_padding&quot;, &quot;!167s&quot;, &quot;Padding (zero)&quot;)
+         if self.type in (&quot;\0&quot;, &quot;0&quot;):
+-            self.read(&quot;filedata&quot;, &quot;!{size}s&quot;, &quot;File data&quot;, truncate=True)
++            chunk = self.readChild(&quot;filedata&quot;, EmptyFilter)
++            filter = chunk.getFilter()
++            filter.read(&quot;filedata&quot;, &quot;!%us&quot; % self.size, &quot;File data&quot;, truncate=True)
+         if stream.tell() % 512 != 0:
+             padding = 512 - stream.tell() % 512
+             self.read(&quot;padding&quot;, &quot;!%ss&quot; % padding, &quot;Padding (512 align)&quot;, truncate=True)
+@@ -133,8 +136,8 @@
+         chunk.description = self.description = text
+ 
+ class TarFile(Filter):
+-    def __init__(self, stream):
+-        Filter.__init__(self, &quot;tar_file&quot;, &quot;TAR archive file&quot;, stream, None)
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;tar_file&quot;, &quot;TAR archive file&quot;, stream, parent)
+ 
+         self.readArray(&quot;files&quot;, TarFileEntry, &quot;Tar Files&quot;, self.checkEndOfChunks)
+         
+
+Modified: haypo/hachoir/stream.py
+===================================================================
+--- haypo/hachoir/stream.py	2005-11-05 03:52:03 UTC (rev 250)
++++ haypo/hachoir/stream.py	2005-11-05 04:51:54 UTC (rev 251)
+@@ -70,13 +70,13 @@
+         return self.__end
+     
+ class FileStream(Stream):
+-    def __init__(self, filename):
++    def __init__(self, file, filename=None):
+         &quot;&quot;&quot;
+         Endian: See setEndian function. 
+         &quot;&quot;&quot;
+ 
+         Stream.__init__(self)
+-        self.__file = open(filename, 'r')
++        self.__file = file 
+         self.filename = filename
+         self.__file.seek(0,2) # Seek to end
+         self.__size = self.__file.tell()
+
+Added: haypo/hachoir/ui_new_string.py
+===================================================================
+--- haypo/hachoir/ui_new_string.py	2005-11-05 03:52:03 UTC (rev 250)
++++ haypo/hachoir/ui_new_string.py	2005-11-05 04:51:54 UTC (rev 251)
+@@ -0,0 +1,28 @@
++import pygtk
++pygtk.require ('2.0')
++import gtk
++import gtk.glade
++
++class NewStringDialog:
++    def __init__(self, filename):
++        xml = gtk.glade.XML(filename, &quot;new_string&quot;)
++        self.window = xml.get_widget('new_string')
++        self.window.hide()
++        xml.signal_autoconnect(self)
++        self.format_widget = xml.get_widget(&quot;format&quot;)
++        self.id_widget = xml.get_widget(&quot;identifier&quot;)
++        self.desc_widget = xml.get_widget(&quot;description&quot;)
++
++    def getId(self):
++        return self.id_widget.get_text()
++
++    def getDescription(self):
++        return self.desc_widget.get_text()
++
++    def getFormat(self):
++        return self.format_widget.child.get_text()
++
++    def run(self):
++        r = self.window.run()
++        self.window.hide()
++        return r
+
+Modified: haypo/hachoir/ui_popup.py
+===================================================================
+--- haypo/hachoir/ui_popup.py	2005-11-05 03:52:03 UTC (rev 250)
++++ haypo/hachoir/ui_popup.py	2005-11-05 04:51:54 UTC (rev 251)
+@@ -4,6 +4,7 @@
+ import gtk.glade
+ from chunk import FormatChunk, FilterChunk, StringChunk
+ from ui_new_chunk import NewChunkDialog
++from ui_new_string import NewStringDialog
+ from format import splitFormat # TODO: remove this line
+ from error import error
+ 
+@@ -15,6 +16,7 @@
+         xml.signal_autoconnect(self)
+         self.chunk = None
+         self.new_chunk_dlg = NewChunkDialog(self.ui.glade_xml)
++        self.new_string_dlg = NewStringDialog(self.ui.glade_xml)
+ 
+         # Popup items
+         self.new_chunk = xml.get_widget(&quot;new_chunk&quot;)
+@@ -82,9 +84,10 @@
+         self.chunk.getParent().addNewFilter(self.chunk, id, size, desc)
+ 
+     def onAddString(self, event):
+-        # TODO: Ask string type, id and description
+-        str_type = &quot;MacLine&quot;
+-#        str_type = &quot;C&quot;
++        dlg = self.new_string_dlg
++        if dlg.run() == gtk.RESPONSE_CANCEL: return
++        str_type = dlg.getFormat()
++
+         assert issubclass(self.chunk.__class__, FormatChunk)
+         self.chunk.getParent().addString(str_type, self.chunk)
+         
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000157.html">[Happyboom-svn] r250 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000159.html">[Happyboom-svn] r252 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#158">[ date ]</a>
+              <a href="thread.html#158">[ thread ]</a>
+              <a href="subject.html#158">[ subject ]</a>
+              <a href="author.html#158">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

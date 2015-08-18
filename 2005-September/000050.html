@@ -1,0 +1,267 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r143 - happyboom/trunk/common
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r143%20-%20happyboom/trunk/common&In-Reply-To=%3C200509140252.j8E2qsFm017225%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000049.html">
+   <LINK REL="Next"  HREF="000051.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r143 - happyboom/trunk/common</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r143%20-%20happyboom/trunk/common&In-Reply-To=%3C200509140252.j8E2qsFm017225%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r143 - happyboom/trunk/common">haypo at berlios.de
+       </A><BR>
+    <I>Wed Sep 14 04:52:54 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000049.html">[Happyboom-svn] r142 - in boomboom: . server server/agents
+</A></li>
+        <LI>Next message: <A HREF="000051.html">[Happyboom-svn] r144 - in happyboom/trunk: . server
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#50">[ date ]</a>
+              <a href="thread.html#50">[ thread ]</a>
+              <a href="subject.html#50">[ subject ]</a>
+              <a href="author.html#50">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-14 04:52:45 +0200 (Wed, 14 Sep 2005)
+New Revision: 143
+
+Added:
+   happyboom/trunk/common/protocol.py
+Modified:
+   happyboom/trunk/common/packer.py
+Log:
+Packer is converted to functions and support integer type. Add protocol classes.
+
+
+Modified: happyboom/trunk/common/packer.py
+===================================================================
+--- happyboom/trunk/common/packer.py	2005-09-14 00:33:55 UTC (rev 142)
++++ happyboom/trunk/common/packer.py	2005-09-14 02:52:45 UTC (rev 143)
+@@ -1,38 +1,48 @@
+-class HappyBoomPacker:
+-    &quot;&quot;&quot;
+-    Pack arguments to binary string. Types :
+-    - &quot;bin&quot;: Binary string
+-    - &quot;utf8&quot;: Unicode string which will be encoded into UTF-8
+-    &quot;&quot;&quot;
++import types # maybe only used for assertions
++import struct
+ 
+-    def __init__(self):
+-        pass
++class PackerException(Exception):
++    def __init__(self, msg):
++        Exception.__init__(self, msg)
+ 
+-    def packUtf8(self, data):
+-        data = 10
+-        assert type(data)==types.unicode, &quot;packUtf8 argument have to be Unicode&quot;
+-        return data.encode(&quot;utf-8&quot;)
++def packInt(data):
++    assert type(data)==type(1), &quot;packInt argument have to be an integer&quot;
++    # Overflow is checked by struct.pack
++    #assert data &lt;= 2147483647, &quot;packInt argument is too big (%s)&quot; % data
++    #assert -2147483648 &lt;= data, &quot;packInt argument is too small (%s)&quot; % data
++    return struct.pack(&quot;!i&quot;, data)
++    
++def packUtf8(data):
++    assert type(data)==types.unicode, &quot;packUtf8 argument have to be Unicode&quot;
++    return packBin(data.encode(&quot;utf-8&quot;))
+ 
+-    def packBin(self, data):
+-        return data
++def packBin(data):
++    return struct.pack(&quot;!Hs&quot;, len(data), data)
+ 
+-    def pack(self, func, event, args):
+-        assert (len(args) % 2) == 0, &quot;Arguments length have to be even&quot;
+-        out = &quot;%s:%s&quot; % (func, event)
++def pack(func, event, args):
++    &quot;&quot;&quot;
++    Pack arguments to binary string. Supported types :
++    - &quot;int&quot;: L{packInt}
++    - &quot;bin&quot;: L{packBin}
++    - &quot;utf8&quot;: L{packUtf8}
++    &quot;&quot;&quot;
+ 
+-        #TODO: Fix this :-)
+-        for i in range(1,len(args), 2):
+-            type = args[i]
+-            data = args[i+1]
+-            
+-            # TODO: Use dict instead of long if list
+-            if type==&quot;bin&quot;:
+-                data = self.packBin(data)
+-            elif type==&quot;utf8&quot;:
+-                data = self.packUtf8(data)
+-            else:
+-                raise HappyBoomPackerException(&quot;Wrong argument type: %s&quot; % type)
+-            out = out + data
+-        return out        
++    assert (len(args) % 2) == 0, &quot;Arguments length have to be even&quot;
++    out = &quot;%s:%s&quot; % (func, event)
+ 
+-
++    #TODO: Fix this :-)
++    for i in range(0,len(args)-1, 2):
++        type = args[i]
++        data = args[i+1]
++        
++        # TODO: Use dict instead of long if list
++        if type==&quot;int&quot;:
++            data = packInt(data)
++        elif type==&quot;bin&quot;:
++            data = packBin(data)
++        elif type==&quot;utf8&quot;:
++            data = packUtf8(data)
++        else:
++            raise PackerException(&quot;Wrong argument type: %s&quot; % type)
++        out = out + data
++    return out        
+
+Added: happyboom/trunk/common/protocol.py
+===================================================================
+--- happyboom/trunk/common/protocol.py	2005-09-14 00:33:55 UTC (rev 142)
++++ happyboom/trunk/common/protocol.py	2005-09-14 02:52:45 UTC (rev 143)
+@@ -0,0 +1,102 @@
++import xml.dom.minidom
++
++class ProtocolEventParam:
++    def __init__(self, name, type):
++        self.name = name
++        self.type = type
++
++    def __str__(self):
++        return self.name
++       
++class ProtocolEvent:
++    def __init__(self, name, id):
++        self.name = name
++        self.id = id
++        self.__params_dict = {}
++        self.__params_array = [] 
++        
++    def addParam(self, name, id):
++        param = ProtocolEventParam(name, id)
++        self.__params_dict[name] = param
++        self.__params_array.append(param)
++        return param
++        
++    def __str__(self):
++        out = &quot;%s(&quot; % (self.name)
++        comma = False
++        for param in self.__params_array:
++            if comma:
++                out = out + &quot;,&quot;
++            else:
++                comma = True
++            out = out + str(param)
++        out = out + &quot;)&quot;
++        return out
++
++class ProtocolFunc:
++    def __init__(self, name, id):
++        self.name = name
++        self.id = id
++        self.__events = {}
++
++    def addEvent(self, name, id):
++        event = ProtocolEvent(name, id)
++        self.__events[name] = event
++        return event
++
++    def __str__(self):
++        first = True
++        out = &quot;&quot;
++        for event_name, event in self.__events.items():
++            if first:
++                first = False
++            else:
++                out = out + &quot;\n&quot;
++            out = out + &quot;%s.%s&quot; % (self.name, event)
++        return out
++
++class Protocol:
++    def __init__(self, version):
++        self.__funcs = {}
++        self.version = version
++
++    def addFunc(self, name, id):
++        func = ProtocolFunc(name, id)
++        self.__funcs[name] = func
++        return func
++
++    def __str__(self):
++        out = &quot;&quot;
++        first = True
++        for func_name, func in self.__funcs.items():
++            if first:
++                first = False
++            else:
++                out = out + &quot;\n&quot;
++            out = out + &quot;[ %s ]\n&quot; % func.name
++            out = out + str(func)
++        return out
++ 
++def loadProtocol(filename):
++    doc = xml.dom.minidom.parse(filename)
++    protocol = doc.documentElement
++    p = Protocol(protocol.getAttribute(&quot;version&quot;))
++    funcs = protocol.getElementsByTagName(&quot;func&quot;)
++    for func in funcs:
++        f = p.addFunc( \
++            func.getAttribute(&quot;name&quot;),
++            func.getAttribute(&quot;id&quot;))
++        events = func.getElementsByTagName(&quot;event&quot;)
++        for event in events:
++            e = f.addEvent( \
++                event.getAttribute(&quot;name&quot;),
++                event.getAttribute(&quot;id&quot;))
++            params = func.getElementsByTagName(&quot;param&quot;)
++            for param in params:
++                e.addParam( \
++                    param.getAttribute(&quot;name&quot;),
++                    param.getAttribute(&quot;id&quot;))
++    print &quot;-- Protocol --&quot;                
++    print p
++    print &quot;-- Protocol end --&quot;                
++    return p
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000049.html">[Happyboom-svn] r142 - in boomboom: . server server/agents
+</A></li>
+	<LI>Next message: <A HREF="000051.html">[Happyboom-svn] r144 - in happyboom/trunk: . server
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#50">[ date ]</a>
+              <a href="thread.html#50">[ thread ]</a>
+              <a href="subject.html#50">[ subject ]</a>
+              <a href="author.html#50">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

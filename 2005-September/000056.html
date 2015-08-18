@@ -1,0 +1,253 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r149 - poilu/trunk
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r149%20-%20poilu/trunk&In-Reply-To=%3C200509140413.j8E4D5iD004920%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000055.html">
+   <LINK REL="Next"  HREF="000057.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r149 - poilu/trunk</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r149%20-%20poilu/trunk&In-Reply-To=%3C200509140413.j8E4D5iD004920%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r149 - poilu/trunk">haypo at berlios.de
+       </A><BR>
+    <I>Wed Sep 14 06:13:05 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000055.html">[Happyboom-svn] r148 - happyboom/trunk/common
+</A></li>
+        <LI>Next message: <A HREF="000057.html">[Happyboom-svn] r150 - in happyboom/trunk: common server
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#56">[ date ]</a>
+              <a href="thread.html#56">[ thread ]</a>
+              <a href="subject.html#56">[ subject ]</a>
+              <a href="author.html#56">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-14 06:13:03 +0200 (Wed, 14 Sep 2005)
+New Revision: 149
+
+Modified:
+   poilu/trunk/dico_poilu.py
+   poilu/trunk/insulte.txt
+   poilu/trunk/motcle.py
+   poilu/trunk/motcle_regex.txt
+   poilu/trunk/pypoil.py
+Log:
+On peut activer ou desactiver les modes dico et motcle. Corrige deux-trois bugs.
+
+
+Modified: poilu/trunk/dico_poilu.py
+===================================================================
+--- poilu/trunk/dico_poilu.py	2005-09-14 04:12:39 UTC (rev 148)
++++ poilu/trunk/dico_poilu.py	2005-09-14 04:13:03 UTC (rev 149)
+@@ -87,7 +87,7 @@
+         f.close()
+ 
+     def terminaison(self, str):
+-        str = unicode.rstrip(str, self.muet)
++        str = unicode.rstrip(str.lower(), self.muet)
+         for item in self.regex:
+             fin = item[0]
+             expr = item[1]
+
+Modified: poilu/trunk/insulte.txt
+===================================================================
+--- poilu/trunk/insulte.txt	2005-09-14 04:12:39 UTC (rev 148)
++++ poilu/trunk/insulte.txt	2005-09-14 04:13:03 UTC (rev 149)
+@@ -1 +1,9 @@
+ mdr:Ta gueule grosse vache !
++asp:&quot;dot NET&quot; &#195;&#167;apucpalibre
++oracle:Oracle &#195;&#167;apucpalibre, PostgreSQL c'est libre au moins!
++java:Java &#195;&#167;apucpalibre, utilisez Python !
++mirc:mIrc &#195;&#167;apucpalibre, utilisez Xchat, bitchx, irsii ou autre !
++apple:Apple ---&gt; Mangez des pommes !
++clanlib:ClanLib c'est affreux, n'utilisez pas cette biblioth&#195;&#168;que !
++troll:Troll detected !!! :)
++windows:Windows &#195;&#167;apucpalibre, utilisez Linux ou *BSD !
+
+Modified: poilu/trunk/motcle.py
+===================================================================
+--- poilu/trunk/motcle.py	2005-09-14 04:12:39 UTC (rev 148)
++++ poilu/trunk/motcle.py	2005-09-14 04:13:03 UTC (rev 149)
+@@ -3,6 +3,7 @@
+ 
+ import re
+ import random
++import codecs
+ 
+ def unicode2term(str): 
+ 	return str.encode(&quot;latin-1&quot;)
+@@ -10,7 +11,7 @@
+ class motcle_poilu:
+     def __init__(self):
+ 		self.insulte = dict()
+-		self.regex = []
++		self.regex = dict() 
+ 		self.charge_regex()
+ 		self.charge()
+ 
+@@ -50,25 +51,27 @@
+         self.insulte = {}
+         for ligne in f:
+ 			ligne = unicode(ligne.strip(), &quot;utf8&quot;)
+-			regs = re.compile(&quot;^(.+):(.+)$&quot;).search(ligne)
++			regs = re.compile(&quot;^([^:]+):(.+)$&quot;).search(ligne)
+ 			if regs != None: self.ajoute(regs.group(1), regs.group(2))
+         f.close()
+ 
+     def charge_regex(self):
+-        self.regex = []
+-        f = file(&quot;motcle_regex.txt&quot;,&quot;r&quot;)
++        f = codecs.open(&quot;motcle_regex.txt&quot;,&quot;r&quot;,&quot;utf8&quot;)
++        self.regex = dict()
+         for ligne in f:
+-            ligne = unicode(ligne.strip(), &quot;utf8&quot;)
+-            regs = re.compile(&quot;^(.+):(.+)$&quot;).search(ligne)
++            ligne = ligne.strip()
++            regs = re.compile(&quot;^([^:]+):(.+)$&quot;).search(ligne)
+             if regs != None: 
+                 regex = re.compile(regs.group(2))
+-                self.regex.append( (regs.group(1), regex,) )
++                self.regex[regs.group(1)] = regex
++            else:
++                print &quot;La ligne \&quot;%s\&quot; de motcle_regex.txt n'a pas &#195;&#169;t&#195;&#169; comprise !&quot; % ligne
+         f.close()
+ 
+     def calcule_cle(self, str):
+-        for item in self.regex:
+-            r = item[1].search(str)
+-            if r != None: return item[0] 
++        for key,regex in self.regex.items():
++            r = regex.search(str)
++            if r != None: return key 
+         return None
+ 
+     def reponse(self, str):
+
+Modified: poilu/trunk/motcle_regex.txt
+===================================================================
+--- poilu/trunk/motcle_regex.txt	2005-09-14 04:12:39 UTC (rev 148)
++++ poilu/trunk/motcle_regex.txt	2005-09-14 04:13:03 UTC (rev 149)
+@@ -1 +1,9 @@
+ mdr:([Mm]dr|lo+l|ptdr+)
++asp:(ASP|\.(NET|Net))
++oracle:[Oo]racle
++java:[Jj]ava
++mirc:(mI|mi)rc
++apple:[Aa]pple
++clanlib:(ClanLib|clanlib)
++troll:([Mm]andrake|[Gg]entoo|utf-8)
++windows:([Ww]indows)
+
+Modified: poilu/trunk/pypoil.py
+===================================================================
+--- poilu/trunk/pypoil.py	2005-09-14 04:12:39 UTC (rev 148)
++++ poilu/trunk/pypoil.py	2005-09-14 04:13:03 UTC (rev 149)
+@@ -34,6 +34,8 @@
+         self.motcle = motcle_poilu()
+         self.taux_reponse = 100
+         self.welcome = u&quot;Salut&quot;
++        self.reponse_motcle = True
++        self.reponse_dico = True
+ 
+     def on_nicknameinuse(self, c, e):
+         c.nick(c.get_nickname() + &quot;_&quot;)
+@@ -59,7 +61,6 @@
+         self.echou(u&quot;- recharge_muet            : recharge muet.txt&quot;)
+         self.echou(u&quot;- recharge_terminaison     : recharge terminaison.txt&quot;)
+         self.echou(u&quot;- recharge_dico            : recharge dico.txt&quot;)
+-        self.echou(u&quot;- recharge_insult          : recharge insulte.txt&quot;)
+         self.echou(u&quot;- recharge_motcle          : recharge motcle_regex.txt&quot;)
+         self.echou(u&quot;- join #chan / leave #chan : joint/quitte le canal #&lt;chan&gt;&quot;)
+         self.echou(u&quot;- nick xxx                 : change de surnom&quot;)
+@@ -67,8 +68,9 @@
+         self.echou(u&quot;- utf-8 / iso              : parle en UTF-8 / iso-8859-1&quot;)
+         self.echou(u&quot;- muet                     : liste des caract&#232;res muets&quot;)
+         self.echou(u&quot;- taux_reponse xxx         : fixe le taux de r&#233;ponse (en pourcent)&quot;)
++        self.echou(u&quot;- reponse_dico             : active/d&#233;sactive la r&#233;ponse du dico&quot;)
++        self.echou(u&quot;- reponse_motcle           : active/d&#233;sactive la r&#233;ponse des mot-cl&#233;s&quot;)
+ 
+-
+     def on_privmsg(self, c, e):
+         cmd = self.get_command(e)
+         self.do_priv_command(cmd) 
+@@ -90,9 +92,9 @@
+             return
+             
+         # Sinon, cherche une rime
+-        cmd = cmd.lower()
+-        reponse = self.dico.reponse(cmd)
+-        if reponse==None: reponse = self.motcle.reponse(cmd)
++        reponse = None
++        if reponse==None and self.reponse_dico: reponse = self.dico.reponse(cmd)
++        if reponse==None and self.reponse_motcle: reponse = self.motcle.reponse(cmd)
+         if reponse==None: return
+         
+         if self.taux_reponse &lt;= random.uniform(0,101): return
+@@ -201,6 +203,18 @@
+                     %(regs.group(1), &quot;, &quot;.join(termes)))
+             return True
+             
++        regs = re.compile(&quot;^reponse_dico$&quot;, re.IGNORECASE).search(cmd)
++        if regs != None:
++            self.reponse_dico = not self.reponse_dico
++            self.echou(u&quot;R&#233;ponse par dico : %s&quot;  % self.reponse_dico)
++            return True
++            
++        regs = re.compile(&quot;^reponse_motcle$&quot;, re.IGNORECASE).search(cmd)
++        if regs != None:
++            self.reponse_motcle = not self.reponse_motcle
++            self.echou(u&quot;R&#233;ponse par mot-cl&#233; : %s&quot;  % self.reponse_motcle)
++            return True
++            
+         regs = re.compile(&quot;^taux_reponse (.*)$&quot;, re.IGNORECASE).search(cmd)
+         if regs != None:
+             try:
+@@ -237,9 +251,6 @@
+         if (cmd == &quot;recharge_motcle&quot;):
+             self.echo(&quot;(recharge motcle_regex.txt)&quot;)
+             self.motcle.charge_regex()
+-            return True
+-            
+-        if (cmd == &quot;recharge_insulte&quot;):
+             self.echo(&quot;(recharge insulte.txt)&quot;)
+             self.motcle.charge()
+             return True
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000055.html">[Happyboom-svn] r148 - happyboom/trunk/common
+</A></li>
+	<LI>Next message: <A HREF="000057.html">[Happyboom-svn] r150 - in happyboom/trunk: common server
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#56">[ date ]</a>
+              <a href="thread.html#56">[ thread ]</a>
+              <a href="subject.html#56">[ subject ]</a>
+              <a href="author.html#56">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

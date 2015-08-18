@@ -1,0 +1,500 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r322 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r322%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200512130016.jBD0GQlF031831%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000227.html">
+   <LINK REL="Next"  HREF="000229.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r322 - in haypo/hachoir: . plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r322%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200512130016.jBD0GQlF031831%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r322 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec 13 01:16:26 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000227.html">[Happyboom-svn] r321 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000229.html">[Happyboom-svn] r323 - haypo/hachoir
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#228">[ date ]</a>
+              <a href="thread.html#228">[ thread ]</a>
+              <a href="subject.html#228">[ subject ]</a>
+              <a href="author.html#228">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-13 01:16:05 +0100 (Tue, 13 Dec 2005)
+New Revision: 322
+
+Added:
+   haypo/hachoir/plugins/id3.py
+   haypo/hachoir/plugins/mp3.py
+Modified:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/config.py
+   haypo/hachoir/tools.py
+Log:
+Add MP3 filter and ID3 filter. Write humanDuration function, and fix
+FormatChunk max display length.
+
+
+Modified: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-12-12 17:44:22 UTC (rev 321)
++++ haypo/hachoir/chunk.py	2005-12-13 00:16:05 UTC (rev 322)
+@@ -393,7 +393,7 @@
+     def getDisplayData(self):
+         if self.display != None:
+             return self.display
+-        data = self.getValue(20)
++        data = self.getValue(config.max_string_length)
+         if type(data)==types.StringType:
+             return convertDataToPrintableString(data)
+         else:
+
+Modified: haypo/hachoir/config.py
+===================================================================
+--- haypo/hachoir/config.py	2005-12-12 17:44:22 UTC (rev 321)
++++ haypo/hachoir/config.py	2005-12-13 00:16:05 UTC (rev 322)
+@@ -1,3 +1,3 @@
+-max_string_length = 14
++max_string_length = 10
+ max_hexa_length = 4096 
+ max_ascii_length = 4096 
+
+Added: haypo/hachoir/plugins/id3.py
+===================================================================
+--- haypo/hachoir/plugins/id3.py	2005-12-12 17:44:22 UTC (rev 321)
++++ haypo/hachoir/plugins/id3.py	2005-12-13 00:16:05 UTC (rev 322)
+@@ -0,0 +1,119 @@
++&quot;&quot;&quot;
++AVI splitter.
++
++Creation: 12 decembre 2005
++Status: alpha
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from filter import Filter
++from tools import humanDuration
++
++class ID3_String(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;id3_string&quot;, &quot;ID3 string&quot;, stream, parent)
++        self.read(&quot;zero&quot;, &quot;B&quot;, &quot;Zero&quot;)
++        assert self[&quot;zero&quot;] == 0
++        size = stream.getSize()-1
++        self.read(&quot;content&quot;, &quot;%us&quot; % size, &quot;Content&quot;)
++
++class ID3_Private(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;id3_priv&quot;, &quot;ID3 private&quot;, stream, parent)
++        size = stream.getSize()
++        if stream.read(9, False) == &quot;PeakValue&quot;:
++            self.read(&quot;text&quot;, &quot;%us&quot; % 9, &quot;Text&quot;)
++            size = size - 9
++            self.read(&quot;content&quot;, &quot;%us&quot; % size, &quot;Content&quot;)
++        else:
++            self.read(&quot;content&quot;, &quot;%us&quot; % size, &quot;Content&quot;)
++
++class ID3_TrackLength(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;id3_tlen&quot;, &quot;ID3 track length&quot;, stream, parent)
++        self.read(&quot;zero&quot;, &quot;B&quot;, &quot;Zero&quot;)
++        assert self[&quot;zero&quot;] == 0
++        size = stream.getSize()-1
++        self.read(&quot;length&quot;, &quot;%us&quot; % size, &quot;Length in ms&quot;, post=self.computeLength)
++
++    def computeLength(self, chunk):
++        try:
++            ms = int(chunk.value)
++            return humanDuration(ms)
++        except:
++            return chunk.value
++        
++
++class ID3_Chunk(Filter):
++    name = {
++        &quot;COMM&quot;: &quot;Comment&quot;,
++        &quot;PRIV&quot;: &quot;Private&quot;,
++        &quot;TPE1&quot;: &quot;Artist&quot;,
++        &quot;TCOP&quot;: &quot;Copyright&quot;,
++        &quot;TALB&quot;: &quot;Album&quot;,
++        &quot;TENC&quot;: &quot;Encoder&quot;,
++        &quot;TYER&quot;: &quot;Year&quot;,
++        &quot;TSSE&quot;: &quot;Encoder settings&quot;,
++        &quot;TCOM&quot;: &quot;Composer&quot;,
++        &quot;TRCK&quot;: &quot;Track number&quot;,
++        &quot;PCNT&quot;: &quot;Play counter&quot;,
++        &quot;TCON&quot;: &quot;Content type&quot;,
++        &quot;TLEN&quot;: &quot;Track length&quot;,
++        &quot;TIT2&quot;: &quot;Track title&quot;
++    }
++    handler = {
++        &quot;TYER&quot;: ID3_String,
++        &quot;TALB&quot;: ID3_String,
++        &quot;TCON&quot;: ID3_String,
++        &quot;TPE1&quot;: ID3_String,
++        &quot;TCOP&quot;: ID3_String,
++        &quot;TRCK&quot;: ID3_String,
++        &quot;TIT2&quot;: ID3_String,
++        &quot;TSSE&quot;: ID3_String,
++        &quot;PRIV&quot;: ID3_Private,
++        &quot;TLEN&quot;: ID3_TrackLength
++    }
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;id3_chunk&quot;, &quot;ID3 Chunk&quot;, stream, parent)
++        tag = self.read(&quot;tag&quot;, &quot;!4s&quot;, &quot;Tag&quot;).value
++        self.read(&quot;size&quot;, &quot;&gt;L&quot;, &quot;Size&quot;)
++        self.read(&quot;flags&quot;, &quot;&gt;H&quot;, &quot;Flags&quot;)
++        size = self[&quot;size&quot;]
++        if tag in ID3_Chunk.handler:
++            end = stream.tell() + size
++            substream = stream.createLimited(size=size)
++            self.readStreamChild(&quot;content&quot;, substream, ID3_Chunk.handler[tag])
++            assert stream.tell() == end
++        else:
++            self.read(&quot;data&quot;, &quot;%us&quot; % size, &quot;Raw data&quot;)
++
++    def updateParent(self, chunk):
++        type = self[&quot;tag&quot;].strip(&quot;\0&quot;)
++        if type != &quot;&quot;:
++            type = ID3_Chunk.name.get(type, &quot;Unknow (\&quot;%s\&quot;)&quot; % type)
++            desc = &quot;ID3 Chunk: %s&quot; % type
++        else:
++            desc = &quot;(empty ID3 chunk)&quot;
++        chunk.description = desc
++        self.setDescription(desc)
++
++class ID3_Parser(Filter):
++    def __init__(self, stream, parent):
++        Filter.__init__(self, &quot;id3&quot;, &quot;ID3&quot;, stream, parent)
++        header = self.read(&quot;header&quot;, &quot;!3s&quot;, &quot;Header (ID3)&quot;).value
++        assert header == &quot;ID3&quot;
++        ver_major = self.read(&quot;ver_major&quot;, &quot;!1B&quot;, &quot;Version (major)&quot;).value
++        assert ver_major in (3,4)
++        ver_minor = self.read(&quot;ver_minor&quot;, &quot;!B&quot;, &quot;Version (minor)&quot;).value
++#        assert ver_minor == 0
++        self.read(&quot;flags&quot;, &quot;!B&quot;, &quot;Flags&quot;)
++        self.read(&quot;size&quot;, &quot;!L&quot;, &quot;Size&quot;)
++        end = stream.tell() + self[&quot;size&quot;]
++        while stream.tell() &lt; end:
++            chunk = self.readChild(&quot;chunk[]&quot;, ID3_Chunk)
++            if chunk.getFilter()[&quot;size&quot;] == 0:
++                break
++        padding = end - stream.tell()
++        if 0 &lt; padding:
++            self.read(&quot;padding&quot;, &quot;%us&quot; % padding, &quot;Padding&quot;)
++#        assert stream.tell() == end
+
+Added: haypo/hachoir/plugins/mp3.py
+===================================================================
+--- haypo/hachoir/plugins/mp3.py	2005-12-12 17:44:22 UTC (rev 321)
++++ haypo/hachoir/plugins/mp3.py	2005-12-13 00:16:05 UTC (rev 322)
+@@ -0,0 +1,244 @@
++&quot;&quot;&quot;
++AVI splitter.
++
++Creation: 12 decembre 2005
++Status: alpha
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from filter import Filter
++from plugin import registerPlugin
++from id3 import ID3_Parser
++
++class MP3_File(Filter):
++    version = {
++        0: &quot;2.5&quot;,
++        2: &quot;2&quot;,
++        3: &quot;1&quot;
++    }
++    layer = {
++        0: &quot;(reserved)&quot;,
++        1: &quot;III&quot;,
++        2: &quot;II&quot;,
++        3: &quot;I&quot;
++    }
++    bit_rate = {
++        # MPEG1
++        1: {
++            # MPEG1, layer I
++            3: {
++                1: 32,
++                2: 64,
++                3: 96,
++                4: 128,
++                5: 160,
++                6: 192,
++                7: 224,
++                8: 256,
++                9: 288,
++                10: 320,
++                11: 352,
++                12: 384,
++                13: 416,
++                14: 448
++            },
++
++            # MPEG1, layer II
++            2: {
++                1: 32,
++                2: 48,
++                3: 56,
++                4: 64,
++                5: 80,
++                6: 96,
++                7: 112,
++                8: 128,
++                9: 160,
++                10: 192,
++                11: 224,
++                12: 256,
++                13: 320,
++                14: 384
++            },
++
++            # MPEG1, layer III
++            1: {
++                1: 32,
++                2: 40,
++                3: 48,
++                4: 56,
++                5: 64,
++                6: 80,
++                7: 96,
++                8: 112,
++                9: 128,
++                10: 160,
++                11: 192,
++                12: 224,
++                13: 256,
++                14: 320
++            }
++        },
++        
++        # MPEG2 / MPEG2.5
++        2: {
++            # MPEG2 / MPEG2.5, layer I
++            3: {
++                1: 32,
++                2: 64,
++                3: 96,
++                4: 128,
++                5: 160,
++                6: 192,
++                7: 224,
++                8: 256,
++                9: 288,
++                10: 320,
++                11: 352,
++                12: 384,
++                13: 416,
++                14: 448},
++
++            # MPEG2 / MPEG2.5, layer II
++            2: {
++                1: 32,
++                2: 48,
++                3: 56,
++                4: 64,
++                5: 80,
++                6: 96,
++                7: 112,
++                8: 128,
++                9: 160,
++                10: 192,
++                11: 224,
++                12: 256,
++                13: 320,
++                14: 384},
++
++            # MPEG2 / MPEG2.5, layer III
++            1: {
++                1: 8,  #&#160;8
++                2: 16, # 16
++                3: 24, # 24
++                4: 32, # 32
++                5: 64, # 40
++                6: 80, # 48
++                7: 56, # 56
++                8: 64, # 64
++                9: 128, # 80
++                10: 160, # 96
++                11: 112, # 112
++                12: 128, # 128
++                13: 256, # 144 
++                14: 320} #&#160;160
++        }
++    }
++    sampling_rate = {
++        # MPEG1
++        3: {
++            0: 44100,
++            1: 48000,
++            2: 32000},
++        # MPEG2
++        2: {
++            0: 22050,
++            1: 24000,
++            2: 16000},
++        # MPEG2.5
++        1: {
++            0: 11025,
++            1: 12000,
++            2: 8000}
++    }
++    emphasis = {
++        0: &quot;none&quot;,
++        1: &quot;50/15 ms&quot;,
++        3: &quot;CCIT J.17&quot;
++    }
++    channel_mode = {
++        0: &quot;Stereo&quot;,
++        1: &quot;Joint stereo&quot;,
++        2: &quot;Dual channel&quot;,
++        3: &quot;Single channel&quot;
++    }
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;mp3&quot;, &quot;MP3 file&quot;, stream, parent)
++        if stream.getN(3, False)==&quot;ID3&quot;:
++            self.readChild(&quot;id3&quot;, ID3_Parser)
++        self.read(&quot;header&quot;, &quot;!H&quot;, &quot;Header&quot;, post=self.postHeader)
++        self.read(&quot;rate&quot;, &quot;B&quot;, &quot;Rates and padding&quot;, post=self.postRate)
++        self.read(&quot;various&quot;, &quot;B&quot;, &quot;Channel mode, mode extension, copyright, original&quot;, post=self.postVarious)
++
++        print (self.sampling_rate, self.bit_rate, self.padding)
++        frame_size = (144 * self.sampling_rate) / self.bit_rate + self.padding
++        print &quot;Frame size=%s&quot; % frame_size
++        
++    def postVarious(self, chunk):
++        # Get channel mode
++        channel_mode = chunk.value &gt;&gt; 6 &amp; 3
++        text = MP3_File.channel_mode[channel_mode]
++
++#        mode_extension = chunk.value &gt;&gt; 4 &amp; 3
++
++        # Get copyright bit
++        copyright = chunk.value &gt;&gt; 3 &amp; 1
++        if copyright == 1:
++            text = text + &quot;, copyrighted&quot;
++
++        # Get original bit
++        original = chunk.value &gt;&gt; 2 &amp; 1
++        if original == 1:
++            text = text + &quot;, is original&quot;
++        else:
++            text = text + &quot;, copied&quot;
++
++        # Get emphasis
++        emphasis = chunk.value &amp; 3
++        assert emphasis in MP3_File.emphasis
++        emphasis = MP3_File.emphasis[emphasis]
++        if emphasis != &quot;none&quot;:
++            text = text + &quot;, emphasis=%s&quot; % emphasis
++        return text 
++
++    def postHeader(self, chunk):
++        header = chunk.value
++        sync = header &gt;&gt; 5
++        assert sync == 2047
++        self.version = header &gt;&gt; 3 &amp; 3
++        assert self.version in MP3_File.version
++        self.layer = header &gt;&gt; 1 &amp; 3
++        protection = header &amp; 1
++        text = &quot;MPEG%s, layer %s&quot; % (\
++            MP3_File.version[self.version],
++            MP3_File.layer[self.layer])
++        if protection==1:
++            text = &quot;%s, protected&quot; % text
++        return text
++
++    def postRate(self, chunk):
++        # Get bit rates
++        bit_rate = chunk.value &gt;&gt; 4
++        if self.version == 3: # MPEG1
++            rates = MP3_File.bit_rate[1] # MPEG1
++        else:
++            rates = MP3_File.bit_rate[2] # MPEG2 / MPEG2.5
++        assert self.layer in rates
++        rates = rates[self.layer]
++        assert bit_rate in rates
++        self.bit_rate = rates[bit_rate]
++        
++        # Get sampling rate
++        sampling_rate = chunk.value &gt;&gt; 2 &amp; 3
++        rates = MP3_File.sampling_rate[self.version]
++        assert sampling_rate in rates
++        self.sampling_rate = rates[sampling_rate]
++        text = &quot;%u bps, %s Hz&quot; % (self.bit_rate, self.sampling_rate)
++        
++        # Get Padding
++        self.padding = chunk.value &gt;&gt; 1 &amp; 1
++        if self.padding==1:
++            text = text + &quot;, padded&quot;
++        return text
++
++registerPlugin(MP3_File, &quot;audio/mpeg&quot;)
+
+Modified: haypo/hachoir/tools.py
+===================================================================
+--- haypo/hachoir/tools.py	2005-12-12 17:44:22 UTC (rev 321)
++++ haypo/hachoir/tools.py	2005-12-13 00:16:05 UTC (rev 322)
+@@ -88,6 +88,18 @@
+         raise &quot;Can't parse regular expression: %s&quot; % pattern 
+     return size 
+ 
++def humanDuration(ms):
++    if ms &lt; 1000:
++        return &quot;%u ms&quot; % ms
++    sec = ms/1000
++    ms = ms%1000
++    if sec &lt; 60:
++        return  &quot;%u sec&quot; % sec
++    min = sec/60
++    sec = sec%60
++    text = &quot;%u min %u sec&quot; % (min, sec)
++    return text
++
+ def humanFilesize(size):
+     if size &lt; 1000:
+         return &quot;%u bytes&quot; % size
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000227.html">[Happyboom-svn] r321 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000229.html">[Happyboom-svn] r323 - haypo/hachoir
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#228">[ date ]</a>
+              <a href="thread.html#228">[ thread ]</a>
+              <a href="subject.html#228">[ subject ]</a>
+              <a href="author.html#228">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

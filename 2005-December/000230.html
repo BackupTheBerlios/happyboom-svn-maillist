@@ -1,0 +1,129 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r324 - haypo/hachoir/plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r324%20-%20haypo/hachoir/plugins&In-Reply-To=%3C200512130054.jBD0sOPE018113%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000229.html">
+   <LINK REL="Next"  HREF="000231.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r324 - haypo/hachoir/plugins</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r324%20-%20haypo/hachoir/plugins&In-Reply-To=%3C200512130054.jBD0sOPE018113%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r324 - haypo/hachoir/plugins">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec 13 01:54:24 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000229.html">[Happyboom-svn] r323 - haypo/hachoir
+</A></li>
+        <LI>Next message: <A HREF="000231.html">[Happyboom-svn] r325 - haypo/hachoir/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#230">[ date ]</a>
+              <a href="thread.html#230">[ thread ]</a>
+              <a href="subject.html#230">[ subject ]</a>
+              <a href="author.html#230">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-13 01:54:19 +0100 (Tue, 13 Dec 2005)
+New Revision: 324
+
+Modified:
+   haypo/hachoir/plugins/exif.py
+   haypo/hachoir/plugins/jpeg.py
+   haypo/hachoir/plugins/zip.py
+Log:
+Small bugfix in JPEG and EXIF. ZIP filter now update parent chunks.
+
+
+Modified: haypo/hachoir/plugins/exif.py
+===================================================================
+--- haypo/hachoir/plugins/exif.py	2005-12-13 00:25:38 UTC (rev 323)
++++ haypo/hachoir/plugins/exif.py	2005-12-13 00:54:19 UTC (rev 324)
+@@ -232,6 +232,6 @@
+                 break
+             self.readChild(&quot;ifd[]&quot;, ExifIFD, endian, 6)
+         size = stream.getSize() - stream.tell()
+-        if size != 0:                
++        if 0 &lt; size:
+             self.read(&quot;end&quot;, &quot;%us&quot; % size, &quot;End&quot;)
+         assert self.getSize() == stream.getSize()
+
+Modified: haypo/hachoir/plugins/jpeg.py
+===================================================================
+--- haypo/hachoir/plugins/jpeg.py	2005-12-13 00:25:38 UTC (rev 323)
++++ haypo/hachoir/plugins/jpeg.py	2005-12-13 00:54:19 UTC (rev 324)
+@@ -78,6 +78,7 @@
+             chunk = self.readChild(&quot;chunk[]&quot;, JpegChunk)
+             if chunk.getFilter()[&quot;type&quot;] == 0xDA:
+                 break
+-        self.read(&quot;data&quot;, &quot;!{@end@}s&quot;, &quot;JPEG data&quot;)
++        size = stream.getSize() - self.getSize()
++        self.read(&quot;data&quot;, &quot;%us&quot; % size, &quot;JPEG data&quot;)
+         
+ registerPlugin(JpegFile, &quot;image/jpeg&quot;)
+
+Modified: haypo/hachoir/plugins/zip.py
+===================================================================
+--- haypo/hachoir/plugins/zip.py	2005-12-13 00:25:38 UTC (rev 323)
++++ haypo/hachoir/plugins/zip.py	2005-12-13 00:54:19 UTC (rev 324)
+@@ -33,6 +33,11 @@
+         self.read(&quot;extra&quot;, &quot;&lt;{extra_length}s&quot;, &quot;Extra fields&quot;)
+         self.read(&quot;file_comment&quot;, &quot;&lt;{file_comment_length}s&quot;, &quot;File comment&quot;)
+ 
++    def updateParent(self, chunk):
++        desc = &quot;Central directory: %s&quot; % self[&quot;filename&quot;]
++        chunk.description = desc
++        self.setDescription(desc)
++
+ class ZipEndCentralDirectory(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;zip_end_dir&quot;, &quot;ZIP end central directory&quot;, stream, parent)
+@@ -78,6 +83,11 @@
+             self.read(&quot;file_crc32&quot;, &quot;&lt;L&quot;, &quot;Checksum (CRC32)&quot;)
+             self.read(&quot;file_compressed_size&quot;, &quot;&lt;L&quot;, &quot;Compressed size (bytes)&quot;)
+             self.read(&quot;file_uncompressed_size&quot;, &quot;&lt;L&quot;, &quot;Uncompressed size (bytes)&quot;)
++
++    def updateParent(self, chunk):
++        desc = &quot;File entry: %s&quot; % self[&quot;filename&quot;]
++        chunk.description = desc
++        self.setDescription(desc)
+         
+ class ZipFile(Filter):
+     def __init__(self, stream, parent):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000229.html">[Happyboom-svn] r323 - haypo/hachoir
+</A></li>
+	<LI>Next message: <A HREF="000231.html">[Happyboom-svn] r325 - haypo/hachoir/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#230">[ date ]</a>
+              <a href="thread.html#230">[ thread ]</a>
+              <a href="subject.html#230">[ subject ]</a>
+              <a href="author.html#230">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

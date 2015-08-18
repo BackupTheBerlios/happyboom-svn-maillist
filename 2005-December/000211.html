@@ -1,0 +1,129 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r305 - haypo
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r305%20-%20haypo&In-Reply-To=%3C200512060411.jB64BiOT012206%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000210.html">
+   <LINK REL="Next"  HREF="000212.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r305 - haypo</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r305%20-%20haypo&In-Reply-To=%3C200512060411.jB64BiOT012206%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r305 - haypo">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec  6 05:11:44 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000210.html">[Happyboom-svn] r304 - haypo
+</A></li>
+        <LI>Next message: <A HREF="000212.html">[Happyboom-svn] r306 - haypo
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#211">[ date ]</a>
+              <a href="thread.html#211">[ thread ]</a>
+              <a href="subject.html#211">[ subject ]</a>
+              <a href="author.html#211">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-06 05:11:41 +0100 (Tue, 06 Dec 2005)
+New Revision: 305
+
+Modified:
+   haypo/tachatte.py
+Log:
+Add letter mode.
+
+
+Modified: haypo/tachatte.py
+===================================================================
+--- haypo/tachatte.py	2005-12-06 03:27:18 UTC (rev 304)
++++ haypo/tachatte.py	2005-12-06 04:11:41 UTC (rev 305)
+@@ -98,6 +98,8 @@
+             return self.generateWordUniq(new_thesaurus)
+         elif self.mode == &quot;shit&quot;:
+             return self.generateWordRepeat(new_thesaurus)
++        elif self.mode == &quot;letter&quot;:
++            return self.generateWordLetter(new_thesaurus)
+         else:
+             return self.generateWordRandom(new_thesaurus)
+ 
+@@ -125,8 +127,24 @@
+                 word = word + down[i]
+             index = index/2
+         self.uniq = self.uniq + 1
+-        return word     
++        return word
+ 
++    def generateWordLetter(self, new_thesaurus):
++        up, down = self.word_generator
++        if (1 &lt;&lt; len(up)) &lt;= self.uniq:
++            raise Exception(&quot;No more shit! (more than %u words)&quot; % (1 &lt;&lt; len(up)))
++        word = &quot;&quot;
++        word = chr(ord('a') + self.uniq % 26)
++        index = self.uniq / 26
++        self.uniq = self.uniq + 1
++        if index == 1:
++            return &quot;a&quot;+word
++        index = index - 1
++        while 0 &lt; index:
++            word = word + chr(ord('a')+index % 26)
++            index = index / 26
++        return word[::-1] 
++
+     def generateWordRandom(self, new_thesaurus):
+         tries = 0
+         while tries &lt; 100:
+@@ -234,7 +252,7 @@
+     print &quot;Options :&quot;
+     print &quot;\t--help            : Print this help&quot;
+     print &quot;\t--version         : Print the software version&quot;
+-    print &quot;\t--mode=MODE       : Mode (random, moo, tachatte or shit)&quot;
++    print &quot;\t--mode=MODE       : Mode (random, moo, tachatte, letter or shit)&quot;
+     print &quot;\t--eat-comments    : Eat comments (default: off)&quot;
+     print &quot;\t--number=ENABLE   : Encode numbers? (default: on)&quot;
+     print &quot;\t--string=ENABLE   : Encode numbers? (default: on)&quot;
+@@ -269,7 +287,7 @@
+             print &quot;%s version %s&quot; % (PROGRAM, VERSION)
+             sys.exit(0)
+         elif o == &quot;--mode&quot;:
+-            if a not in (&quot;random&quot;, &quot;tachatte&quot;, &quot;moo&quot;, &quot;shit&quot;):
++            if a not in (&quot;random&quot;, &quot;tachatte&quot;, &quot;moo&quot;, &quot;shit&quot;, &quot;letter&quot;):
+                 usage()
+             tachatte.mode = a
+         elif o == &quot;--eat-comments&quot;:
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000210.html">[Happyboom-svn] r304 - haypo
+</A></li>
+	<LI>Next message: <A HREF="000212.html">[Happyboom-svn] r306 - haypo
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#211">[ date ]</a>
+              <a href="thread.html#211">[ thread ]</a>
+              <a href="subject.html#211">[ subject ]</a>
+              <a href="author.html#211">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

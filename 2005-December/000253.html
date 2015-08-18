@@ -1,0 +1,273 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r348 - in haypo/hachoir: . plugins stream
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r348%20-%20in%20haypo/hachoir%3A%20.%20plugins%20stream&In-Reply-To=%3C200512240147.jBO1lLiT018351%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000252.html">
+   <LINK REL="Next"  HREF="000297.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r348 - in haypo/hachoir: . plugins stream</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r348%20-%20in%20haypo/hachoir%3A%20.%20plugins%20stream&In-Reply-To=%3C200512240147.jBO1lLiT018351%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r348 - in haypo/hachoir: . plugins stream">haypo at berlios.de
+       </A><BR>
+    <I>Sat Dec 24 02:47:21 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000252.html">[Happyboom-svn] r347 - in haypo/hachoir: . plugins
+</A></li>
+        <LI>Next message: <A HREF="000297.html">[Happyboom-svn] r349 - in haypo/hachoir: . trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#253">[ date ]</a>
+              <a href="thread.html#253">[ thread ]</a>
+              <a href="subject.html#253">[ subject ]</a>
+              <a href="author.html#253">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-24 02:47:07 +0100 (Sat, 24 Dec 2005)
+New Revision: 348
+
+Added:
+   haypo/hachoir/text_handler.py
+Modified:
+   haypo/hachoir/plugins/avi.py
+   haypo/hachoir/plugins/elf.py
+   haypo/hachoir/plugins/tar.py
+   haypo/hachoir/plugins/zip.py
+   haypo/hachoir/stream/bunzip.py
+Log:
+Create text_handler.py and small bug fixes
+
+
+Modified: haypo/hachoir/plugins/avi.py
+===================================================================
+--- haypo/hachoir/plugins/avi.py	2005-12-22 04:10:35 UTC (rev 347)
++++ haypo/hachoir/plugins/avi.py	2005-12-24 01:47:07 UTC (rev 348)
+@@ -68,6 +68,7 @@
+         size = end - stream.tell()
+         if size &gt; 0:
+             self.read(&quot;end&quot;, &quot;%us&quot; % size, &quot;Raw data&quot;)
++        print &quot; ********* END OF STREAM PARSING ************&quot;
+ 
+     def updateParent(self, chunk):
+         chunk.description = &quot;Movie stream: %u chunks&quot; % self.chunk_count
+
+Modified: haypo/hachoir/plugins/elf.py
+===================================================================
+--- haypo/hachoir/plugins/elf.py	2005-12-22 04:10:35 UTC (rev 347)
++++ haypo/hachoir/plugins/elf.py	2005-12-24 01:47:07 UTC (rev 348)
+@@ -168,4 +168,4 @@
+             chunk = self.readChild(&quot;section_header[]&quot;, SectionHeader32)
+             assert chunk.size == 40
+ 
+-registerPlugin(ElfFile, [&quot;application/x-executable&quot;, &quot;application/x-sharedlib&quot;])
++registerPlugin(ElfFile, [&quot;application/x-executable&quot;, &quot;application/x-object&quot;, &quot;application/x-sharedlib&quot;])
+
+Modified: haypo/hachoir/plugins/tar.py
+===================================================================
+--- haypo/hachoir/plugins/tar.py	2005-12-22 04:10:35 UTC (rev 347)
++++ haypo/hachoir/plugins/tar.py	2005-12-24 01:47:07 UTC (rev 348)
+@@ -96,7 +96,7 @@
+         self.read(&quot;devmajor&quot;, &quot;!8s&quot;, &quot;Dev major&quot;)
+         self.read(&quot;devminor&quot;, &quot;!8s&quot;, &quot;Dev minor&quot;)
+         self.read(&quot;header_padding&quot;, &quot;!167s&quot;, &quot;Padding (zero)&quot;)
+-        if self[&quot;type&quot;] in (&quot;\0&quot;, &quot;0&quot;):
++        if self[&quot;type&quot;] in (&quot;\0&quot;, &quot;0&quot;) and self.size != 0:
+             substream = stream.createSub(stream.tell(), self.size)
+             plugin = guessPlugin(substream, self.name)
+ 
+
+Modified: haypo/hachoir/plugins/zip.py
+===================================================================
+--- haypo/hachoir/plugins/zip.py	2005-12-22 04:10:35 UTC (rev 347)
++++ haypo/hachoir/plugins/zip.py	2005-12-24 01:47:07 UTC (rev 348)
+@@ -9,6 +9,7 @@
+ from filter import Filter
+ from plugin import registerPlugin
+ from error import error
++from text_handler import humanFilesize, hexadecimal
+ 
+ class ZipCentralDirectory(Filter):
+     def __init__(self, stream, parent):
+@@ -71,8 +72,8 @@
+         self.read(&quot;last_mod_time&quot;, &quot;&lt;H&quot;, &quot;Last modification time&quot;)
+         self.read(&quot;last_mod_date&quot;, &quot;&lt;H&quot;, &quot;Last modification date&quot;)
+         self.read(&quot;crc32&quot;, &quot;&lt;L&quot;, &quot;Checksum (CRC32)&quot;)
+-        self.read(&quot;compressed_size&quot;, &quot;&lt;L&quot;, &quot;Compressed size (bytes)&quot;)
+-        self.read(&quot;uncompressed_size&quot;, &quot;&lt;L&quot;, &quot;Uncompressed size (bytes)&quot;)
++        self.read(&quot;compressed_size&quot;, &quot;&lt;L&quot;, &quot;Compressed size (bytes)&quot;, post=humanFilesize)
++        self.read(&quot;uncompressed_size&quot;, &quot;&lt;L&quot;, &quot;Uncompressed size (bytes)&quot;, post=humanFilesize)
+         self.read(&quot;filename_length&quot;, &quot;&lt;H&quot;, &quot;Filename length&quot;)
+         self.read(&quot;extra_length&quot;, &quot;&lt;H&quot;, &quot;Extra length&quot;)
+         self.read(&quot;filename&quot;, &quot;%us&quot; % self[&quot;filename_length&quot;], &quot;Filename&quot;)
+@@ -84,7 +85,8 @@
+             self.read(&quot;file_uncompressed_size&quot;, &quot;&lt;L&quot;, &quot;Uncompressed size (bytes)&quot;)
+ 
+     def updateParent(self, chunk):
+-        desc = &quot;File entry: %s&quot; % self[&quot;filename&quot;]
++        size = self.getChunk(&quot;compressed_size&quot;).display
++        desc = &quot;File entry: %s (%s)&quot; % (self[&quot;filename&quot;], size)
+         chunk.description = desc
+         self.setDescription(desc)
+         
+@@ -96,8 +98,7 @@
+         self.central_directory = []
+         self.files = []
+         while not stream.eof():
+-            header = self.read(&quot;header[]&quot;, &quot;&lt;L&quot;, &quot;Header&quot;)
+-            header = header.getValue()
++            header = self.read(&quot;header[]&quot;, &quot;&lt;L&quot;, &quot;Header&quot;, post=hexadecimal).value
+             if header == 0x04034B50:
+                 self.readChild(&quot;files[]&quot;, ZipFileEntry)
+             elif header == 0x02014b50:
+
+Modified: haypo/hachoir/stream/bunzip.py
+===================================================================
+--- haypo/hachoir/stream/bunzip.py	2005-12-22 04:10:35 UTC (rev 347)
++++ haypo/hachoir/stream/bunzip.py	2005-12-24 01:47:07 UTC (rev 348)
+@@ -4,39 +4,58 @@
+ import os
+ 
+ def BunzipStream(stream):
+-    if True: #not isinstance(stream, FileStream):
+-        filename = None
+-        realname = os.tmpnam()
+-        file = open(realname, 'w')
+-        oldpos = stream.tell()
+-        stream.seek(0)
+-        file.write(stream.getN(stream.getSize()))
+-        stream.seek(oldpos)
+-        file.close()
+-    else:
+-        print &quot;Ok.&quot;
+-        filename = stream.filename
+-        realname = filename
+-       
+-    # TODO: Is it the best value !?
+-    buffersize = 4096 
+-    io = bz2.BZ2File(realname, &quot;r&quot;, buffersize)
++    size = stream.getSize()
++    filename = stream.filename
+ 
+-    if filename==None:
+-        os.unlink(realname)
++    #&#160;TODO: If you reach this limit that mean that a new
++    #&#160;code have to be written :-) (using BZ2File or BZ2Decompressor)
++    assert size &lt; 10000000
++    oldpos = stream.tell()
++    stream.seek(0)
++    content = stream.getN(size)
++    stream.seek(oldpos)
++    
++    content = bz2.decompress(content)
++    io = StringIO(content)
++    return FileStream(io, filename)
+ 
+-    # Check data size (buggy with Python &lt;= 2.4.2 and maybe other)
+-    io.seek(0,2)
+-    guess_size = io.tell()
+-    io.seek(0)
+-
+-    # Check data size
+-    io.seek(-1,2)
+-    real_size = io.tell() + 1
+-    io.seek(0)
+-   
+-    # Workaroud Python bug :-(
+-    if real_size != guess_size:
+-        io = StringIO(io.read())
+-
+-    return FileStream(io, filename)
++#def DONTUSETHISBunzipStream(stream):
++#    # DON'T USE THIS FUNCTION
++#    # because it uses security buggy function: os.tmpnam()
++#
++#    if True: #not isinstance(stream, FileStream):
++#        filename = None
++#        realname = os.tmpnam()
++#        file = open(realname, 'w')
++#        oldpos = stream.tell()
++#        stream.seek(0)
++#        file.write(stream.getN(stream.getSize()))
++#        stream.seek(oldpos)
++#        file.close()
++#    else:
++#        print &quot;Ok.&quot;
++#        filename = stream.filename
++#        realname = filename
++#       
++#    # TODO: Is it the best value !?
++#    buffersize = 4096 
++#    io = bz2.BZ2File(realname, &quot;r&quot;, buffersize)
++#
++#    if filename==None:
++#        os.unlink(realname)
++#
++#    # Check data size (buggy with Python &lt;= 2.4.2 and maybe other)
++#    io.seek(0,2)
++#    guess_size = io.tell()
++#    io.seek(0)
++#
++#    # Check data size
++#    io.seek(-1,2)
++#    real_size = io.tell() + 1
++#    io.seek(0)
++#   
++#    # Workaroud Python bug :-(
++#    if real_size != guess_size:
++#        io = StringIO(io.read())
++#
++#    return FileStream(io, filename)
+
+Added: haypo/hachoir/text_handler.py
+===================================================================
+--- haypo/hachoir/text_handler.py	2005-12-22 04:10:35 UTC (rev 347)
++++ haypo/hachoir/text_handler.py	2005-12-24 01:47:07 UTC (rev 348)
+@@ -0,0 +1,10 @@
++from tools import humanFilesize as doHumanFilesize
++
++def humanFilesize(chunk):
++    return doHumanFilesize(chunk.value)
++
++def hexadecimal(chunk):
++    size = chunk.size
++    assert size in (2, 4, 8)
++    pattern = &quot;%0&quot; + str(2*size) + &quot;X&quot;
++    return pattern % chunk.value
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000252.html">[Happyboom-svn] r347 - in haypo/hachoir: . plugins
+</A></li>
+	<LI>Next message: <A HREF="000297.html">[Happyboom-svn] r349 - in haypo/hachoir: . trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#253">[ date ]</a>
+              <a href="thread.html#253">[ thread ]</a>
+              <a href="subject.html#253">[ subject ]</a>
+              <a href="author.html#253">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

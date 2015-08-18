@@ -1,0 +1,502 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r100 - happyboom/trunk
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-August/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r100%20-%20happyboom/trunk&In-Reply-To=%3C200508060643.j766h3Y8004588%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000006.html">
+   <LINK REL="Next"  HREF="000008.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r100 - happyboom/trunk</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r100%20-%20happyboom/trunk&In-Reply-To=%3C200508060643.j766h3Y8004588%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r100 - happyboom/trunk">haypo at berlios.de
+       </A><BR>
+    <I>Sat Aug  6 08:43:03 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000006.html">[Happyboom-svn] r99 - in happyboom/trunk: boomboom boomboom/client/items boomboom/server net/io_tcp net/io_udp
+</A></li>
+        <LI>Next message: <A HREF="000008.html">[Happyboom-svn] r101 - happyboom/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7">[ date ]</a>
+              <a href="thread.html#7">[ thread ]</a>
+              <a href="subject.html#7">[ subject ]</a>
+              <a href="author.html#7">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-08-06 08:43:00 +0200 (Sat, 06 Aug 2005)
+New Revision: 100
+
+Added:
+   happyboom/trunk/makedoc
+Removed:
+   happyboom/trunk/boomboom_client.py
+   happyboom/trunk/console_input.py
+   happyboom/trunk/console_input/
+   happyboom/trunk/console_server.py
+   happyboom/trunk/console_view.py
+   happyboom/trunk/console_view/
+Log:
+Gros nettoyage.
+
+
+Deleted: happyboom/trunk/boomboom_client.py
+===================================================================
+--- happyboom/trunk/boomboom_client.py	2005-08-06 06:39:43 UTC (rev 99)
++++ happyboom/trunk/boomboom_client.py	2005-08-06 06:43:00 UTC (rev 100)
+@@ -1,94 +0,0 @@
+-#!/usr/bin/python
+-# -*- coding: ISO-8859-1 -*-
+-VERSION=&quot;0.0.0&quot;
+-PROGRAM=&quot;BoomBoom client&quot;
+-
+-import time
+-import socket
+-import sys
+-from boomboom_client import *
+-
+-def usage(defval):
+-	print &quot;%s version %s&quot; % (PROGRAM, VERSION)
+-	print &quot;&quot;
+-	print &quot;Usage: %s [options] [yourname]&quot; % (sys.argv[0])
+-	print
+-	print &quot;Options :&quot;
+-	print &quot;\t--help            : Show this help&quot;
+-	print &quot;\t-h,--host HOST    : Server ip/name (default %s)&quot; % (defval[&quot;host&quot;])
+-	print &quot;\t--view_port PORT  : Server view port (default %u)&quot; % (defval[&quot;view_port&quot;])
+-	print &quot;\t--input_port PORT : Server input port (default %u)&quot; % (defval[&quot;input_port&quot;])
+-	print &quot;\t-d,--debug        : Enable debug mode&quot;
+-	print &quot;\t-v,--verbose      : Enable verbose mode&quot;
+-	print &quot;\t--max-fps MAX     : Set maximum frame par second (fps)&quot;
+-
+-def parseArgs(val):
+-	import getopt
+-
+-	defval = val.copy()
+-	try:
+-		short = &quot;h:dv&quot;
+-		long = [&quot;debug&quot;, &quot;help&quot;, &quot;verbose&quot;, \
+-			&quot;view_port=&quot;, &quot;input_port=&quot;,
+-			&quot;host=&quot;, &quot;max-fps=&quot;]
+-		opts, args = getopt.getopt(sys.argv[1:], short, long)
+-	except getopt.GetoptError:
+-		usage(defval)
+-		sys.exit(2)
+-
+-	if 0&lt;len(args): val[&quot;name&quot;] = args[0]
+-		
+-	for o, a in opts:
+-		if o == &quot;--help&quot;:
+-			usage(defval)
+-			sys.exit()
+-		if o in (&quot;-p&quot;, &quot;--port&quot;,):
+-			val[&quot;port&quot;] = int(a)
+-		if o in (&quot;-h&quot;, &quot;--host&quot;,):
+-			val[&quot;host&quot;] = a
+-		if o in (&quot;-v&quot;, &quot;--verbose&quot;,):
+-			val[&quot;verbose&quot;] = True
+-		if o == &quot;--max-fps&quot;:
+-			a = int(a)
+-			if a &lt; 1: a=1
+-			elif 100&lt;a: a=100
+-			val[&quot;max_fps&quot;] = a
+-		if o in (&quot;-d&quot;, &quot;--debug&quot;,):
+-			val[&quot;debug&quot;] = True
+-	return val
+-
+-def main():
+-	val = {
+-		&quot;host&quot;: &quot;127.0.0.1&quot;, \
+-		&quot;view_port&quot;: 12430, \
+-		&quot;input_port&quot;: 12431, \
+-		&quot;max_fps&quot;: 50, \
+-		&quot;verbose&quot;: False, \
+-		&quot;name&quot;: &quot;-&quot;, \
+-		&quot;debug&quot;: False}
+-	arg = parseArgs(val)
+-
+-	client = BoomBoomClient()
+-	client.view.name = arg[&quot;name&quot;]
+-	client.view.setDebugMode( arg[&quot;debug&quot;] )
+-	client.view.setVerbose( arg[&quot;verbose&quot;] )
+-	client.view.max_fps = arg[&quot;max_fps&quot;]
+-
+-	client.input.name = arg[&quot;name&quot;]
+-	client.input.setDebugMode (arg[&quot;debug&quot;])
+-	client.input.setVerbose (arg[&quot;verbose&quot;])
+-
+-	try:
+-		# Try to connect to server
+-		client.start(arg[&quot;host&quot;], arg[&quot;view_port&quot;], arg[&quot;input_port&quot;])
+-	
+-		# Main loop
+-		while client.view.loop and (not client.input.quit):
+-			client.live()
+-
+-	except KeyboardInterrupt:
+-		print &quot;Program interrupted (CTRL+C).&quot;
+-		pass
+-	client.stop()
+-
+-if __name__==&quot;__main__&quot;: main()
+
+Deleted: happyboom/trunk/console_input.py
+===================================================================
+--- happyboom/trunk/console_input.py	2005-08-06 06:39:43 UTC (rev 99)
++++ happyboom/trunk/console_input.py	2005-08-06 06:43:00 UTC (rev 100)
+@@ -1,87 +0,0 @@
+-#!/usr/bin/python
+-VERSION=&quot;0.1.4&quot;
+-
+-import sys
+-import time
+-from console_input import *
+-
+-def usage(defval):
+-	print &quot;HappyBoom input version %s&quot; % (VERSION)
+-	print &quot;&quot;
+-	print &quot;Usage: %s [options] [yourname]&quot; % (sys.argv[0])
+-	print &quot;&quot;
+-	print &quot;Options :&quot;
+-	print &quot;\t--help         : Show this help&quot;
+-	print &quot;\t-h,--host HOST : Server name/ip (default %s)&quot; % (defval[&quot;host&quot;])
+-	print &quot;\t-p,--port PORT : Server port (default %u)&quot; % (defval[&quot;port&quot;])
+-	print &quot;\t-d,--debug     : Enable debug mode&quot;
+-	print &quot;\t-v,--verbose   : Enable verbose mode&quot;
+-	print &quot;\t--no-readline  : Don't use readline (eg. library is missing)&quot;
+-
+-def parseArgs(val):
+-	import getopt
+-	
+-	defval = val.copy()
+-	try:
+-		short = &quot;h:p:dv&quot;
+-		long = [&quot;debug&quot;, &quot;port=&quot;, &quot;host=&quot;, &quot;help&quot;, &quot;verbose&quot;, &quot;no-readline&quot;]
+-		opts, args = getopt.getopt(sys.argv[1:], short, long)
+-	except getopt.GetoptError:
+-		usage(defval)
+-		sys.exit(2)
+-	
+-	if 0&lt;len(args): val[&quot;name&quot;] = args[0]	
+-
+-	for o, a in opts:
+-		if o == &quot;--help&quot;:
+-			usage(defval)
+-			sys.exit()
+-		if o in (&quot;-p&quot;, &quot;--port&quot;):
+-			val[&quot;port&quot;] = int(a)
+-		if o in (&quot;-h&quot;, &quot;--host&quot;):
+-			val[&quot;host&quot;] = a
+-		if o in (&quot;-v&quot;, &quot;--verbose&quot;):
+-			val[&quot;verbose&quot;] = True
+-		if o in (&quot;-d&quot;, &quot;--debug&quot;):
+-			val[&quot;debug&quot;] = True
+-		if o == &quot;--no-readline&quot;:
+-			val[&quot;readline&quot;] = False
+-	return val
+-
+-def displayCommands():
+-	print &quot;Commands :&quot;
+-	print &quot;&quot;
+-	print &quot;* +        : increment controlable agent&quot;
+-	print &quot;* -        : increment controlable agent&quot;
+-	print &quot;* close    : close input&quot;
+-	print &quot;* quit     : quit game&quot;
+-	print &quot;* chat:MSG : Send messages&quot;
+-
+-def main():
+-	arg = { \
+-		&quot;host&quot;: &quot;127.0.0.1&quot;,
+-		&quot;port&quot;: 12431,
+-		&quot;name&quot;: &quot;-&quot;,
+-		&quot;verbose&quot;: False,
+-		&quot;readline&quot;: True,
+-		&quot;debug&quot;: False}
+-	arg = parseArgs(arg)
+-	input = ConsoleInput()
+-	input.name = arg[&quot;name&quot;]
+-	input.setDebugMode (arg[&quot;debug&quot;])
+-	input.setVerbose (arg[&quot;verbose&quot;])
+-	input.use_readline = arg[&quot;readline&quot;]
+-
+-	try:
+-		input.start(arg[&quot;host&quot;], arg[&quot;port&quot;])
+-	
+-		if input.quit == False:
+-			displayCommands()
+-			while input.quit == False:
+-				input.live()
+-
+-	except KeyboardInterrupt:
+-		print &quot;Program interrupted (CTRL+C).&quot;
+-	input.stop()
+-
+-if __name__==&quot;__main__&quot;: main()
+
+Deleted: happyboom/trunk/console_server.py
+===================================================================
+--- happyboom/trunk/console_server.py	2005-08-06 06:39:43 UTC (rev 99)
++++ happyboom/trunk/console_server.py	2005-08-06 06:43:00 UTC (rev 100)
+@@ -1,104 +0,0 @@
+-#!/usr/bin/python
+-# -*- coding: ISO-8859-1 -*-
+-VERSION=&quot;0.1.4&quot;
+-import time
+-from console_server import *
+-import getopt
+-import sys
+-
+-def usage(defval):
+-	print &quot;HappyBoom server version %s&quot; % (VERSION)
+-	print &quot;&quot;
+-	print &quot;Usage: %s [-v,--verbose] [-d,--debug] [-h,--help]&quot; % (sys.argv[0])
+-	print &quot;&quot;
+-	print &quot;Arguments :&quot;
+-	print &quot;\t-h,--help         : Show this help&quot;
+-	print &quot;\t-v,--verbose      : Activate verbose mode&quot;
+-	print &quot;\t-d,--debug        : Activate debug mode&quot;
+-	print &quot;&quot;
+-	print &quot;Other arguments :&quot;
+-	print &quot;\t--max-input NB    : Max input clients (default %u)&quot; % (defval[&quot;max-input&quot;])
+-	print &quot;\t--max-view NB     : Max view clients (default %u)&quot; % (defval[&quot;max-view&quot;])
+-	print &quot;\t--view-port PORT  : Port number for view clients (default %u)&quot; % (defval[&quot;view-port&quot;])
+-	print &quot;\t--input-port PORT : Port number for input clients (default %u)&quot; % (defval[&quot;input-port&quot;])
+-
+-def parseArgs(val):
+-	import getopt
+-	def_val = val.copy()
+-	
+-	try:
+-		short = &quot;hdv&quot;
+-		long = [&quot;debug&quot;, &quot;verbose&quot;, &quot;help&quot;, \
+-			&quot;max-input=&quot;, &quot;max-view=&quot;, \
+-			&quot;view-port=&quot;, &quot;input-port=&quot;]
+-		opts, args = getopt.getopt(sys.argv[1:], short, long)
+-	except getopt.GetoptError:
+-		usage(def_val)
+-		sys.exit(2)
+-		
+-	if 0&lt;len(args):
+-		usage(def_val)
+-		sys.exit(2)
+-	
+-	for o, a in opts:
+-		if o == &quot;--help&quot;:
+-			usage(def_val)
+-			sys.exit()
+-		if o == &quot;--input-port&quot;:
+-			a = int(a)
+-			if a == val[&quot;view-port&quot;]:
+-				print &quot;Sorry, input port should be different than view port!&quot;
+-			else:
+-				val[&quot;input-port&quot;] = a 			
+-		if o == &quot;--view-port&quot;:
+-			a = int(a)
+-			if a == val[&quot;input-port&quot;]:
+-				print &quot;Sorry, view port should be different than input port!&quot;
+-			else:
+-				val[&quot;view-port&quot;] = a 
+-		if o == &quot;--max-input&quot;:
+-			a = int(a)
+-			if a &lt; 1: 
+-				a=1
+-			elif 100 &lt; a:
+-				a = 100
+-			val[&quot;max-input&quot;] = a
+-		if o == &quot;--max-view&quot;:
+-			a = int(a)
+-			if a &lt; 1: 
+-				a=1
+-			elif 100 &lt; a:
+-				a = 100
+-			val[&quot;max-view&quot;] = a
+-		if o in (&quot;-v&quot;, &quot;--verbose&quot;):
+-			val[&quot;verbose&quot;] = True
+-		if o in (&quot;-d&quot;, &quot;--debug&quot;):
+-			val[&quot;debug&quot;] = True
+-	return val
+-
+-def main():
+-	val = { \
+-		&quot;view-port&quot;: 12430, \
+-		&quot;input-port&quot;: 12431, \
+-		&quot;max-input&quot;: 4, \
+-		&quot;max-view&quot;: 4, \
+-		&quot;verbose&quot;: False,
+-		&quot;debug&quot;: False}
+-	arg = parseArgs(val)
+-	
+-	server = ConsoleServer()
+-	server.setVerbose(arg[&quot;verbose&quot;])
+-	server.setDebug(arg[&quot;debug&quot;])
+-
+-	server.start(arg)
+-	try:
+-		while server.quit==False:
+-			server.live()
+-			time.sleep(0.010)
+-	except KeyboardInterrupt:
+-		print &quot;Program interrupted (CTRL+C).&quot;
+-		pass
+-	server.stop()
+-	print &quot;Server quit.&quot;
+-
+-if __name__==&quot;__main__&quot;: main()
+
+Deleted: happyboom/trunk/console_view.py
+===================================================================
+--- happyboom/trunk/console_view.py	2005-08-06 06:39:43 UTC (rev 99)
++++ happyboom/trunk/console_view.py	2005-08-06 06:43:00 UTC (rev 100)
+@@ -1,100 +0,0 @@
+-#!/usr/bin/python
+-VERSION=&quot;0.1.4&quot;
+-PROGRAM_FULL_NAME=&quot;HappyBoom console viewer&quot;
+-
+-import time
+-import socket
+-import sys
+-from console_view import *
+-
+-def usage(defval):
+-	print &quot;%s version %s&quot; % (PROGRAM_FULL_NAME, VERSION)
+-	print &quot;&quot;
+-	print &quot;Usage: %s [options] [yourname]&quot; % (sys.argv[0])
+-	print
+-	print &quot;Options :&quot;
+-	print &quot;\t--help         : Show this help&quot;
+-	print &quot;\t-h,--host HOST : Server ip/name (default %s)&quot; % (defval[&quot;host&quot;])
+-	print &quot;\t-p,--port PORT : Server port (default %u)&quot; % (defval[&quot;port&quot;])
+-	print &quot;\t--stats        : Display a lot of stats&quot;
+-	print &quot;\t--watch-server : Only display server stats (set stat mode and max-fps=5)&quot;
+-	print &quot;\t-d,--debug     : Enable debug mode&quot;
+-	print &quot;\t-v,--verbose   : Enable verbose mode&quot;
+-	print &quot;\t--max-fps MAX  : Set maximum frame par second (fps)&quot;
+-
+-def parseArgs(val):
+-	import getopt
+-
+-	defval = val.copy()
+-	try:
+-		short = &quot;h:p:dv&quot;
+-		long = [&quot;debug&quot;, &quot;help&quot;, &quot;verbose&quot;, \
+-			&quot;port=&quot;, &quot;host=&quot;, &quot;max-fps=&quot;, 
+-			&quot;stats&quot;, &quot;watch-server&quot;]
+-		opts, args = getopt.getopt(sys.argv[1:], short, long)
+-	except getopt.GetoptError:
+-		usage(defval)
+-		sys.exit(2)
+-
+-	if 0&lt;len(args): val[&quot;name&quot;] = args[0]
+-		
+-	for o, a in opts:
+-		if o == &quot;--help&quot;:
+-			usage(defval)
+-			sys.exit()
+-		if o in (&quot;-p&quot;, &quot;--port&quot;,):
+-			val[&quot;port&quot;] = int(a)
+-		if o in (&quot;-h&quot;, &quot;--host&quot;,):
+-			val[&quot;host&quot;] = a
+-		if o == &quot;--stats&quot;:
+-			val[&quot;stats&quot;] = True
+-		if o in (&quot;-v&quot;, &quot;--verbose&quot;,):
+-			val[&quot;verbose&quot;] = True
+-		if o == &quot;--max-fps&quot;:
+-			a = int(a)
+-			if a &lt; 1: a=1
+-			elif 100&lt;a: a=100
+-			val[&quot;max_fps&quot;] = a
+-		if o == &quot;--watch-server&quot;:
+-			val[&quot;watch-server&quot;] = True
+-		if o in (&quot;-d&quot;, &quot;--debug&quot;,):
+-			val[&quot;debug&quot;] = True
+-	return val
+-
+-def main():
+-	val = {
+-		&quot;host&quot;: &quot;127.0.0.1&quot;, \
+-		&quot;port&quot;: 12430, \
+-		&quot;max_fps&quot;: 50, \
+-		&quot;stats&quot;: False, \
+-		&quot;verbose&quot;: False, \
+-		&quot;name&quot;: &quot;-&quot;, \
+-		&quot;watch-server&quot;: False, \
+-		&quot;debug&quot;: False}
+-	arg = parseArgs(val)
+-	
+-	view = console_view.ConsoleView()
+-	view.name = arg[&quot;name&quot;]
+-	view.setDebugMode( arg[&quot;debug&quot;] )
+-	view.setVerbose( arg[&quot;verbose&quot;] )
+-	view.only_watch_server = arg[&quot;watch-server&quot;]
+-	if view.only_watch_server:
+-		view.stats = False 
+-		view.max_fps = 5 
+-	else:
+-		view.stats = arg[&quot;stats&quot;]
+-		view.max_fps = arg[&quot;max_fps&quot;]
+-
+-	try:
+-		# Try to connect to server
+-		view.start(arg[&quot;host&quot;], arg[&quot;port&quot;])
+-	
+-		# Main loop
+-		while view.loop==True: view.live()
+-
+-	except KeyboardInterrupt:
+-		print &quot;Program interrupted (CTRL+C).&quot;
+-		pass
+-	view.stop()
+-
+-if __name__==&quot;__main__&quot;: main()
+
+Added: happyboom/trunk/makedoc
+===================================================================
+--- happyboom/trunk/makedoc	2005-08-06 06:39:43 UTC (rev 99)
++++ happyboom/trunk/makedoc	2005-08-06 06:43:00 UTC (rev 100)
+@@ -0,0 +1,3 @@
++#!/bin/sh
++test -e doc || mkdir doc
++epydoc -o doc/api -n &quot;BoomBoom Client 0.2&quot; --private-css blue net
+
+
+Property changes on: happyboom/trunk/makedoc
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000006.html">[Happyboom-svn] r99 - in happyboom/trunk: boomboom boomboom/client/items boomboom/server net/io_tcp net/io_udp
+</A></li>
+	<LI>Next message: <A HREF="000008.html">[Happyboom-svn] r101 - happyboom/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#7">[ date ]</a>
+              <a href="thread.html#7">[ thread ]</a>
+              <a href="subject.html#7">[ subject ]</a>
+              <a href="author.html#7">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

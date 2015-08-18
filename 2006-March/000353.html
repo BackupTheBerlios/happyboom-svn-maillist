@@ -1,0 +1,121 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r450 - in haypo/hachoir: . branches/hachoir-yield
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r450%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield&In-Reply-To=%3C200603122004.k2CK4WMP023765%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000354.html">
+   <LINK REL="Next"  HREF="000355.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r450 - in haypo/hachoir: . branches/hachoir-yield</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r450%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield&In-Reply-To=%3C200603122004.k2CK4WMP023765%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r450 - in haypo/hachoir: . branches/hachoir-yield">haypo at berlios.de
+       </A><BR>
+    <I>Sun Mar 12 21:04:32 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000354.html">[Happyboom-svn] r449 - in haypo/hachoir: . branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/archive
+</A></li>
+        <LI>Next message: <A HREF="000355.html">[Happyboom-svn] r451 - haypo/hachoir/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#353">[ date ]</a>
+              <a href="thread.html#353">[ thread ]</a>
+              <a href="subject.html#353">[ subject ]</a>
+              <a href="author.html#353">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-12 21:04:29 +0100 (Sun, 12 Mar 2006)
+New Revision: 450
+
+Added:
+   haypo/hachoir/branches/hachoir-yield/write.py
+Modified:
+   haypo/hachoir/
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r64 at haypopc</A>:  haypo | 2006-03-12 21:00:44 +0100
+  * Add dumb script to test write feature
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:63
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:64
+
+Added: haypo/hachoir/branches/hachoir-yield/write.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/write.py	2006-03-12 20:04:20 UTC (rev 449)
++++ haypo/hachoir/branches/hachoir-yield/write.py	2006-03-12 20:04:29 UTC (rev 450)
+@@ -0,0 +1,26 @@
++#!/usr/bin/env python
++import sys, os, getopt
++from text_ui import displayFieldSet
++
++def main():
++    current_dir = os.path.dirname(__file__)
++    libhachoir_path = os.path.join(current_dir, &quot;libhachoir&quot;)
++    sys.path.append(libhachoir_path)
++
++    from libhachoir.parser.archive.gzip import GzipFile
++    from libhachoir.stream import FileInputStream, FileOutputStream
++
++    input = FileInputStream(&quot;/home/haypo/exemple/gz.gz&quot;)
++    gzip = GzipFile(None, &quot;gzip&quot;, input)
++
++#    displayFieldSet(gzip)
++    
++    print &quot;Set has_comment=True&quot;
++    gzip[&quot;has_comment&quot;].value = True 
++    print &quot;Set has_comment=True: done&quot;
++
++    output = FileOutputStream(&quot;/home/haypo/new.gz&quot;)
++    gzip.writeInto(output)
++#    displayFieldSet(gzip)
++    
++main()
+
+
+Property changes on: haypo/hachoir/branches/hachoir-yield/write.py
+___________________________________________________________________
+Name: svn:executable
+   + *
+Name: svn:mime-type
+   + text/script
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000354.html">[Happyboom-svn] r449 - in haypo/hachoir: . branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/archive
+</A></li>
+	<LI>Next message: <A HREF="000355.html">[Happyboom-svn] r451 - haypo/hachoir/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#353">[ date ]</a>
+              <a href="thread.html#353">[ thread ]</a>
+              <a href="subject.html#353">[ subject ]</a>
+              <a href="author.html#353">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

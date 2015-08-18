@@ -1,0 +1,92 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r187 - happyboom/trunk/net/io_tcp
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r187%20-%20happyboom/trunk/net/io_tcp&In-Reply-To=%3C200509170334.j8H3Y6Ww028230%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000093.html">
+   <LINK REL="Next"  HREF="000095.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r187 - happyboom/trunk/net/io_tcp</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r187%20-%20happyboom/trunk/net/io_tcp&In-Reply-To=%3C200509170334.j8H3Y6Ww028230%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r187 - happyboom/trunk/net/io_tcp">haypo at berlios.de
+       </A><BR>
+    <I>Sat Sep 17 05:34:06 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000093.html">[Happyboom-svn] r186 - in boomboom: . client client/items
+</A></li>
+        <LI>Next message: <A HREF="000095.html">[Happyboom-svn] r188 - in boomboom/client: . items
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#94">[ date ]</a>
+              <a href="thread.html#94">[ thread ]</a>
+              <a href="subject.html#94">[ subject ]</a>
+              <a href="author.html#94">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-17 05:34:03 +0200 (Sat, 17 Sep 2005)
+New Revision: 187
+
+Modified:
+   happyboom/trunk/net/io_tcp/tcp_client.py
+Log:
+Corrige l'envoi de donnee a un client qui s'est deconnecte pour TCP_Client
+
+
+Modified: happyboom/trunk/net/io_tcp/tcp_client.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/tcp_client.py	2005-09-17 03:26:37 UTC (rev 186)
++++ happyboom/trunk/net/io_tcp/tcp_client.py	2005-09-17 03:34:03 UTC (rev 187)
+@@ -28,7 +28,14 @@
+         @type data: str
+         &quot;&quot;&quot;
+         if not self.connected: return
+-        self.__socket.send(data)
++        try:
++            self.__socket.send(data)
++        except SocketError, err:
++            # Broken pipe (32) or Connection reset by peer (104)
++            if err[0] in (32, 104,):
++                self.disconnect()
++                return None
++            raise
+ 
+         # Call user event if needed
+         if self.on_send != None: self.on_send(data)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000093.html">[Happyboom-svn] r186 - in boomboom: . client client/items
+</A></li>
+	<LI>Next message: <A HREF="000095.html">[Happyboom-svn] r188 - in boomboom/client: . items
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#94">[ date ]</a>
+              <a href="thread.html#94">[ thread ]</a>
+              <a href="subject.html#94">[ subject ]</a>
+              <a href="author.html#94">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

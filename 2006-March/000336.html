@@ -1,0 +1,1336 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r434 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/unit_test
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r434%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/doc%20branches/hachoir-yield/libhachoir%20branches/hachoir-yield/libhachoir/field%20branches/hachoir-yield/unit_test&In-Reply-To=%3C200603040029.k240TYKH001157%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000335.html">
+   <LINK REL="Next"  HREF="000337.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r434 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/unit_test</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r434%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/doc%20branches/hachoir-yield/libhachoir%20branches/hachoir-yield/libhachoir/field%20branches/hachoir-yield/unit_test&In-Reply-To=%3C200603040029.k240TYKH001157%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r434 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/unit_test">haypo at berlios.de
+       </A><BR>
+    <I>Sat Mar  4 01:29:34 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000335.html">[Happyboom-svn] r433 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir
+</A></li>
+        <LI>Next message: <A HREF="000337.html">[Happyboom-svn] r435 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/doc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#336">[ date ]</a>
+              <a href="thread.html#336">[ thread ]</a>
+              <a href="subject.html#336">[ subject ]</a>
+              <a href="author.html#336">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-04 01:29:19 +0100 (Sat, 04 Mar 2006)
+New Revision: 434
+
+Added:
+   haypo/hachoir/branches/hachoir-yield/doc/
+   haypo/hachoir/branches/hachoir-yield/doc/doc.txt
+   haypo/hachoir/branches/hachoir-yield/libhachoir/text_handler.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/tools.py
+Removed:
+   haypo/hachoir/branches/hachoir-yield/doc.txt
+   haypo/hachoir/branches/hachoir-yield/text_handler.py
+   haypo/hachoir/branches/hachoir-yield/tools.py
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/hachoir.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/__init__.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/integer.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/string_field.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/stream.py
+   haypo/hachoir/branches/hachoir-yield/run_unit_test.py
+   haypo/hachoir/branches/hachoir-yield/test_doc.py
+   haypo/hachoir/branches/hachoir-yield/unit_test/create_fields.py
+   haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r28 at haypopc</A>:  haypo | 2006-03-03 20:33:03 +0100
+  * Move last files to Hachoir library directory
+  * Fix unit tests
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:27
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:28
+
+Added: haypo/hachoir/branches/hachoir-yield/doc/doc.txt
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/doc/doc.txt	2006-03-04 00:28:52 UTC (rev 433)
++++ haypo/hachoir/branches/hachoir-yield/doc/doc.txt	2006-03-04 00:29:19 UTC (rev 434)
+@@ -0,0 +1,260 @@
++Introduction
++============
++
++Hachoir is a library written in Python to access binary streams using
++nice API. It aims to be easy to use (hide complex mechanisms) and only read
++or compute data when it's really needed.
++
++Examples of Hachoir use: extract some informations from a file (size of an
++image, author of a music, comment of an archive, etc.), edit some fields of
++a file, convert a format to another one.
++
++Write your own format FieldSet class
++====================================
++
++Input stream
++------------
++
++For different reasons (eg. addresses with bit granularity), Hachoir uses it's
++own stream classes. The most interesting class is FileStream. It's constructor
++need a file and a filename (optionnal, can be None).
++
++Here is a small example to create a stream:
++
++&gt;&gt;&gt; from stream import StringInputStream
++&gt;&gt;&gt; stream = StringInputStream(&quot;\x03abc&quot;)
++
++StringIO is a class which works like a file object but using a string as input
++data. Most interesting methods are:
++
++&gt;&gt;&gt; stream.size            # get size in bits
++32
++&gt;&gt;&gt; stream.getBits(0, 8)   # get 8 bits at address 0
++3
++&gt;&gt;&gt; stream.getBytes(8, 3)  # get 3 bytes at address 8
++'abc'
++
++Support your own format using FieldSet
++--------------------------------------
++
++In the Hachoir, everything is stored in a field. The parent of all classes is
++the class Field, but it can't be used directly. They are four different types
++of fields:
++ * Bits: number with a size in bits ;
++ * Integer: number with a size in bytes ;
++ * String: string of characters with a size in bytes ;
++ * FieldSet: a ordered list of fields (contains other fields).
++
++A stream is splitted in several fields which are organised in a tree. So all
++fields have a parent, except of the root. Small example which will be used to
++parse the string &quot;\x03abc&quot; (stream of previous paragraph):
++
++&gt;&gt;&gt; from field import FieldSet, Integer, String
++&gt;&gt;&gt; class MyFormat(FieldSet):
++...     def createFields(self):
++...             yield Integer(self, &quot;length&quot;, &quot;uint8&quot;, &quot;String length&quot;)
++...             yield String(self, &quot;text&quot;, &quot;string[%u]&quot; % self[&quot;length&quot;].value)
++...
++
++One goal in Hachoir is to make the write of a parser the more easy that it
++could be. You just have to write one method, createFields, which will create
++all fields.
++
++Another goal is to create the less fields as possible. In most cases, no field
++is created when a field set in instanciated. Fields are created when you access
++them by their name. That's why, the special Python keyword ''yield'' is used
++which permit to create only fields &quot;on demand&quot; (get more details about
++FieldSet internals in later section).
++
++Prototype of field classes are almost different, but the two first parameters
++are always the same:
++ * First one is the parent, of type FieldSet (is None for the root) ;
++ * The second is the name of the field.
++
++Ok, let's play with our new field set:
++
++&gt;&gt;&gt; format = MyFormat(None, &quot;myformat&quot;, stream)
++&gt;&gt;&gt; format.size               # get size in bits
++32
++&gt;&gt;&gt; format[&quot;text&quot;].value
++'abc'
++&gt;&gt;&gt; &quot;length&quot; in format        # test if the field 'length' does exist
++True
++&gt;&gt;&gt; # Easiest way to display a field set content
++&gt;&gt;&gt; for field in format:
++...     print &quot;%s=%s&quot; % (field.name, field.display)
++...
++length=3
++text=&quot;abc&quot;
++
++Details about Field class
++-------------------------
++
++A field contains a lot of informations, attributes are:
++ * name: Field name, unique in his parent field set and can't be changed. It
++   is used as key to access to the field from the field set ;
++ * size: Size in bits, can't be changed ;
++ * address: Address in bits, relative to parent address, can't be changed ;
++ * absolute_address: Address in bits from the beginning of the stream ;
++ * parent: Parent of the field (is None for root field set) ;
++ * root: Root of all field sets ;
++ * value: Formatted value (integer, string, boolean, ...) value of the field.
++   Don't use this argument with print function, better use display attribute ;
++ * display: A string representing field value, has limited size ;
++ * path: Full &quot;path&quot; of the field from the root (eg. &quot;/png/header/content&quot;) ;
++ * is_field_set: If the value is True, the field contains other fields, it's
++   a field set.
++
++Examples:
++&gt;&gt;&gt; field = format[&quot;text&quot;]
++&gt;&gt;&gt; field.name
++'text'
++&gt;&gt;&gt; field.path
++'/myformat/text'
++&gt;&gt;&gt; field.value
++'abc'
++&gt;&gt;&gt; field.size
++24
++&gt;&gt;&gt; field.address
++8
++
++Some Hachoir internals
++======================
++
++When a field is really created?
++-------------------------------
++
++A field is created when someone ask to access it, or when another field is
++asked and the field is before it. So if you use a field in your field set
++constructor, one or more fields will be created.
++
++Example:
++&gt;&gt;&gt; from field import FieldSet, Integer, String
++&gt;&gt;&gt; class Point(FieldSet):
++...     def __init__(self, parent, name, stream, description=&quot;Point&quot;):
++...         FieldSet.__init__(self, parent, name, stream, description)
++...         if self[&quot;color&quot;].value == -1:
++...             self.description += &quot; (no color)&quot;
++...
++...     def createFields(self):
++...         yield Integer(self, &quot;color&quot;, &quot;int8&quot;, &quot;Point color (-1 for none)&quot;)
++...         yield Integer(self, &quot;use_3d&quot;, &quot;int8&quot;, &quot;Does it use Z axis?&quot;)
++...         yield Integer(self, &quot;x&quot;, &quot;int8&quot;, &quot;X axis value&quot;)
++...         yield Integer(self, &quot;y&quot;, &quot;int8&quot;, &quot;Y axis value&quot;)
++...         if self[&quot;use_3d&quot;] == 1:
++...             yield Integer(self, &quot;z&quot;, &quot;int8&quot;, &quot;Z axis value&quot;)
++...
++
++In the constructor, the field &quot;color&quot; is asked. So the field list will
++contains one field (color):
++&gt;&gt;&gt; stream = StringInputStream(&quot;\x2A\x00\x04\x05&quot;)
++&gt;&gt;&gt; p = Point(None, &quot;point&quot;, stream)
++&gt;&gt;&gt; len(p.fields)
++1
++
++WARNING: Only access 'fields' attribute if you know what you are doing.
++
++If you access another field, the field list will grow up until the requested
++field is reached:
++&gt;&gt;&gt; x = p[&quot;x&quot;].value
++&gt;&gt;&gt; len(p.fields)
++3
++
++Some field set methods which create new fields:
++ * __getitem__(): feed field list until requested field is reached
++   (or raise MissingField exception) ;
++ * __len__(): create all fields ;
++ * __iter__(): begin to iterate in existing fields, and the iterate in new
++   fields until all fields are created ;
++ * __contains__(): feed field list until requested field is reached, may
++   create all fields if the field is missing.
++
++The size attribute also interact with field list creation, but it's mechanism
++is little bit more complex. By default, the whole field list have to be built
++before size value can be read. But you can specify field list size:
++ * if field list is fixed, use class attribute static_size ;
++ * else you can set _size instance attribute in the constructor.
++
++Two examples:
++&gt;&gt;&gt; class FourBytes(FieldSet):
++...     static_size = 32
++...     def createFields(self):
++...         yield Integer(self, &quot;four&quot;, &quot;uint32&quot;)
++...
++&gt;&gt;&gt; class DynamicSize(FieldSet):
++...     def __init__(self, parent, name, stream, nb_items, description=&quot;Point&quot;):
++...         FieldSet.__init__(self, parent, name, stream, description)
++...         self.nb_items = nb_items
++...         self._size = nb_items * 32   # 32 is the size of one item
++...
++...     def createFields(self):
++...         for index in range(self.nb_items):
++...             yield Integer(self, &quot;item[]&quot;, &quot;uint32&quot;)
++...
++
++When the value of a field is read?
++----------------------------------
++
++When a field is created, the value of the field doesn't exist (equals to
++None). The value is really read when you read the field value using '.value'
++or '.display' field attributes. The value is then stored in the field.
++
++Details about field name
++------------------------
++
++The name of a field have to be unique in a field set because it is used as
++key in the field list. The argument 'name' of the Field constructor can be
++changed in the the constructor, but should not (and can no) be changed after
++that.
++
++For arrays, you can use the 'magic' prefix &#171; [] &#187; (eg. &quot;item[]&quot;) which will
++be replaced by &#171; [index] &#187; where the number index is a counter starting a
++zero.
++
++Endian
++------
++
++The &quot;endian&quot; is the way in which ''bytes'' are stored. There are two important
++orders:
++ * &#171; Big endian &#187; in which _big_ numbers are written first (Intel x86 CPU)
++ * &#171; Little endian &#187; in which _little_ numbers are written first (PowerPC CPU)
++
++The number 0x1020 whill be stored &quot;\x10\x20&quot; in big endian and &quot;\x20\x10&quot; in
++little endian.
++
++The endian is global to a FieldSet and is a class attribute. Two allowed
++values are &quot;&lt;&quot; (little endian) and &quot;&gt;&quot; (big endian). Default value is the
++international network order: &quot;&lt;&quot;, big endian.
++
++Example to set endian:
++&gt;&gt;&gt; class UseLittleEndian(FieldSet):
++...     endian = &quot;&gt;&quot;
++...     # (...)
++...
++
++Explore a field set using it's path
++-----------------------------------
++
++Fields are stored in a tree. To explore the tree you have differents tools:
++ * attribute root of a field which go to tree root ;
++ * attribute parent go to field parent (is None for tree root) ;
++ * and you can specify a path in __getitem__() argument.
++
++There are differents valid syntax of a path:
++ * path to a child of current node: field[&quot;content&quot;] ;
++ * path to a child of the parent: field[&quot;../brother&quot;] ;
++ * path from the root: field[&quot;/header/key&quot;].
++
++Event handling
++--------------
++
++Code is not finished yet, so don't need documentation :-) See:
++ * FieldSet.connect(event, handler)
++ * FieldSet.raiseEvent(event,  arg1, arg2, ...)
++
++Get more informations
++=====================
++
++Hachoir website:
++   <A HREF="http://www.haypocalc.com/wiki/Hachoir">http://www.haypocalc.com/wiki/Hachoir</A>
++
+
+Deleted: haypo/hachoir/branches/hachoir-yield/doc.txt
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/doc.txt	2006-03-04 00:28:52 UTC (rev 433)
++++ haypo/hachoir/branches/hachoir-yield/doc.txt	2006-03-04 00:29:19 UTC (rev 434)
+@@ -1,260 +0,0 @@
+-Introduction
+-============
+-
+-Hachoir is a library written in Python to access binary streams using
+-nice API. It aims to be easy to use (hide complex mechanisms) and only read
+-or compute data when it's really needed.
+-
+-Examples of Hachoir use: extract some informations from a file (size of an
+-image, author of a music, comment of an archive, etc.), edit some fields of
+-a file, convert a format to another one.
+-
+-Write your own format FieldSet class
+-====================================
+-
+-Input stream
+-------------
+-
+-For different reasons (eg. addresses with bit granularity), Hachoir uses it's
+-own stream classes. The most interesting class is FileStream. It's constructor
+-need a file and a filename (optionnal, can be None).
+-
+-Here is a small example to create a stream:
+-
+-&gt;&gt;&gt; from stream import StringInputStream
+-&gt;&gt;&gt; stream = StringInputStream(&quot;\x03abc&quot;)
+-
+-StringIO is a class which works like a file object but using a string as input
+-data. Most interesting methods are:
+-
+-&gt;&gt;&gt; stream.size            # get size in bits
+-32
+-&gt;&gt;&gt; stream.getBits(0, 8)   # get 8 bits at address 0
+-3
+-&gt;&gt;&gt; stream.getBytes(8, 3)  # get 3 bytes at address 8
+-'abc'
+-
+-Support your own format using FieldSet
+---------------------------------------
+-
+-In the Hachoir, everything is stored in a field. The parent of all classes is
+-the class Field, but it can't be used directly. They are four different types
+-of fields:
+- * Bits: number with a size in bits ;
+- * Integer: number with a size in bytes ;
+- * String: string of characters with a size in bytes ;
+- * FieldSet: a ordered list of fields (contains other fields).
+-
+-A stream is splitted in several fields which are organised in a tree. So all
+-fields have a parent, except of the root. Small example which will be used to
+-parse the string &quot;\x03abc&quot; (stream of previous paragraph):
+-
+-&gt;&gt;&gt; from field import FieldSet, Integer, String
+-&gt;&gt;&gt; class MyFormat(FieldSet):
+-...     def createFields(self):
+-...             yield Integer(self, &quot;length&quot;, &quot;uint8&quot;, &quot;String length&quot;)
+-...             yield String(self, &quot;text&quot;, &quot;string[%u]&quot; % self[&quot;length&quot;].value)
+-...
+-
+-One goal in Hachoir is to make the write of a parser the more easy that it
+-could be. You just have to write one method, createFields, which will create
+-all fields.
+-
+-Another goal is to create the less fields as possible. In most cases, no field
+-is created when a field set in instanciated. Fields are created when you access
+-them by their name. That's why, the special Python keyword ''yield'' is used
+-which permit to create only fields &quot;on demand&quot; (get more details about
+-FieldSet internals in later section).
+-
+-Prototype of field classes are almost different, but the two first parameters
+-are always the same:
+- * First one is the parent, of type FieldSet (is None for the root) ;
+- * The second is the name of the field.
+-
+-Ok, let's play with our new field set:
+-
+-&gt;&gt;&gt; format = MyFormat(None, &quot;myformat&quot;, stream)
+-&gt;&gt;&gt; format.size               # get size in bits
+-32
+-&gt;&gt;&gt; format[&quot;text&quot;].value
+-'abc'
+-&gt;&gt;&gt; &quot;length&quot; in format        # test if the field 'length' does exist
+-True
+-&gt;&gt;&gt; # Easiest way to display a field set content
+-&gt;&gt;&gt; for field in format:
+-...     print &quot;%s=%s&quot; % (field.name, field.display)
+-...
+-length=3
+-text=&quot;abc&quot;
+-
+-Details about Field class
+--------------------------
+-
+-A field contains a lot of informations, attributes are:
+- * name: Field name, unique in his parent field set and can't be changed. It
+-   is used as key to access to the field from the field set ;
+- * size: Size in bits, can't be changed ;
+- * address: Address in bits, relative to parent address, can't be changed ;
+- * absolute_address: Address in bits from the beginning of the stream ;
+- * parent: Parent of the field (is None for root field set) ;
+- * root: Root of all field sets ;
+- * value: Formatted value (integer, string, boolean, ...) value of the field.
+-   Don't use this argument with print function, better use display attribute ;
+- * display: A string representing field value, has limited size ;
+- * path: Full &quot;path&quot; of the field from the root (eg. &quot;/png/header/content&quot;) ;
+- * is_field_set: If the value is True, the field contains other fields, it's
+-   a field set.
+-
+-Examples:
+-&gt;&gt;&gt; field = format[&quot;text&quot;]
+-&gt;&gt;&gt; field.name
+-'text'
+-&gt;&gt;&gt; field.path
+-'/myformat/text'
+-&gt;&gt;&gt; field.value
+-'abc'
+-&gt;&gt;&gt; field.size
+-24
+-&gt;&gt;&gt; field.address
+-8
+-
+-Some Hachoir internals
+-======================
+-
+-When a field is really created?
+--------------------------------
+-
+-A field is created when someone ask to access it, or when another field is
+-asked and the field is before it. So if you use a field in your field set
+-constructor, one or more fields will be created.
+-
+-Example:
+-&gt;&gt;&gt; from field import FieldSet, Integer, String
+-&gt;&gt;&gt; class Point(FieldSet):
+-...     def __init__(self, parent, name, stream, description=&quot;Point&quot;):
+-...         FieldSet.__init__(self, parent, name, stream, description)
+-...         if self[&quot;color&quot;].value == -1:
+-...             self.description += &quot; (no color)&quot;
+-...
+-...     def createFields(self):
+-...         yield Integer(self, &quot;color&quot;, &quot;int8&quot;, &quot;Point color (-1 for none)&quot;)
+-...         yield Integer(self, &quot;use_3d&quot;, &quot;int8&quot;, &quot;Does it use Z axis?&quot;)
+-...         yield Integer(self, &quot;x&quot;, &quot;int8&quot;, &quot;X axis value&quot;)
+-...         yield Integer(self, &quot;y&quot;, &quot;int8&quot;, &quot;Y axis value&quot;)
+-...         if self[&quot;use_3d&quot;] == 1:
+-...             yield Integer(self, &quot;z&quot;, &quot;int8&quot;, &quot;Z axis value&quot;)
+-...
+-
+-In the constructor, the field &quot;color&quot; is asked. So the field list will
+-contains one field (color):
+-&gt;&gt;&gt; stream = StringInputStream(&quot;\x2A\x00\x04\x05&quot;)
+-&gt;&gt;&gt; p = Point(None, &quot;point&quot;, stream)
+-&gt;&gt;&gt; len(p.fields)
+-1
+-
+-WARNING: Only access 'fields' attribute if you know what you are doing.
+-
+-If you access another field, the field list will grow up until the requested
+-field is reached:
+-&gt;&gt;&gt; x = p[&quot;x&quot;].value
+-&gt;&gt;&gt; len(p.fields)
+-3
+-
+-Some field set methods which create new fields:
+- * __getitem__(): feed field list until requested field is reached
+-   (or raise MissingField exception) ;
+- * __len__(): create all fields ;
+- * __iter__(): begin to iterate in existing fields, and the iterate in new
+-   fields until all fields are created ;
+- * __contains__(): feed field list until requested field is reached, may
+-   create all fields if the field is missing.
+-
+-The size attribute also interact with field list creation, but it's mechanism
+-is little bit more complex. By default, the whole field list have to be built
+-before size value can be read. But you can specify field list size:
+- * if field list is fixed, use class attribute static_size ;
+- * else you can set _size instance attribute in the constructor.
+-
+-Two examples:
+-&gt;&gt;&gt; class FourBytes(FieldSet):
+-...     static_size = 32
+-...     def createFields(self):
+-...         yield Integer(self, &quot;four&quot;, &quot;uint32&quot;)
+-...
+-&gt;&gt;&gt; class DynamicSize(FieldSet):
+-...     def __init__(self, parent, name, stream, nb_items, description=&quot;Point&quot;):
+-...         FieldSet.__init__(self, parent, name, stream, description)
+-...         self.nb_items = nb_items
+-...         self._size = nb_items * 32   # 32 is the size of one item
+-...
+-...     def createFields(self):
+-...         for index in range(self.nb_items):
+-...             yield Integer(self, &quot;item[]&quot;, &quot;uint32&quot;)
+-...
+-
+-When the value of a field is read?
+-----------------------------------
+-
+-When a field is created, the value of the field doesn't exist (equals to
+-None). The value is really read when you read the field value using '.value'
+-or '.display' field attributes. The value is then stored in the field.
+-
+-Details about field name
+-------------------------
+-
+-The name of a field have to be unique in a field set because it is used as
+-key in the field list. The argument 'name' of the Field constructor can be
+-changed in the the constructor, but should not (and can no) be changed after
+-that.
+-
+-For arrays, you can use the 'magic' prefix &#171; [] &#187; (eg. &quot;item[]&quot;) which will
+-be replaced by &#171; [index] &#187; where the number index is a counter starting a
+-zero.
+-
+-Endian
+-------
+-
+-The &quot;endian&quot; is the way in which ''bytes'' are stored. There are two important
+-orders:
+- * &#171; Big endian &#187; in which _big_ numbers are written first (Intel x86 CPU)
+- * &#171; Little endian &#187; in which _little_ numbers are written first (PowerPC CPU)
+-
+-The number 0x1020 whill be stored &quot;\x10\x20&quot; in big endian and &quot;\x20\x10&quot; in
+-little endian.
+-
+-The endian is global to a FieldSet and is a class attribute. Two allowed
+-values are &quot;&lt;&quot; (little endian) and &quot;&gt;&quot; (big endian). Default value is the
+-international network order: &quot;&lt;&quot;, big endian.
+-
+-Example to set endian:
+-&gt;&gt;&gt; class UseLittleEndian(FieldSet):
+-...     endian = &quot;&gt;&quot;
+-...     # (...)
+-...
+-
+-Explore a field set using it's path
+------------------------------------
+-
+-Fields are stored in a tree. To explore the tree you have differents tools:
+- * attribute root of a field which go to tree root ;
+- * attribute parent go to field parent (is None for tree root) ;
+- * and you can specify a path in __getitem__() argument.
+-
+-There are differents valid syntax of a path:
+- * path to a child of current node: field[&quot;content&quot;] ;
+- * path to a child of the parent: field[&quot;../brother&quot;] ;
+- * path from the root: field[&quot;/header/key&quot;].
+-
+-Event handling
+---------------
+-
+-Code is not finished yet, so don't need documentation :-) See:
+- * FieldSet.connect(event, handler)
+- * FieldSet.raiseEvent(event,  arg1, arg2, ...)
+-
+-Get more informations
+-=====================
+-
+-Hachoir website:
+-   <A HREF="http://www.haypocalc.com/wiki/Hachoir">http://www.haypocalc.com/wiki/Hachoir</A>
+-
+
+Modified: haypo/hachoir/branches/hachoir-yield/hachoir.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:28:52 UTC (rev 433)
++++ haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:29:19 UTC (rev 434)
+@@ -58,7 +58,8 @@
+ 
+ def main():
+     # Get libhachoir directory
+-    libhachoir_path = os.path.join(os.getcwd(), &quot;libhachoir&quot;)
++    current_dir = os.path.dirname(__file__)
++    libhachoir_path = os.path.join(current_dir, &quot;libhachoir&quot;)
+     sys.path.append(libhachoir_path)
+     
+     # Parser command line arguments
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/__init__.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/__init__.py	2006-03-04 00:28:52 UTC (rev 433)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/__init__.py	2006-03-04 00:29:19 UTC (rev 434)
+@@ -1,4 +1,4 @@
+-from field import Field
+-from integer import Integer, IntegerHex, Enum, Bits, Bit
+-from string_field import String
+-from field_set import FieldSet, ParserError
++from libhachoir.field.field import Field
++from libhachoir.field.integer import Integer, IntegerHex, Enum, Bits, Bit
++from libhachoir.field.string_field import String
++from libhachoir.field.field_set import FieldSet, ParserError
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py	2006-03-04 00:28:52 UTC (rev 433)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/field_set.py	2006-03-04 00:29:19 UTC (rev 434)
+@@ -1,7 +1,7 @@
+-from event_handler import EventHandler
+ from field import Field
+-from indexed_dict import IndexedDict
+-import config
++from libhachoir.event_handler import EventHandler
++from libhachoir.indexed_dict import IndexedDict
++import libhachoir.config as config
+ 
+ class MissingField(KeyError):
+     pass
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/integer.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/integer.py	2006-03-04 00:28:52 UTC (rev 433)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/integer.py	2006-03-04 00:29:19 UTC (rev 434)
+@@ -1,6 +1,6 @@
+ from field import Field
+-from format import getFormatSize
+-from text_handler import hexadecimal
++from libhachoir.format import getFormatSize
++from libhachoir.text_handler import hexadecimal
+ 
+ class Bits(Field):
+     def __init__(self, parent, name, size, description=None):
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/string_field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/string_field.py	2006-03-04 00:28:52 UTC (rev 433)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/string_field.py	2006-03-04 00:29:19 UTC (rev 434)
+@@ -1,6 +1,6 @@
+ from field import Field
+-from format import getFormatSize
+-from tools import convertDataToPrintableString
++from libhachoir.format import getFormatSize
++from libhachoir.tools import convertDataToPrintableString
+ 
+ class String(Field):
+     def __init__(self, parent, name, format, description=None):
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/stream.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/stream.py	2006-03-04 00:28:52 UTC (rev 433)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/stream.py	2006-03-04 00:29:19 UTC (rev 434)
+@@ -11,6 +11,10 @@
+ class InputStreamError(Exception):
+     pass
+ 
++def FileInputStream(input, filename):
++    size = getFileSize(input) * 8
++    return InputStream(input, filename=filename, size=size)
++
+ def StringInputStream(content):
+     input = StringIO(content)
+     return InputStream(input, filename=None, size=len(content)*8)
+@@ -18,8 +22,6 @@
+ class InputStream:
+     def __init__(self, input, filename=None, size=None):
+         self.filename = filename
+-        if size == None:
+-            size = getFileSize(input) * 8
+         if size == 0:
+             raise InputStreamError(&quot;Error: input size is nul (filename='%s')!&quot; % filename)
+         self._size = size
+
+Added: haypo/hachoir/branches/hachoir-yield/libhachoir/text_handler.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/text_handler.py	2006-03-04 00:28:52 UTC (rev 433)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/text_handler.py	2006-03-04 00:29:19 UTC (rev 434)
+@@ -0,0 +1,33 @@
++import datetime
++from tools import humanFilesize as doHumanFilesize
++from bits import str2bin
++
++def msdosDatetime(chunk):
++    assert chunk.size == 4
++    val = chunk.value
++    sec = 2 * (val &amp; 31)              # 5 bits: second
++    minute = (val &gt;&gt; 5) &amp; 63          # 6 bits: minute
++    hour = (val &gt;&gt; 11) &amp; 31           # 5 bits: hour
++    day = (val &gt;&gt; 16) &amp; 31            # 5 bits: day of the month
++    month = (val &gt;&gt; 21) &amp; 15          # 4 bits: month
++    year = 1980 + ((val &gt;&gt; 25) &amp; 127) # 7 bits: year
++    try:
++        return str(datetime.datetime(year, month, day, hour, minute, sec))
++    except:
++        return &quot;invalid msdos datetime (%s)&quot; % val
++    
++def humanFilesize(chunk):
++    return doHumanFilesize(chunk.value)
++
++def unixTimestamp(chunk):
++    timestamp = datetime.datetime.fromtimestamp(chunk.value)
++    return str(timestamp) 
++
++def binary(chunk):
++    return str2bin(chunk.getRaw()) + &quot; (%s)&quot; % chunk.value
++
++def hexadecimal(chunk):
++    size = chunk.size
++    assert size in (8, 16, 32, 64)
++    pattern = &quot;0x%0&quot; + str(size/4) + &quot;X&quot;
++    return pattern % chunk.value
+
+Added: haypo/hachoir/branches/hachoir-yield/libhachoir/tools.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/tools.py	2006-03-04 00:28:52 UTC (rev 433)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/tools.py	2006-03-04 00:29:19 UTC (rev 434)
+@@ -0,0 +1,195 @@
++import traceback, sys, string, re
++
++def alignValue(value, align):
++    if value % align != 0:
++        return value + align - (value % align)
++    else:
++        return value        
++
++def _regexMaxLength(pattern, in_parenthesis=False):
++    &quot;&quot;&quot;
++    Don't use this function directly, use regexMagLength!
++    &quot;&quot;&quot;
++
++    re_letter = re.compile( r&quot;^[^][()|.?+*{}](.*)$&quot;)
++    re_set = re.compile( r&quot;^\[&quot; + r&quot;[^]]*&quot; + r&quot;\](.*)$&quot; )
++    re_min_repetition = re.compile( r&quot;^\{([0-9]+)\}(.*)$&quot; )
++    re_min_max_repetition = re.compile( r&quot;^\{([0-9]+),([0-9]+)\}(.*)$&quot; )
++
++    size = 0
++    atom_size = 0
++    state = 0 # get atom
++    is_end = len(pattern) == 0
++    if in_parenthesis and not is_end:
++        is_end = pattern[0] in (&quot;|&quot;, &quot;)&quot;)
++    while not is_end:
++        if state==0:
++            size = size + atom_size
++
++            # Pattern: [...] =&gt; size=1
++            if pattern[0] == '(':
++                pattern = pattern[1:]
++                atom_size = None
++                while True:
++                    tmp_atom_size, pattern = _regexMaxLength(pattern, True)
++                    if tmp_atom_size == None:
++                        return None, pattern
++                    if atom_size==None or atom_size&lt;tmp_atom_size:
++                        atom_size = tmp_atom_size
++                    if pattern[0] == ')':
++                        break
++                    assert pattern[0] == '|'
++                    pattern = pattern[1:]
++                pattern = pattern[1:]
++            else:
++                m = re_set.match(pattern)
++                if m != None:
++                    pattern = m.group(1)
++                    atom_size = 1
++                else:
++                    m = re_letter.match(pattern)
++                    if m == None:
++                        return (-1, pattern,)
++                    atom_size = 1
++                    pattern = m.group(1)
++            state = 1                
++        else:
++            assert state==1
++
++            # Repetiton: + or * =&gt; no limit
++            if pattern[0] in (&quot;*&quot;, &quot;+&quot;):
++                return (None, pattern,)
++            
++            # Repetition: {2}
++            m = re_min_repetition.match(pattern)
++            if m != None:
++                repetition = int(m.group(1))
++                pattern = m.group(2)
++                atom_size = atom_size * repetition
++            else:
++                # Repetition: {1,2}
++                m = re_min_max_repetition.match(pattern)
++                if m != None:
++                    repetition = int(m.group(2))
++                    pattern = m.group(3)
++                    atom_size = atom_size * repetition
++            state = 0
++
++        is_end = len(pattern) == 0
++        if in_parenthesis and not is_end:
++            is_end = pattern[0] in (&quot;|&quot;, &quot;)&quot;)
++
++    return (size + atom_size, pattern,)
++
++def regexMaxLength(pattern):
++    &quot;&quot;&quot;
++    Get maximum size of a regular expression pattern.
++    Returns (size, pattern). If size=-1, an error occurs (pattern contains
++    the buggy pattern). If size=-1, no limit does exist.
++    &quot;&quot;&quot;
++
++    size, pattern = _regexMaxLength(pattern)
++    if size == -1:
++        raise &quot;Can't parse regular expression: %s&quot; % pattern 
++    return size 
++
++def humanDuration(ms):
++    # Milliseconds
++    if ms &lt; 1000:
++        return &quot;%u ms&quot; % ms
++        
++    # Seconds
++    sec = ms/1000
++    ms = ms%1000
++    if sec &lt; 60:
++        return  &quot;%u sec&quot; % sec
++
++    # Minutes
++    min = sec/60
++    sec = sec%60
++    if min&lt;60:
++        return &quot;%u min %u sec&quot; % (min, sec)
++
++    # Hours
++    hour = min/60
++    min = min/60
++    if hour &lt; 24:
++        return &quot;%u hour(s) %u min&quot; % (hour, min)
++
++    # Days
++    day = hour/24
++    hour = hour%24
++    if day &lt; 365:
++        return &quot;%u day(s) %u hour(s)&quot; % (day, hour)    
++
++    # Years
++    # TODO: Better estimation !?
++    year = day / 365
++    day = day % 365
++    if hour != 0:
++        text = &quot;%u year(s) %u day(s)&quot; % (year, day)    
++    else:
++        text = &quot;%u year(s)&quot; % (year)
++    return text
++
++def humanFilesize(size):
++    if size &lt; 1000:
++        return &quot;%u bytes&quot; % size
++    units = [&quot;KB&quot;, &quot;MB&quot;, &quot;GB&quot;, &quot;TB&quot;]
++    size = float(size)
++    for unit in units:
++        size = size / 1024
++        if size &lt; 1024:
++            return &quot;%.1f %s&quot; % (size, unit)
++    return &quot;%u %s&quot; % (size, unit)
++
++def convertDataToPrintableString(data, keep_n=False):
++    if len(data) == 0:
++        return &quot;(empty)&quot;
++    if not isinstance(data, unicode):
++        data = re.sub(&quot;[^\x00-\x7F]&quot;, &quot;.&quot;, data)
++        data = unicode(data, &quot;ascii&quot;)
++    display = &quot;&quot;
++    for c in data:
++        if ord(c)&lt;32:
++            know = { \
++                &quot;\n&quot;: &quot;\\n&quot;,
++                &quot;\r&quot;: &quot;\\r&quot;,
++                &quot;\t&quot;: &quot;\\t&quot;,
++                &quot;\0&quot;: &quot;\\0&quot;}
++            if c == &quot;\n&quot; and keep_n:                
++                display = display + &quot;\\n\n&quot;
++            elif c in know:
++                display = display + know[c]
++            else:
++                display = display + &quot;.&quot;
++        elif c == &quot;\&quot;&quot;:
++            display = display + &quot;\\\&quot;&quot;
++        else:
++            display = display + c
++    return u&quot;\&quot;%s\&quot;&quot; % display
++
++def getBacktrace():
++    try:
++        info = sys.exc_info()
++        bt = traceback.format_exception(*info)
++        sys.exc_clear()
++        if bt[0] != &quot;None\n&quot;:
++            return &quot;&quot;.join(bt)
++        else:
++            return &quot;Empty backtrace.&quot;
++    except:
++        return &quot;Error while trying to get backtrace&quot;
++
++def getUnixRWX(mode):
++#-- TODO --
++#EXT2_S_ISUID  0x0800  SUID
++#EXT2_S_ISGID  0x0400  SGID
++#EXT2_S_ISVTX  0x0200  sticky bit
++    rwx = (&quot;---&quot;, &quot;rwx&quot;)
++    text = &quot;&quot;
++    for i in range(0,3):
++        for j in range(0,3):
++            mask = 1 &lt;&lt; (3*(2-i)) &lt;&lt; (2-j)
++            text = text + rwx[int(mode &amp; mask == mask)][j]
++    return text
+
+Modified: haypo/hachoir/branches/hachoir-yield/run_unit_test.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/run_unit_test.py	2006-03-04 00:28:52 UTC (rev 433)
++++ haypo/hachoir/branches/hachoir-yield/run_unit_test.py	2006-03-04 00:29:19 UTC (rev 434)
+@@ -1,9 +1,20 @@
+ from unit_test import create_fields
+ from unit_test import field_set_get_item
++import sys, os
+ 
+ def runAllTests():
+     create_fields.runTests()
+     field_set_get_item.runTests()
+ 
++def main():
++    # Load Hachoir library
++    current_dir = os.path.dirname(__file__)
++    libhachoir_path = os.path.join(current_dir, &quot;libhachoir&quot;)
++    sys.path.append(libhachoir_path)
++
++    # Run tests
++    runAllTests()
++
+ if __name__ == &quot;__main__&quot;:
+-    runAllTests()
++    main()
++
+
+Modified: haypo/hachoir/branches/hachoir-yield/test_doc.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/test_doc.py	2006-03-04 00:28:52 UTC (rev 433)
++++ haypo/hachoir/branches/hachoir-yield/test_doc.py	2006-03-04 00:29:19 UTC (rev 434)
+@@ -10,7 +10,7 @@
+     hachoir_path = &quot;libhachoir&quot;
+     sys.path.append(hachoir_path)
+ 
+-    testDoc('doc.txt', &quot;Main document&quot;)
++    testDoc('doc/doc.txt', &quot;Main document&quot;)
+ 
+ if __name__ == &quot;__main__&quot;:
+     main()
+
+Deleted: haypo/hachoir/branches/hachoir-yield/text_handler.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/text_handler.py	2006-03-04 00:28:52 UTC (rev 433)
++++ haypo/hachoir/branches/hachoir-yield/text_handler.py	2006-03-04 00:29:19 UTC (rev 434)
+@@ -1,33 +0,0 @@
+-import datetime
+-from tools import humanFilesize as doHumanFilesize
+-from bits import str2bin
+-
+-def msdosDatetime(chunk):
+-    assert chunk.size == 4
+-    val = chunk.value
+-    sec = 2 * (val &amp; 31)              # 5 bits: second
+-    minute = (val &gt;&gt; 5) &amp; 63          # 6 bits: minute
+-    hour = (val &gt;&gt; 11) &amp; 31           # 5 bits: hour
+-    day = (val &gt;&gt; 16) &amp; 31            # 5 bits: day of the month
+-    month = (val &gt;&gt; 21) &amp; 15          # 4 bits: month
+-    year = 1980 + ((val &gt;&gt; 25) &amp; 127) # 7 bits: year
+-    try:
+-        return str(datetime.datetime(year, month, day, hour, minute, sec))
+-    except:
+-        return &quot;invalid msdos datetime (%s)&quot; % val
+-    
+-def humanFilesize(chunk):
+-    return doHumanFilesize(chunk.value)
+-
+-def unixTimestamp(chunk):
+-    timestamp = datetime.datetime.fromtimestamp(chunk.value)
+-    return str(timestamp) 
+-
+-def binary(chunk):
+-    return str2bin(chunk.getRaw()) + &quot; (%s)&quot; % chunk.value
+-
+-def hexadecimal(chunk):
+-    size = chunk.size
+-    assert size in (8, 16, 32, 64)
+-    pattern = &quot;0x%0&quot; + str(size/4) + &quot;X&quot;
+-    return pattern % chunk.value
+
+Deleted: haypo/hachoir/branches/hachoir-yield/tools.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/tools.py	2006-03-04 00:28:52 UTC (rev 433)
++++ haypo/hachoir/branches/hachoir-yield/tools.py	2006-03-04 00:29:19 UTC (rev 434)
+@@ -1,195 +0,0 @@
+-import traceback, sys, string, re
+-
+-def alignValue(value, align):
+-    if value % align != 0:
+-        return value + align - (value % align)
+-    else:
+-        return value        
+-
+-def _regexMaxLength(pattern, in_parenthesis=False):
+-    &quot;&quot;&quot;
+-    Don't use this function directly, use regexMagLength!
+-    &quot;&quot;&quot;
+-
+-    re_letter = re.compile( r&quot;^[^][()|.?+*{}](.*)$&quot;)
+-    re_set = re.compile( r&quot;^\[&quot; + r&quot;[^]]*&quot; + r&quot;\](.*)$&quot; )
+-    re_min_repetition = re.compile( r&quot;^\{([0-9]+)\}(.*)$&quot; )
+-    re_min_max_repetition = re.compile( r&quot;^\{([0-9]+),([0-9]+)\}(.*)$&quot; )
+-
+-    size = 0
+-    atom_size = 0
+-    state = 0 # get atom
+-    is_end = len(pattern) == 0
+-    if in_parenthesis and not is_end:
+-        is_end = pattern[0] in (&quot;|&quot;, &quot;)&quot;)
+-    while not is_end:
+-        if state==0:
+-            size = size + atom_size
+-
+-            # Pattern: [...] =&gt; size=1
+-            if pattern[0] == '(':
+-                pattern = pattern[1:]
+-                atom_size = None
+-                while True:
+-                    tmp_atom_size, pattern = _regexMaxLength(pattern, True)
+-                    if tmp_atom_size == None:
+-                        return None, pattern
+-                    if atom_size==None or atom_size&lt;tmp_atom_size:
+-                        atom_size = tmp_atom_size
+-                    if pattern[0] == ')':
+-                        break
+-                    assert pattern[0] == '|'
+-                    pattern = pattern[1:]
+-                pattern = pattern[1:]
+-            else:
+-                m = re_set.match(pattern)
+-                if m != None:
+-                    pattern = m.group(1)
+-                    atom_size = 1
+-                else:
+-                    m = re_letter.match(pattern)
+-                    if m == None:
+-                        return (-1, pattern,)
+-                    atom_size = 1
+-                    pattern = m.group(1)
+-            state = 1                
+-        else:
+-            assert state==1
+-
+-            # Repetiton: + or * =&gt; no limit
+-            if pattern[0] in (&quot;*&quot;, &quot;+&quot;):
+-                return (None, pattern,)
+-            
+-            # Repetition: {2}
+-            m = re_min_repetition.match(pattern)
+-            if m != None:
+-                repetition = int(m.group(1))
+-                pattern = m.group(2)
+-                atom_size = atom_size * repetition
+-            else:
+-                # Repetition: {1,2}
+-                m = re_min_max_repetition.match(pattern)
+-                if m != None:
+-                    repetition = int(m.group(2))
+-                    pattern = m.group(3)
+-                    atom_size = atom_size * repetition
+-            state = 0
+-
+-        is_end = len(pattern) == 0
+-        if in_parenthesis and not is_end:
+-            is_end = pattern[0] in (&quot;|&quot;, &quot;)&quot;)
+-
+-    return (size + atom_size, pattern,)
+-
+-def regexMaxLength(pattern):
+-    &quot;&quot;&quot;
+-    Get maximum size of a regular expression pattern.
+-    Returns (size, pattern). If size=-1, an error occurs (pattern contains
+-    the buggy pattern). If size=-1, no limit does exist.
+-    &quot;&quot;&quot;
+-
+-    size, pattern = _regexMaxLength(pattern)
+-    if size == -1:
+-        raise &quot;Can't parse regular expression: %s&quot; % pattern 
+-    return size 
+-
+-def humanDuration(ms):
+-    # Milliseconds
+-    if ms &lt; 1000:
+-        return &quot;%u ms&quot; % ms
+-        
+-    # Seconds
+-    sec = ms/1000
+-    ms = ms%1000
+-    if sec &lt; 60:
+-        return  &quot;%u sec&quot; % sec
+-
+-    # Minutes
+-    min = sec/60
+-    sec = sec%60
+-    if min&lt;60:
+-        return &quot;%u min %u sec&quot; % (min, sec)
+-
+-    # Hours
+-    hour = min/60
+-    min = min/60
+-    if hour &lt; 24:
+-        return &quot;%u hour(s) %u min&quot; % (hour, min)
+-
+-    # Days
+-    day = hour/24
+-    hour = hour%24
+-    if day &lt; 365:
+-        return &quot;%u day(s) %u hour(s)&quot; % (day, hour)    
+-
+-    # Years
+-    # TODO: Better estimation !?
+-    year = day / 365
+-    day = day % 365
+-    if hour != 0:
+-        text = &quot;%u year(s) %u day(s)&quot; % (year, day)    
+-    else:
+-        text = &quot;%u year(s)&quot; % (year)
+-    return text
+-
+-def humanFilesize(size):
+-    if size &lt; 1000:
+-        return &quot;%u bytes&quot; % size
+-    units = [&quot;KB&quot;, &quot;MB&quot;, &quot;GB&quot;, &quot;TB&quot;]
+-    size = float(size)
+-    for unit in units:
+-        size = size / 1024
+-        if size &lt; 1024:
+-            return &quot;%.1f %s&quot; % (size, unit)
+-    return &quot;%u %s&quot; % (size, unit)
+-
+-def convertDataToPrintableString(data, keep_n=False):
+-    if len(data) == 0:
+-        return &quot;(empty)&quot;
+-    if not isinstance(data, unicode):
+-        data = re.sub(&quot;[^\x00-\x7F]&quot;, &quot;.&quot;, data)
+-        data = unicode(data, &quot;ascii&quot;)
+-    display = &quot;&quot;
+-    for c in data:
+-        if ord(c)&lt;32:
+-            know = { \
+-                &quot;\n&quot;: &quot;\\n&quot;,
+-                &quot;\r&quot;: &quot;\\r&quot;,
+-                &quot;\t&quot;: &quot;\\t&quot;,
+-                &quot;\0&quot;: &quot;\\0&quot;}
+-            if c == &quot;\n&quot; and keep_n:                
+-                display = display + &quot;\\n\n&quot;
+-            elif c in know:
+-                display = display + know[c]
+-            else:
+-                display = display + &quot;.&quot;
+-        elif c == &quot;\&quot;&quot;:
+-            display = display + &quot;\\\&quot;&quot;
+-        else:
+-            display = display + c
+-    return u&quot;\&quot;%s\&quot;&quot; % display
+-
+-def getBacktrace():
+-    try:
+-        info = sys.exc_info()
+-        bt = traceback.format_exception(*info)
+-        sys.exc_clear()
+-        if bt[0] != &quot;None\n&quot;:
+-            return &quot;&quot;.join(bt)
+-        else:
+-            return &quot;Empty backtrace.&quot;
+-    except:
+-        return &quot;Error while trying to get backtrace&quot;
+-
+-def getUnixRWX(mode):
+-#-- TODO --
+-#EXT2_S_ISUID  0x0800  SUID
+-#EXT2_S_ISGID  0x0400  SGID
+-#EXT2_S_ISVTX  0x0200  sticky bit
+-    rwx = (&quot;---&quot;, &quot;rwx&quot;)
+-    text = &quot;&quot;
+-    for i in range(0,3):
+-        for j in range(0,3):
+-            mask = 1 &lt;&lt; (3*(2-i)) &lt;&lt; (2-j)
+-            text = text + rwx[int(mode &amp; mask == mask)][j]
+-    return text
+
+Modified: haypo/hachoir/branches/hachoir-yield/unit_test/create_fields.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/unit_test/create_fields.py	2006-03-04 00:28:52 UTC (rev 433)
++++ haypo/hachoir/branches/hachoir-yield/unit_test/create_fields.py	2006-03-04 00:29:19 UTC (rev 434)
+@@ -1,11 +1,9 @@
+-from StringIO import StringIO
+-from field import FieldSet, Integer, String, Bits, Bit
+-from stream.file import FileStream
+-from bits import long2raw, str2hex
++from libhachoir.field import FieldSet, Integer, String, Bits, Bit
++from libhachoir.stream import StringInputStream
++from libhachoir.bits import long2raw, str2hex
+ 
+ def test1():
+-    data = &quot;\x02\x01abc\x09&quot;
+-    stream = FileStream(StringIO(data), None)
++    stream = StringInputStream(&quot;\x02\x01abc\x09&quot;)
+     class TestInteger(FieldSet):
+         def __init__(self, a, b, c):
+             FieldSet.__init__(self, a, b, c)
+@@ -34,8 +32,8 @@
+     assert field.value == 9
+ 
+ def test2():
+-    data = &quot;\x21\x43&quot; # concat(0x01, 0x23, 0x4)
+-    stream = FileStream(StringIO(data), None)
++    # data: concat numbers (0x01, 0x23, 0x4)
++    stream = StringInputStream(&quot;\x21\x43&quot;)
+     class TestInteger(FieldSet):
+         def createFields(self):
+             yield Bits(self, &quot;a&quot;, 4)
+@@ -48,9 +46,8 @@
+     assert test[&quot;c&quot;].value == 4 
+ 
+ def test2_str():
+-    data = &quot;\x19\x46&quot; # concat(0x09, 0x61, 0x4)
+-    
+-    stream = FileStream(StringIO(data), None)
++    # data: concat numbers (0x09, 0x61, 0x4)
++    stream = StringInputStream(&quot;\x19\x46&quot;)
+     class TestInteger(FieldSet):
+         def createFields(self):
+             yield Bits(self, &quot;a&quot;, 4)
+@@ -69,7 +66,7 @@
+     data  += 3
+     data = long2raw(data, big_endian=False)
+     
+-    stream = FileStream(StringIO(data), None)
++    stream = StringInputStream(data)
+     class TestInteger(FieldSet):
+         def createFields(self):
+             yield Bits(self, &quot;a&quot;, 2)
+@@ -89,7 +86,7 @@
+     data += (0 &amp; 0x3) &lt;&lt; 4
+     data += (2 &amp; 0x3) &lt;&lt; 6
+     data = chr(data)
+-    stream = FileStream(StringIO(data), None)
++    stream = StringInputStream(data)
+     class TestInteger(FieldSet):
+         def createFields(self):
+             yield Bit(self, &quot;a&quot;)
+
+Modified: haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py	2006-03-04 00:28:52 UTC (rev 433)
++++ haypo/hachoir/branches/hachoir-yield/unit_test/field_set_get_item.py	2006-03-04 00:29:19 UTC (rev 434)
+@@ -1,6 +1,6 @@
+ from StringIO import StringIO
+-from field import FieldSet, Integer, String, Bits, Bit
+-from stream.file import FileStream
++from libhachoir.field import FieldSet, Integer, String, Bits, Bit
++from libhachoir.stream import StringInputStream
+ 
+ class Header(FieldSet):
+     def createFields(self):
+@@ -18,8 +18,7 @@
+         yield Body(self, &quot;body&quot;, self.stream)
+ 
+ def test():
+-    data = &quot;\x00\x0A\x00\x0B\x05\x07&quot;
+-    stream = FileStream(StringIO(data), None)
++    stream = StringInputStream(&quot;\x00\x0A\x00\x0B\x05\x07&quot;)
+     document = Document(None, &quot;document&quot;, stream)
+     
+     # Test path starting with &quot;/&quot;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000335.html">[Happyboom-svn] r433 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir
+</A></li>
+	<LI>Next message: <A HREF="000337.html">[Happyboom-svn] r435 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/doc
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#336">[ date ]</a>
+              <a href="thread.html#336">[ thread ]</a>
+              <a href="subject.html#336">[ subject ]</a>
+              <a href="author.html#336">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

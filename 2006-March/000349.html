@@ -1,0 +1,674 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r445 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser branches/hachoir-yield/libhachoir/parser/3d branches/hachoir-yield/libhachoir/parser/archive branches/hachoir-yield/libhachoir/parser/file_system branches/hachoir-yield/libhachoir/parser/image
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r445%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/libhachoir/field%20branches/hachoir-yield/libhachoir/parser%20branches/hachoir-yield/libhachoir/parser/3d%20branches/hachoir-yield/libhachoir/parser/archive%20branches/hachoir-yield/libhachoir/parser/file_system%20branches/hachoir-yield/libhachoir/parser/image&In-Reply-To=%3C200603122003.k2CK3GIp022876%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000348.html">
+   <LINK REL="Next"  HREF="000350.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r445 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser branches/hachoir-yield/libhachoir/parser/3d branches/hachoir-yield/libhachoir/parser/archive branches/hachoir-yield/libhachoir/parser/file_system branches/hachoir-yield/libhachoir/parser/image</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r445%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/libhachoir/field%20branches/hachoir-yield/libhachoir/parser%20branches/hachoir-yield/libhachoir/parser/3d%20branches/hachoir-yield/libhachoir/parser/archive%20branches/hachoir-yield/libhachoir/parser/file_system%20branches/hachoir-yield/libhachoir/parser/image&In-Reply-To=%3C200603122003.k2CK3GIp022876%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r445 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser branches/hachoir-yield/libhachoir/parser/3d branches/hachoir-yield/libhachoir/parser/archive branches/hachoir-yield/libhachoir/parser/file_system branches/hachoir-yield/libhachoir/parser/image">haypo at berlios.de
+       </A><BR>
+    <I>Sun Mar 12 21:03:16 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000348.html">[Happyboom-svn] r444 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/file_system branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream
+</A></li>
+        <LI>Next message: <A HREF="000350.html">[Happyboom-svn] r446 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/archive branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream branches/hachoir-yield/unit_test
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#349">[ date ]</a>
+              <a href="thread.html#349">[ thread ]</a>
+              <a href="subject.html#349">[ subject ]</a>
+              <a href="author.html#349">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-12 21:03:15 +0100 (Sun, 12 Mar 2006)
+New Revision: 445
+
+Added:
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/archive/
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/archive/__init__.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/archive/tar.py
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/bit_field.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/field/string_field.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/3d/3ds.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/file_system/ext2.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/png.py
+   haypo/hachoir/branches/hachoir-yield/text_ui.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r59 at haypopc</A>:  haypo | 2006-03-06 01:37:33 +0100
+  * New String field class constructor arguments: 'text_handler' and 'strip'
+  * Replace some String with RawBytes in parsers
+  * Add last Chunk content handler in PNG parser (from old Hachoir code)
+  * Add TAR parser (imported from old Hachoir code)
+  * displayFieldSet() automaticly detect if address/size have bit granularity
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:58
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:59
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/bit_field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/bit_field.py	2006-03-12 20:02:54 UTC (rev 444)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/bit_field.py	2006-03-12 20:03:15 UTC (rev 445)
+@@ -3,6 +3,8 @@
+ class Bits(Field):
+     def __init__(self, parent, name, size, description=None):
+         assert issubclass(parent.__class__, Field)
++        # Arbitrary limit (stream supports bigger value)
++        assert size &lt;= 256
+         Field.__init__(self, parent, name, size=size, description=description)
+         self.big_endian = True
+ 
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/field/string_field.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/field/string_field.py	2006-03-12 20:02:54 UTC (rev 444)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/field/string_field.py	2006-03-12 20:03:15 UTC (rev 445)
+@@ -8,23 +8,24 @@
+         Field.__init__(self, parent, name, size=length*8, description=description)
+         
+     def _getTruncated(self, address, length, max_bytes=20):
++        truncated = False
+         if self._value == None:
+             if max_bytes &lt; length:
+                 display = self.parent.stream.getBytes( \
+                     address, max_bytes)
+-                display += &quot;(...)&quot;
+             else:
+                 self._value = self.parent.stream.getBytes( \
+                     address, length)
+                 display = self._value
+         else:
+             display = self._value[:max_bytes]
+-            if max_bytes &lt; length:
+-                display += &quot;(...)&quot;
+-        return convertDataToPrintableString(display)
++        return display, max_bytes &lt; length
+     
+     def _getDisplay(self):
+-        return self._getTruncated(self.absolute_address, self._size/8)
++        value, truncated = self._getTruncated(self.absolute_address, self._size/8)
++        if truncated:
++            value += &quot;(...)&quot;
++        return convertDataToPrintableString(value)
+     display = property(_getDisplay)        
+     
+     def _getValue(self):
+@@ -36,7 +37,8 @@
+     value = property(_getValue, Field._setValue)        
+ 
+ class String(RawBytes):
+-    def __init__(self, parent, name, format, description=None):
++    def __init__(self, parent, name, format, description=None, \
++            strip=None, text_handler=None):
+         RawBytes.__init__(self, parent, name, 0, description)
+         self._begin_offset = 0 # in bytes
+         self._end_offset = 0 # in bytes
+@@ -52,15 +54,31 @@
+             self._size = getFormatSize(format) * 8
+         self._length = (self._size / 8) - self._begin_offset - self._end_offset
+         assert 0 &lt;= self._length
++        self.strip = strip
++        self.text_handler = text_handler
+ 
+     def _getLength(self):
+         return self._length
+     length = property(_getLength)
++
++    def _processData(self, text, truncated):
++        if self.strip != None:
++            if isinstance(self.strip, str):
++                text = text.strip(self.strip)
++            else:
++                text = text.strip()
++        if truncated:
++            text += &quot;(...)&quot;
++        if self.text_handler != None:
++            self.text_handler(self)
++        return text        
+     
+     def _getDisplay(self):
+-        return self._getTruncated( \
++        value, truncated = self._getTruncated( \
+             self.absolute_address + self._begin_offset, \
+             self._length)
++        value = self._processData(value, truncated)
++        return convertDataToPrintableString(value)
+     display = property(_getDisplay)        
+ 
+     def _getValue(self):
+@@ -68,6 +86,7 @@
+             assert (self._size % 8) == 0
+             self._value = self.parent.stream.getBytes( \
+                 self.absolute_address + self._begin_offset*8, self._length)
++            self._value = self._processData(self._value, False)
+         return self._value
+     value = property(_getValue, Field._setValue)        
+ 
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/3d/3ds.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/parser/3d/3ds.py	2006-03-12 20:02:54 UTC (rev 444)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/parser/3d/3ds.py	2006-03-12 20:03:15 UTC (rev 445)
+@@ -144,7 +144,7 @@
+         FieldSet.__init__(self, parent, name, parent.stream)
+ 
+         # Set description
+-        self.description = &quot;Chunk: %s&quot; % self[&quot;type&quot;].display
++        self._description = &quot;Chunk: %s&quot; % self[&quot;type&quot;].display
+ 
+         # Set name based on type field
+         type = self[&quot;type&quot;].value 
+
+Added: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/archive/__init__.py
+===================================================================
+
+Added: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/archive/tar.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/parser/archive/tar.py	2006-03-12 20:02:54 UTC (rev 444)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/parser/archive/tar.py	2006-03-12 20:03:15 UTC (rev 445)
+@@ -0,0 +1,121 @@
++&quot;&quot;&quot;
++Tar archive parser.
++
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from field import FieldSet, Integer, Enum, RawBytes, String
++from error import error
++from tools import humanFilesize
++import re, datetime
++
++from bits import str2hex
++
++class FileEntry(FieldSet):
++    type_name = {
++        0: &quot;Normal disk file (old format)&quot;,
++        # 48 is &quot;0&quot;, 49 is &quot;1&quot;, ...
++        48: &quot;Normal disk file&quot;,
++        49: &quot;Link to previously dumped file&quot;,
++        50: &quot;Symbolic link&quot;,
++        51: &quot;Character special file&quot;,
++        52: &quot;Block special file&quot;,
++        53: &quot;Directory&quot;,
++        54: &quot;FIFO special file&quot;,
++        55: &quot;Contiguous file&quot;
++    }
++
++    def createFields(self):
++        yield String(self, &quot;name&quot;, &quot;string[100]&quot;, &quot;Name&quot;, strip=&quot;\0&quot;)
++        yield String(self, &quot;mode&quot;, &quot;string[8]&quot;, &quot;Mode&quot;, text_handler=self.convertOctal)
++        yield String(self, &quot;uid&quot;, &quot;string[8]&quot;, &quot;User ID&quot;, text_handler=self.convertOctal)
++        yield String(self, &quot;gid&quot;, &quot;string[8]&quot;, &quot;Group ID&quot;, text_handler=self.convertOctal)
++        yield String(self, &quot;size&quot;, &quot;string[12]&quot;, &quot;Size&quot;, text_handler=self.convertOctal)
++        yield String(self, &quot;mtime&quot;, &quot;string[12]&quot;, &quot;Modification time&quot;, text_handler=self.getTime)
++        yield String(self, &quot;check_sum&quot;, &quot;string[8]&quot;, &quot;Check sum&quot;, text_handler=self.convertOctal)
++        yield Enum(self, &quot;type&quot;, &quot;uint8&quot;, FileEntry.type_name, &quot;Type&quot;)
++        yield String(self, &quot;lname&quot;, &quot;string[100]&quot;, &quot;Link name&quot;, strip=&quot; \0&quot;)
++        yield String(self, &quot;magic&quot;, &quot;string[8]&quot;, &quot;Magic&quot;, strip=&quot; \0&quot;)
++        yield String(self, &quot;uname&quot;, &quot;string[32]&quot;, &quot;User name&quot;, strip=&quot; \0&quot;) 
++        yield String(self, &quot;gname&quot;, &quot;string[32]&quot;, &quot;Group name&quot;, strip=&quot; \0&quot;) 
++        yield String(self, &quot;devmajor&quot;, &quot;string[8]&quot;, &quot;Dev major&quot;, strip=&quot; \0&quot;)
++        yield String(self, &quot;devminor&quot;, &quot;string[8]&quot;, &quot;Dev minor&quot;, strip=&quot; \0&quot;)
++        yield RawBytes(self, &quot;padding&quot;, 167, &quot;Padding (zero)&quot;)
++
++        self.filesize = self.octal2int(self[&quot;size&quot;].value)
++        if self[&quot;type&quot;].value in (0, ord(&quot;0&quot;)) and self.filesize != 0:
++            #substream = stream.createSub(stream.tell(), self.size)
++            #plugin = guessPlugin(substream, self[&quot;name&quot;].value)
++            #self.read(&quot;content&quot;, &quot;Compressed file content&quot;, (DeflateFilter, substream, self.size, plugin), {&quot;stream&quot;: substream, &quot;size&quot;: self.size})
++            yield RawBytes(self, &quot;content&quot;, self.filesize, &quot;File content&quot;)
++
++        padding = 512 - (self.newFieldAskAddress()/8) % 512
++        if padding != 512:
++            yield RawBytes(self, &quot;padding_end&quot;, padding, &quot;Padding (512 align)&quot;)
++
++    def getMode(self, chunk):
++        mode = self.octal2int(chunk.value)
++        owner = self._getModeItem(mode &gt;&gt; 6 &amp; 7)
++        group = self._getModeItem(mode &gt;&gt; 3 &amp; 7)
++        other = self._getModeItem(mode &amp; 7)
++        return &quot;%04o (%s%s%s)&quot; % (mode, owner, group, other)
++
++    def _getModeItem(mode):
++        if mode &amp; 4 == 4: r=&quot;r&quot;
++        else: r=&quot;-&quot;
++        if mode &amp; 2 == 2: w=&quot;w&quot;
++        else: w=&quot;-&quot;
++        if mode &amp; 1 == 1: x=&quot;x&quot;
++        else: x=&quot;-&quot;
++        return &quot;%c%c%c&quot; % (r, w, x) 
++
++    def convertOctal(self, chunk):
++        return self.octal2int(chunk.value)
++
++    def getTime(self, chunk):
++        value = self.octal2int(chunk.value) 
++        return str(datetime.datetime.fromtimestamp(value))
++
++    def isEmpty(self):
++        return self[&quot;name&quot;].value == &quot;&quot;
++
++    def octal2int(self, text):
++        text = text.strip(&quot; \0&quot;)
++        if text == &quot;&quot;:
++            return 0
++        assert re.match(&quot;^[0-7]+$&quot;, text)
++        try:
++            return int(text, 8)
++        except:
++            return 0
++
++    def _getDescription(self):
++        if self._description == None:
++            self._description = &quot;Tar File &quot;
++            if not self.isEmpty():
++                self._description += &quot;(%s: %s, %s)&quot; \
++                    % (self.filename, self[&quot;type&quot;].display, humanFilesize(self.filesize))
++            else:
++                self._description += &quot;(terminator, empty header)&quot;
++        return self._description
++    description = property(_getDescription, FieldSet._setDescription)
++    
++    def updateParent(self, chunk):
++        chunk.description = text
++        self.setDescription(text)
++
++class TarFile(FieldSet):
++    mime_types = [&quot;application/x-gtar&quot;, &quot;application/x-tar&quot;]
++    
++    def createFields(self):
++        while self._total_field_size &lt; self.stream.size:
++            file = FileEntry(self, &quot;file[]&quot;, self.stream, &quot;File&quot;)
++            yield file
++            if file.isEmpty():
++                break
++            print file[&quot;name&quot;].value
++        padding = self.stream.size - self._total_field_size
++        if padding != 0:
++            assert (padding % 8) == 0
++            yield RawBytes(self, &quot;padding&quot;, padding, &quot;Padding&quot;)
++
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/file_system/ext2.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/parser/file_system/ext2.py	2006-03-12 20:02:54 UTC (rev 444)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/parser/file_system/ext2.py	2006-03-12 20:03:15 UTC (rev 445)
+@@ -1,6 +1,8 @@
+ &quot;&quot;&quot;
+ EXT2 (Linux) file system parser.
+ 
++Author: Victor Stinner
++
+ Sources:
+ - EXT2FS source code
+   <A HREF="http://ext2fsd.sourceforge.net/">http://ext2fsd.sourceforge.net/</A>
+@@ -9,7 +11,7 @@
+ &quot;&quot;&quot;
+ 
+ from text_handler import unixTimestamp
+-from field import FieldSet, Integer, Enum, String, ParserError
++from field import FieldSet, Integer, Enum, String, ParserError, RawBytes
+ from tools import humanDuration, getUnixRWX, humanFilesize
+ from bits import str2hex
+ 
+@@ -19,7 +21,7 @@
+         assert 0 &lt;= size
+         if 0 &lt; size:
+             assert (size % 8) == 0
+-            return String(self, &quot;raw[]&quot;, &quot;string[%u]&quot; % (size / 8))
++            return RawBytes(self, &quot;raw[]&quot;, size/8)
+         else:
+             return None
+ 
+@@ -47,7 +49,7 @@
+         yield String(self, &quot;name&quot;, &quot;string[%u]&quot; % name_length, &quot;File name&quot;)
+         size = self[&quot;rec_len&quot;].value-8-name_length 
+         if size != 0:
+-            yield String(self, &quot;padding&quot;, &quot;string[%u]&quot; % size, &quot;Padding&quot;)
++            yield RawBytes(self, &quot;padding&quot;, size, &quot;Padding&quot;)
+ 
+     def _getDescription(self):
+         if self._description == None:
+@@ -76,12 +78,13 @@
+     def __init__(self, parent, name, index, description=None):
+         self.index = index
+         FieldSet.__init__(self, parent, name, parent.stream, description)
+-        
+-        if self.description == None:
+-            desc = &quot;Inode %s: &quot; % self.index
+ 
++    def _getDescription(self):
++        if self._description == None:
++            desc = &quot;Inode %s: &quot; % self.index
++            size = self[&quot;size&quot;].value
+             if 11 &lt;= self.index:
+-                size = humanFilesize(self[&quot;size&quot;].value)
++                size = humanFilesize(size)
+                 desc += &quot;file, size=%s, mode=%s&quot; % (size, self[&quot;mode&quot;].display)
+             else:
+                 if self.index in Inode.type_name:
+@@ -90,9 +93,11 @@
+                         desc += &quot; (%s)&quot; % getUnixRWX(self[&quot;mode&quot;].value)
+                 else:
+                     desc += &quot;special&quot;
+-                if self[&quot;size&quot;].value == 0:
++                if size == 0:
+                     desc += &quot; (unused)&quot;
+-            self.description = desc
++            self._description = desc
++        return self._description
++    description = property(_getDescription, FieldSet._setDescription)
+ 
+     def createFields(self):
+         yield Integer(self, &quot;mode&quot;, &quot;uint16&quot;, &quot;Mode&quot;) # {&quot;post&quot;: self.postMode}
+@@ -130,7 +135,7 @@
+             yield Integer(self, &quot;gid_high&quot;, &quot;uint16&quot;, &quot;High 16 bits of group ID&quot;)
+             yield Integer(self, &quot;author&quot;, &quot;uint32&quot;, &quot;Author ID (?)&quot;)
+         else:
+-            yield String(self, &quot;raw&quot;, &quot;string[12]&quot;, &quot;Reserved&quot;)
++            yield RawBytes(self, &quot;raw&quot;, 12, &quot;Reserved&quot;)
+ 
+     def postMode(self, chunk):
+         mode = chunk.value
+@@ -157,29 +162,17 @@
+ 
+ class Bitmap(FieldSet):
+     def __init__(self, parent, name, stream, count, start, description=None):
++        assert (count % 8) == 0
+         if description != None:
+             description = &quot;%s: %s items&quot; % (description, count)
+         FieldSet.__init__(self, parent, name, stream, description)
+-        assert (count % 8) == 0
+         self._size = count
+         self.start = start
+         self.count = count
+ 
+     def createFields(self):
+-        yield String(self, &quot;block_bitmap&quot;, &quot;string[%u]&quot; % self._size, &quot;Bitmap&quot;)
++        yield RawBytes(self, &quot;block_bitmap&quot;, self._size/8, &quot;Bitmap&quot;)
+ 
+-#    def showFree(self, type=&quot;Block&quot;):
+-#        data = self[&quot;block_bitmap&quot;]
+-#        cpt = self.start
+-#        for octet in data:
+-#            octet = ord(octet)
+-#            mask = 1
+-#            for i in range(0,8):
+-#                if octet &amp; mask == 0:
+-#                    print &quot;%s %s free.&quot; % (type, cpt)
+-#                cpt = cpt + 1
+-#                mask = mask &lt;&lt; 1
+-
+ BlockBitmap = Bitmap
+ InodeBitmap = Bitmap
+ 
+@@ -192,8 +185,7 @@
+         self.index = index
+ 
+         # Set description
+-        superblock = self[&quot;/superblock&quot;]
+-        blocks_per_group = superblock[&quot;blocks_per_group&quot;].value
++        blocks_per_group = self[&quot;/superblock/blocks_per_group&quot;].value
+         start = self.index * blocks_per_group
+         end = start + blocks_per_group 
+         self.description = &quot;Group descriptor: blocks %s-%s&quot; % (start, end)
+@@ -206,7 +198,7 @@
+         yield Integer(self, &quot;free_inodes_count&quot;, &quot;uint16&quot;, &quot;Number of free inodes&quot;)
+         yield Integer(self, &quot;used_dirs_count&quot;, &quot;uint16&quot;, &quot;Number of inodes allocated to directories&quot;)
+         yield Integer(self, &quot;padding&quot;, &quot;uint16&quot;, &quot;Padding&quot;)
+-        yield String(self, &quot;reserved&quot;, &quot;string[12]&quot;, &quot;Reserved&quot;)
++        yield RawBytes(self, &quot;reserved&quot;, 12, &quot;Reserved&quot;)
+    
+ class SuperBlock(FieldSet):
+     error_handling = {
+@@ -285,9 +277,9 @@
+         yield Integer(self, &quot;feature_compat&quot;, &quot;uint32&quot;, &quot;Compatible feature set&quot;)
+         yield Integer(self, &quot;feature_incompat&quot;, &quot;uint32&quot;, &quot;Incompatible feature set&quot;)
+         yield Integer(self, &quot;feature_ro_compat&quot;, &quot;uint32&quot;, &quot;Read-only compatible feature set&quot;)
+-        yield String(self, &quot;uuid&quot;, &quot;string[16]&quot;, &quot;128-bit uuid for volume&quot;)
+-        yield String(self, &quot;volume_name&quot;, &quot;string[16]&quot;, &quot;Volume name&quot;)
+-        yield String(self, &quot;last_mounted&quot;, &quot;string[64]&quot;, &quot;Directory where last mounted&quot;)
++        yield RawBytes(self, &quot;uuid&quot;, 16, &quot;128-bit uuid for volume&quot;)
++        yield String(self, &quot;volume_name&quot;, &quot;string[16]&quot;, &quot;Volume name&quot;, strip=&quot;\0&quot;)
++        yield String(self, &quot;last_mounted&quot;, &quot;string[64]&quot;, &quot;Directory where last mounted&quot;, strip=&quot;\0&quot;)
+         yield Integer(self, &quot;compression&quot;, &quot;uint32&quot;, &quot;For compression (algorithm usage bitmap)&quot;)
+         yield Integer(self, &quot;prealloc_blocks&quot;, &quot;uint8&quot;, &quot;Number of blocks to try to preallocate&quot;)
+         yield Integer(self, &quot;prealloc_dir_blocks&quot;, &quot;uint8&quot;, &quot;Number to preallocate for directories&quot;)
+@@ -296,7 +288,7 @@
+         yield Integer(self, &quot;journal_inum&quot;, &quot;uint32&quot;, &quot;inode number of journal file&quot;)
+         yield Integer(self, &quot;journal_dev&quot;, &quot;uint32&quot;, &quot;device number of journal file&quot;)
+         yield Integer(self, &quot;last_orphan&quot;, &quot;uint32&quot;, &quot;start of list of inodes to delete&quot;)
+-        yield String(self, &quot;reserved&quot;, &quot;string[197]&quot;, &quot;Padding to the end of the block&quot;)
++        yield RawBytes(self, &quot;reserved&quot;, 197, &quot;Reserved&quot;)
+ 
+     def _getGroupCount(self):
+         if self._group_count == None:
+@@ -392,7 +384,7 @@
+             size = self.stream.size
+         assert (self._total_field_size % 8) == 0
+         size = size - self._total_field_size / 8
+-        yield String(self, &quot;data&quot;, &quot;string[%u]&quot; % size, &quot;Data&quot;)
++        yield RawBytes(self, &quot;data&quot;, size, &quot;Data&quot;)
+ 
+ class EXT2_FS(FieldSetWithSeek):
+     &quot;&quot;&quot;
+@@ -440,7 +432,7 @@
+ #        size = self.stream.getSize()*8 - self._total_field_size
+ #        if size != 0:
+ #            assert (size % 8) == 0
+-#            yield String(self, &quot;end&quot;, &quot;string[%u]&quot; % size, &quot;End (raw)&quot;)
++#            yield RawBytes(self, &quot;end&quot;, &quot;string[%u]&quot; % size, &quot;End (raw)&quot;)
+ 
+ #    def readDirectory(self, inode):
+ #        stream = self.getStream()
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/png.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/png.py	2006-03-12 20:02:54 UTC (rev 444)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/parser/image/png.py	2006-03-12 20:03:15 UTC (rev 445)
+@@ -1,9 +1,18 @@
+-from field import FieldSet, Integer, RawBytes, Bit, Bits, ParserError
++&quot;&quot;&quot;
++PNG picture file parser.
++
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from field import ( \
++    FieldSet, ParserError,
++    Integer, RawBytes, Bit, Bits, Enum)
+ from common import RGB
+ from bits import str2hex
+ from text_handler import hexadecimal
++import datetime
+ 
+-class HeaderFlags(FieldSet):
++class ColorType(FieldSet):
+     def createFields(self):
+         yield Bit(self, &quot;palette&quot;, &quot;Palette used?&quot;)
+         yield Bit(self, &quot;color&quot;, &quot;Color used?&quot;)
+@@ -15,7 +24,7 @@
+         yield Integer(self, &quot;width&quot;, &quot;uint32&quot;, &quot;Width (pixels)&quot;)
+         yield Integer(self, &quot;height&quot;, &quot;uint32&quot;, &quot;Height (pixels)&quot;)
+         yield Integer(self, &quot;bpp&quot;, &quot;uint8&quot;, &quot;Bits per pixel&quot;)
+-        yield HeaderFlags(self, &quot;color_type&quot;, self.stream, &quot;Color type&quot;)
++        yield ColorType(self, &quot;color_type&quot;, self.stream, &quot;Color type&quot;)
+         yield Integer(self, &quot;compression&quot;, &quot;uint8&quot;, &quot;Compression method&quot;)
+         yield Integer(self, &quot;filter&quot;, &quot;uint8&quot;, &quot;Filter method&quot;)
+         yield Integer(self, &quot;interlace&quot;, &quot;uint8&quot;, &quot;Interlace method&quot;)
+@@ -25,7 +34,7 @@
+             self._description = &quot;Header: %ux%u pixels and %u bits/pixel&quot; \
+                 % (self[&quot;width&quot;].value, self[&quot;height&quot;].value, self[&quot;bpp&quot;].value)
+         return self._description
+-    description = property(_getDescription, FieldSet._getDescription)
++    description = property(_getDescription, FieldSet._setDescription)
+ 
+ class Palette(FieldSet):
+     def __init__(self, parent, name, stream, description=None):
+@@ -41,14 +50,80 @@
+         for i in range(self.nb_colors):
+             yield RGB(self, &quot;color[]&quot;, self.stream)
+ 
++class Gamma(FieldSet):
++    static_size = 32
++
++    def createFields(self):
++        yield Integer(self, &quot;gamma&quot;, &quot;uint32&quot;, &quot;Gamma (x10,000)&quot;, \
++            text_handler=self.getGamma)
++
++    def getGamma(self, chunk):
++        return float(chunk.value) / 10000
++
++class Text(FieldSet):
++    def __init__(self, stream, parent):
++        OnDemandFilter.__init__(self, &quot;text&quot;, &quot;Text&quot;, stream, parent)
++        kw = String(self, &quot;keyword&quot;, &quot;C&quot;, &quot;Keyword&quot;)
++        yield kw
++        lg = self[&quot;../size&quot;].value - kw.size/8
++        yield String(self, &quot;text&quot;, &quot;string[%u]&quot; % lg, &quot;Text&quot;)
++
++    def _getDescription(self):
++        if self._description == None:
++            self._description = 'Text: &quot;%s&quot;' % self[&quot;text&quot;].display
++        return self._description
++    description = property(_getDescription, FieldSet._setDescription)
++
++class Time(FieldSet):
++    endian = &quot;!&quot;
++    static_size = 7*8
++
++    def createFields(self):
++        yield Integer(self, &quot;year&quot;, &quot;uint16&quot;, &quot;Year&quot;)
++        yield Integer(self, &quot;month&quot;, &quot;uint8&quot;, &quot;Month&quot;)
++        yield Integer(self, &quot;day&quot;, &quot;uint8&quot;, &quot;Day&quot;)
++        yield Integer(self, &quot;hour&quot;, &quot;uint8&quot;, &quot;Hour&quot;)
++        yield Integer(self, &quot;minute&quot;, &quot;uint8&quot;, &quot;Minute&quot;)
++        yield Integer(self, &quot;second&quot;, &quot;uint8&quot;, &quot;Second&quot;)
++
++    def _getDescription(self):
++        if self._description == None:
++            time = datetime.datetime( \
++                self[&quot;year&quot;].value, self[&quot;month&quot;].value, self[&quot;day&quot;].value, \
++                self[&quot;hour&quot;].value, self[&quot;minute&quot;].value, self[&quot;second&quot;].value)
++            self._description = &quot;Time: %s&quot; % time
++        return self._description
++    description = property(_getDescription, FieldSet._setDescription)
++
++class Physical(FieldSet):
++    unit_name = {
++        0: &quot;Unknow&quot;,
++        1: &quot;Meter&quot;
++    }
++
++    def createFields(self):
++        yield Integer(self, &quot;pixel_per_unit_x&quot;, &quot;uint32&quot;, &quot;Pixel per unit, X axis&quot;)
++        yield Integer(self, &quot;pixel_per_unit_y&quot;, &quot;uint32&quot;, &quot;Pixel per unit, Y axis&quot;)
++        yield Enum(self, &quot;unit&quot;, &quot;uint8&quot;, Physical.unit_name, &quot;Unit type&quot;)
++
++    def _getDescription(self):
++        if self._description == None:
++            x = self[&quot;pixel_per_unit_x&quot;].value
++            y = self[&quot;pixel_per_unit_y&quot;].value
++            self._description = &quot;Physical: %ux%u pixels&quot; % (x,y)
++            if self[&quot;unit&quot;].value == 1:
++                self._description += &quot; per meter&quot;
++        return self._description
++    description = property(_getDescription, FieldSet._setDescription)
++
+ class Chunk(FieldSet):
+     handler = {
+-#        &quot;tIME&quot;: Time,
+-#        &quot;pHYs&quot;: Physical,
++        &quot;tIME&quot;: Time,
++        &quot;pHYs&quot;: Physical,
+         &quot;IHDR&quot;: Header,
+         &quot;PLTE&quot;: Palette,
+-#        &quot;gAMA&quot;: Gamma,
+-#        &quot;tEXt&quot;: Text
++        &quot;gAMA&quot;: Gamma,
++        &quot;tEXt&quot;: Text
+     }
+     name_by_type = {
+         &quot;tIME&quot;: (&quot;time&quot;, &quot;Time&quot;),
+@@ -76,12 +151,9 @@
+ 
+         type = self[&quot;type&quot;].value
+         if type in self.handler:
+-            size = self[&quot;size&quot;]
+-#            oldpos = self._stream.tell()
+-#            sub = stream.createLimited(size=size)
+             cls = self.handler[type]
+             yield cls(self, &quot;content&quot;, self.stream)
+-#            assert stream.tell() == (oldpos + size) 
++            assert self[&quot;content&quot;].size == self[&quot;size&quot;].value*8
+         else:
+             yield RawBytes(self, &quot;content&quot;, self[&quot;size&quot;].value, &quot;Data&quot;)
+         yield Integer(self, &quot;crc32&quot;, &quot;uint32&quot;, &quot;CRC32&quot;, text_handler=hexadecimal)
+
+Modified: haypo/hachoir/branches/hachoir-yield/text_ui.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-03-12 20:02:54 UTC (rev 444)
++++ haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-03-12 20:03:15 UTC (rev 445)
+@@ -8,6 +8,7 @@
+     if display_parent_addr or display_parent_size:
+         display_bits = (addr % 8) != 0 or (field_set.size % 8) != 0 
+         info = []
++        display_bits = (addr % 8) != 0 or (field_set.size % 8) != 0
+         if display_bits:
+             if display_parent_addr:
+                 info.append( &quot;addr=%u.%u&quot; % (addr/8, addr%8) )
+@@ -26,6 +27,7 @@
+     print text
+     if max_depth == None or max_depth &lt; 0 or depth &lt; max_depth:
+         for field in field_set:
++            display_bits = (field.address % 8) != 0 or (field.size % 8) != 0
+             if not field.is_field_set:
+                 display_bits = (field.address % 8) != 0 or (field.size % 8) != 0 
+                 text = indent
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000348.html">[Happyboom-svn] r444 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/file_system branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream
+</A></li>
+	<LI>Next message: <A HREF="000350.html">[Happyboom-svn] r446 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/libhachoir/parser/archive branches/hachoir-yield/libhachoir/parser/image branches/hachoir-yield/libhachoir/stream branches/hachoir-yield/unit_test
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#349">[ date ]</a>
+              <a href="thread.html#349">[ thread ]</a>
+              <a href="subject.html#349">[ subject ]</a>
+              <a href="author.html#349">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

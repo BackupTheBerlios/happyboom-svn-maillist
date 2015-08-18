@@ -1,0 +1,143 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r462 - haypo/lamer
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2007-June/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r462%20-%20haypo/lamer&In-Reply-To=%3C200706270052.l5R0qRRu004284%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000365.html">
+   <LINK REL="Next"  HREF="000367.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r462 - haypo/lamer</H1>
+    <B>haypo at mail.berlios.de</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r462%20-%20haypo/lamer&In-Reply-To=%3C200706270052.l5R0qRRu004284%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r462 - haypo/lamer">haypo at mail.berlios.de
+       </A><BR>
+    <I>Wed Jun 27 02:52:27 CEST 2007</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000365.html">[Happyboom-svn] r461 - in haypo/lamer: . tool
+</A></li>
+        <LI>Next message: <A HREF="000367.html">[Happyboom-svn] r463 - in haypo/lamer: . tool
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#366">[ date ]</a>
+              <a href="thread.html#366">[ thread ]</a>
+              <a href="subject.html#366">[ subject ]</a>
+              <a href="author.html#366">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2007-06-27 02:52:25 +0200 (Wed, 27 Jun 2007)
+New Revision: 462
+
+Added:
+   haypo/lamer/mod_pypi.py
+Removed:
+   haypo/lamer/mod_pypi.sh
+Modified:
+   haypo/lamer/mod_svn.py
+Log:
+Rewrite pypi module in Python
+
+
+Added: haypo/lamer/mod_pypi.py
+===================================================================
+--- haypo/lamer/mod_pypi.py	2007-06-27 00:47:21 UTC (rev 461)
++++ haypo/lamer/mod_pypi.py	2007-06-27 00:52:25 UTC (rev 462)
+@@ -0,0 +1,19 @@
++#!/usr/bin/python
++from lamer import Lamer
++from ConfigParser import RawConfigParser
++
++class Pypi(Lamer):
++    def __init__(self, verbose):
++        Lamer.__init__(self, &quot;pypi&quot;, verbose)
++
++    def _extract(self):
++        config = RawConfigParser()
++        config.readfp(self.open(&quot;~/.pypirc&quot;))
++        username = config.get(&quot;server-login&quot;, &quot;username&quot;)
++        password = config.get(&quot;server-login&quot;, &quot;password&quot;)
++        self.write(&quot;Connect <A HREF="http://cheeseshop.python.org/">http://cheeseshop.python.org/</A> with username=%s and password=%s&quot; % (
++            username, password))
++
++if __name__ == &quot;__main__&quot;:
++    Pypi(False).extract()
++
+
+
+Property changes on: haypo/lamer/mod_pypi.py
+___________________________________________________________________
+Name: svn:executable
+   + *
+Name: svn:eol-style
+   + native
+
+Deleted: haypo/lamer/mod_pypi.sh
+===================================================================
+--- haypo/lamer/mod_pypi.sh	2007-06-27 00:47:21 UTC (rev 461)
++++ haypo/lamer/mod_pypi.sh	2007-06-27 00:52:25 UTC (rev 462)
+@@ -1,6 +0,0 @@
+-#!/bin/bash
+-export MOD=pypi
+-IN=~/.pypirc
+-if [ ! -e $IN ]; then exit 0; fi
+-tool/common.sh
+-echo &quot;Pypi at <A HREF="http://cheeseshop.python.org/">http://cheeseshop.python.org/</A> -- $(grep username $IN) -- $(grep password $IN)&quot;
+
+Modified: haypo/lamer/mod_svn.py
+===================================================================
+--- haypo/lamer/mod_svn.py	2007-06-27 00:47:21 UTC (rev 461)
++++ haypo/lamer/mod_svn.py	2007-06-27 00:52:25 UTC (rev 462)
+@@ -1,8 +1,6 @@
+ #!/usr/bin/python
+-from sys import stderr, argv, exit
+ import re
+ from lamer import Lamer
+-from glob import glob
+ 
+ class Subversion(Lamer):
+     def __init__(self, verbose):
+@@ -33,7 +31,7 @@
+         server = re.sub(&quot;^&lt;(.+)&gt; .+$&quot;, r&quot;\1&quot;, server)
+ 
+         self.write(&quot;svn co %s --username=%s --password=%s&quot; % (
+-            server, infos[&quot;username&quot;], infos[&quot;password&quot;])
++            server, infos[&quot;username&quot;], infos[&quot;password&quot;]))
+ 
+     def _extract(self):
+         for filename in self.glob(&quot;~/.subversion/auth/svn.simple/*&quot;):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000365.html">[Happyboom-svn] r461 - in haypo/lamer: . tool
+</A></li>
+	<LI>Next message: <A HREF="000367.html">[Happyboom-svn] r463 - in haypo/lamer: . tool
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#366">[ date ]</a>
+              <a href="thread.html#366">[ thread ]</a>
+              <a href="subject.html#366">[ subject ]</a>
+              <a href="author.html#366">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

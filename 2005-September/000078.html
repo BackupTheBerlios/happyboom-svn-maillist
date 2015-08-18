@@ -1,0 +1,98 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r171 - happyboom/trunk/common
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r171%20-%20happyboom/trunk/common&In-Reply-To=%3C200509152140.j8FLevp6003956%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000077.html">
+   <LINK REL="Next"  HREF="000079.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r171 - happyboom/trunk/common</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r171%20-%20happyboom/trunk/common&In-Reply-To=%3C200509152140.j8FLevp6003956%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r171 - happyboom/trunk/common">dboucard at berlios.de
+       </A><BR>
+    <I>Thu Sep 15 23:40:57 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000077.html">[Happyboom-svn] r170 - in happyboom/trunk: common server
+</A></li>
+        <LI>Next message: <A HREF="000079.html">[Happyboom-svn] r172 - happyboom/trunk/common
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#78">[ date ]</a>
+              <a href="thread.html#78">[ thread ]</a>
+              <a href="subject.html#78">[ subject ]</a>
+              <a href="author.html#78">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-15 23:40:57 +0200 (Thu, 15 Sep 2005)
+New Revision: 171
+
+Modified:
+   happyboom/trunk/common/happyboom_protocol.py
+   happyboom/trunk/common/presentation.py
+Log:
+
+
+Modified: happyboom/trunk/common/happyboom_protocol.py
+===================================================================
+--- happyboom/trunk/common/happyboom_protocol.py	2005-09-15 21:38:43 UTC (rev 170)
++++ happyboom/trunk/common/happyboom_protocol.py	2005-09-15 21:40:57 UTC (rev 171)
+@@ -1,3 +1,8 @@
++from presentation import Presentation
++from packer import *
++
++
++class HappyboomProtocol(Presentation):
+     def unpackPacketType(self, data):
+         # Get packet type
+         fmt = &quot;!B&quot;
+
+Modified: happyboom/trunk/common/presentation.py
+===================================================================
+--- happyboom/trunk/common/presentation.py	2005-09-15 21:38:43 UTC (rev 170)
++++ happyboom/trunk/common/presentation.py	2005-09-15 21:40:57 UTC (rev 171)
+@@ -1,7 +1,5 @@
+-from happyboom.common.packer import packUtf8, packBin
+ from happyboom.common.event import EventListener
+ from happyboom.common.log import log
+-from happyboom.common.packer import unpack, unpackBin, unpackUtf8
+ from happyboom.net.io.packet import Packet
+ from happyboom.server.client import Client
+ import struct
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000077.html">[Happyboom-svn] r170 - in happyboom/trunk: common server
+</A></li>
+	<LI>Next message: <A HREF="000079.html">[Happyboom-svn] r172 - happyboom/trunk/common
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#78">[ date ]</a>
+              <a href="thread.html#78">[ thread ]</a>
+              <a href="subject.html#78">[ subject ]</a>
+              <a href="author.html#78">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

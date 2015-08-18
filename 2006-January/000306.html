@@ -1,0 +1,194 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r402 - in haypo/lamer: . tool
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r402%20-%20in%20haypo/lamer%3A%20.%20tool&In-Reply-To=%3C200601071100.k07B0MA2001013%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000305.html">
+   <LINK REL="Next"  HREF="000307.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r402 - in haypo/lamer: . tool</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r402%20-%20in%20haypo/lamer%3A%20.%20tool&In-Reply-To=%3C200601071100.k07B0MA2001013%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r402 - in haypo/lamer: . tool">haypo at berlios.de
+       </A><BR>
+    <I>Sat Jan  7 12:00:22 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000305.html">[Happyboom-svn] r401 - haypo/hachoir/trunk
+</A></li>
+        <LI>Next message: <A HREF="000307.html">[Happyboom-svn] r403 - in haypo/hachoir/trunk: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#306">[ date ]</a>
+              <a href="thread.html#306">[ thread ]</a>
+              <a href="subject.html#306">[ subject ]</a>
+              <a href="author.html#306">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-07 12:00:21 +0100 (Sat, 07 Jan 2006)
+New Revision: 402
+
+Modified:
+   haypo/lamer/all.sh
+   haypo/lamer/mod_evolution.sh
+   haypo/lamer/mod_gaim.sh
+   haypo/lamer/mod_gftp.sh
+   haypo/lamer/mod_ncftp.sh
+   haypo/lamer/mod_yafc.sh
+   haypo/lamer/tool/gftp_bookmark.pl
+Log:
+Fix all script so they can be run from another directory.
+
+
+Modified: haypo/lamer/all.sh
+===================================================================
+--- haypo/lamer/all.sh	2006-01-06 20:26:44 UTC (rev 401)
++++ haypo/lamer/all.sh	2006-01-07 11:00:21 UTC (rev 402)
+@@ -1,4 +1,5 @@
+ #!/bin/sh
+-for i in `find ./ -maxdepth 1 -type f -perm -700 -name 'mod_*' | grep -v '~'`; do
+-  ./$i
++DIR=$(dirname $0)
++for i in `find $DIR -maxdepth 1 -type f -perm -700 -name 'mod_*' | grep -v '~'`; do
++  $i
+ done
+
+Modified: haypo/lamer/mod_evolution.sh
+===================================================================
+--- haypo/lamer/mod_evolution.sh	2006-01-06 20:26:44 UTC (rev 401)
++++ haypo/lamer/mod_evolution.sh	2006-01-07 11:00:21 UTC (rev 402)
+@@ -3,8 +3,7 @@
+ export MOD=evolution
+ IN=~/.gnome2_private/Evolution
+ if [ ! -e $IN ]; then exit 0; fi
++DIR=$(dirname $0)
+ 
+-tool/common.sh
+-
+-tool/evolution.pl $IN
+-
++$DIR/tool/common.sh
++$DIR/tool/evolution.pl $IN
+
+Modified: haypo/lamer/mod_gaim.sh
+===================================================================
+--- haypo/lamer/mod_gaim.sh	2006-01-06 20:26:44 UTC (rev 401)
++++ haypo/lamer/mod_gaim.sh	2006-01-07 11:00:21 UTC (rev 402)
+@@ -2,9 +2,8 @@
+ 
+ export MOD=gaim
+ IN=~/.gaim/accounts.xml
++DIR=$(dirname $0)
+ if [ ! -e $IN ]; then exit 0; fi
+ 
+-tool/common.sh
+-
+-tool/gaim.pl $IN
+-
++$DIR/tool/common.sh
++$DIR/tool/gaim.pl $IN
+
+Modified: haypo/lamer/mod_gftp.sh
+===================================================================
+--- haypo/lamer/mod_gftp.sh	2006-01-06 20:26:44 UTC (rev 401)
++++ haypo/lamer/mod_gftp.sh	2006-01-07 11:00:21 UTC (rev 402)
+@@ -2,14 +2,15 @@
+ 
+ export MOD=gftp
+ IN=~/.gftp/bookmarks
++DIR=$(dirname $0)
+ DESCRAMBLE=tool/gftp_descramble
+ 
+ if [ ! -e $IN ]; then exit 0; fi
++cd $DIR
+ if [ ! -e $DESCRAMBLE ]; then
+   if [ $VERBOSE ]; then echo &quot;(call make)&quot;; fi
+   make
+ fi
+ 
+ tool/common.sh
+-
+ tool/gftp_bookmark.pl $IN
+
+Modified: haypo/lamer/mod_ncftp.sh
+===================================================================
+--- haypo/lamer/mod_ncftp.sh	2006-01-06 20:26:44 UTC (rev 401)
++++ haypo/lamer/mod_ncftp.sh	2006-01-07 11:00:21 UTC (rev 402)
+@@ -4,6 +4,7 @@
+ IN=~/.ncftp/bookmarks
+ 
+ if [ ! -e $IN ]; then exit 0; fi
+-tool/common.sh
+ 
+-tail -n +3 $IN | tool/ncftp_bookmark.pl
++DIR=$(dirname $0)
++$DIR/tool/common.sh
++tail -n +3 $IN | $DIR/tool/ncftp_bookmark.pl
+
+Modified: haypo/lamer/mod_yafc.sh
+===================================================================
+--- haypo/lamer/mod_yafc.sh	2006-01-06 20:26:44 UTC (rev 401)
++++ haypo/lamer/mod_yafc.sh	2006-01-07 11:00:21 UTC (rev 402)
+@@ -2,9 +2,9 @@
+ 
+ export MOD=yafc
+ IN=~/.yafc/bookmarks
+-
+ if [ ! -e $IN ]; then exit 0; fi
++DIR=$(dirname $0)
+ 
++cd $DIR
+ tool/common.sh
+-
+ tool/yafc.pl $IN
+
+Modified: haypo/lamer/tool/gftp_bookmark.pl
+===================================================================
+--- haypo/lamer/tool/gftp_bookmark.pl	2006-01-06 20:26:44 UTC (rev 401)
++++ haypo/lamer/tool/gftp_bookmark.pl	2006-01-07 11:00:21 UTC (rev 402)
+@@ -20,7 +20,8 @@
+     return if ($user =~ /^anonymous$/);
+ 
+     # D&#233;code le mode de passe
+-    $pass = `tool/gftp_descramble '$pass'`;
++    $dir = '.';
++    $pass = `$dir/tool/gftp_descramble '$pass'`;
+     chop $pass;
+ 
+     # Encode l'user et pass
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000305.html">[Happyboom-svn] r401 - haypo/hachoir/trunk
+</A></li>
+	<LI>Next message: <A HREF="000307.html">[Happyboom-svn] r403 - in haypo/hachoir/trunk: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#306">[ date ]</a>
+              <a href="thread.html#306">[ thread ]</a>
+              <a href="subject.html#306">[ subject ]</a>
+              <a href="author.html#306">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

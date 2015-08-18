@@ -1,0 +1,140 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r211 - in boomboom: client curses_client curses_client/items
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r211%20-%20in%20boomboom%3A%20client%20curses_client%20curses_client/items&In-Reply-To=%3C200509192216.j8JMGeHC024159%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000116.html">
+   <LINK REL="Next"  HREF="000118.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r211 - in boomboom: client curses_client curses_client/items</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r211%20-%20in%20boomboom%3A%20client%20curses_client%20curses_client/items&In-Reply-To=%3C200509192216.j8JMGeHC024159%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r211 - in boomboom: client curses_client curses_client/items">haypo at berlios.de
+       </A><BR>
+    <I>Tue Sep 20 00:16:40 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000116.html">[Happyboom-svn] r210 - in happyboom/trunk: . common
+</A></li>
+        <LI>Next message: <A HREF="000118.html">[Happyboom-svn] r212 - in happyboom/trunk/net: io io_udp
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#117">[ date ]</a>
+              <a href="thread.html#117">[ thread ]</a>
+              <a href="subject.html#117">[ subject ]</a>
+              <a href="author.html#117">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-20 00:16:40 +0200 (Tue, 20 Sep 2005)
+New Revision: 211
+
+Modified:
+   boomboom/client/client.py
+   boomboom/curses_client/client.py
+   boomboom/curses_client/items/projectile.py
+Log:
+Client attrape game.stop(), le projectile n'est pas dessine s'il sort de
+l'ecran.
+
+
+Modified: boomboom/client/client.py
+===================================================================
+--- boomboom/client/client.py	2005-09-19 20:18:42 UTC (rev 210)
++++ boomboom/client/client.py	2005-09-19 22:16:40 UTC (rev 211)
+@@ -52,7 +52,8 @@
+         self.display = Display(args)
+         self.input = Input(args)
+         self.__verbose = args.get(&quot;verbose&quot;, False)
+-        self.registerEvent(&quot;happyboom&quot;)
++        self.registerEvent(&quot;happyboom&quot;)        
++        self.registerEvent(&quot;game&quot;)
+         
+     def start(self):
+         &quot;&quot;&quot; Starts the game client.&quot;&quot;&quot;
+@@ -76,6 +77,9 @@
+         self.launchEvent(&quot;happyboom&quot;, &quot;disconnection&quot;, self._io, u&quot;Quit.&quot;)
+         self.display.stop()
+     
++    def evt_game_stop(self):        
++        self.stop()
++        
+     def evt_happyboom_stop(self):
+         &quot;&quot;&quot; Stop event handler.
+         &quot;&quot;&quot;
+
+Modified: boomboom/curses_client/client.py
+===================================================================
+--- boomboom/curses_client/client.py	2005-09-19 20:18:42 UTC (rev 210)
++++ boomboom/curses_client/client.py	2005-09-19 22:16:40 UTC (rev 211)
+@@ -53,6 +53,7 @@
+         self.input = Input(args)
+         self.__verbose = args.get(&quot;verbose&quot;, False)
+         self.registerEvent(&quot;happyboom&quot;)
++        self.registerEvent(&quot;game&quot;)        
+         
+     def start(self):
+         &quot;&quot;&quot; Starts the game client.&quot;&quot;&quot;
+@@ -75,7 +76,10 @@
+         Happyboom.stop(self)
+         self.launchEvent(&quot;happyboom&quot;, &quot;disconnection&quot;, self._io, u&quot;Quit.&quot;)
+         self.display.stop()
+-    
++        
++    def evt_game_stop(self):
++        self.stop()
++        
+     def evt_happyboom_stop(self):
+         &quot;&quot;&quot; Stop event handler.
+         &quot;&quot;&quot;
+
+Modified: boomboom/curses_client/items/projectile.py
+===================================================================
+--- boomboom/curses_client/items/projectile.py	2005-09-19 20:18:42 UTC (rev 210)
++++ boomboom/curses_client/items/projectile.py	2005-09-19 22:16:40 UTC (rev 211)
+@@ -26,8 +26,8 @@
+         if not self.display: return
+         maxy, maxx = screen.getmaxyx()
+         x, y = convertXY(screen, int(self.x), int(self.y))
+-        if x &lt; 0 or maxx &lt; x: return
+-        if y &lt; 0 or maxy &lt; y: return
++        if x &lt; 0 or maxx &lt;= x: return
++        if y &lt; 0 or maxy &lt;= y: return
+         screen.addstr(y,x,&quot;)&quot;+&quot; &quot;*maxx, curses.color_pair(curses.COLOR_YELLOW))
+         
+     def evt_projectile_move(self, x, y):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000116.html">[Happyboom-svn] r210 - in happyboom/trunk: . common
+</A></li>
+	<LI>Next message: <A HREF="000118.html">[Happyboom-svn] r212 - in happyboom/trunk/net: io io_udp
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#117">[ date ]</a>
+              <a href="thread.html#117">[ thread ]</a>
+              <a href="subject.html#117">[ subject ]</a>
+              <a href="author.html#117">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

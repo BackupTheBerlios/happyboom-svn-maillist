@@ -1,0 +1,285 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r433 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r433%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/libhachoir&In-Reply-To=%3C200603040029.k240T6lv000761%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000334.html">
+   <LINK REL="Next"  HREF="000336.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r433 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r433%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/libhachoir&In-Reply-To=%3C200603040029.k240T6lv000761%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r433 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir">haypo at berlios.de
+       </A><BR>
+    <I>Sat Mar  4 01:29:06 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000334.html">[Happyboom-svn] r432 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir
+</A></li>
+        <LI>Next message: <A HREF="000336.html">[Happyboom-svn] r434 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/unit_test
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#335">[ date ]</a>
+              <a href="thread.html#335">[ thread ]</a>
+              <a href="subject.html#335">[ subject ]</a>
+              <a href="author.html#335">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-04 01:28:52 +0100 (Sat, 04 Mar 2006)
+New Revision: 433
+
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/hachoir.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/config.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/error.py
+   haypo/hachoir/branches/hachoir-yield/libhachoir/plugin.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r27 at haypopc</A>:  haypo | 2006-03-03 20:21:49 +0100
+  * loadPlugins() renamed to loadParserPlugins() and don't need any argument anymore
+  * All functions about plugins renamed to &quot;(...)Parser&quot; (eg.
+    guessPlugin() becomes guessParser())
+  * Add command line argument &quot;--quiet&quot; which hide warnings
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:26
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:27
+
+Modified: haypo/hachoir/branches/hachoir-yield/hachoir.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:27:53 UTC (rev 432)
++++ haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:28:52 UTC (rev 433)
+@@ -7,6 +7,7 @@
+ cmd_line_options = ( \
+     (&quot;verbose&quot;, &quot;Activate verbose mode&quot;),
+     (&quot;help&quot;, &quot;Show this help&quot;),
++    (&quot;quiet&quot;, &quot;Be quiet (don't display warning)&quot;),
+     (&quot;version&quot;, &quot;Display version&quot;),
+     (&quot;debug&quot;, &quot;Enable debug mode (eg. display backtrace)&quot;)
+ )
+@@ -47,6 +48,8 @@
+         elif option == &quot;--version&quot;:
+             print &quot;Hachoir version %s&quot; % VERSION
+             sys.exit(0)
++        elif option == &quot;--quiet&quot;:
++            config.quiet = True
+         elif option == &quot;--verbose&quot;:
+             config.verbose = True
+         elif option == &quot;--debug&quot;:
+@@ -54,31 +57,35 @@
+     return filename 
+ 
+ def main():
++    # Get libhachoir directory
+     libhachoir_path = os.path.join(os.getcwd(), &quot;libhachoir&quot;)
+     sys.path.append(libhachoir_path)
++    
++    # Parser command line arguments
++    filename = parseArgs()
+ 
+-    import libhachoir
+-
++    # Get tools that we need from libhachoir
+     from libhachoir.stream import InputStream
+-#    from text_ui import displayFieldSet
+-    from libhachoir.plugin import loadPlugins, guessPlugin
++    from text_ui import displayFieldSet
++    from libhachoir.plugin import loadParserPlugins, guessParser
+     from libhachoir.log import log
+     from libhachoir.error import error
+     from libhachoir.mime import getStreamMime
+     from metadata import createMetaData
++    import libhachoir.config as config
+ 
+     # Create input stream (read filename from command line first argument)
+-    filename = parseArgs()
+     stream = InputStream(open(filename, 'r'), filename)
+ 
+     # Load all parser plugings from 'file' directory
+     root_dir = libhachoir_path
+-    modules = loadPlugins(os.path.join(root_dir, &quot;parser&quot;))
+-    modules.sort()
+-    log.info(&quot;Loaded: %u plugings (%s)&quot; % (len(modules), &quot;, &quot;.join(modules)))
++    modules = loadParserPlugins()
++    if config.verbose:
++        modules.sort()
++        log.info(&quot;Loaded: %u plugings (%s)&quot; % (len(modules), &quot;, &quot;.join(modules)))
+ 
+     # Look for right plugin
+-    plugin = guessPlugin(stream, filename, None)
++    plugin = guessParser(stream, filename, None)
+     if plugin == None:
+         msg  = &quot;Sorry, can't find plugin for file \&quot;%s\&quot;!&quot; % filename
+         mimes = [ mime[0] for mime in getStreamMime(stream) ]
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/config.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/config.py	2006-03-04 00:27:53 UTC (rev 432)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/config.py	2006-03-04 00:28:52 UTC (rev 433)
+@@ -6,6 +6,7 @@
+ # Global options
+ debug = False 
+ verbose = False
++quiet = False
+ 
+ # Size of file cache (for each opened file)
+ file_cache_block_size = 4096  # 4 KB
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/error.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/error.py	2006-03-04 00:27:53 UTC (rev 432)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/error.py	2006-03-04 00:28:52 UTC (rev 433)
+@@ -5,6 +5,8 @@
+ from tools import getBacktrace
+ 
+ def warning(message):
++    if config.quiet:
++        return
+     if config.verbose or config.debug:
+         message += &quot;\n\n&quot; + getBacktrace()
+     log.warning(message)   
+
+Modified: haypo/hachoir/branches/hachoir-yield/libhachoir/plugin.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/libhachoir/plugin.py	2006-03-04 00:27:53 UTC (rev 432)
++++ haypo/hachoir/branches/hachoir-yield/libhachoir/plugin.py	2006-03-04 00:28:52 UTC (rev 433)
+@@ -3,9 +3,11 @@
+ from mime import getFileMime, getStreamMime
+ from error import warning
+ 
++hachoir_parsers = {} 
++
+ regex_plugin_filename = re.compile(r&quot;^([a-z0-9_]+)\.py$&quot;)
+ 
+-def loadPluginFromFile(module_path, loaded):
++def loadParser(module_path, loaded):
+     try:
+         module = __import__(module_path)
+         for get in module_path.split(&quot;.&quot;)[1:]:
+@@ -17,38 +19,42 @@
+     for attr in module.__dict__:
+         item = getattr(module, attr)
+         if hasattr(item, &quot;mime_types&quot;):
+-            registerPlugin(item, item.mime_types)
++            registerParser(item, item.mime_types)
+             loaded.append(module_path)
+ 
+-def loadPlugins(dir, module_path=&quot;libhachoir.parser&quot;, loaded=[]):
++def loadParserPlugins(dir=None, module_path=&quot;libhachoir.parser&quot;, loaded=[]):
+     &quot;&quot;&quot;
+-    Load all plugings from directory dir.
++    Load all plugings from directory dir. Don't give any argument, they are
++    used internally.
+ 
+-    Do not set module_path or loaded, they are used internally.
++    Returns a list of loaded plugins.
+     &quot;&quot;&quot;
++    if dir == None:
++        rootdir = os.path.dirname(__file__)
++        dir = os.path.join(rootdir, &quot;parser&quot;)
+     if module_path == None:
+         module_path = os.path.basename(dir)
+     for file in os.listdir(dir):
+         fullpath = os.path.join(dir, file)
+         if S_ISDIR(os.stat(fullpath)[ST_MODE]):
+-            loadPlugins(fullpath, module_path+&quot;.&quot;+file, loaded)
++            loadParserPlugins(fullpath, module_path+&quot;.&quot;+file, loaded)
+         else:
+             m = regex_plugin_filename.match(file)
+             if m != None and m.group(1) != &quot;__init__&quot;:
+                 path = module_path + &quot;.&quot; + m.group(1)
+-                loadPluginFromFile(path, loaded)
++                loadParser(path, loaded)
+     return loaded                    
+ 
+-def guessPlugin(stream, filename, default=None):
+-    return getPluginByStream(stream, filename, default)
++def guessParser(stream, filename, default=None):
++    return getParserByStream(stream, filename, default)
+ 
+-def getPluginByMime(mimes, default=None):
+-    global hachoir_plugins
++def getParserByMime(mimes, default=None):
++    global hachoir_parsers
+     plugins = []
+     for mime in mimes:
+         mime = mime[0]
+-        if mime in hachoir_plugins:
+-            for plugin in hachoir_plugins[mime]:
++        if mime in hachoir_parsers:
++            for plugin in hachoir_parsers[mime]:
+                 if plugin not in plugins:
+                     plugins.append(plugin)
+     if len(plugins)==0:
+@@ -61,22 +67,21 @@
+         warning(&quot;More than one plugin have same MIME:\n%s&quot; % plist)
+     return plugins[0]
+     
+-def getPluginByStream(stream, filename, default=None):
++def getParserByStream(stream, filename, default=None):
+     mime = getStreamMime(stream)
+-    return getPluginByMime(mime, default)
++    return getParserByMime(mime, default)
+ 
+-def getPluginByFile(filename, realname=None, default=None):
++def getParserByFile(filename, realname=None, default=None):
+     mime = getFileMime(filename, realname)
+-    return getPluginByMime(mime, default)
++    return getParserByMime(mime, default)
+     
+-def registerPlugin(filter_class, mimes):
+-    global hachoir_plugins
++def registerParser(filter_class, mimes):
++    global hachoir_parsers
+     if isinstance(mimes, str):
+         mimes = [mimes]
+     for mime in mimes:
+-        if mime in hachoir_plugins:
+-            hachoir_plugins[mime].append(filter_class)
++        if mime in hachoir_parsers:
++            hachoir_parsers[mime].append(filter_class)
+         else:
+-            hachoir_plugins[mime] = [filter_class]
++            hachoir_parsers[mime] = [filter_class]
+ 
+-hachoir_plugins = {} 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000334.html">[Happyboom-svn] r432 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/libhachoir
+</A></li>
+	<LI>Next message: <A HREF="000336.html">[Happyboom-svn] r434 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/doc branches/hachoir-yield/libhachoir branches/hachoir-yield/libhachoir/field branches/hachoir-yield/unit_test
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#335">[ date ]</a>
+              <a href="thread.html#335">[ thread ]</a>
+              <a href="subject.html#335">[ subject ]</a>
+              <a href="author.html#335">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

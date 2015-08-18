@@ -1,0 +1,898 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r244 - in haypo/hachoir: . plugins
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r244%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511012330.jA1NU1Eq019582%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000150.html">
+   <LINK REL="Next"  HREF="000152.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r244 - in haypo/hachoir: . plugins</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r244%20-%20in%20haypo/hachoir%3A%20.%20plugins&In-Reply-To=%3C200511012330.jA1NU1Eq019582%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r244 - in haypo/hachoir: . plugins">haypo at berlios.de
+       </A><BR>
+    <I>Wed Nov  2 00:30:01 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000150.html">[Happyboom-svn] r243 - haypo/hachoir
+</A></li>
+        <LI>Next message: <A HREF="000152.html">[Happyboom-svn] r245 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#151">[ date ]</a>
+              <a href="thread.html#151">[ thread ]</a>
+              <a href="subject.html#151">[ subject ]</a>
+              <a href="author.html#151">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-02 00:30:00 +0100 (Wed, 02 Nov 2005)
+New Revision: 244
+
+Modified:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/error.py
+   haypo/hachoir/filter.py
+   haypo/hachoir/format.py
+   haypo/hachoir/hachoir.glade
+   haypo/hachoir/plugins/gif.py
+   haypo/hachoir/plugins/png.py
+   haypo/hachoir/plugins/tar.py
+   haypo/hachoir/ui_popup.py
+   haypo/hachoir/ui_window.py
+   haypo/hachoir/user_filter.py
+Log:
+Lot of bug fix (around create/edit/delete chunks).
+
+
+Modified: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-11-01 03:20:25 UTC (rev 243)
++++ haypo/hachoir/chunk.py	2005-11-01 23:30:00 UTC (rev 244)
+@@ -48,46 +48,6 @@
+     size = property(_getSize)        
+     id = property(__getId, __setId)
+     
+-class ArrayChunk(Chunk):
+-    def __init__(self, id, description, stream, array, parent):
+-        Chunk.__init__(self, id, description, stream, stream.tell(), 0, parent)
+-        self._array = array
+-
+-    def update(self):
+-        prev_chunk = None
+-        pos = 0
+-        try:
+-            for chunk in self._array:
+-                if prev_chunk != None:
+-                    chunk.addr = prev_chunk.addr + prev_chunk.size
+-                else:
+-                    chunk.addr = self.addr
+-                chunk.update()
+-                prev_chunk = chunk
+-                pos = pos + 1
+-        except Exception, msg:
+-            error(&quot;Exception while updating an array:\n%s&quot; % msg)
+-            chunk = self._array[pos]
+-            addr = chunk.addr
+-            size = self._stream.getSize() - addr
+-            del self._array[pos:]
+-            if size != 0:
+-                chunk = FormatChunk(&quot;raw&quot;, &quot;Raw data&quot;, chunk.getStream(), addr, &quot;!%us&quot; % size, self)
+-                self._array.append(chunk)
+-
+-    def _getSize(self):
+-        size = 0
+-        for item in self._array:
+-            size = size + item.size
+-        return size
+-    size = property(_getSize)        
+-    
+-    def getData(self, max_size=None):
+-        return self._array
+-
+-    def __getitem__(self, index):
+-        return self._array[index]
+-        
+ class FilterChunk(Chunk):
+     def __init__(self, id, filter, parent):
+         Chunk.__init__(self, id, filter.getDescription(), filter.getStream(), filter.getAddr(), filter.getSize(), parent)
+@@ -102,6 +62,11 @@
+     def setFilter(self, filter):
+         self._filter = filter
+         self._filter.updateParent(self)
++    
++    def _setAddr(self, addr):
++        self._addr = addr
++        self._filter.setAddr(addr)
++    addr = property(Chunk._getAddr, _setAddr)        
+         
+     def _getSize(self):
+         return self._filter.getSize()
+@@ -174,10 +139,10 @@
+ 
+         # Update filter if needed
+         if diff_size != 0:
+-#            if method == &quot;split&quot; and diff_size &lt; 0:
+-#                self._parent.addRawChunk(self, old_id, -diff_size, old_description)
+-#            else:
+-            self._parent.rescan(self, diff_size, new_id=old_id, new_description=old_description)
++            if method == &quot;split&quot; and diff_size &lt; 0:
++                self._parent.addRawChunk(self, old_id, -diff_size, old_description)
++            else:
++                self._parent.rescan(self, diff_size, new_id=old_id, new_description=old_description)
+         self._parent.updateFormatChunk(self)
+ 
+     def isArray(self):
+@@ -203,7 +168,7 @@
+ #        return str(getattr(self, match.group(1)))
+         id = match.group(1)
+         if id == &quot;@end@&quot;:
+-            size = self.__stream.getLastPos() - self.addr
++            size = self.__stream.getLastPos() - self.addr + 1
+         else:
+             size = getattr(self._parent, id)
+         return str(size)
+
+Modified: haypo/hachoir/error.py
+===================================================================
+--- haypo/hachoir/error.py	2005-11-01 03:20:25 UTC (rev 243)
++++ haypo/hachoir/error.py	2005-11-01 23:30:00 UTC (rev 244)
+@@ -5,6 +5,16 @@
+ from log import log
+ import ui
+ 
++def warning(message):
++    log.warning(message)
++    if ui.ui != None:
++        dlg = gtk.MessageDialog( \
++            type=gtk.MESSAGE_WARNING,
++            buttons=gtk.BUTTONS_OK,
++            message_format=message)
++        dlg.run()
++        dlg.destroy()
++
+ def error(message):
+     log.error(message)
+     if ui.ui != None:
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-11-01 03:20:25 UTC (rev 243)
++++ haypo/hachoir/filter.py	2005-11-01 23:30:00 UTC (rev 244)
+@@ -7,7 +7,7 @@
+ import string
+ import types
+ import ui
+-from chunk import Chunk, FormatChunk, ArrayChunk, FilterChunk
++from chunk import Chunk, FormatChunk, FilterChunk
+ from format import splitFormat    
+ from error import error
+ from tools import getBacktrace
+@@ -16,21 +16,13 @@
+     def __init__(self, id, description, stream, parent):
+         self._id = id
+         self._description = description
+-        self._sub_struct = {}
+         self._stream = stream
+         self._parent = parent
+         if self._parent:
+             self.depth = self._parent.depth + 1
+-            self.table_parent = self._parent.table_item
+         else:
+             self.depth = 1
+-            self.table_item = None
+-            self.table_parent = None 
+         self.filter_chunk = None 
+-        self.indent = &quot; &quot; * ((self.depth-1)*2)
+-        self.child_indent = &quot; &quot; * (self.depth*2)
+-        self.table_item = None
+-        self.__last_child_stream_pos = None 
+         self._chunks = []
+         self._chunks_dict = {}
+         self._addr = self._stream.tell()
+@@ -39,27 +31,33 @@
+         if self.__class__ == Filter:
+             return None
+         self.getStream().seek(self.getAddr())
+-        return self.__class__(self.getStream(), self.getParent())
++        new = self.__class__(self.getStream(), self.getParent())
++        new.filter_chunk = self.filter_chunk
++        return new
+ 
+     def getId(self): return self._id
+     def setId(self, id): self._id = id
+     def getDescription(self): return self._description
+     def setDescription(self, description): self._description = description
+ 
++    def _deleteChunk(self, pos):
++        chunk = self._chunks[pos]
++        if chunk.id in self._chunks_dict:
++            del self._chunks_dict[chunk.id]
++        if hasattr(self, chunk.id):
++            delattr(self, chunk.id)        
++        del self._chunks[pos]
++
+     def deleteChunk(self, chunk):
+         if len(self._chunks) &lt; 2:
+             error(&quot;Can't not the chunk %s (there is only one chunk).&quot; % chunk.id)
+             return            
+         chunk_size = chunk.size
+         pos = self._chunks.index(chunk)
+-        assert chunk.id in self._chunks_dict and hasattr(self, chunk.id)
+-        del self._chunks[pos]
+-        del self._chunks_dict[chunk.id]
+-        delattr(self, chunk.id)        
++        self._deleteChunk(pos)
+         # Delete last chunk of a sub filter? It true, truncate the sub filter
+-        if self.getParent() != None and pos == len(self._chunks):
+-            chunk_size = 0
+-        self.rescanFromPos(pos, -chunk_size)
++        truncate = (self.getParent() != None and pos == len(self._chunks))
++        self.rescanFromPos(pos, -chunk_size, truncate_filter=truncate)
+         self.redisplay()
+ 
+     def getChunks(self):
+@@ -93,9 +91,13 @@
+         self._chunks_dict[new_id] = chunk
+         
+     def addRawChunk(self, prev_chunk, id, size, description):
+-        addr = prev_chunk.addr + prev_chunk.size
++        if prev_chunk != None:
++            addr = prev_chunk.addr + prev_chunk.size
++            chunk_pos = self._chunks.index(prev_chunk)+1
++        else:
++            addr = self.getAddr()
++            chunk_pos = len(self._chunks)
+         chunk = FormatChunk(id, description, self.getStream(), addr, &quot;!%ss&quot; % size, self)
+-        chunk_pos = self._chunks.index(prev_chunk)+1
+         self._appendChunk(chunk, can_truncate=True, position=chunk_pos)
+ 
+     def rescan(self, from_chunk, diff_size, new_id=None, new_description=None):
+@@ -105,34 +107,47 @@
+             start = 0
+         self.rescanFromPos(start, diff_size, new_id, new_description)
+             
+-    def rescanFromPos(self, start, diff_size, new_id=None, new_description=None):
+-        assert 0&lt;=start and start &lt;= len(self._chunks)
+-        if 0&lt;start:
+-            prev_chunk = self._chunks[start-1]
++    def _rescanUpdateSize(self, diff_size, new_id=None, new_description=None):
++        # Only process diff_size &lt; 0
++        if 0 &lt;= diff_size: return
++
++        # Get last chunk
++        if 0 &lt; len(self._chunks):
++            prev_chunk = self._chunks[-1]
+         else:
+             prev_chunk = None
++        
++        if False: #prev_chunk != None and 1&lt;len(self._chunks) and issubclass(prev_chunk.__class__, FormatChunk):
++            # If last chunk is a FormatChunk, update it's size
++            format = splitFormat(prev_chunk.getFormat())
++            if self.getParent() == None:
++                if format[1] != &quot;{@end@}&quot;:
++                    prev_chunk.convertToStringSize(&quot;{@end@}&quot;)
++            else:
++                size = prev_chunk.size - diff_size
++                prev_chunk.convertToStringSize(size)
++        else:
++            # Get id
++            if new_id != None:
++                id = new_id
++            else:
++                id = &quot;raw&quot;
++            id = self.getUniqChunkId(id)
+ 
+-        # Update last chunk size if needed
+-        if start == len(self._chunks):
+-            if diff_size &lt; 0:
+-                assert prev_chunk != None
+-                if new_id != None:
+-                    id = new_id
+-                else:
+-                    id = prev_chunk.id
+-                id = self.getUniqChunkId(id)
+-                if new_description != None:
+-                    description = new_description
+-                else:
+-                    description = prev_chunk.description
+-                if self.getParent() == None:
+-                    size = &quot;{@end@}&quot;
+-                else:
+-                    size = -diff_size
+-                self.addRawChunk(prev_chunk, id, size, description)
+-                diff_size = 0
++            # Get description
++            if new_description != None:
++                description = new_description
++            else:
++                description = &quot;&quot;
+ 
+-        # Update chunks address
++            # Get size
++            if self.getParent() == None:
++                size = &quot;{@end@}&quot;
++            else:
++                size = -diff_size
++            self.addRawChunk(prev_chunk, id, size, description)
++
++    def _rescanUpdateChunks(self, start, prev_chunk):
+         pos = start
+         try:
+             for chunk in self._chunks[start:]:
+@@ -142,32 +157,47 @@
+                 else:
+                     chunk.addr = self.getAddr()
+                 chunk.update()
+-                if pos == len(self._chunks)-1 and issubclass(chunk.__class__, FormatChunk):
+-                    format = splitFormat(chunk.getFormat())
+-                    if self.getParent() == None:
+-                        if format[1] != &quot;{@end@}&quot;:
+-                            chunk.convertToStringSize(&quot;{@end@}&quot;)
+-                    else:
+-                        size = chunk.size - diff_size
+-                        chunk.convertToStringSize(size)
+                 prev_chunk = chunk
+                 pos = pos + 1
+         except Exception, msg:
+             error(&quot;Exception while updating a filter:\n%s\n%s&quot; \
+                 % (msg,getBacktrace()))
+-            chunk = self._chunks[pos]
+-            size = self._stream.getSize() - chunk.addr
+-            del self._chunks[pos:]
+-            if size != 0:
+-                chunk = FormatChunk(&quot;raw&quot;, &quot;Raw data&quot;, chunk.getStream(), chunk.addr, &quot;!%us&quot; % size, self)
+-                self._appendChunk(chunk)
+-                
++            iter = len(self._chunks)-1
++            while pos&lt;=iter:
++                self._deleteChunk(iter)
++                iter = iter - 1
++
++    def rescanFromPos(self, start, diff_size, new_id=None, new_description=None, truncate_filter=False):
++        assert 0&lt;=start and start &lt;= len(self._chunks)
++        if 0&lt;start:
++            prev_chunk = self._chunks[start-1]
++        else:
++            prev_chunk = None
++
++        # Update chunks address
++        old_size = self.getSize()
++        self._rescanUpdateChunks(start, prev_chunk)
++        diff_size = diff_size + (self.getSize() - old_size)
++
++        # Update last chunk size if needed
++        if not truncate_filter:
++            self._rescanUpdateSize(diff_size, new_id, new_description)
++            diff_size = 0
++               
+         if self.getParent() != None:
+-            self.getParent().rescan(self.filter_chunk, 0)
++            self.getParent().rescan(self.filter_chunk, diff_size)
+ 
+     def getAddr(self):
+         return self._addr
+ 
++    def setAddr(self, addr):
++        self._addr = addr
++
++    def getLastPos(self):
++        if len(self._array) == 0: return self.getAddr()
++        last_chunk = self._array[-1]
++        return last_chunk.addr + last_chunk.size
++
+     def getSize(self):
+         size = 0
+         for chunk in self._chunks:
+@@ -178,16 +208,9 @@
+         pass
+ 
+     def getChunk(self, chunk_id):
+-        m = re.compile(r&quot;^([^[]+)\[([0-9]+)\]$&quot;).match(chunk_id)
+-        chunk = None
+-        if m != None:
+-            array = self._chunks_dict.get(m.group(1), None)
+-            if array != None:
+-                chunk = array[int(m.group(2))]
+-        else:
+-            chunk = self._chunks_dict.get(chunk_id, None)
++        chunk = self._chunks_dict.get(chunk_id, None)
+         if chunk == None:
+-            raise Exception(&quot;Filter %s has no chunk with id \&quot;%s\&quot;.&quot; \
++            raise Exception(&quot;Filter \&quot;%s\&quot; has no chunk with id \&quot;%s\&quot;.&quot; \
+                 % (self.getId(), chunk_id))
+         return chunk
+ 
+@@ -197,7 +220,7 @@
+             type = chunk.getFormat()
+         elif issubclass(type, FilterChunk):
+             type = chunk.getFilter().getId()
+-        ui.window.add_table(self.table_parent, chunk.addr, chunk.size, type, chunk.id, chunk.description, chunk.getDisplayData())
++        ui.window.add_table(None, chunk.addr, chunk.size, type, chunk.id, chunk.description, chunk.getDisplayData())
+ 
+     def redisplay(self):  
+         self.display()
+@@ -209,7 +232,7 @@
+             if text != &quot;&quot;: text = &quot; &gt; &quot; + text
+             text = current.getId() + text
+             current = current.getParent()
+-        ui.window.updateStatusBar(&quot;%s: %s&quot; % (text, self.getDescription()))
++        ui.window.updateStatusBar(&quot;%s: %s (size=%s)&quot; % (text, self.getDescription(), self.getSize()))
+ 
+     def display(self):  
+         ui.window.enableParentButton(self.getParent() != None)
+@@ -218,20 +241,8 @@
+         # Update table
+         ui.window.clear_table()
+         for chunk in self._chunks:
+-            if issubclass(chunk.__class__, ArrayChunk):
+-                for subchunk in chunk:
+-                    self.displayChunk(subchunk)
+-            else:
+-                self.displayChunk(chunk)
++            self.displayChunk(chunk)
+ 
+-    def __isStrPrintable(self, str):
+-        &quot;&quot;&quot;
+-        Can a string be printed on the screen?
+-        &quot;&quot;&quot;
+-        for c in str:
+-            if c not in string.printable: return False
+-        return True
+-
+     def readField(self, id, description, delimiter):
+         lg = self._stream.searchLength(delimiter, False)
+         if lg == -1:
+@@ -289,33 +300,20 @@
+ 
+     def readChild(self, id, filter_class, description): 
+         filter = filter_class(self._stream, self)
++        self.addFilter(id, filter)
++    
++    def addFilter(self, id, filter): 
+         chunk = FilterChunk(id, filter, self)
+         self._appendChunk(chunk)
+         filter.updateParent(chunk)
+         self._stream.seek(chunk.addr + chunk.size)
+ 
+-    def readArray(self, id, filter_class, description, end_func): 
+-        array = []
+-        array_chunk = ArrayChunk(id, description, self._stream, array, self)
+-        self._appendChunk(array_chunk)
+-
+-        nb = 0
+-        last_filter = None
+-        while not end_func(self._stream, array, last_filter):
+-            filter = filter_class(self._stream, self)
+-            chunk_id = &quot;%s[%u]&quot; % (id, nb)
+-            nb = nb + 1
+-            chunk = FilterChunk(chunk_id, filter, self)
+-            array.append( chunk )
+-            last_filter = filter
+-
+-        for chunk in array:
+-            chunk.getFilter().updateParent(chunk)
+-        self._stream.seek(array_chunk.addr + array_chunk.size)
++    def readArray(self, id, entry_class, description, end_func): 
++        filter = ArrayFilter(id, description, self._stream, self, entry_class, end_func)
++        self.addFilter(id, filter)
+     
+     def read(self, id, format, description, can_truncate=True):
+         &quot;&quot;&quot; Returns chunk &quot;&quot;&quot;
+-#        print &quot;* Read chunk %s: format %s&quot; % (id, format)
+         chunk = FormatChunk(id, description, self._stream, self._stream.tell(), format, self)
+         self._stream.seek(chunk.size, 1)
+         self._appendChunk(chunk, can_truncate)
+@@ -351,3 +349,70 @@
+ 
+     def getStream(self):
+         return self._stream
++
++class ArrayFilter(Filter):
++    def __init__(self, id, description, stream, parent, entry_class, end_func):
++        Filter.__init__(self, id, description, stream, parent)
++        self._entry_class = entry_class
++        self._end_func = end_func
++        self._read()
++
++    def _read(self):
++        self._array = []
++        nb = 0
++        last_filter = None
++        while not self._end_func(self._stream, self._array, last_filter):
++            filter = self._entry_class(self._stream, self)
++            chunk_id = &quot;%s[%u]&quot; % (self.getId(), nb)
++            nb = nb + 1
++            chunk = FilterChunk(chunk_id, filter, self)
++            self._array.append( chunk )
++            self._appendChunk(chunk)
++            last_filter = filter
++
++        for chunk in self._array:
++            chunk.getFilter().updateParent(chunk)
++#        self._stream.seek(self.getAddr() + self.getSize())
++
++    def getArray(self):
++        return self._array
++    
++    def _deleteChunk(self, pos):
++        Filter._deleteChunk(self, pos)
++        if pos &lt; len(self._array):
++            del self._array[pos]
++
++    def update(self):
++        prev_chunk = None
++        pos = 0
++        try:
++            for chunk in self._array:
++                if prev_chunk != None:
++                    chunk.addr = prev_chunk.addr + prev_chunk.size
++                else:
++                    chunk.addr = self.getAddr()
++                chunk.update()
++                prev_chunk = chunk
++                pos = pos + 1
++        except Exception, msg:
++            error(&quot;Exception while updating an ArrayFilter:\n%s&quot; % msg)
++            chunk = self._array[pos]
++            addr = chunk.addr
++            size = self.getLastPos() - addr
++            del self._array[pos:]
++            if size != 0:
++                chunk = FormatChunk(&quot;raw&quot;, &quot;Raw data&quot;, chunk.getStream(), addr, &quot;!%us&quot; % size, self)
++                self._array.append(chunk)
++
++    def __len__(self):
++        return len(self._array)
++
++    def __getitem__(self, index):
++        return self._array[index]
++
++    def clone(self):
++        self.getStream().seek(self.getAddr())
++        new = ArrayFilter( self.getId(), self.getDescription(), \
++            self.getStream(), self.getParent(), self._entry_class, self._end_func)
++        new.filter_chunk = self.filter_chunk
++        return new
+
+Modified: haypo/hachoir/format.py
+===================================================================
+--- haypo/hachoir/format.py	2005-11-01 03:20:25 UTC (rev 243)
++++ haypo/hachoir/format.py	2005-11-01 23:30:00 UTC (rev 244)
+@@ -1,11 +1,11 @@
+ import re
+ 
+ def checkFormat(format):
+-    m = re.compile(&quot;^[!&lt;&gt;]?(?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?[BHLs]$&quot;).match(format)
++    m = re.compile(&quot;^[!&lt;&gt;]?(?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?[BHLsc]$&quot;).match(format)
+     return m != None
+ 
+ def splitFormat(format):
+-    m = re.compile(&quot;^([!&lt;&gt;]?)((?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?)([BHLs])$&quot;).match(format)
++    m = re.compile(&quot;^([!&lt;&gt;]?)((?:[0-9]+|\{[<A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">a-z at _</A>]+\})?)([BHLsc])$&quot;).match(format)
+     if m == None: return None
+     endian = m.group(1)
+     if endian==&quot;&quot;: endian=&quot;!&quot;
+
+Modified: haypo/hachoir/hachoir.glade
+===================================================================
+--- haypo/hachoir/hachoir.glade	2005-11-01 03:20:25 UTC (rev 243)
++++ haypo/hachoir/hachoir.glade	2005-11-01 23:30:00 UTC (rev 244)
+@@ -263,7 +263,7 @@
+       &lt;signal name=&quot;activate&quot; handler=&quot;onNewChunk&quot; last_modification_time=&quot;Sun, 30 Oct 2005 23:08:19 GMT&quot;/&gt;
+ 
+       &lt;child internal-child=&quot;image&quot;&gt;
+-	&lt;widget class=&quot;GtkImage&quot; id=&quot;image20&quot;&gt;
++	&lt;widget class=&quot;GtkImage&quot; id=&quot;image32&quot;&gt;
+ 	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 	  &lt;property name=&quot;stock&quot;&gt;gtk-cut&lt;/property&gt;
+ 	  &lt;property name=&quot;icon_size&quot;&gt;1&lt;/property&gt;
+@@ -277,14 +277,14 @@
+   &lt;/child&gt;
+ 
+   &lt;child&gt;
+-    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;new_filter1&quot;&gt;
++    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;new_filter&quot;&gt;
+       &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+       &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;New _filter&lt;/property&gt;
+       &lt;property name=&quot;use_underline&quot;&gt;True&lt;/property&gt;
+       &lt;signal name=&quot;activate&quot; handler=&quot;onNewFilter&quot; last_modification_time=&quot;Mon, 31 Oct 2005 06:42:27 GMT&quot;/&gt;
+ 
+       &lt;child internal-child=&quot;image&quot;&gt;
+-	&lt;widget class=&quot;GtkImage&quot; id=&quot;image21&quot;&gt;
++	&lt;widget class=&quot;GtkImage&quot; id=&quot;image33&quot;&gt;
+ 	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 	  &lt;property name=&quot;stock&quot;&gt;gtk-cut&lt;/property&gt;
+ 	  &lt;property name=&quot;icon_size&quot;&gt;1&lt;/property&gt;
+@@ -298,14 +298,14 @@
+   &lt;/child&gt;
+ 
+   &lt;child&gt;
+-    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;convert_string_chunk_to_filter&quot;&gt;
++    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;convert_to_filter&quot;&gt;
+       &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+       &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;_Convert string chunk to filter&lt;/property&gt;
+       &lt;property name=&quot;use_underline&quot;&gt;True&lt;/property&gt;
+       &lt;signal name=&quot;activate&quot; handler=&quot;onConvertToFilter&quot; last_modification_time=&quot;Tue, 01 Nov 2005 01:30:56 GMT&quot;/&gt;
+ 
+       &lt;child internal-child=&quot;image&quot;&gt;
+-	&lt;widget class=&quot;GtkImage&quot; id=&quot;image22&quot;&gt;
++	&lt;widget class=&quot;GtkImage&quot; id=&quot;image34&quot;&gt;
+ 	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 	  &lt;property name=&quot;stock&quot;&gt;gtk-convert&lt;/property&gt;
+ 	  &lt;property name=&quot;icon_size&quot;&gt;1&lt;/property&gt;
+@@ -319,14 +319,14 @@
+   &lt;/child&gt;
+ 
+   &lt;child&gt;
+-    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;set_chunk_format&quot;&gt;
++    &lt;widget class=&quot;GtkImageMenuItem&quot; id=&quot;set_format&quot;&gt;
+       &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+       &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Set chunk _format&lt;/property&gt;
+       &lt;property name=&quot;use_underline&quot;&gt;True&lt;/property&gt;
+       &lt;signal name=&quot;activate&quot; handler=&quot;onSetFormat&quot; last_modification_time=&quot;Sun, 30 Oct 2005 23:27:49 GMT&quot;/&gt;
+ 
+       &lt;child internal-child=&quot;image&quot;&gt;
+-	&lt;widget class=&quot;GtkImage&quot; id=&quot;image23&quot;&gt;
++	&lt;widget class=&quot;GtkImage&quot; id=&quot;image35&quot;&gt;
+ 	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 	  &lt;property name=&quot;stock&quot;&gt;gtk-edit&lt;/property&gt;
+ 	  &lt;property name=&quot;icon_size&quot;&gt;1&lt;/property&gt;
+@@ -347,7 +347,7 @@
+       &lt;signal name=&quot;activate&quot; handler=&quot;onDeleteChunk&quot; last_modification_time=&quot;Tue, 01 Nov 2005 01:54:40 GMT&quot;/&gt;
+ 
+       &lt;child internal-child=&quot;image&quot;&gt;
+-	&lt;widget class=&quot;GtkImage&quot; id=&quot;image24&quot;&gt;
++	&lt;widget class=&quot;GtkImage&quot; id=&quot;image36&quot;&gt;
+ 	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 	  &lt;property name=&quot;stock&quot;&gt;gtk-delete&lt;/property&gt;
+ 	  &lt;property name=&quot;icon_size&quot;&gt;1&lt;/property&gt;
+@@ -500,7 +500,8 @@
+ 	  &lt;child&gt;
+ 	    &lt;widget class=&quot;GtkComboBoxEntry&quot; id=&quot;format&quot;&gt;
+ 	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-	      &lt;property name=&quot;items&quot; translatable=&quot;yes&quot;&gt;s
++	      &lt;property name=&quot;items&quot; translatable=&quot;yes&quot;&gt;c
++s
+ B
+ H
+ L&lt;/property&gt;
+
+Modified: haypo/hachoir/plugins/gif.py
+===================================================================
+--- haypo/hachoir/plugins/gif.py	2005-11-01 03:20:25 UTC (rev 243)
++++ haypo/hachoir/plugins/gif.py	2005-11-01 23:30:00 UTC (rev 244)
+@@ -7,6 +7,7 @@
+ 
+ from filter import Filter
+ from plugin import registerPlugin
++from error import warning
+ 
+ def displayGif(gif):
+     print &quot;Format: %s&quot; % (gif.header)
+@@ -121,7 +122,7 @@
+             elif code == &quot;,&quot;:
+                 self.readChild(&quot;images[]&quot;, GifImage, &quot;Image&quot;)
+                 # TODO: Write GifImage code :-)
+-                print &quot;WARNING: GIF FILTER CAN NOT READ IMAGE CONTENT YET, SO ABORT READING!&quot;
++                warning(&quot;GIF FILTER CAN NOT READ IMAGE CONTENT YET, SO ABORT READING!&quot;)
+                 return
+             elif code == &quot;;&quot;:
+                 # GIF Terminator
+
+Modified: haypo/hachoir/plugins/png.py
+===================================================================
+--- haypo/hachoir/plugins/png.py	2005-11-01 03:20:25 UTC (rev 243)
++++ haypo/hachoir/plugins/png.py	2005-11-01 23:30:00 UTC (rev 244)
+@@ -61,8 +61,10 @@
+ class PngText(Filter):
+     def __init__(self, stream, parent):
+         Filter.__init__(self, &quot;png_text&quot;, &quot;PNG text&quot;, stream, parent)
++        max_length = parent.size
++        print &quot;max&quot;,max_length
+         old = self._stream.tell()
+-        pos = self._stream.search(&quot;\0&quot;, 14)
++        pos = self._stream.search(&quot;\0&quot;, max_length)
+         if pos == -1:
+             raise Exception(&quot;Fails to find end of text&quot;)
+         lg = (pos-old)
+
+Modified: haypo/hachoir/plugins/tar.py
+===================================================================
+--- haypo/hachoir/plugins/tar.py	2005-11-01 03:20:25 UTC (rev 243)
++++ haypo/hachoir/plugins/tar.py	2005-11-01 23:30:00 UTC (rev 244)
+@@ -5,6 +5,7 @@
+ Author: Victor Stinner
+ &quot;&quot;&quot;
+ 
++import re
+ from datetime import datetime
+ from filter import Filter
+ from plugin import registerPlugin
+@@ -79,8 +80,10 @@
+ 
+     def octal2int(self, str):
+         str = str.strip(&quot;\0&quot;)
++        if str==&quot;&quot;: return 0
++        assert re.match(&quot;^[0-7]+$&quot;, str)
+         try:
+-            return int(str.strip(&quot;\0&quot;),8)
++            return int(str,8)
+         except:
+             return 0
+ 
+
+Modified: haypo/hachoir/ui_popup.py
+===================================================================
+--- haypo/hachoir/ui_popup.py	2005-11-01 03:20:25 UTC (rev 243)
++++ haypo/hachoir/ui_popup.py	2005-11-01 23:30:00 UTC (rev 244)
+@@ -14,55 +14,72 @@
+         self.popup = xml.get_widget('table_popup')
+         xml.signal_autoconnect(self)
+         self.chunk = None
+-        self.new_chunk = NewChunkDialog(self.ui.glade_xml)
++        self.new_chunk_dlg = NewChunkDialog(self.ui.glade_xml)
+ 
++        # Popup items
++        self.new_chunk = xml.get_widget(&quot;new_chunk&quot;)
++        self.new_filter = xml.get_widget(&quot;new_filter&quot;)
++        self.convert_to_filter = xml.get_widget(&quot;convert_to_filter&quot;)
++        self.set_format = xml.get_widget(&quot;set_format&quot;)
++        self.delete_chunk = xml.get_widget(&quot;delete_chunk&quot;)
++
+     def show(self, path_info, event):
+         col = path_info[0][0]
+         self.chunk = self.ui.window.getTableChunk(col)
+         if self.chunk == None:
+             error(&quot;Can't get chunk&quot;)
+             return
++
++        is_format_chunk = issubclass(self.chunk.__class__, FormatChunk)
++        self.new_chunk.set_sensitive(is_format_chunk)
++        self.new_filter.set_sensitive(is_format_chunk)
++        self.convert_to_filter.set_sensitive(is_format_chunk)
++        self.set_format.set_sensitive(is_format_chunk)
++
++        can_delete = (self.chunk.getParent().getParent() != None)
++        if not can_delete:
++            chunks = self.chunk.getParent().getChunks()
++            can_delete = (chunks.index(self.chunk) &lt; len(chunks)-1) or not is_format_chunk
++
++        self.delete_chunk.set_sensitive(can_delete)
+         self.popup.popup( None, None, None, event.button, event.time)
+ 
+     def onDeleteChunk(self, event):
+         self.chunk.getParent().deleteChunk(self.chunk)
+ 
+     def onConvertToFilter(self, event):
+-        if not issubclass(self.chunk.__class__, FormatChunk):
+-            print &quot;Only works on format chunk&quot;
++        assert issubclass(self.chunk.__class__, FormatChunk)
+         self.chunk.getParent().convertChunkToFilter(self.chunk)
+         
+     def onNewChunk(self, event):
+-        if self.new_chunk.runNewChunk() == gtk.RESPONSE_CANCEL: return
+-        assert issubclass(self.chunk.__class__, FormatChunk) and self.chunk.isString()
+-        format = self.new_chunk.getFormat()
+-        id = self.new_chunk.getId()
+-        desc = self.new_chunk.getDescription()
++        if self.new_chunk_dlg.runNewChunk() == gtk.RESPONSE_CANCEL: return
++        assert issubclass(self.chunk.__class__, FormatChunk)
++        format = self.new_chunk_dlg.getFormat()
++        id = self.new_chunk_dlg.getId()
++        desc = self.new_chunk_dlg.getDescription()
+         self.chunk.setFormat(format, &quot;split&quot;, id, desc)
+         self.chunk.getParent().redisplay()
+ 
+     def onNewFilter(self, event):
+-        if self.new_chunk.runNewChunk() == gtk.RESPONSE_CANCEL: return
++        if self.new_chunk_dlg.runNewChunk() == gtk.RESPONSE_CANCEL: return
+         assert issubclass(self.chunk.__class__, FormatChunk) and self.chunk.isString()
+-        format = self.new_chunk.getFormat()
++        format = self.new_chunk_dlg.getFormat()
+         split_format = splitFormat(format)
+         size = split_format[1]
+-        id = self.new_chunk.getId()
+-        desc = self.new_chunk.getDescription()
++        id = self.new_chunk_dlg.getId()
++        desc = self.new_chunk_dlg.getDescription()
+         self.chunk.getParent().addNewFilter(self.chunk, id, size, desc)
+ 
+     def onSetFormat(self, event):
+-        if issubclass(self.chunk.__class__, FormatChunk):
+-            if self.new_chunk.runSetFormat(self.chunk) == gtk.RESPONSE_CANCEL: return
+-            format = self.new_chunk.getFormat()
+-            self.chunk.id = self.new_chunk.getId()
+-            self.chunk.description = self.new_chunk.getDescription()
+-            try:
+-                self.chunk.setFormat(format, &quot;rescan&quot;)
+-            except Exception, msg:
+-                error(&quot;Exception while trying to set chunk %s format to \&quot;%s\&quot;.&quot; \
+-                    % (self.chunk.id, format))
+-                pass
+-            self.chunk.getParent().redisplay()
+-        else:
+-            error(&quot;Can't set format of chunk of type %s&quot; % self.chunk.__class__)
++        assert issubclass(self.chunk.__class__, FormatChunk)
++        if self.new_chunk_dlg.runSetFormat(self.chunk) == gtk.RESPONSE_CANCEL: return
++        format = self.new_chunk_dlg.getFormat()
++        self.chunk.id = self.new_chunk_dlg.getId()
++        self.chunk.description = self.new_chunk_dlg.getDescription()
++        try:
++            self.chunk.setFormat(format, &quot;rescan&quot;)
++        except Exception, msg:
++            error(&quot;Exception while trying to set chunk %s format to \&quot;%s\&quot;.&quot; \
++                % (self.chunk.id, format))
++            pass
++        self.chunk.getParent().redisplay()
+
+Modified: haypo/hachoir/ui_window.py
+===================================================================
+--- haypo/hachoir/ui_window.py	2005-11-01 03:20:25 UTC (rev 243)
++++ haypo/hachoir/ui_window.py	2005-11-01 23:30:00 UTC (rev 244)
+@@ -22,7 +22,7 @@
+         xml.signal_autoconnect(self)
+         self.window.connect(&quot;key-press-event&quot;, self.onKeyUp)
+         self.table.connect(&quot;button_press_event&quot;, self.on_treeview_button_press_event)
+-        self.window.set_size_request(760,300)
++        self.window.set_size_request(760,500)
+         self.build_table()
+         
+     def updateToolbar(self):
+
+Modified: haypo/hachoir/user_filter.py
+===================================================================
+--- haypo/hachoir/user_filter.py	2005-11-01 03:20:25 UTC (rev 243)
++++ haypo/hachoir/user_filter.py	2005-11-01 23:30:00 UTC (rev 244)
+@@ -1,5 +1,5 @@
+ from filter import Filter
+-from chunk import ArrayChunk, FilterChunk
++from chunk import FilterChunk
+ from xml.dom.minidom import getDOMImplementation, parse
+ from program import VERSION
+ from xml.dom.ext import PrettyPrint
+@@ -103,7 +103,8 @@
+ 
+     def __createFromChunks(self, chunks):
+         for chunk in chunks:
+-            if issubclass(chunk.__class__, ArrayChunk):
++            if False: #issubclass(chunk.__class__, ArrayChunk):
++                # TODO: Fix ArrayFilter
+                 self.__createFromChunks(chunk)
+             else:
+                 if issubclass(chunk.__class__, FilterChunk):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000150.html">[Happyboom-svn] r243 - haypo/hachoir
+</A></li>
+	<LI>Next message: <A HREF="000152.html">[Happyboom-svn] r245 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#151">[ date ]</a>
+              <a href="thread.html#151">[ thread ]</a>
+              <a href="subject.html#151">[ subject ]</a>
+              <a href="author.html#151">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,647 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r288 - in haypo/hachoir: . ui
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r288%20-%20in%20haypo/hachoir%3A%20.%20ui&In-Reply-To=%3C200511300300.jAU30MJn017949%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000194.html">
+   <LINK REL="Next"  HREF="000196.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r288 - in haypo/hachoir: . ui</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r288%20-%20in%20haypo/hachoir%3A%20.%20ui&In-Reply-To=%3C200511300300.jAU30MJn017949%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r288 - in haypo/hachoir: . ui">haypo at berlios.de
+       </A><BR>
+    <I>Wed Nov 30 04:00:22 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000194.html">[Happyboom-svn] r287 - in haypo/hachoir: . ui
+</A></li>
+        <LI>Next message: <A HREF="000196.html">[Happyboom-svn] r289 - in haypo/hachoir: . plugins stream ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#195">[ date ]</a>
+              <a href="thread.html#195">[ thread ]</a>
+              <a href="subject.html#195">[ subject ]</a>
+              <a href="author.html#195">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-30 04:00:08 +0100 (Wed, 30 Nov 2005)
+New Revision: 288
+
+Modified:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/config.py
+   haypo/hachoir/filter.py
+   haypo/hachoir/ui/hachoir.glade
+   haypo/hachoir/ui/ui_window.py
+Log:
+Fix getRaw() in StringChunk. UI: remove status bar and use 2 fields columns
+in informations.
+
+
+Modified: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-11-30 02:36:04 UTC (rev 287)
++++ haypo/hachoir/chunk.py	2005-11-30 03:00:08 UTC (rev 288)
+@@ -43,7 +43,10 @@
+     def getRaw(self, max_size=None):
+         oldpos = self._stream.tell()
+         self._stream.seek(self.addr)
+-        data = self._stream.getN(max_size)
++        size = self.size
++        if max_size&lt;size:
++            size = max_size
++        data = self._stream.getN(size)
+         self._stream.seek(oldpos)
+         return data
+ 
+@@ -185,9 +188,9 @@
+         Chunk.update(self)
+         self._findSize()
+ 
+-    def getRaw(self, max_size=None):
++    def getValue(self, max_size=None):
+         return self._read(None)
+-    raw = property(getRaw)
++    value = property(getValue)
+ 
+     def getDisplayData(self):
+         if self.display != None:
+
+Modified: haypo/hachoir/config.py
+===================================================================
+--- haypo/hachoir/config.py	2005-11-30 02:36:04 UTC (rev 287)
++++ haypo/hachoir/config.py	2005-11-30 03:00:08 UTC (rev 288)
+@@ -1,2 +1,2 @@
+ max_string_length = 30
+-max_hexa_length = 1024
++max_hexa_length = 4096 
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-11-30 02:36:04 UTC (rev 287)
++++ haypo/hachoir/filter.py	2005-11-30 03:00:08 UTC (rev 288)
+@@ -261,13 +261,8 @@
+             current = current.getParent()
+         return &quot;/&quot;+text
+ 
+-    def updateStatusBar(self):
+-        text = self.getPath()
+-        ui.window.updateStatusBar(&quot;%s: %s (size=%s)&quot; % (text, self.getDescription(), self.getSize()))
+-
+     def display(self):  
+         ui.window.enableParentButton(self.getParent() != None)
+-        self.updateStatusBar()
+             
+         # Update table
+         ui.window.clear_table()
+
+Modified: haypo/hachoir/ui/hachoir.glade
+===================================================================
+--- haypo/hachoir/ui/hachoir.glade	2005-11-30 02:36:04 UTC (rev 287)
++++ haypo/hachoir/ui/hachoir.glade	2005-11-30 03:00:08 UTC (rev 288)
+@@ -286,7 +286,7 @@
+ 	    &lt;widget class=&quot;GtkEntry&quot; id=&quot;filter_path&quot;&gt;
+ 	      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 	      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
+-	      &lt;property name=&quot;editable&quot;&gt;True&lt;/property&gt;
++	      &lt;property name=&quot;editable&quot;&gt;False&lt;/property&gt;
+ 	      &lt;property name=&quot;visibility&quot;&gt;True&lt;/property&gt;
+ 	      &lt;property name=&quot;max_length&quot;&gt;0&lt;/property&gt;
+ 	      &lt;property name=&quot;text&quot; translatable=&quot;yes&quot;&gt;&lt;/property&gt;
+@@ -312,7 +312,6 @@
+ 	&lt;widget class=&quot;GtkVPaned&quot; id=&quot;vpaned1&quot;&gt;
+ 	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 	  &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
+-	  &lt;property name=&quot;position&quot;&gt;159&lt;/property&gt;
+ 
+ 	  &lt;child&gt;
+ 	    &lt;widget class=&quot;GtkScrolledWindow&quot; id=&quot;scrolledwindow1&quot;&gt;
+@@ -357,8 +356,8 @@
+ 		&lt;widget class=&quot;GtkTable&quot; id=&quot;table5&quot;&gt;
+ 		  &lt;property name=&quot;border_width&quot;&gt;6&lt;/property&gt;
+ 		  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-		  &lt;property name=&quot;n_rows&quot;&gt;5&lt;/property&gt;
+-		  &lt;property name=&quot;n_columns&quot;&gt;2&lt;/property&gt;
++		  &lt;property name=&quot;n_rows&quot;&gt;3&lt;/property&gt;
++		  &lt;property name=&quot;n_columns&quot;&gt;4&lt;/property&gt;
+ 		  &lt;property name=&quot;homogeneous&quot;&gt;False&lt;/property&gt;
+ 		  &lt;property name=&quot;row_spacing&quot;&gt;6&lt;/property&gt;
+ 		  &lt;property name=&quot;column_spacing&quot;&gt;6&lt;/property&gt;
+@@ -462,7 +461,7 @@
+ 		  &lt;/child&gt;
+ 
+ 		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;stream_size&quot;&gt;
++		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;filter_type&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 		      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
+ 		      &lt;property name=&quot;editable&quot;&gt;False&lt;/property&gt;
+@@ -476,16 +475,16 @@
+ 		    &lt;packing&gt;
+ 		      &lt;property name=&quot;left_attach&quot;&gt;1&lt;/property&gt;
+ 		      &lt;property name=&quot;right_attach&quot;&gt;2&lt;/property&gt;
+-		      &lt;property name=&quot;top_attach&quot;&gt;3&lt;/property&gt;
+-		      &lt;property name=&quot;bottom_attach&quot;&gt;4&lt;/property&gt;
++		      &lt;property name=&quot;top_attach&quot;&gt;2&lt;/property&gt;
++		      &lt;property name=&quot;bottom_attach&quot;&gt;3&lt;/property&gt;
+ 		      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+ 		    &lt;/packing&gt;
+ 		  &lt;/child&gt;
+ 
+ 		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label29&quot;&gt;
++		    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label39&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-		      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Size:&lt;/property&gt;
++		      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Type:&lt;/property&gt;
+ 		      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
+ 		      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
+ 		      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
+@@ -503,8 +502,8 @@
+ 		    &lt;packing&gt;
+ 		      &lt;property name=&quot;left_attach&quot;&gt;0&lt;/property&gt;
+ 		      &lt;property name=&quot;right_attach&quot;&gt;1&lt;/property&gt;
+-		      &lt;property name=&quot;top_attach&quot;&gt;3&lt;/property&gt;
+-		      &lt;property name=&quot;bottom_attach&quot;&gt;4&lt;/property&gt;
++		      &lt;property name=&quot;top_attach&quot;&gt;2&lt;/property&gt;
++		      &lt;property name=&quot;bottom_attach&quot;&gt;3&lt;/property&gt;
+ 		      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
+ 		      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+ 		    &lt;/packing&gt;
+@@ -529,17 +528,17 @@
+ 		      &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
+ 		    &lt;/widget&gt;
+ 		    &lt;packing&gt;
+-		      &lt;property name=&quot;left_attach&quot;&gt;0&lt;/property&gt;
+-		      &lt;property name=&quot;right_attach&quot;&gt;1&lt;/property&gt;
+-		      &lt;property name=&quot;top_attach&quot;&gt;4&lt;/property&gt;
+-		      &lt;property name=&quot;bottom_attach&quot;&gt;5&lt;/property&gt;
++		      &lt;property name=&quot;left_attach&quot;&gt;2&lt;/property&gt;
++		      &lt;property name=&quot;right_attach&quot;&gt;3&lt;/property&gt;
++		      &lt;property name=&quot;top_attach&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;bottom_attach&quot;&gt;1&lt;/property&gt;
+ 		      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
+ 		      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+ 		    &lt;/packing&gt;
+ 		  &lt;/child&gt;
+ 
+ 		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;stream_type&quot;&gt;
++		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;stream_size&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 		      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
+ 		      &lt;property name=&quot;editable&quot;&gt;False&lt;/property&gt;
+@@ -551,39 +550,18 @@
+ 		      &lt;property name=&quot;activates_default&quot;&gt;False&lt;/property&gt;
+ 		    &lt;/widget&gt;
+ 		    &lt;packing&gt;
+-		      &lt;property name=&quot;left_attach&quot;&gt;1&lt;/property&gt;
+-		      &lt;property name=&quot;right_attach&quot;&gt;2&lt;/property&gt;
+-		      &lt;property name=&quot;top_attach&quot;&gt;4&lt;/property&gt;
+-		      &lt;property name=&quot;bottom_attach&quot;&gt;5&lt;/property&gt;
++		      &lt;property name=&quot;left_attach&quot;&gt;3&lt;/property&gt;
++		      &lt;property name=&quot;right_attach&quot;&gt;4&lt;/property&gt;
++		      &lt;property name=&quot;top_attach&quot;&gt;1&lt;/property&gt;
++		      &lt;property name=&quot;bottom_attach&quot;&gt;2&lt;/property&gt;
+ 		      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+ 		    &lt;/packing&gt;
+ 		  &lt;/child&gt;
+ 
+ 		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;filter_type&quot;&gt;
++		    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label29&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-		      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
+-		      &lt;property name=&quot;editable&quot;&gt;False&lt;/property&gt;
+-		      &lt;property name=&quot;visibility&quot;&gt;True&lt;/property&gt;
+-		      &lt;property name=&quot;max_length&quot;&gt;0&lt;/property&gt;
+-		      &lt;property name=&quot;text&quot; translatable=&quot;yes&quot;&gt;&lt;/property&gt;
+-		      &lt;property name=&quot;has_frame&quot;&gt;True&lt;/property&gt;
+-		      &lt;property name=&quot;invisible_char&quot;&gt;*&lt;/property&gt;
+-		      &lt;property name=&quot;activates_default&quot;&gt;False&lt;/property&gt;
+-		    &lt;/widget&gt;
+-		    &lt;packing&gt;
+-		      &lt;property name=&quot;left_attach&quot;&gt;1&lt;/property&gt;
+-		      &lt;property name=&quot;right_attach&quot;&gt;2&lt;/property&gt;
+-		      &lt;property name=&quot;top_attach&quot;&gt;2&lt;/property&gt;
+-		      &lt;property name=&quot;bottom_attach&quot;&gt;3&lt;/property&gt;
+-		      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+-		    &lt;/packing&gt;
+-		  &lt;/child&gt;
+-
+-		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label39&quot;&gt;
+-		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-		      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Type:&lt;/property&gt;
++		      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Size:&lt;/property&gt;
+ 		      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
+ 		      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
+ 		      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
+@@ -599,14 +577,35 @@
+ 		      &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
+ 		    &lt;/widget&gt;
+ 		    &lt;packing&gt;
+-		      &lt;property name=&quot;left_attach&quot;&gt;0&lt;/property&gt;
+-		      &lt;property name=&quot;right_attach&quot;&gt;1&lt;/property&gt;
+-		      &lt;property name=&quot;top_attach&quot;&gt;2&lt;/property&gt;
+-		      &lt;property name=&quot;bottom_attach&quot;&gt;3&lt;/property&gt;
++		      &lt;property name=&quot;left_attach&quot;&gt;2&lt;/property&gt;
++		      &lt;property name=&quot;right_attach&quot;&gt;3&lt;/property&gt;
++		      &lt;property name=&quot;top_attach&quot;&gt;1&lt;/property&gt;
++		      &lt;property name=&quot;bottom_attach&quot;&gt;2&lt;/property&gt;
+ 		      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
+ 		      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+ 		    &lt;/packing&gt;
+ 		  &lt;/child&gt;
++
++		  &lt;child&gt;
++		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;stream_type&quot;&gt;
++		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;editable&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;visibility&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;max_length&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;text&quot; translatable=&quot;yes&quot;&gt;&lt;/property&gt;
++		      &lt;property name=&quot;has_frame&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;invisible_char&quot;&gt;*&lt;/property&gt;
++		      &lt;property name=&quot;activates_default&quot;&gt;False&lt;/property&gt;
++		    &lt;/widget&gt;
++		    &lt;packing&gt;
++		      &lt;property name=&quot;left_attach&quot;&gt;3&lt;/property&gt;
++		      &lt;property name=&quot;right_attach&quot;&gt;4&lt;/property&gt;
++		      &lt;property name=&quot;top_attach&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;bottom_attach&quot;&gt;1&lt;/property&gt;
++		      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
++		    &lt;/packing&gt;
++		  &lt;/child&gt;
+ 		&lt;/widget&gt;
+ 		&lt;packing&gt;
+ 		  &lt;property name=&quot;tab_expand&quot;&gt;False&lt;/property&gt;
+@@ -641,8 +640,8 @@
+ 		&lt;widget class=&quot;GtkTable&quot; id=&quot;table7&quot;&gt;
+ 		  &lt;property name=&quot;border_width&quot;&gt;6&lt;/property&gt;
+ 		  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-		  &lt;property name=&quot;n_rows&quot;&gt;5&lt;/property&gt;
+-		  &lt;property name=&quot;n_columns&quot;&gt;2&lt;/property&gt;
++		  &lt;property name=&quot;n_rows&quot;&gt;3&lt;/property&gt;
++		  &lt;property name=&quot;n_columns&quot;&gt;4&lt;/property&gt;
+ 		  &lt;property name=&quot;homogeneous&quot;&gt;False&lt;/property&gt;
+ 		  &lt;property name=&quot;row_spacing&quot;&gt;6&lt;/property&gt;
+ 		  &lt;property name=&quot;column_spacing&quot;&gt;6&lt;/property&gt;
+@@ -676,37 +675,30 @@
+ 		  &lt;/child&gt;
+ 
+ 		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label34&quot;&gt;
++		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;chunk_name&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-		      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Size:&lt;/property&gt;
+-		      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
+-		      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
+-		      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
+-		      &lt;property name=&quot;wrap&quot;&gt;False&lt;/property&gt;
+-		      &lt;property name=&quot;selectable&quot;&gt;False&lt;/property&gt;
+-		      &lt;property name=&quot;xalign&quot;&gt;0&lt;/property&gt;
+-		      &lt;property name=&quot;yalign&quot;&gt;0.5&lt;/property&gt;
+-		      &lt;property name=&quot;xpad&quot;&gt;0&lt;/property&gt;
+-		      &lt;property name=&quot;ypad&quot;&gt;0&lt;/property&gt;
+-		      &lt;property name=&quot;ellipsize&quot;&gt;PANGO_ELLIPSIZE_NONE&lt;/property&gt;
+-		      &lt;property name=&quot;width_chars&quot;&gt;-1&lt;/property&gt;
+-		      &lt;property name=&quot;single_line_mode&quot;&gt;False&lt;/property&gt;
+-		      &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;editable&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;visibility&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;max_length&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;text&quot; translatable=&quot;yes&quot;&gt;&lt;/property&gt;
++		      &lt;property name=&quot;has_frame&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;invisible_char&quot;&gt;*&lt;/property&gt;
++		      &lt;property name=&quot;activates_default&quot;&gt;False&lt;/property&gt;
+ 		    &lt;/widget&gt;
+ 		    &lt;packing&gt;
+-		      &lt;property name=&quot;left_attach&quot;&gt;0&lt;/property&gt;
+-		      &lt;property name=&quot;right_attach&quot;&gt;1&lt;/property&gt;
+-		      &lt;property name=&quot;top_attach&quot;&gt;1&lt;/property&gt;
+-		      &lt;property name=&quot;bottom_attach&quot;&gt;2&lt;/property&gt;
+-		      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
++		      &lt;property name=&quot;left_attach&quot;&gt;1&lt;/property&gt;
++		      &lt;property name=&quot;right_attach&quot;&gt;2&lt;/property&gt;
++		      &lt;property name=&quot;top_attach&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;bottom_attach&quot;&gt;1&lt;/property&gt;
+ 		      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+ 		    &lt;/packing&gt;
+ 		  &lt;/child&gt;
+ 
+ 		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label35&quot;&gt;
++		    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label41&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-		      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Type:&lt;/property&gt;
++		      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Address:&lt;/property&gt;
+ 		      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
+ 		      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
+ 		      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
+@@ -722,17 +714,17 @@
+ 		      &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
+ 		    &lt;/widget&gt;
+ 		    &lt;packing&gt;
+-		      &lt;property name=&quot;left_attach&quot;&gt;0&lt;/property&gt;
+-		      &lt;property name=&quot;right_attach&quot;&gt;1&lt;/property&gt;
+-		      &lt;property name=&quot;top_attach&quot;&gt;2&lt;/property&gt;
+-		      &lt;property name=&quot;bottom_attach&quot;&gt;3&lt;/property&gt;
++		      &lt;property name=&quot;left_attach&quot;&gt;2&lt;/property&gt;
++		      &lt;property name=&quot;right_attach&quot;&gt;3&lt;/property&gt;
++		      &lt;property name=&quot;top_attach&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;bottom_attach&quot;&gt;1&lt;/property&gt;
+ 		      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
+ 		      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+ 		    &lt;/packing&gt;
+ 		  &lt;/child&gt;
+ 
+ 		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;chunk_name&quot;&gt;
++		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;chunk_address&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 		      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
+ 		      &lt;property name=&quot;editable&quot;&gt;False&lt;/property&gt;
+@@ -744,8 +736,8 @@
+ 		      &lt;property name=&quot;activates_default&quot;&gt;False&lt;/property&gt;
+ 		    &lt;/widget&gt;
+ 		    &lt;packing&gt;
+-		      &lt;property name=&quot;left_attach&quot;&gt;1&lt;/property&gt;
+-		      &lt;property name=&quot;right_attach&quot;&gt;2&lt;/property&gt;
++		      &lt;property name=&quot;left_attach&quot;&gt;3&lt;/property&gt;
++		      &lt;property name=&quot;right_attach&quot;&gt;4&lt;/property&gt;
+ 		      &lt;property name=&quot;top_attach&quot;&gt;0&lt;/property&gt;
+ 		      &lt;property name=&quot;bottom_attach&quot;&gt;1&lt;/property&gt;
+ 		      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+@@ -753,28 +745,35 @@
+ 		  &lt;/child&gt;
+ 
+ 		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;chunk_size&quot;&gt;
++		    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label34&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-		      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
+-		      &lt;property name=&quot;editable&quot;&gt;False&lt;/property&gt;
+-		      &lt;property name=&quot;visibility&quot;&gt;True&lt;/property&gt;
+-		      &lt;property name=&quot;max_length&quot;&gt;0&lt;/property&gt;
+-		      &lt;property name=&quot;text&quot; translatable=&quot;yes&quot;&gt;&lt;/property&gt;
+-		      &lt;property name=&quot;has_frame&quot;&gt;True&lt;/property&gt;
+-		      &lt;property name=&quot;invisible_char&quot;&gt;*&lt;/property&gt;
+-		      &lt;property name=&quot;activates_default&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Size:&lt;/property&gt;
++		      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
++		      &lt;property name=&quot;wrap&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;selectable&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;xalign&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;yalign&quot;&gt;0.5&lt;/property&gt;
++		      &lt;property name=&quot;xpad&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;ypad&quot;&gt;0&lt;/property&gt;
++		      &lt;property name=&quot;ellipsize&quot;&gt;PANGO_ELLIPSIZE_NONE&lt;/property&gt;
++		      &lt;property name=&quot;width_chars&quot;&gt;-1&lt;/property&gt;
++		      &lt;property name=&quot;single_line_mode&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;angle&quot;&gt;0&lt;/property&gt;
+ 		    &lt;/widget&gt;
+ 		    &lt;packing&gt;
+-		      &lt;property name=&quot;left_attach&quot;&gt;1&lt;/property&gt;
+-		      &lt;property name=&quot;right_attach&quot;&gt;2&lt;/property&gt;
++		      &lt;property name=&quot;left_attach&quot;&gt;2&lt;/property&gt;
++		      &lt;property name=&quot;right_attach&quot;&gt;3&lt;/property&gt;
+ 		      &lt;property name=&quot;top_attach&quot;&gt;1&lt;/property&gt;
+ 		      &lt;property name=&quot;bottom_attach&quot;&gt;2&lt;/property&gt;
++		      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
+ 		      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+ 		    &lt;/packing&gt;
+ 		  &lt;/child&gt;
+ 
+ 		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;chunk_type&quot;&gt;
++		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;chunk_size&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 		      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
+ 		      &lt;property name=&quot;editable&quot;&gt;False&lt;/property&gt;
+@@ -786,18 +785,18 @@
+ 		      &lt;property name=&quot;activates_default&quot;&gt;False&lt;/property&gt;
+ 		    &lt;/widget&gt;
+ 		    &lt;packing&gt;
+-		      &lt;property name=&quot;left_attach&quot;&gt;1&lt;/property&gt;
+-		      &lt;property name=&quot;right_attach&quot;&gt;2&lt;/property&gt;
+-		      &lt;property name=&quot;top_attach&quot;&gt;2&lt;/property&gt;
+-		      &lt;property name=&quot;bottom_attach&quot;&gt;3&lt;/property&gt;
++		      &lt;property name=&quot;left_attach&quot;&gt;3&lt;/property&gt;
++		      &lt;property name=&quot;right_attach&quot;&gt;4&lt;/property&gt;
++		      &lt;property name=&quot;top_attach&quot;&gt;1&lt;/property&gt;
++		      &lt;property name=&quot;bottom_attach&quot;&gt;2&lt;/property&gt;
+ 		      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+ 		    &lt;/packing&gt;
+ 		  &lt;/child&gt;
+ 
+ 		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label36&quot;&gt;
++		    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label35&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-		      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Description:&lt;/property&gt;
++		      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Type:&lt;/property&gt;
+ 		      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
+ 		      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
+ 		      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
+@@ -815,15 +814,15 @@
+ 		    &lt;packing&gt;
+ 		      &lt;property name=&quot;left_attach&quot;&gt;0&lt;/property&gt;
+ 		      &lt;property name=&quot;right_attach&quot;&gt;1&lt;/property&gt;
+-		      &lt;property name=&quot;top_attach&quot;&gt;4&lt;/property&gt;
+-		      &lt;property name=&quot;bottom_attach&quot;&gt;5&lt;/property&gt;
++		      &lt;property name=&quot;top_attach&quot;&gt;1&lt;/property&gt;
++		      &lt;property name=&quot;bottom_attach&quot;&gt;2&lt;/property&gt;
+ 		      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
+ 		      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+ 		    &lt;/packing&gt;
+ 		  &lt;/child&gt;
+ 
+ 		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;chunk_description&quot;&gt;
++		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;chunk_type&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 		      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
+ 		      &lt;property name=&quot;editable&quot;&gt;False&lt;/property&gt;
+@@ -837,16 +836,16 @@
+ 		    &lt;packing&gt;
+ 		      &lt;property name=&quot;left_attach&quot;&gt;1&lt;/property&gt;
+ 		      &lt;property name=&quot;right_attach&quot;&gt;2&lt;/property&gt;
+-		      &lt;property name=&quot;top_attach&quot;&gt;4&lt;/property&gt;
+-		      &lt;property name=&quot;bottom_attach&quot;&gt;5&lt;/property&gt;
++		      &lt;property name=&quot;top_attach&quot;&gt;1&lt;/property&gt;
++		      &lt;property name=&quot;bottom_attach&quot;&gt;2&lt;/property&gt;
+ 		      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+ 		    &lt;/packing&gt;
+ 		  &lt;/child&gt;
+ 
+ 		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label41&quot;&gt;
++		    &lt;widget class=&quot;GtkLabel&quot; id=&quot;label36&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-		      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Address:&lt;/property&gt;
++		      &lt;property name=&quot;label&quot; translatable=&quot;yes&quot;&gt;Description:&lt;/property&gt;
+ 		      &lt;property name=&quot;use_underline&quot;&gt;False&lt;/property&gt;
+ 		      &lt;property name=&quot;use_markup&quot;&gt;False&lt;/property&gt;
+ 		      &lt;property name=&quot;justify&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
+@@ -864,15 +863,15 @@
+ 		    &lt;packing&gt;
+ 		      &lt;property name=&quot;left_attach&quot;&gt;0&lt;/property&gt;
+ 		      &lt;property name=&quot;right_attach&quot;&gt;1&lt;/property&gt;
+-		      &lt;property name=&quot;top_attach&quot;&gt;3&lt;/property&gt;
+-		      &lt;property name=&quot;bottom_attach&quot;&gt;4&lt;/property&gt;
++		      &lt;property name=&quot;top_attach&quot;&gt;2&lt;/property&gt;
++		      &lt;property name=&quot;bottom_attach&quot;&gt;3&lt;/property&gt;
+ 		      &lt;property name=&quot;x_options&quot;&gt;fill&lt;/property&gt;
+ 		      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+ 		    &lt;/packing&gt;
+ 		  &lt;/child&gt;
+ 
+ 		  &lt;child&gt;
+-		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;chunk_address&quot;&gt;
++		    &lt;widget class=&quot;GtkEntry&quot; id=&quot;chunk_description&quot;&gt;
+ 		      &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 		      &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
+ 		      &lt;property name=&quot;editable&quot;&gt;False&lt;/property&gt;
+@@ -886,8 +885,8 @@
+ 		    &lt;packing&gt;
+ 		      &lt;property name=&quot;left_attach&quot;&gt;1&lt;/property&gt;
+ 		      &lt;property name=&quot;right_attach&quot;&gt;2&lt;/property&gt;
+-		      &lt;property name=&quot;top_attach&quot;&gt;3&lt;/property&gt;
+-		      &lt;property name=&quot;bottom_attach&quot;&gt;4&lt;/property&gt;
++		      &lt;property name=&quot;top_attach&quot;&gt;2&lt;/property&gt;
++		      &lt;property name=&quot;bottom_attach&quot;&gt;3&lt;/property&gt;
+ 		      &lt;property name=&quot;y_options&quot;&gt;&lt;/property&gt;
+ 		    &lt;/packing&gt;
+ 		  &lt;/child&gt;
+@@ -979,8 +978,8 @@
+ 		    &lt;/widget&gt;
+ 		    &lt;packing&gt;
+ 		      &lt;property name=&quot;padding&quot;&gt;0&lt;/property&gt;
+-		      &lt;property name=&quot;expand&quot;&gt;True&lt;/property&gt;
+-		      &lt;property name=&quot;fill&quot;&gt;True&lt;/property&gt;
++		      &lt;property name=&quot;expand&quot;&gt;False&lt;/property&gt;
++		      &lt;property name=&quot;fill&quot;&gt;False&lt;/property&gt;
+ 		    &lt;/packing&gt;
+ 		  &lt;/child&gt;
+ 
+@@ -997,9 +996,9 @@
+ 			&lt;widget class=&quot;GtkTextView&quot; id=&quot;hexa_content&quot;&gt;
+ 			  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+ 			  &lt;property name=&quot;can_focus&quot;&gt;True&lt;/property&gt;
+-			  &lt;property name=&quot;editable&quot;&gt;True&lt;/property&gt;
++			  &lt;property name=&quot;editable&quot;&gt;False&lt;/property&gt;
+ 			  &lt;property name=&quot;overwrite&quot;&gt;False&lt;/property&gt;
+-			  &lt;property name=&quot;accepts_tab&quot;&gt;True&lt;/property&gt;
++			  &lt;property name=&quot;accepts_tab&quot;&gt;False&lt;/property&gt;
+ 			  &lt;property name=&quot;justification&quot;&gt;GTK_JUSTIFY_LEFT&lt;/property&gt;
+ 			  &lt;property name=&quot;wrap_mode&quot;&gt;GTK_WRAP_NONE&lt;/property&gt;
+ 			  &lt;property name=&quot;cursor_visible&quot;&gt;True&lt;/property&gt;
+@@ -1078,18 +1077,6 @@
+ 	  &lt;property name=&quot;fill&quot;&gt;True&lt;/property&gt;
+ 	&lt;/packing&gt;
+       &lt;/child&gt;
+-
+-      &lt;child&gt;
+-	&lt;widget class=&quot;GtkStatusbar&quot; id=&quot;statusbar&quot;&gt;
+-	  &lt;property name=&quot;visible&quot;&gt;True&lt;/property&gt;
+-	  &lt;property name=&quot;has_resize_grip&quot;&gt;True&lt;/property&gt;
+-	&lt;/widget&gt;
+-	&lt;packing&gt;
+-	  &lt;property name=&quot;padding&quot;&gt;0&lt;/property&gt;
+-	  &lt;property name=&quot;expand&quot;&gt;False&lt;/property&gt;
+-	  &lt;property name=&quot;fill&quot;&gt;False&lt;/property&gt;
+-	&lt;/packing&gt;
+-      &lt;/child&gt;
+     &lt;/widget&gt;
+   &lt;/child&gt;
+ &lt;/widget&gt;
+
+Modified: haypo/hachoir/ui/ui_window.py
+===================================================================
+--- haypo/hachoir/ui/ui_window.py	2005-11-30 02:36:04 UTC (rev 287)
++++ haypo/hachoir/ui/ui_window.py	2005-11-30 03:00:08 UTC (rev 288)
+@@ -42,7 +42,6 @@
+         self.ui = ui
+         xml = gtk.glade.XML(self.ui.glade_xml, &quot;main_window&quot;)
+         self.window = xml.get_widget('main_window')
+-        self.statusbar = xml.get_widget('statusbar')
+         self.toolbar = xml.get_widget('toolbar')
+         self.toolbutton_parent = xml.get_widget('toolbutton_parent')
+         self.toolbutton_new = xml.get_widget('toolbutton_new')
+@@ -54,7 +53,6 @@
+         self.hexa_path = xml.get_widget('hexa_path')
+         self.hexa_content = xml.get_widget('hexa_content')
+         self.menu_close = xml.get_widget('menu_close')
+-        self.statusbar_state = self.statusbar.get_context_id(&quot;State&quot;)
+         self.info = InfoNotebook(xml)
+         self.table = xml.get_widget('table')
+         self.table_store = None
+@@ -93,9 +91,6 @@
+                 self.ui.table_popup.show(pthinfo, event)
+             return 1
+ 
+-    def updateStatusBar(self, text):
+-        self.statusbar.push(self.statusbar_state, text)
+-        
+     def enableParentButton(self, enable):
+         self.toolbutton_parent.set_sensitive(enable)
+ 
+@@ -149,6 +144,8 @@
+         self.table.set_reorderable(True)
+         self.treeselection = self.table.get_selection()
+         self.table.columns_autosize()
++        self.window.maximize()
++        self.window.grab_focus()
+ 
+     def treeview_add_column(self, treeview, name, num):
+         col = gtk.TreeViewColumn(name)
+@@ -174,7 +171,6 @@
+         if dlg.run(filter) == gtk.RESPONSE_CANCEL: return
+         filter.setId( dlg.getId() )
+         filter.setDescription( dlg.getDescription() )
+-        filter.updateStatusBar()
+         
+     def on_open_activate(self, widget):
+         chooser = gtk.FileChooserDialog( \
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000194.html">[Happyboom-svn] r287 - in haypo/hachoir: . ui
+</A></li>
+	<LI>Next message: <A HREF="000196.html">[Happyboom-svn] r289 - in haypo/hachoir: . plugins stream ui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#195">[ date ]</a>
+              <a href="thread.html#195">[ thread ]</a>
+              <a href="subject.html#195">[ subject ]</a>
+              <a href="author.html#195">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

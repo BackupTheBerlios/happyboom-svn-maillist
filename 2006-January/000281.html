@@ -1,0 +1,193 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r379 - in haypo/hachoir/trunk: . stream
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r379%20-%20in%20haypo/hachoir/trunk%3A%20.%20stream&In-Reply-To=%3C200601011608.k01G8pDD009664%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="000282.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r379 - in haypo/hachoir/trunk: . stream</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r379%20-%20in%20haypo/hachoir/trunk%3A%20.%20stream&In-Reply-To=%3C200601011608.k01G8pDD009664%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r379 - in haypo/hachoir/trunk: . stream">haypo at berlios.de
+       </A><BR>
+    <I>Sun Jan  1 17:08:51 CET 2006</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="000282.html">[Happyboom-svn] r380 - haypo/hachoir/trunk/stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#281">[ date ]</a>
+              <a href="thread.html#281">[ thread ]</a>
+              <a href="subject.html#281">[ subject ]</a>
+              <a href="author.html#281">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-01 17:08:50 +0100 (Sun, 01 Jan 2006)
+New Revision: 379
+
+Modified:
+   haypo/hachoir/trunk/filter.py
+   haypo/hachoir/trunk/stream/stream.py
+Log:
+- Bugfix in LimitedStream and SubStream: they use their own stream 'seed' now.
+- Bugifx in Filter: only update UI in updateChunkDescription when UI is loaded ...
+- Create method addPadding() for Filter
+
+
+Modified: haypo/hachoir/trunk/filter.py
+===================================================================
+--- haypo/hachoir/trunk/filter.py	2005-12-29 13:51:09 UTC (rev 378)
++++ haypo/hachoir/trunk/filter.py	2006-01-01 16:08:50 UTC (rev 379)
+@@ -97,6 +97,11 @@
+     def _getEndian(self): return self._endian
+     endian = property(_getEndian)
+ 
++    def addPadding(self):
++        size = self._stream.getLastPos() - self._stream.tell()
++        if size != 0:
++            self.read(&quot;end&quot;, &quot;Raw end&quot;, (FormatChunk, &quot;string[%u]&quot; % size))
++
+     # --- Pure virtual methods -----------
+     def getSize(self): todoWriteMethod(self, &quot;getSize&quot;) 
+     def __getitem__(self, chunk_id): todoWriteMethod(self, &quot;__getitem__&quot;) 
+@@ -141,8 +146,9 @@
+         assert pos != -1
+         self._chunks_dict[id][1] = desc
+ 
+-        info = self.displayChunkInfo(id)
+-        ui.window.update_table(self, pos, *info)
++        if ui.ui != None:
++            info = self.displayChunkInfo(id)
++            ui.window.update_table(self, pos, *info)
+ 
+     def purgeCache(self):
+         if len(self._chunks_cache) != 0 and config.verbose:
+
+Modified: haypo/hachoir/trunk/stream/stream.py
+===================================================================
+--- haypo/hachoir/trunk/stream/stream.py	2005-12-29 13:51:09 UTC (rev 378)
++++ haypo/hachoir/trunk/stream/stream.py	2006-01-01 16:08:50 UTC (rev 379)
+@@ -46,6 +46,7 @@
+             start = self.tell()
+         if size == None:
+             size = self.getSize()-start
++        print &quot;create sub : start=%s, size=%s&quot; % (start, size)            
+         return SubStream(self, start, size, self.filename)
+ 
+     def createLimited(self, start=None, size=None):
+@@ -147,7 +148,7 @@
+         self._size = size
+         self._end = self._start + self._size
+         self._last_pos = self._end - 1
+-        self._stream.seek(self._start)
++        self._seed = self._start
+ 
+     def getType(self):
+         return &quot;%s of %s: %s..%s&quot; % \
+@@ -163,18 +164,26 @@
+         
+     def read(self, size, seek=True):
+         &quot;&quot;&quot; Works like Posix read (can returns less than size bytes. &quot;&quot;&quot;
+-        return self._stream.read(size, seek)
++        self._stream.seek(self._seed)
++        data = self._stream.read(size, seek)
++        if seek:
++            self._seed += len(data)
++        return data
+ 
+     def getN(self, size, seek=True):
+-        if self._start+self._size&lt;self._stream.tell()+size:
++        if self._start+self._size&lt;self._seed+size:
+             raise StreamError( \
+                 &quot;Can't read outsize the stream\n&quot;
+                 +&quot;(try to read %u byte(s) from position %s, where stream in limited in [%u;%u])&quot; \
+-                % (size, self._stream.tell(), self._start, self._end))
+-        return self._stream.getN(size, seek)
++                % (size, self._seed, self._start, self._end))
++        self._stream.seek(self._seed)
++        data = self._stream.getN(size, seek)
++        if seek:
++            self._seed += size
++        return data
+ 
+     def tell(self):
+-        return self._stream.tell()
++        return self._seed
+ 
+     def seek(self, pos, where=0):
+         if where == 2:
+@@ -182,9 +191,9 @@
+         elif where == 0:
+             pos = pos
+         elif where == 1:
+-            pos = self._stream.tell() + pos
++            pos = self._seed + pos
+         assert self._start &lt;= pos and pos &lt;= self._end
+-        self._stream.seek(pos, 0)
++        self._seed = pos
+         
+     def getSize(self):
+         return self._size
+@@ -207,22 +216,18 @@
+             pos = pos - self._start
+         return pos
+                
+-    def read(self, size, seek=True):
+-        &quot;&quot;&quot; Works like Posix read (can returns less than size bytes. &quot;&quot;&quot;
+-        return self._stream.read(size, seek)
+- 
+     def seek(self, pos, where=0):
+         if where == 2:
+             pos = self.getLastPos() - pos
+         elif where == 0:
+             pos = self._start + pos
+         elif where == 1:
+-            pos = self._stream.tell() + pos
++            pos = self._seed + pos
+         assert self._start &lt;= pos and pos &lt;= self._end
+-        self._stream.seek(pos, 0)
++        self._seed = pos
+ 
+     def tell(self):
+-        return self._stream.tell() - self._start
++        return self._seed - self._start
+     
+     def getLastPos(self):
+         return self._end - self._start
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="000282.html">[Happyboom-svn] r380 - haypo/hachoir/trunk/stream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#281">[ date ]</a>
+              <a href="thread.html#281">[ thread ]</a>
+              <a href="subject.html#281">[ subject ]</a>
+              <a href="author.html#281">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

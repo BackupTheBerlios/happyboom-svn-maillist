@@ -1,0 +1,596 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r145 - in boomboom: . server server/agents
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r145%20-%20in%20boomboom%3A%20.%20server%20server/agents&In-Reply-To=%3C200509140259.j8E2xOZn018105%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000051.html">
+   <LINK REL="Next"  HREF="000053.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r145 - in boomboom: . server server/agents</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r145%20-%20in%20boomboom%3A%20.%20server%20server/agents&In-Reply-To=%3C200509140259.j8E2xOZn018105%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r145 - in boomboom: . server server/agents">haypo at berlios.de
+       </A><BR>
+    <I>Wed Sep 14 04:59:24 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000051.html">[Happyboom-svn] r144 - in happyboom/trunk: . server
+</A></li>
+        <LI>Next message: <A HREF="000053.html">[Happyboom-svn] r146 - happyboom/trunk/common
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#52">[ date ]</a>
+              <a href="thread.html#52">[ thread ]</a>
+              <a href="subject.html#52">[ subject ]</a>
+              <a href="author.html#52">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-14 04:59:17 +0200 (Wed, 14 Sep 2005)
+New Revision: 145
+
+Added:
+   boomboom/protocol.xml
+Modified:
+   boomboom/boomboom_server.py
+   boomboom/server/__init__.py
+   boomboom/server/agents/character.py
+   boomboom/server/agents/game.py
+   boomboom/server/agents/projectile.py
+   boomboom/server/agents/weapon.py
+   boomboom/server/agents/world.py
+   boomboom/server/bb_agent.py
+   boomboom/server/bb_server.py
+Log:
+Update for last HappyBoom version.
+
+
+Modified: boomboom/boomboom_server.py
+===================================================================
+--- boomboom/boomboom_server.py	2005-09-14 02:58:26 UTC (rev 144)
++++ boomboom/boomboom_server.py	2005-09-14 02:59:17 UTC (rev 145)
+@@ -5,6 +5,7 @@
+ 
+ import getopt
+ import sys
++from happyboom.common.protocol import loadProtocol
+ 
+ def usage(defval):
+     print &quot;%s server version %s&quot; % (PROGRAM, VERSION)
+@@ -85,8 +86,9 @@
+         &quot;debug&quot;: False}
+     arg = parseArgs(val)
+     
+-    from server import BoomBoomServer
+-    server = BoomBoomServer(arg)
++    from server.bb_server import Server
++    protocol = loadProtocol(&quot;protocol.xml&quot;)
++    server = Server(protocol, arg)
+ 
+     try:
+         server.start()
+
+Added: boomboom/protocol.xml
+===================================================================
+--- boomboom/protocol.xml	2005-09-14 02:58:26 UTC (rev 144)
++++ boomboom/protocol.xml	2005-09-14 02:59:17 UTC (rev 145)
+@@ -0,0 +1,14 @@
++&lt;?xml version=&quot;1.0&quot;?&gt;
++&lt;protocol game=&quot;BoomBoom&quot; version=&quot;0.2&quot;&gt;
++  &lt;func name=&quot;game&quot; id=&quot;1&quot;&gt;
++    &lt;event name=&quot;start&quot; id=&quot;1&quot; /&gt;
++    &lt;event name=&quot;stop&quot; id=&quot;2&quot; /&gt;
++  &lt;/func&gt;
++  &lt;func name=&quot;character&quot; id=&quot;4&quot;&gt;
++    &lt;event name=&quot;move&quot; id=&quot;1&quot;&gt;
++      &lt;param name=&quot;id&quot; type=&quot;int&quot; /&gt;
++      &lt;param name=&quot;x&quot; type=&quot;int&quot; /&gt;
++      &lt;param name=&quot;y&quot; type=&quot;int&quot; /&gt;
++    &lt;/event&gt;
++  &lt;/func&gt;
++&lt;/protocol&gt;
+
+Modified: boomboom/server/__init__.py
+===================================================================
+--- boomboom/server/__init__.py	2005-09-14 02:58:26 UTC (rev 144)
++++ boomboom/server/__init__.py	2005-09-14 02:59:17 UTC (rev 145)
+@@ -1,2 +0,0 @@
+-from bb_server import BoomBoomServer
+-from bb_agent import BoomBoomAgent, BoomBoomMessage
+
+Modified: boomboom/server/agents/character.py
+===================================================================
+--- boomboom/server/agents/character.py	2005-09-14 02:58:26 UTC (rev 144)
++++ boomboom/server/agents/character.py	2005-09-14 02:59:17 UTC (rev 145)
+@@ -1,8 +1,8 @@
+-from server.bb_agent import BoomBoomAgent, BoomBoomMessage
++from server.bb_agent import Agent, Message
+ 
+-class Character(BoomBoomAgent):
+-    def __init__(self, x, team, **args):
+-        BoomBoomAgent.__init__(self, &quot;character&quot;, **args)
++class Character(Agent):
++    def __init__(self, gateway, x, team, **args):
++        Agent.__init__(self, &quot;character&quot;, gateway, **args)
+         self.x = x
+         self.y = 0
+         self.width = 28
+@@ -12,20 +12,22 @@
+         self.current = False
+         
+     def born(self):
+-        BoomBoomAgent.born(self)
++        Agent.born(self)
+         self.requestActions(&quot;game&quot;)
+         self.requestActions(&quot;network&quot;)
+-        self.sendBroadcastMessage(BoomBoomMessage(&quot;character_search_place&quot;, (self.x, self.width, self.height)), &quot;world&quot;)
+-        self.sendBroadcastMessage(BoomBoomMessage(&quot;new_character&quot;, (self.id, self.team)), &quot;game&quot;)
+-        self.sendBroadcastMessage(BoomBoomMessage(&quot;new_item&quot;, (self.type, self.id)), &quot;network&quot;)
++        self.sendBroadcast(Message(&quot;character_search_place&quot;, (self.x, self.width, self.height)), &quot;world&quot;)
++        self.sendBroadcast(Message(&quot;new_character&quot;, (self.id, self.team)), &quot;game&quot;)
++        self.sendBroadcast(Message(&quot;new_item&quot;, (self.type, self.id)), &quot;network&quot;)
+ 
+     def move(self, x, y, force=False):
+         if self.x == x and self.y == y and not force: return
+         self.x = x
+         self.y = y
+-        self.sendBroadcastMessage(BoomBoomMessage(&quot;character_move&quot;, (&quot;%u,%i,%i&quot; % (self.id, self.x, self.y),)), &quot;network&quot;)
++        self.sendBroadcast(Message(&quot;character_move&quot;, (&quot;%u,%i,%i&quot; % (self.id, self.x, self.y),)), &quot;network&quot;)
+         if self.current:
+-            self.sendBBMessage(&quot;active_coord&quot;, self.x, self.y)
++            self.send(&quot;active_coord&quot;, self.x, self.y)
++            self.sendNetMsg(&quot;character&quot;, &quot;move&quot;, \
++                &quot;int&quot;, self.id, &quot;int&quot;, self.x, &quot;int&quot;, self.y)
+ 
+     def sync(self):
+         self.move(self.x, self.y, force=True)
+@@ -40,8 +42,8 @@
+     def msg_game_next_turn(self):
+         self.current = self.next
+         if self.current:
+-            self.sendBBMessage(&quot;active_coord&quot;, self.x, self.y)
++            self.send(&quot;active_coord&quot;, self.x, self.y)
+         self.next = False
+         
+     def msg_network_sync(self):
+-        self.sync()
+\ No newline at end of file
++        self.sync()
+
+Modified: boomboom/server/agents/game.py
+===================================================================
+--- boomboom/server/agents/game.py	2005-09-14 02:58:26 UTC (rev 144)
++++ boomboom/server/agents/game.py	2005-09-14 02:59:17 UTC (rev 145)
+@@ -1,57 +1,40 @@
+-from server.bb_agent import BoomBoomAgent, BoomBoomMessage
++from server.bb_agent import Agent, Message
+ import traceback
+ 
+-class Game(BoomBoomAgent):
+-    def __init__(self, **args):
+-        BoomBoomAgent.__init__(self, &quot;game&quot;, **args)
+-        self.teams = []
+-        self.characters = {}
+-        self.next_team_pos = None
+-        self.next_char_pos = {}
+-        self.current = (None, None)
++class Game(Agent):
++    def __init__(self, gateway, **args):
++        Agent.__init__(self, &quot;game&quot;, gateway, **args)
++        self.characters = []
++        self.current = None 
+ 
+     def born(self):
+-        BoomBoomAgent.born(self)
++        Agent.born(self)
+         self.requestActions(&quot;world&quot;)
+         self.requestActions(&quot;network&quot;)
+ 
+-    def sendNextCharacter(self, char_pos, team_pos):
+-        if self.next_team_pos != None:
+-            self.current = (self.nextCharacter, self.nextTeam)
+-        self.next_team_pos = team_pos
+-        self.next_char_pos[self.nextTeam] = char_pos
+-        self.sendBBMessage(&quot;next_character&quot;, self.nextCharacter, self.nextTeam)
+-
+     def msg_network_sync(self):
+         self.sync()
+ 
+-    def msg_new_character(self, character, team):
+-        if team in self.teams:
+-            self.characters[team].append(character)
+-        else:
+-            self.teams.append(team)
+-            self.characters[team] = [character,]
+-            self.next_char_pos[team] = 0
++    def msg_new_character(self, character):
++        self.characters.append(character)
++        if self.current == None: self.current = 0 
+ 
+     def sync(self):
+-        char, team = self.current
+-        self.sendBroadcastMessage(BoomBoomMessage(&quot;game_current_character&quot;, (char, team)), &quot;network&quot;)
++        self.sendBroadcast(Message(&quot;game_current_character&quot;, self.current), &quot;network&quot;)
+ 
+-    def __getNextCharacter(self):
+-        return self.characters[self.nextTeam][self.next_char_pos[self.nextTeam]]
+-    nextCharacter = property(__getNextCharacter)
+-
+-    def __getNextTeam(self):
+-        return self.teams[self.next_team_pos]
+-    nextTeam = property(__getNextTeam)
+-
+     def incCharacter(self):
+         tpos = (self.next_team_pos + 1) % 2
+         cpos = (self.next_char_pos[self.teams[tpos]] + 1) % len(self.characters[self.teams[tpos]])
+         self.sendNextCharacter(cpos, tpos)
+ 
++    def nextTurn(self):
++        self.send(&quot;next_turn&quot;)
++        self.sendNetMsg(&quot;game&quot;, &quot;next_turn&quot;)
++        self.sendNetMsg(&quot;game&quot;, &quot;active_character&quot;, \
++            &quot;int&quot;, self.current)
++
+     def msg_world_collision(self, x, y):
+-        self.sendBBMessage(&quot;next_turn&quot;)
++        self.nextTurn()
+         self.incCharacter()
+         
+     def msg_start(self):
+@@ -59,5 +42,5 @@
+ 
+     def launchGame(self):    
+         self.sendNextCharacter(0, 0)
+-        self.sendBBMessage(&quot;next_turn&quot;)
+-        self.incCharacter()
+\ No newline at end of file
++        self.nextTurn()
++        self.incCharacter()
+
+Modified: boomboom/server/agents/projectile.py
+===================================================================
+--- boomboom/server/agents/projectile.py	2005-09-14 02:58:26 UTC (rev 144)
++++ boomboom/server/agents/projectile.py	2005-09-14 02:59:17 UTC (rev 145)
+@@ -1,10 +1,10 @@
+-from server.bb_agent import BoomBoomAgent, BoomBoomMessage
++from server.bb_agent import Agent, Message
+ import time
+ import math
+ 
+-class Projectile(BoomBoomAgent):
+-    def __init__(self, **args):
+-        BoomBoomAgent.__init__(self, &quot;projectile&quot;, **args)
++class Projectile(Agent):
++    def __init__(self, gateway, **args):
++        Agent.__init__(self, &quot;projectile&quot;, gateway, **args)
+         self.x, self.y = 0, 0
+         self.start_pos = None
+         self.active = False
+@@ -15,14 +15,14 @@
+         self.mass = 10
+ 
+     def born(self):
+-        BoomBoomAgent.born(self)
++        Agent.born(self)
+         self.requestRole(&quot;command_manager&quot;)
+         self.requestActions(&quot;weapon&quot;)
+         self.requestActions(&quot;character&quot;)
+         self.requestActions(&quot;world&quot;)
+         self.requestActions(&quot;game&quot;)
+         self.requestActions(&quot;network&quot;)
+-        self.sendBroadcastMessage(BoomBoomMessage(&quot;new_item&quot;, (self.type, self.id)), &quot;network&quot;)
++        self.sendBroadcastMessage(Message(&quot;new_item&quot;, (self.type, self.id)), &quot;network&quot;)
+ 
+     def msg_weapon_strength(self, arg):
+         self.weapon_strength = int(arg) * 4
+@@ -62,7 +62,7 @@
+         self.sendBBMessage(&quot;move&quot;, x, y)
+ 
+     def live(self):
+-        BoomBoomAgent.live(self)
++        Agent.live(self)
+         if self.active:
+             dt = time.time() - self.time
+             x = self.start_pos[0] +self.speed[0] * dt
+@@ -73,4 +73,4 @@
+         self.setActive(self.active)
+ 
+     def msg_network_sync(self):
+-        self.sync()
+\ No newline at end of file
++        self.sync()
+
+Modified: boomboom/server/agents/weapon.py
+===================================================================
+--- boomboom/server/agents/weapon.py	2005-09-14 02:58:26 UTC (rev 144)
++++ boomboom/server/agents/weapon.py	2005-09-14 02:59:17 UTC (rev 145)
+@@ -1,8 +1,8 @@
+-from server.bb_agent import BoomBoomAgent, BoomBoomMessage
++from server.bb_agent import Agent, Message
+ 
+-class Weapon(BoomBoomAgent):
+-    def __init__(self, **args):
+-        BoomBoomAgent.__init__(self, &quot;weapon&quot;, **args)
++class Weapon(Agent):
++    def __init__(self, gateway, **args):
++        Agent.__init__(self, &quot;weapon&quot;, gateway, **args)
+         self.angle = None
+         self.strength = None
+         self.last_values = {}
+@@ -10,11 +10,11 @@
+         self.nextTeam = None
+ 
+     def born(self):
+-        BoomBoomAgent.born(self)
++        Agent.born(self)
+         self.requestRole(&quot;command_manager&quot;)
+         self.requestActions(&quot;game&quot;)
+         self.requestActions(&quot;network&quot;)
+-        self.sendBroadcastMessage(BoomBoomMessage(&quot;new_item&quot;, (self.type, self.id)), &quot;network&quot;)
++        self.sendBroadcast(Message(&quot;new_item&quot;, (self.type, self.id)), &quot;network&quot;)
+ 
+     def msg_game_next_character(self, char, team):
+         self.nextTeam = team
+@@ -40,17 +40,17 @@
+         if angle &lt; -80: angle = -80
+         elif 80 &lt; angle: angle = 80
+         self.angle = angle 
+-        self.sendBBMessage(&quot;angle&quot;, angle)
++        self.send(&quot;angle&quot;, angle)
+ 
+     def updateStrength(self, strength):
+         if strength &lt; 10: strength = 10
+         elif 100 &lt; strength: strength = 100
+         self.strength = strength
+-        self.sendBBMessage(&quot;strength&quot;, strength)
++        self.send(&quot;strength&quot;, strength)
+ 
+     def sync(self):
+         self.updateStrength(self.strength)
+         self.updateAngle(self.angle)
+ 
+     def msg_network_sync(self):
+-        self.sync()
+\ No newline at end of file
++        self.sync()
+
+Modified: boomboom/server/agents/world.py
+===================================================================
+--- boomboom/server/agents/world.py	2005-09-14 02:58:26 UTC (rev 144)
++++ boomboom/server/agents/world.py	2005-09-14 02:59:17 UTC (rev 145)
+@@ -1,4 +1,4 @@
+-from server.bb_agent import BoomBoomAgent, BoomBoomMessage
++from server.bb_agent import Agent, Message
+ import random
+ 
+ class Building:
+@@ -20,20 +20,20 @@
+         return True
+ 
+ 
+-class World(BoomBoomAgent):
+-    def __init__(self, **args):
+-        BoomBoomAgent.__init__(self, &quot;world&quot;, **args)
++class World(Agent):
++    def __init__(self, gateway, **args):
++        Agent.__init__(self, &quot;world&quot;, gateway, **args)
+         self.buildings = None
+         self.height = 350
+         self.width = 640
+         self.generate()
+ 
+     def born(self):
+-        BoomBoomAgent.born(self)
++        Agent.born(self)
+         self.requestActions(&quot;projectile&quot;)
+         self.requestActions(&quot;game&quot;)
+         self.requestActions(&quot;network&quot;)
+-        self.sendBroadcastMessage(BoomBoomMessage(&quot;new_item&quot;, (self.type, self.id)), &quot;network&quot;)
++        self.sendBroadcastMessage(Message(&quot;new_item&quot;, (self.type, self.id)), &quot;network&quot;)
+ 
+     def generate(self):
+         width = self.width
+@@ -70,7 +70,7 @@
+         for b in self.buildings:
+             if len(msg) != 0: msg = msg + &quot;;&quot;
+             msg = msg + &quot;%i,%i,%i,%i&quot; % (b.x, b.y, b.width, b.height)
+-        self.sendBroadcastMessage(BoomBoomMessage(&quot;world_create&quot;, (msg,)), &quot;network&quot;)
++        self.sendBroadcastMessage(Message(&quot;world_create&quot;, (msg,)), &quot;network&quot;)
+ 
+     def msg_character_search_place(self, x0, width, height):
+         if x0 &lt; 0:
+@@ -85,11 +85,11 @@
+                 x = int(b.x + (b.width - width) / 2)
+                 y = b.y - height
+                 break
+-        self.sendMessage(BoomBoomMessage(&quot;found_place&quot;, (x, y)), self.currentMessage.sender)
++        self.sendMessage(Message(&quot;found_place&quot;, (x, y)), self.currentMessage.sender)
+                 
+     def msg_projectile_move(self, x, y):
+         if self.hitGround(x, y):
+             self.sendBBMessage(&quot;collision&quot;, x, y)
+ 
+     def msg_network_sync(self):
+-        self.sync()
+\ No newline at end of file
++        self.sync()
+
+Modified: boomboom/server/bb_agent.py
+===================================================================
+--- boomboom/server/bb_agent.py	2005-09-14 02:58:26 UTC (rev 144)
++++ boomboom/server/bb_agent.py	2005-09-14 02:59:17 UTC (rev 145)
+@@ -1,25 +1 @@
+-from pysma import ActionAgent, ActionMessage
+-
+-class BoomBoomMessage(ActionMessage):
+-    def __init__(self, action, arg, kw={}):
+-        ActionMessage.__init__(self, action, arg, kw)
+-
+-class BoomBoomAgent(ActionAgent):
+-    def __init__(self, type, **args):
+-        ActionAgent.__init__(self, prefix=&quot;msg_&quot;)
+-        self.type = type
+-        self.__debug = args.get(&quot;debug&quot;, False)
+-
+-    def born(self):
+-        self.requestRole(self.type)
+-
+-    def requestActions(self, type):
+-        self.requestRole(&quot;%s_listener&quot; %type)
+-        
+-    def sendBBMessage(self, action, *arg, **kw):
+-        message = BoomBoomMessage(&quot;%s_%s&quot; %(self.type, action), arg, kw)
+-        self.sendBroadcastMessage(message, &quot;%s_listener&quot; %self.type)
+-
+-    def messageReceived(self, msg):
+-        if self.__debug:
+-            print &quot;Unhandled message : %s -- %s&quot; %(type(self), msg)
+\ No newline at end of file
++from happyboom.server.agent import Agent, Message
+
+Modified: boomboom/server/bb_server.py
+===================================================================
+--- boomboom/server/bb_server.py	2005-09-14 02:58:26 UTC (rev 144)
++++ boomboom/server/bb_server.py	2005-09-14 02:59:17 UTC (rev 145)
+@@ -1,13 +1,17 @@
+-from happyboom.server.base_server import HappyBoomServer, HappyBoomGateway, HappyBoomMessage
++from happyboom.server.base_server import \
++    Server as HBServer, \
++    Gateway as HBGateway, \
++    ClientManager
+ from pysma import Kernel
++from bb_agent import Message
+ from agents import Character, Projectile, Weapon, World, Game
+ 
+-class BoomBoomGateway(HappyBoomGateway):
+-    def __init__(self, server, arg):
+-        HappyBoomGateway.__init__(self, server, arg)
++class Gateway(HBGateway):
++    def __init__(self, protocol, manager, arg):
++        HBGateway.__init__(self, protocol, manager, arg)
+ 
+     def born(self):
+-        HappyBoomGateway.born(self)
++        HBGateway.born(self)
+         self.requestActions(&quot;game&quot;)
+         self.requestActions(&quot;weapon&quot;)
+         self.requestActions(&quot;character&quot;)
+@@ -15,15 +19,15 @@
+         self.requestActions(&quot;projectile&quot;)
+ 
+     def start(self):
+-        HappyBoomGateway.start(self)
++        HBGateway.start(self)
+         if self._verbose: print &quot;[*] Creating agents&quot;
+-        self.addAgent(Game(debug=self._debug))
+-        self.addAgent(World(debug=self._debug))
+-        self.addAgent(Character(100, 1, debug=self._debug))
+-        self.addAgent(Character(-150, 2, debug=self._debug))
+-        self.addAgent(Weapon(debug=self._debug))
+-        self.addAgent(Projectile(debug=self._debug))
+-        self.sendBroadcastMessage(HappyBoomMessage(&quot;start&quot;, ()), &quot;game&quot;)
++        self.addAgent(Game(self, debug=self._debug))
++        self.addAgent(World(self, debug=self._debug))
++        self.addAgent(Character(self, 100, 1, debug=self._debug))
++        self.addAgent(Character(self, -150, 2, debug=self._debug))
++        self.addAgent(Weapon(self, debug=self._debug))
++        self.addAgent(Projectile(self, debug=self._debug))
++        self.sendBroadcastMessage(Message(&quot;start&quot;, ()), &quot;game&quot;)
+                         
+     def msg_game_next_character(self, char, team):
+         if self._debug: print &quot;Next character : %s,%s&quot; %(char, team)
+@@ -31,36 +35,34 @@
+                         
+     def msg_game_next_turn(self):
+         if self._debug: print &quot;Next turn : %s&quot; %self.nextChar
+-        self.sendNetworkMessage(&quot;game&quot;, &quot;next_turn&quot;)
+-        self.sendNetworkMessage(&quot;game&quot;, &quot;active_character&quot;, self.nextChar)
+         
+     def msg_game_collision(self, x, y):
+         if self._debug: print &quot;Hit ground : %s,%s&quot; %(x, y)
+-        self.sendNetworkMessage(&quot;projectile&quot;, &quot;hit_ground&quot;)
++        self.sendNetMsg(&quot;projectile&quot;, &quot;hit_ground&quot;)
+     
+     def msg_projectile_move(self, x, y):
+         if self._debug: print &quot;Projectile move : %s,%s&quot; %(x, y)
+-        self.sendNetworkMessage(&quot;projectile&quot;, &quot;move&quot;, &quot;%i,%i&quot; %(x,y), True)
++        self.sendNetMsg(&quot;projectile&quot;, &quot;move&quot;, &quot;%i,%i&quot; %(x,y), True)
+         
+     def msg_projectile_activate(self, flag):
+         if self._debug: print &quot;Projectile activate : %s&quot; %flag
+-        self.sendNetworkMessage(&quot;projectile&quot;, &quot;activate&quot;, &quot;%u&quot; %(flag))
++        self.sendNetMsg(&quot;projectile&quot;, &quot;activate&quot;, &quot;%u&quot; %(flag))
+         
+     def msg_weapon_angle(self, a):
+         if self._debug: print &quot;Weapon angle : %s&quot; %a
+-        self.sendNetworkMessage(&quot;weapon&quot;, &quot;angle&quot;, a)
++        self.sendNetMsg(&quot;weapon&quot;, &quot;angle&quot;, a)
+         
+     def msg_weapon_strength(self, s):
+         if self._debug: print &quot;Weapon strength : %s&quot; %s
+-        self.sendNetworkMessage(&quot;weapon&quot;, &quot;force&quot;, s)
++        self.sendNetMsg(&quot;weapon&quot;, &quot;force&quot;, s)
+         
+     def msg_world_create(self, m):
+         if self._debug: print &quot;World create : %s&quot; %m
+-        self.sendNetworkMessage(&quot;world&quot;, &quot;create&quot;, m)
++        self.sendNetMsg(&quot;world&quot;, &quot;create&quot;, m)
+         
+     def msg_character_move(self, m):
+         if self._debug: print &quot;Character move : %s&quot; %m
+-        self.sendNetworkMessage(&quot;character&quot;, &quot;move&quot;, m)
++        self.sendNetMsg(&quot;character&quot;, &quot;move&quot;, m)
+         
+     def msg_new_item(self, type, id):
+         if self._debug: print &quot;New item : %s,%s&quot; %(type, id)
+@@ -68,9 +70,10 @@
+         
+     def msg_game_current_character(self, char, team):
+         if self._debug: print &quot;Current character : %s,%s&quot; %(char, team)
+-        self.sendNetworkMessage(&quot;game&quot;, &quot;active_character&quot;, char)
++        self.sendNetMsg(&quot;game&quot;, &quot;active_character&quot;, char)
+ 
+-class BoomBoomServer(HappyBoomServer):
+-    def __init__(self, arg):
+-        arg[&quot;gateway&quot;] = BoomBoomGateway(self, arg)
+-        HappyBoomServer.__init__(self, arg)
++class Server(HBServer):
++    def __init__(self, protocol, arg):
++        manager = ClientManager(arg)
++        gateway = Gateway(protocol, manager, arg)
++        HBServer.__init__(self, gateway, arg)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000051.html">[Happyboom-svn] r144 - in happyboom/trunk: . server
+</A></li>
+	<LI>Next message: <A HREF="000053.html">[Happyboom-svn] r146 - happyboom/trunk/common
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#52">[ date ]</a>
+              <a href="thread.html#52">[ thread ]</a>
+              <a href="subject.html#52">[ subject ]</a>
+              <a href="author.html#52">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

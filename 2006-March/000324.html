@@ -1,0 +1,312 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r420 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file/image branches/hachoir-yield/generic
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r420%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/field%20branches/hachoir-yield/file/image%20branches/hachoir-yield/generic&In-Reply-To=%3C200603040016.k240GphG029946%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000323.html">
+   <LINK REL="Next"  HREF="000325.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r420 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file/image branches/hachoir-yield/generic</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r420%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/field%20branches/hachoir-yield/file/image%20branches/hachoir-yield/generic&In-Reply-To=%3C200603040016.k240GphG029946%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r420 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file/image branches/hachoir-yield/generic">haypo at berlios.de
+       </A><BR>
+    <I>Sat Mar  4 01:16:51 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000323.html">[Happyboom-svn] r419 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file branches/hachoir-yield/file/image branches/hachoir-yield/generic
+</A></li>
+        <LI>Next message: <A HREF="000325.html">[Happyboom-svn] r421 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#324">[ date ]</a>
+              <a href="thread.html#324">[ thread ]</a>
+              <a href="subject.html#324">[ subject ]</a>
+              <a href="author.html#324">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-04 01:16:19 +0100 (Sat, 04 Mar 2006)
+New Revision: 420
+
+Added:
+   haypo/hachoir/branches/hachoir-yield/file/image/pcx.py
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/field/field_set.py
+   haypo/hachoir/branches/hachoir-yield/file/image/png.py
+   haypo/hachoir/branches/hachoir-yield/generic/image.py
+   haypo/hachoir/branches/hachoir-yield/hachoir.py
+   haypo/hachoir/branches/hachoir-yield/metadata.py
+   haypo/hachoir/branches/hachoir-yield/text_ui.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r14 at haypopc</A>:  haypo | 2006-03-01 02:27:01 +0100
+  * Add BMP and PCX image parser (with their MetaData class)
+  * 'endian' becomes a class member and not more a class instance member,
+    so it's not necessary to write a constructor to set endian
+  * displayFieldSet() has now max_depth optionnal argument
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:13
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:14
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-03-04 00:15:36 UTC (rev 419)
++++ haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-03-04 00:16:19 UTC (rev 420)
+@@ -15,6 +15,7 @@
+     document).
+     &quot;&quot;&quot;
+     is_field_set = True
++    endian = &quot;!&quot;
+ 
+     def __init__(self, parent, name, stream, description=None):
+         Field.__init__(self, parent, name, self, description=description)
+@@ -25,7 +26,6 @@
+         self._field_array_count = {}
+         self._size = None
+         self._total_field_size = 0
+-        self.endian = &quot;!&quot;
+         if parent != None:
+             self.root = parent.root
+         else:
+
+Added: haypo/hachoir/branches/hachoir-yield/file/image/pcx.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/file/image/pcx.py	2006-03-04 00:15:36 UTC (rev 419)
++++ haypo/hachoir/branches/hachoir-yield/file/image/pcx.py	2006-03-04 00:16:19 UTC (rev 420)
+@@ -0,0 +1,49 @@
++&quot;&quot;&quot;
++PCX picture filter.
++&quot;&quot;&quot;
++
++from field import FieldSet, Integer, String
++from generic.image import Palette
++from metadata import ImageMetaData
++
++class PcxMetaData(ImageMetaData):
++    def __init__(self, pcx):
++        width, height = pcx[&quot;xmax&quot;].value+1, pcx[&quot;ymax&quot;].value+1
++        bpp = pcx[&quot;bpp&quot;].value
++        ImageMetaData.__init__(self, width, height, bpp)
++
++class PcxFile(FieldSet):
++    endian = &quot;&lt;&quot;
++    mime_types = &quot;image/x-pcx&quot;
++    compression_name = { 1: &quot;RLE&quot; }
++
++    def createFields(self):
++        yield Integer(self, &quot;id&quot;, &quot;uint8&quot;, &quot;PCX identifier (10)&quot;)
++        if self[&quot;id&quot;].value != 10:
++            raise ParserError(&quot;PCX parser: wrong identifier (%u instead of 10)&quot; \
++                % self[&quot;id&quot;].value)
++        yield Integer(self, &quot;version&quot;, &quot;uint8&quot;, &quot;PCX version&quot;)
++        yield Integer(self, &quot;compression&quot;, &quot;uint8&quot;, &quot;Compression&quot;) # (EnumChunk, , PCX_File.compression_name)
++        yield Integer(self, &quot;bpp&quot;, &quot;uint8&quot;, &quot;Bits / pixel&quot;)
++        yield Integer(self, &quot;xmin&quot;, &quot;uint16&quot;, &quot;Minimum X&quot;)
++        yield Integer(self, &quot;ymin&quot;, &quot;uint16&quot;, &quot;Minimum Y&quot;)
++        yield Integer(self, &quot;xmax&quot;, &quot;uint16&quot;, &quot;Width minus one&quot;) # value + 1
++        yield Integer(self, &quot;ymax&quot;, &quot;uint16&quot;, &quot;Height minus one&quot;) # value + 1
++        yield Integer(self, &quot;horiz_dpi&quot;, &quot;uint16&quot;, &quot;Horizontal DPI&quot;)
++        yield Integer(self, &quot;vert_dpi&quot;, &quot;uint16&quot;, &quot;Vertical DPI&quot;)
++        yield Palette(self, &quot;palette_4bits&quot;, 16, &quot;Palette (4 bits)&quot;)
++        yield Integer(self, &quot;reserved&quot;, &quot;uint8&quot;, &quot;Reserved&quot;)
++        yield Integer(self, &quot;nb_color_plan&quot;, &quot;uint8&quot;, &quot;Number of color plans&quot;)
++        yield Integer(self, &quot;bytes_per_line&quot;, &quot;uint16&quot;, &quot;Bytes per line&quot;)
++        yield Integer(self, &quot;color_mode&quot;, &quot;uint16&quot;, &quot;Color mode&quot;)
++        yield String(self, &quot;reserved2&quot;, &quot;string[58]&quot;, &quot;Reserved&quot;)
++
++        size = self.stream.getSize() - self.stream.tell()
++        has_palette = (self[&quot;bpp&quot;].value == 8)
++        if has_palette:
++            size -= 256*3*8            
++        yield String(self, &quot;data&quot;, &quot;string[%u]&quot; % size, &quot;Image data&quot;)
++
++        if has_palette:
++            yield Palette(self, &quot;palette_8bits&quot;, 256, &quot;Palette (8 bit)&quot;)
++
+
+Modified: haypo/hachoir/branches/hachoir-yield/file/image/png.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/file/image/png.py	2006-03-04 00:15:36 UTC (rev 419)
++++ haypo/hachoir/branches/hachoir-yield/file/image/png.py	2006-03-04 00:16:19 UTC (rev 420)
+@@ -21,7 +21,8 @@
+ #            compression = &quot;(compressed)&quot;
+ #        else:
+ #            compression = &quot;No&quot;
+-        ImageMetaData.__init__(self, format, width, height, bpp, nb_colors=nb_colors)
++        ImageMetaData.__init__(self, width, height, bpp, \
++            nb_colors=nb_colors, format=format)
+ 
+ class HeaderFlags(FieldSet):
+     def createFields(self):
+
+Modified: haypo/hachoir/branches/hachoir-yield/generic/image.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/generic/image.py	2006-03-04 00:15:36 UTC (rev 419)
++++ haypo/hachoir/branches/hachoir-yield/generic/image.py	2006-03-04 00:16:19 UTC (rev 420)
+@@ -6,8 +6,8 @@
+         0xFFFFFF: &quot;White&quot;
+     }
+     
+-    def __init__(self, parent, name, stream, description=None):
+-        FieldSet.__init__(self, parent, name, stream, description)
++    def __init__(self, parent, name, description=None):
++        FieldSet.__init__(self, parent, name, parent.stream, description)
+         if self.description == None:
+             self.description = self.getColorName()
+         self._size = 3
+@@ -25,3 +25,14 @@
+             return &quot;RGB color: #%02X%02X%02X&quot; % \
+                 (self[&quot;red&quot;].value, self[&quot;green&quot;].value, self[&quot;blue&quot;].value)
+ 
++class Palette(FieldSet):
++    def __init__(self, parent, name, nb_colors, description=None):
++        self.nb_colors = nb_colors
++        if description == None:
++            description = &quot;Palette of %u RGB colors&quot; % self.nb_colors
++        FieldSet.__init__(self, parent, name, parent.stream, description=description)
++
++    def createFields(self):
++        for i in range(0, self.nb_colors):
++            yield RGB(self, &quot;color[]&quot;)
++
+
+Modified: haypo/hachoir/branches/hachoir-yield/hachoir.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:15:36 UTC (rev 419)
++++ haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:16:19 UTC (rev 420)
+@@ -1,6 +1,8 @@
+ #!/usr/bin/env python
+ 
+ from file.image.png import PngFile, PngMetaData
++from file.image.bmp import BmpFile, BmpMetaData
++from file.image.pcx import PcxFile, PcxMetaData
+ from stream.file import FileStream
+ from text_ui import displayFieldSet
+ import sys
+@@ -11,10 +13,19 @@
+     else:
+         filename = &quot;/home/haypo/exemple/png.png&quot;
+     stream = FileStream(open(filename, 'r'), filename)
+-    png = PngFile(None, &quot;png_file&quot;, stream)
+-    print &quot;[Picture %s]&quot; % filename
+-    meta = PngMetaData(png) ; print meta
+-#    displayFieldSet(png)
++    if filename.endswith(&quot;.png&quot;):
++        png = PngFile(None, &quot;png_file&quot;, stream)
++        print &quot;[Picture %s]&quot; % filename
++        meta = PngMetaData(png) ; print meta
++#        displayFieldSet(png)
++    elif filename.endswith(&quot;.pcx&quot;):
++        pcx = PcxFile(None, &quot;pcx_file&quot;, stream)
++        displayFieldSet(pcx, 2)
++        meta = PcxMetaData(pcx) ; print meta
++    else:
++        bmp = BmpFile(None, &quot;bmp_file&quot;, stream)
++        displayFieldSet(bmp)
++        meta = BmpMetaData(bmp) ; print meta
+ 
+ if __name__ == &quot;__main__&quot;:
+     main()
+
+Modified: haypo/hachoir/branches/hachoir-yield/metadata.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/metadata.py	2006-03-04 00:15:36 UTC (rev 419)
++++ haypo/hachoir/branches/hachoir-yield/metadata.py	2006-03-04 00:16:19 UTC (rev 420)
+@@ -2,8 +2,7 @@
+     pass
+ 
+ class ImageMetaData(MetaData):
+-    def __init__(self, format, width, height, bits_per_pixel, **kw):
+-        self.format = format
++    def __init__(self, width, height, bits_per_pixel, **kw):
+         self.width = width
+         self.height = height
+         self.bits_per_pixel = bits_per_pixel
+@@ -11,10 +10,14 @@
+         # Optionnals
+         self.nb_colors = kw.get(&quot;nb_colors&quot;, None)
+         self.compression = kw.get(&quot;compression&quot;, None)
++        self.format = kw.get(&quot;format&quot;, None)
+ 
+     def __str__(self):
+-        text = &quot;ImageMetaData &lt;format=%s, size=%sx%s, bpp=%s&quot; % \
+-            (self.format, self.width, self.height, self.bits_per_pixel)
++        text = &quot;ImageMetaData &lt;&quot;
++        if self.format != None:
++            text += &quot;format=%s, &quot; % self.format 
++        text += &quot;size=%sx%s, bpp=%s&quot; % \
++            (self.width, self.height, self.bits_per_pixel)
+         if self.nb_colors != None:
+             text += &quot;, nb_colors=%s&quot; % self.nb_colors
+         if self.compression != None:
+
+Modified: haypo/hachoir/branches/hachoir-yield/text_ui.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-03-04 00:15:36 UTC (rev 419)
++++ haypo/hachoir/branches/hachoir-yield/text_ui.py	2006-03-04 00:16:19 UTC (rev 420)
+@@ -1,14 +1,17 @@
+-def displayFieldSet(field_set, depth=0):
++def displayFieldSet(field_set, max_depth=None, depth=0):
+     indent = &quot; &quot; * (3*depth)
+     addr = field_set.absolute_address
+     print &quot;%s--- %s --- (addr=%u.%u, size=%s bits)&quot; \
+         % (indent, field_set.name, addr/8, addr%8, field_set.size)
+-    for field in field_set:
+-        if not field.is_field_set:
+-            print &quot;%s%u.%u) %s = %s (%s) (size=%s bits)&quot; % \
+-                (indent, field.address/8, field.address%8, field._name, field.display, field.description, field.size)
+-        else:
+-            displayFieldSet(field, depth+1)
++    if max_depth == None or depth &lt; max_depth:
++        for field in field_set:
++            if not field.is_field_set:
++                print &quot;%s%u.%u) %s = %s (%s) (size=%s bits)&quot; % \
++                    (indent, field.address/8, field.address%8, field._name, field.display, field.description, field.size)
++            else:
++                displayFieldSet(field, max_depth, depth+1)
++    else:
++        print &quot;%s(...)&quot; % indent
+     if depth == 0:
+         print
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000323.html">[Happyboom-svn] r419 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/file branches/hachoir-yield/file/image branches/hachoir-yield/generic
+</A></li>
+	<LI>Next message: <A HREF="000325.html">[Happyboom-svn] r421 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#324">[ date ]</a>
+              <a href="thread.html#324">[ thread ]</a>
+              <a href="subject.html#324">[ subject ]</a>
+              <a href="author.html#324">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,2941 @@
+From dboucard at berlios.de  Thu Aug  4 17:15:32 2005
+From: dboucard at berlios.de (Damien Boucard at BerliOS)
+Date: Thu, 4 Aug 2005 17:15:32 +0200
+Subject: [Happyboom-svn] r92 - happyboom/trunk
+Message-ID: <200508041515.j74FFW8W009537@sheep.berlios.de>
+
+Author: dboucard
+Date: 2005-08-04 17:15:32 +0200 (Thu, 04 Aug 2005)
+New Revision: 92
+
+Modified:
+   happyboom/trunk/README
+Log:
+mailing list test
+
+
+Modified: happyboom/trunk/README
+===================================================================
+--- happyboom/trunk/README	2005-08-03 23:17:54 UTC (rev 91)
++++ happyboom/trunk/README	2005-08-04 15:15:32 UTC (rev 92)
+@@ -33,3 +33,4 @@
+ it should be compatible with new games. It can be used to display server stats
+ for example :
+   python console_view.py --stats
++
+
+
+
+From dboucard at berlios.de  Fri Aug  5 06:35:28 2005
+From: dboucard at berlios.de (Damien Boucard at BerliOS)
+Date: Fri, 5 Aug 2005 06:35:28 +0200
+Subject: [Happyboom-svn] r93 - happyboom/trunk/boomboom/client
+Message-ID: <200508050435.j754ZSbr012878@sheep.berlios.de>
+
+Author: dboucard
+Date: 2005-08-05 06:35:13 +0200 (Fri, 05 Aug 2005)
+New Revision: 93
+
+Modified:
+   happyboom/trunk/boomboom/client/bb_display.py
+   happyboom/trunk/boomboom/client/bb_input.py
+Log:
+bug fix: forgotten "self" for accessing to attributes
+
+
+Modified: happyboom/trunk/boomboom/client/bb_display.py
+===================================================================
+--- happyboom/trunk/boomboom/client/bb_display.py	2005-08-04 15:15:32 UTC (rev 92)
++++ happyboom/trunk/boomboom/client/bb_display.py	2005-08-05 04:35:13 UTC (rev 93)
+@@ -74,7 +74,7 @@
+     def start(self):
+         """ Starts the display client : connection to the server, etc. """
+         # Try to connect to server
+-        if self.__verbose: print "[DISPLAY] Trying to connect to server %s:%u" % (host, port)
++        if self.__verbose: print "[DISPLAY] Trying to connect to server %s:%u" % (self.host, self.port)
+         self.__io.on_connect = self.onConnect
+         self.__io.on_disconnect = self.onDisconnect
+         self.__io.on_new_packet = self.processPacket
+
+Modified: happyboom/trunk/boomboom/client/bb_input.py
+===================================================================
+--- happyboom/trunk/boomboom/client/bb_input.py	2005-08-04 15:15:32 UTC (rev 92)
++++ happyboom/trunk/boomboom/client/bb_input.py	2005-08-05 04:35:13 UTC (rev 93)
+@@ -66,7 +66,7 @@
+     def start(self):
+         """ Starts the input client : connection to the server, etc. """
+         # Try to connect to server
+-        if self.__verbose: print "[INPUT] Trying to connect to server %s:%s" % (host, port)
++        if self.__verbose: print "[INPUT] Trying to connect to server %s:%s" % (self.host, self.port)
+         self.__io.on_connect = self.onConnect
+         self.__io.on_disconnect = self.onDisconnect
+         self.__io.on_lost_connection = self.onLostConnection
+
+
+
+From dboucard at berlios.de  Fri Aug  5 11:05:38 2005
+From: dboucard at berlios.de (Damien Boucard at BerliOS)
+Date: Fri, 5 Aug 2005 11:05:38 +0200
+Subject: [Happyboom-svn] r94 - happyboom/trunk/boomboom/client/items
+Message-ID: <200508050905.j7595cHY015971@sheep.berlios.de>
+
+Author: dboucard
+Date: 2005-08-05 11:05:36 +0200 (Fri, 05 Aug 2005)
+New Revision: 94
+
+Modified:
+   happyboom/trunk/boomboom/client/items/character.py
+Log:
+bug fix: for retrieving existing game instance
+
+
+Modified: happyboom/trunk/boomboom/client/items/character.py
+===================================================================
+--- happyboom/trunk/boomboom/client/items/character.py	2005-08-05 04:35:13 UTC (rev 93)
++++ happyboom/trunk/boomboom/client/items/character.py	2005-08-05 09:05:36 UTC (rev 94)
+@@ -35,6 +35,7 @@
+         self.__id = id
+         self.__name = name
+         self.visual = VisualObject(os.path.join("data", "gorilla.png"))
++        self.active = False
+         self.registerEvent(bb_events.characterMove)
+         self.registerEvent(bb_events.activeCharacter)
+         
+@@ -48,6 +49,8 @@
+         self.__x = int(x)
+         self.__y = int(y)
+         self.visual.move(self.__x, self.__y)
++        if self.active:
++            self.launchEvent(bb_events.activeCharAbs, self.__x)
+         
+     def evt_game_active_character(self, event):
+         """ Active character event handler.
+@@ -56,4 +59,6 @@
+         @type event: C{L{common.simple_event.Event}}
+         """
+         if self.__id == int(event.content):
+-            self.launchEvent(bb_events.activeCharAbs, self.__x)
+\ No newline at end of file
++            self.active = True
++            if self.__x != None:
++                self.launchEvent(bb_events.activeCharAbs, self.__x)
+\ No newline at end of file
+
+
+
+From dboucard at berlios.de  Fri Aug  5 11:18:34 2005
+From: dboucard at berlios.de (Damien Boucard at BerliOS)
+Date: Fri, 5 Aug 2005 11:18:34 +0200
+Subject: [Happyboom-svn] r95 - in happyboom/trunk: . boomboom boomboom/server boomboom/server/agents
+Message-ID: <200508050918.j759IYbg024844@sheep.berlios.de>
+
+Author: dboucard
+Date: 2005-08-05 11:18:23 +0200 (Fri, 05 Aug 2005)
+New Revision: 95
+
+Added:
+   happyboom/trunk/boomboom/boomboom_server.py
+   happyboom/trunk/boomboom/server/
+   happyboom/trunk/boomboom/server/__init__.py
+   happyboom/trunk/boomboom/server/agents/
+   happyboom/trunk/boomboom/server/agents/__init__.py
+   happyboom/trunk/boomboom/server/agents/character.py
+   happyboom/trunk/boomboom/server/agents/game.py
+   happyboom/trunk/boomboom/server/agents/projectile.py
+   happyboom/trunk/boomboom/server/agents/weapon.py
+   happyboom/trunk/boomboom/server/agents/world.py
+   happyboom/trunk/boomboom/server/bb_agent.py
+   happyboom/trunk/boomboom/server/bb_server.py
+Removed:
+   happyboom/trunk/boomboom_server.py
+   happyboom/trunk/boomboom_server/
+Log:
+Rewrite of the BoomBoom server (undocumented)
+
+
+Added: happyboom/trunk/boomboom/boomboom_server.py
+===================================================================
+--- happyboom/trunk/boomboom/boomboom_server.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/boomboom_server.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,103 @@
++#!/usr/bin/python
++# -*- coding: ISO-8859-1 -*-
++VERSION="0.2.0"
++PROGRAM="BoomBoom"
++
++from server import BoomBoomServer
++import getopt
++import sys
++
++def usage(defval):
++	print "%s server version %s" % (PROGRAM, VERSION)
++	print ""
++	print "Usage: %s [-v,--verbose] [-d,--debug] [-h,--help] [--version]" % (sys.argv[0])
++	print ""
++	print "Arguments :"
++	print "\t-h,--help         : Show this help"
++	print "\t--version         : Show the program version"
++	print "\t-v,--verbose      : Activate verbose mode"
++	print "\t-d,--debug        : Activate debug mode"
++	print ""
++	print "Other arguments :"
++	print "\t--max-input NB    : Max input clients (default %u)" % (defval["max-input"])
++	print "\t--max-display NB     : Max display clients (default %u)" % (defval["max-display"])
++	print "\t--display-port PORT  : Port number for display clients (default %u)" % (defval["display-port"])
++	print "\t--input-port PORT : Port number for input clients (default %u)" % (defval["input-port"])
++
++def parseArgs(val):
++	import getopt
++	def_val = val.copy()
++	
++	try:
++		short = "hdv"
++		long = ["debug", "verbose", "help", "version", \
++			"max-input=", "max-display=", \
++			"display-port=", "input-port="]
++		opts, args = getopt.getopt(sys.argv[1:], short, long)
++	except getopt.GetoptError:
++		usage(def_val)
++		sys.exit(2)
++	
++	if 0<len(args):
++		usage(def_val)
++		sys.exit(2)
++		
++	for o, a in opts:
++		if o in ("-h", "--help"):
++			usage(def_val)
++			sys.exit()
++		if o == "--version":
++			print "%s server version %s" % (PROGRAM, VERSION)
++			sys.exit()
++		if o == "--input-port":
++			a = int(a)
++			if a == val["displayPort"]:
++				print "Sorry, input port should be different than display port!"
++			else:
++				val["inputPort"] = a 			
++		if o == "--display-port":
++			a = int(a)
++			if a == val["inputPort"]:
++				print "Sorry, display port should be different than input port!"
++			else:
++				val["displayPort"] = a 
++		if o == "--max-input":
++			a = int(a)
++			if a < 1: 
++				a=1
++			elif 100 < a:
++				a = 100
++			val["maxInput"] = a
++		if o == "--max-display":
++			a = int(a)
++			if a < 1: 
++				a=1
++			elif 100 < a:
++				a = 100
++			val["maxDisplay"] = a
++		if o in ("-v", "--verbose"):
++			val["verbose"] = True
++		if o in ("-d", "--debug"):
++			val["debug"] = True
++	return val
++
++def main():
++	val = { \
++		"displayPort": 12430, \
++		"inputPort": 12431, \
++		"maxInput": 4, \
++		"maxDisplay": 4, \
++		"verbose": False,
++		"debug": False}
++	arg = parseArgs(val)
++	
++	server = BoomBoomServer(**arg)
++
++	try:
++		server.start()
++	except KeyboardInterrupt:
++		print "Program interrupted (CTRL+C)."
++	server.stop()
++	print "Server quit."
++
++if __name__=="__main__": main()
+
+
+Property changes on: happyboom/trunk/boomboom/boomboom_server.py
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: happyboom/trunk/boomboom/server/__init__.py
+===================================================================
+--- happyboom/trunk/boomboom/server/__init__.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/__init__.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,2 @@
++from bb_server import BoomBoomServer
++from bb_agent import BoomBoomAgent, BoomBoomMessage
+
+Added: happyboom/trunk/boomboom/server/agents/__init__.py
+===================================================================
+--- happyboom/trunk/boomboom/server/agents/__init__.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/agents/__init__.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,5 @@
++from projectile import Projectile
++from weapon import Weapon
++from world import World
++from character import Character
++from game import Game
+\ No newline at end of file
+
+Added: happyboom/trunk/boomboom/server/agents/character.py
+===================================================================
+--- happyboom/trunk/boomboom/server/agents/character.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/agents/character.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,47 @@
++from server.bb_agent import BoomBoomAgent, BoomBoomMessage
++
++class Character(BoomBoomAgent):
++	def __init__(self, x, team, **args):
++		BoomBoomAgent.__init__(self, "character", **args)
++		self.x = x
++		self.y = 0
++		self.width = 28
++		self.height = 29
++		self.team = team
++		self.next = False
++		self.current = False
++		
++	def born(self):
++		BoomBoomAgent.born(self)
++		self.requestActions("game")
++		self.requestActions("network")
++		self.sendBroadcastMessage(BoomBoomMessage("find_place", (self.x, self.width, self.height)), "world")
++		self.sendBroadcastMessage(BoomBoomMessage("new_character", (self.id, self.team)), "game")
++		self.sendBroadcastMessage(BoomBoomMessage("new_item", (self.type, self.id)), "network")
++
++	def move(self, x, y, force=False):
++		if self.x == x and self.y == y and not force: return
++		self.x = x
++		self.y = y
++		self.sendBroadcastMessage(BoomBoomMessage("character_move", ("%u,%i,%i" % (self.id, self.x, self.y),)), "network")
++		if self.current:
++			self.sendBBMessage(BoomBoomMessage("active_coord", (self.x, self.y)))
++
++	def sync(self):
++		self.move(self.x, self.y, force=True)
++
++	def msg_found_place(self, x, y):
++		self.move(x, y, True)
++		
++	def msg_next_character(self, char, team):
++		if self.id == char:
++			self.next = True
++		
++	def msg_next_turn(self):
++		self.current = self.next
++		if self.current:
++			self.sendBBMessage(BoomBoomMessage("active_coord", (self.x, self.y)))
++		self.next = False
++		
++	def msg_sync(self):
++		self.sync()
+\ No newline at end of file
+
+Added: happyboom/trunk/boomboom/server/agents/game.py
+===================================================================
+--- happyboom/trunk/boomboom/server/agents/game.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/agents/game.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,63 @@
++from server.bb_agent import BoomBoomAgent, BoomBoomMessage
++import traceback
++
++class Game(BoomBoomAgent):
++	def __init__(self, **args):
++		BoomBoomAgent.__init__(self, "game", **args)
++		self.teams = []
++		self.characters = {}
++		self.next_team_pos = None
++		self.next_char_pos = {}
++		self.current = (None, None)
++
++	def born(self):
++		BoomBoomAgent.born(self)
++		self.requestActions("world")
++		self.requestActions("network")
++
++	def sendNextCharacter(self, char_pos, team_pos):
++		if self.next_team_pos != None:
++			self.current = (self.nextCharacter, self.nextTeam)
++		self.next_team_pos = team_pos
++		self.next_char_pos[self.nextTeam] = char_pos
++		self.sendBBMessage(BoomBoomMessage("next_character", (self.nextCharacter, self.nextTeam)))
++
++	def msg_sync(self):
++		self.sync()
++
++	def msg_new_character(self, character, team):
++		if team in self.teams:
++			self.characters[team].append(character)
++		else:
++			self.teams.append(team)
++			self.characters[team] = [character,]
++			self.next_char_pos[team] = 0
++
++	def sync(self):
++		char, team = self.current
++		self.sendBroadcastMessage(BoomBoomMessage("current_character", (char, team)), "network")
++
++	def __getNextCharacter(self):
++		return self.characters[self.nextTeam][self.next_char_pos[self.nextTeam]]
++	nextCharacter = property(__getNextCharacter)
++
++	def __getNextTeam(self):
++		return self.teams[self.next_team_pos]
++	nextTeam = property(__getNextTeam)
++
++	def incCharacter(self):
++		tpos = (self.next_team_pos + 1) % 2
++		cpos = (self.next_char_pos[self.teams[tpos]] + 1) % len(self.characters[self.teams[tpos]])
++		self.sendNextCharacter(cpos, tpos)
++
++	def msg_hit_ground(self, x, y):
++		self.sendBBMessage(BoomBoomMessage("next_turn", ()))
++		self.incCharacter()
++		
++	def msg_start(self):
++		self.launchGame()
++
++	def launchGame(self):	
++		self.sendNextCharacter(0, 0)
++		self.sendBBMessage(BoomBoomMessage("next_turn", ()))
++		self.incCharacter()
+\ No newline at end of file
+
+Added: happyboom/trunk/boomboom/server/agents/projectile.py
+===================================================================
+--- happyboom/trunk/boomboom/server/agents/projectile.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/agents/projectile.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,76 @@
++from server.bb_agent import BoomBoomAgent, BoomBoomMessage
++import time
++import math
++
++class Projectile(BoomBoomAgent):
++	def __init__(self, **args):
++		BoomBoomAgent.__init__(self, "projectile", **args)
++		self.x, self.y = 0, 0
++		self.start_pos = None
++		self.active = False
++		self.time = None
++		self.speed = None
++		self.weapon_angle = None
++		self.weapon_strength = None
++		self.mass = 10
++
++	def born(self):
++		BoomBoomAgent.born(self)
++		self.requestRole("command_manager")
++		self.requestActions("weapon")
++		self.requestActions("character")
++		self.requestActions("world")
++		self.requestActions("game")
++		self.requestActions("network")
++		self.sendBroadcastMessage(BoomBoomMessage("new_item", (self.type, self.id)), "network")
++
++	def msg_strength(self, arg):
++		self.weapon_strength = int(arg) * 4
++		
++	def msg_angle(self, angle):
++		self.weapon_angle = (-int(angle)) * math.pi / 180
++
++	def msg_new(self, cmd):
++		if cmd == "shoot" and not self.active:
++			self.shoot()
++
++	def msg_active_coord(self, x, y):
++		self.start_pos = (x, y)
++
++	def msg_hit_ground(self, x, y):
++		self.setActive(False)
++
++	def setActive(self, active):
++		self.active = active
++		self.sendBBMessage(BoomBoomMessage("projectile_activate", (active,)))
++
++	def shoot(self):
++		if self.weapon_angle==None: return
++		if self.weapon_strength==None: return
++		self.move(self.start_pos[0], self.start_pos[1])
++		self.setActive(True)
++		self.time = time.time()
++		sx = self.weapon_strength * math.cos(self.weapon_angle)
++		sy = self.weapon_strength * math.sin(self.weapon_angle)
++		if self.start_pos[0] > 300: # TODO: Bad test to know which character it is
++			sx = -sx
++		self.speed = (sx, sy,)
++
++	def move(self, x, y):
++		self.x = x
++		self.y = y
++		self.sendBBMessage(BoomBoomMessage("projectile_move", (x,y)))
++
++	def live(self):
++		BoomBoomAgent.live(self)
++		if self.active:
++			dt = time.time() - self.time
++			x = self.start_pos[0] +self.speed[0] * dt
++			y = self.start_pos[1] +self.speed[1] * dt +9.8*dt*dt*self.mass
++			self.move (x, y)
++
++	def sync(self):
++		self.setActive(self.active)
++
++	def msg_sync(self):
++		self.sync()
+\ No newline at end of file
+
+Added: happyboom/trunk/boomboom/server/agents/weapon.py
+===================================================================
+--- happyboom/trunk/boomboom/server/agents/weapon.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/agents/weapon.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,56 @@
++from server.bb_agent import BoomBoomAgent, BoomBoomMessage
++
++class Weapon(BoomBoomAgent):
++    def __init__(self, **args):
++        BoomBoomAgent.__init__(self, "weapon", **args)
++        self.angle = None
++        self.strength = None
++        self.last_values = {}
++        self.currentTeam = None
++        self.nextTeam = None
++
++    def born(self):
++    	BoomBoomAgent.born(self)
++        self.requestRole("command_manager")
++        self.requestActions("game")
++        self.requestActions("network")
++        self.sendBroadcastMessage(BoomBoomMessage("new_item", (self.type, self.id)), "network")
++
++    def msg_next_character(self, char, team):
++        self.nextTeam = team
++
++    def msg_next_turn(self):
++        self.last_values[self.currentTeam] = (self.angle, self.strength,)
++        self.currentTeam = self.nextTeam
++        angle, strength = self.last_values.get(self.currentTeam, (45, 50,))
++        self.updateAngle(angle)
++        self.updateStrength(strength)
++
++    def msg_new(self, cmd):
++        if cmd == "move_left":
++            self.updateStrength (self.strength - 5)
++        if cmd == "move_right":
++            self.updateStrength (self.strength + 5)
++        if cmd == "move_down":
++            self.updateAngle (self.angle - 5)
++        if cmd == "move_up":
++            self.updateAngle (self.angle + 5)
++
++    def updateAngle(self, angle):
++        if angle < -80: angle = -80
++        elif 80 < angle: angle = 80
++        self.angle = angle 
++        self.sendBBMessage(BoomBoomMessage("angle", (angle,)))
++
++    def updateStrength(self, strength):
++        if strength < 10: strength = 10
++        elif 100 < strength: strength = 100
++        self.strength = strength
++        self.sendBBMessage(BoomBoomMessage("strength", (strength,)))
++
++    def sync(self):
++        self.updateStrength(self.strength)
++        self.updateAngle(self.angle)
++
++    def msg_sync(self):
++        self.sync()
+\ No newline at end of file
+
+Added: happyboom/trunk/boomboom/server/agents/world.py
+===================================================================
+--- happyboom/trunk/boomboom/server/agents/world.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/agents/world.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,95 @@
++from server.bb_agent import BoomBoomAgent, BoomBoomMessage
++import random
++
++class Building:
++	def __init__(self, x, y, height, width):
++		self.x = x
++		self.y = y
++		self.width = width
++		self.height = height
++
++	def isPartOf(self, x, y):
++		if x < self.x:
++			return False
++		if self.x + self.width < x:
++			return False
++		if y < self.y:
++			return False
++		if self.y + self.height < y:
++			return False
++		return True
++
++
++class World(BoomBoomAgent):
++	def __init__(self, **args):
++		BoomBoomAgent.__init__(self, "world", **args)
++		self.buildings = None
++		self.height = 350
++		self.width = 640
++		self.generate()
++
++	def born(self):
++		BoomBoomAgent.born(self)
++		self.requestActions("projectile")
++		self.requestActions("game")
++		self.requestActions("network")
++		self.sendBroadcastMessage(BoomBoomMessage("new_item", (self.type, self.id)), "network")
++
++	def generate(self):
++		width = self.width
++		x = 0
++		self.buildings = []
++		building_hmin = 100
++		building_hmax = self.height-100
++		building_wmin = 40
++		building_wmax = 60
++		while building_wmin<width:
++			w = random.randint(building_wmin, building_wmax)
++			h = random.randint(building_hmin, building_hmax)
++			building = Building(x, self.height-h, h, w)
++			self.buildings.append(building)
++			width = width - w
++			x = x + w
++		if 0 < width:
++			h = random.randint(building_hmin, building_hmax)
++			building = Building(x, self.height-h, h, width)
++			self.buildings.append(building)
++
++	def hitGround(self, x, y):
++		# Testing screen bounds
++		if self.height <= y or x < 0 or self.width <= x:
++			return True
++		# Testing building collision
++		for b in self.buildings:
++			if b.isPartOf(x,y):
++				return True
++		return False	
++
++	def sync(self):
++		msg = ""
++		for b in self.buildings:
++			if len(msg) != 0: msg = msg + ";"
++			msg = msg + "%i,%i,%i,%i" % (b.x, b.y, b.width, b.height)
++		self.sendBroadcastMessage(BoomBoomMessage("world_create", (msg,)), "network")
++
++	def msg_find_place(self, x0, width, height):
++		if x0 < 0:
++			x0 = self.width + x0
++		else:
++			x0 = x0
++		x1 = x0 + width
++		x = -1
++		y = -1
++		for b in self.buildings:
++			if x1 <= b.x + b.width and width < b.width:
++				x = int(b.x + (b.width - width) / 2)
++				y = b.y - height
++				break
++		self.sendMessage(BoomBoomMessage("found_place", (x, y)), self.currentMessage.sender)
++				
++	def msg_projectile_move(self, x, y):
++		if self.hitGround(x, y):
++			self.sendBBMessage(BoomBoomMessage("hit_ground", (x, y)))
++
++	def msg_sync(self):
++		self.sync()
+\ No newline at end of file
+
+Added: happyboom/trunk/boomboom/server/bb_agent.py
+===================================================================
+--- happyboom/trunk/boomboom/server/bb_agent.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/bb_agent.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,24 @@
++from pysma import ActionAgent, ActionMessage
++
++class BoomBoomMessage(ActionMessage):
++	def __init__(self, action, arg, kw={}):
++		ActionMessage.__init__(self, action, arg, kw)
++
++class BoomBoomAgent(ActionAgent):
++	def __init__(self, type, **args):
++		ActionAgent.__init__(self, prefix="msg_")
++		self.type = type
++		self.__debug = args.get("debug", False)
++
++	def born(self):
++		self.requestRole(self.type)
++
++	def requestActions(self, type):
++		self.requestRole("%s_listener" %type)
++		
++	def sendBBMessage(self, message):
++		self.sendBroadcastMessage(message, "%s_listener" %self.type)
++
++	def messageReceived(self, msg):
++		if self.__debug:
++			print "Unhandled message : %s -- %s" %(type(self), msg)
+\ No newline at end of file
+
+Added: happyboom/trunk/boomboom/server/bb_server.py
+===================================================================
+--- happyboom/trunk/boomboom/server/bb_server.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom/server/bb_server.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -0,0 +1,326 @@
++from bb_agent import BoomBoomAgent, BoomBoomMessage
++from agents import Character, Projectile, Weapon, World, Game
++from net import io, io_udp, net_buffer
++from pysma import Kernel, DummyScheduler
++import re, random, thread, traceback, time
++
++class BoomBoomServer(BoomBoomAgent):
++	def __init__(self, maxDisplay=2, displayPort=12430, maxInput=2, inputPort=12431, verbose=False, debug=False):
++		BoomBoomAgent.__init__(self, "network")
++		self.__display_io = io_udp.IO_UDP(is_server=True)
++		self.__input_io = io_udp.IO_UDP(is_server=True)
++		self.__input_buffer = net_buffer.NetBuffer()
++		self.__display_buffer = net_buffer.NetBuffer()
++		self.__input_protocol_version = "0.1.4"
++		self.__display_protocol_version = "0.1.4"
++		self.__debug = debug
++		self.__display_io.debug = debug
++		self.__input_io.debug = debug
++		self.__verbose = verbose
++		self.__display_io.verbose = verbose
++		self.__input_io.verbose = verbose
++		self.__inputs = []
++		self.__items = []
++		self.__stopped = False
++		self.__stoplock = thread.allocate_lock()
++		self.__supportedFeatures = {}
++		self.maxDisplay = maxDisplay
++		self.displayPort = displayPort
++		self.maxInput = maxInput
++		self.inputPort = inputPort
++		self.started = False
++		self.nextChar = None
++		random.seed()
++		Kernel().addAgent(DummyScheduler(sleep=0.01))
++		
++	def born(self):
++		BoomBoomAgent.born(self)
++		self.requestActions("game")
++		self.requestActions("weapon")
++		self.requestActions("character")
++		self.requestActions("world")
++		self.requestActions("projectile")
++		
++	def start(self):
++		if self.__verbose: print "[*] Starting server..."
++		self.initIO()
++		self.createAgents()
++		print "[*] Server started"
++		
++		self.__stoplock.acquire()
++		running = not self.__stopped
++		self.__stoplock.release()
++		while running:
++			self.processInputs()
++			time.sleep(0.01)
++			self.__stoplock.acquire()
++			running = not self.__stopped
++			self.__stoplock.release()
++
++	def stop(self):
++		self.__stoplock.acquire()
++		if self.__stopped:
++			self.__stoplock.release()
++			return
++		self.__stopped = True
++		self.__stoplock.release()
++		print "[*] Stopping server..."
++		Kernel.instance.stopKernel()
++		self.sendNetworkMessage("game", "Stop", skippable=True)
++		self.__display_io.stop()
++		self.__input_io.stop()
++		if self.__verbose: print "[*] Server stopped"
++
++	def initIO(self):
++		if self.__verbose: print "[*] Starting display server"
++		self.__display_io.name = "display server"
++		self.__display_io.on_client_connect = self.openDisplay
++		self.__display_io.on_client_disconnect = self.closeDisplay
++		self.__display_io.on_new_packet = self.recvDisplayPacket
++		self.__display_io.connect('', self.displayPort)
++		if self.__verbose: print "[*] Starting input server"
++		self.__input_io.name = "input server"
++		self.__input_io.on_client_connect = self.openInput
++		self.__input_io.on_client_disconnect = self.closeInput
++		self.__input_io.on_new_packet = self.recvInputPacket
++		self.__input_io.connect('', self.inputPort)
++		thread.start_new_thread(self.run_io_thread, ())
++		
++	def createAgents(self):
++		if self.__verbose: print "[*] Creating agents"
++		Kernel.instance.addAgent(self)
++		self.addAgent(Game(debug=self.__debug))
++		self.addAgent(World(debug=self.__debug))
++		self.addAgent(Character(100, 1, debug=self.__debug))
++		self.addAgent(Character(-150, 2, debug=self.__debug))
++		self.addAgent(Weapon(debug=self.__debug))
++		self.addAgent(Projectile(debug=self.__debug))
++		self.sendBroadcastMessage(BoomBoomMessage("start", ()), "game")
++		
++	def openDisplay(self, client):
++		thread.start_new_thread( self.__clientChallenge, (client,self.__do_openDisplay,"DISPLAY",))
++
++	def openInput(self, client):
++		thread.start_new_thread( self.__clientChallenge, (client,self.__do_openInput,"INPUT",))
++		
++	def closeInput(self, client):
++		if self.__verbose: print "[*] Input %s disconnected." % (client.name)
++		if not (client in self.__inputs): return
++		self.__inputs.remove (client)
++		txt = "Client %s (input) leave us." % (client.name)
++		self.sendText(txt)
++
++	def closeDisplay(self, client):
++		if self.__verbose: print "[*] Display %s disconnected." % (client.name)
++		txt = "Client %s (display) leave us." % (client.name)
++		self.sendText(txt)
++		
++	def __clientChallenge(self, client, func, client_type):
++		try:
++			func(client)
++		except Exception, msg:
++			print "EXCEPTION WHEN %s TRY TO CONNECT :" % (client_type)
++			print msg
++			print "--"
++			traceback.print_exc()
++			self.stop()
++
++	# Function which should be called in a thread
++	def run_io_thread(self):
++		try:
++			while self.__input_io.isRunning() and self.__display_io.isRunning():
++				self.__input_io.live()				
++				self.__display_io.live()				
++				time.sleep(0.001)
++		except Exception, msg:
++			print "EXCEPTION IN IO THREAD :"
++			print msg
++			print "--"			
++			traceback.print_exc()
++			self.stop()
++
++	def __do_openDisplay(self, client):
++		if self.__verbose: print "[*] Display %s try to connect ..." % (client.name)
++		
++		self.__display_buffer.clear(client.addr)
++		
++		# Ask protocol version
++		msg = self.createMsg("agent_manager", "AskVersion")
++		client.send(io.Packet(msg))
++		answer = self.readDisplayAnswer(client)
++		if answer != self.__display_protocol_version:
++			txt = "Sorry, you don't have same protocol version (%s VS %s)" \
++				% (answer, self.__display_protocol_version)
++			self.sendText(txt)
++			client.disconnect()
++			return
++		
++		# ask client name
++		msg = self.createMsg("agent_manager", "AskName")
++		client.send(io.Packet(msg))
++		name = self.readDisplayAnswer(client)
++		if name not in ("-", ""): client.name = name
++
++		self.registerFeature(client, "agent_manager")
++		self.registerFeature(client, "game")
++		for type, id in self.__items:
++			msg = self.createMsg("agent_manager", "Create", "%s:%u" % (type, id))
++			client.send (io.Packet(msg))
++			answer = self.readDisplayAnswer(client)
++			if answer == "yes": 
++				role = self.readDisplayAnswer(client)
++				while role != ".":
++					self.registerFeature(client, role)
++					role = self.readDisplayAnswer(client)
++
++		msg = self.createMsg("game", "Start")
++		client.send(io.Packet(msg))
++			
++		txt = "Welcome to new (display) client : %s" % (client.name)
++		self.sendText(txt)
++		if self.__verbose: print "[*] Display %s connected" % (client.name)
++		self.sendBBMessage(BoomBoomMessage("sync", ()))
++
++	def __do_openInput(self, client):
++		if self.__verbose: print "[*] Input %s try to connect ..." % (client.name)
++
++		self.__input_buffer.clear(client.addr)
++
++		client.send(io.Packet("Version?"))
++		answer = self.readInputAnswer(client)
++		if answer == None:
++			if self.__verbose: print "[*] Client doesn't sent version"
++			client.disconnect()
++			return
++		if answer != self.__input_protocol_version:
++			txt = "Sorry, you don't have same protocol version (%s VS %s)" \
++				% (answer, self.__input_protocol_version)
++			self.sendText(txt, client)
++			client.disconnect()
++			return	
++		client.send(io.Packet("OK"))
++		
++		# ask client name
++		client.send(io.Packet("Name?"))
++		name = self.readInputAnswer(client)
++		if name == None:
++			if self.__verbose: print "[*] Client doesn't sent name"
++			client.disconnect()
++			return
++		if name not in ("-", ""): client.name = name
++		client.send(io.Packet("OK"))
++
++		self.__inputs.append (client)
++		if self.__verbose: print "Input %s connected." % (client.name)
++		txt = "Welcome to new (input) client : %s" % (client.name)
++		self.sendText(txt)
++		
++	# Convert a (role,type,arg) to string (to be sent throw network)
++	def createMsg(self, role, type, arg=None):
++		if arg != None:
++			return "%s:%s:%s" % (role, type, arg)
++		else:
++			return "%s:%s" % (role, type)
++		
++	def recvInputPacket(self, packet):
++		self.__input_buffer.append(packet.recv_from.addr, packet)
++		
++	def recvDisplayPacket(self, packet):
++		msg = packet.data
++		self.__display_buffer.append(packet.recv_from.addr, packet)
++
++	def readDisplayAnswer(self, client):
++		return self.__readClientAnswer(self.__display_buffer, client)
++		
++	def readInputAnswer(self, client):
++		return self.__readClientAnswer(self.__input_buffer, client)
++
++	def __readClientAnswer(self, buffer, client, timeout=3.000):
++		answer = buffer.readBlocking(client.addr, timeout)
++		if answer==None: return None
++		answer = answer.data
++		return answer
++
++	def sendText(self, txt, client=None):
++		if client != None:
++			msg = self.createMsg("agent_manager", "Text", txt)
++			client.send(io.Packet(msg))
++		else:
++			self.sendNetworkMessage("agent_manager", "Text", txt)
++
++	def processInputCmd(self, input, cmd):
++		cmd_ok = (\
++			"move_left", "move_right", "move_up", "move_down",
++			"shoot", )
++		if self.__verbose and cmd != "Ping?":
++			print "Command from %s: %s" % (input.name, cmd)
++		if re.compile("^chat:(.*)$").match(cmd) != None:
++			print "New chat message: %s" % (r.group(1))
++			self.sendNetworkMessage("chat_server", "new", r.group(1))
++		elif cmd in cmd_ok:	self.sendBroadcastMessage(BoomBoomMessage("new", (cmd,)), "command_manager")
++		
++	def processInputs(self):
++		inputs = self.__inputs[:]
++		for client in inputs:
++			packets = self.__input_buffer.readNonBlocking(client.addr)
++
++			for packet in packets:	
++				self.processInputCmd (packet.recv_from, packet.data)
++
++	def registerFeature(self, client, role):
++		if role in self.__supportedFeatures:
++			if client not in self.__supportedFeatures[role]:
++				self.__supportedFeatures[role].append(client)
++		else:
++			self.__supportedFeatures[role] = [client,]
++
++	def sendNetworkMessage(self, role, type, arg=None, skippable=False):
++		msg = self.createMsg(role, type, arg)
++		clients = self.__supportedFeatures.get(role, ())
++		for client in clients:
++			client.send (io.Packet(msg, skippable=skippable))
++						
++	def msg_next_character(self, char, team):
++		if self.__debug: print "Next character : %s,%s" %(char, team)
++		self.nextChar = char
++						
++	def msg_next_turn(self):
++		if self.__debug: print "Next turn : %s" %self.nextChar
++		self.sendNetworkMessage("game", "next_turn")
++		self.sendNetworkMessage("game", "active_character", self.nextChar)
++		
++	def msg_hit_ground(self, x, y):
++		if self.__debug: print "Hit ground : %s,%s" %(x, y)
++		self.sendNetworkMessage("projectile", "hit_ground")
++	
++	def msg_projectile_move(self, x, y):
++		if self.__debug: print "Projectile move : %s,%s" %(x, y)
++		self.sendNetworkMessage("projectile", "move", "%u,%u" %(x,y), True)
++		
++	def msg_projectile_activate(self, flag):
++		if self.__debug: print "Projectile activate : %s" %flag
++		self.sendNetworkMessage("projectile", "activate", "%u" %(flag))
++		
++	def msg_angle(self, a):
++		if self.__debug: print "Weapon angle : %s" %a
++		self.sendNetworkMessage("weapon", "angle", a)
++		
++	def msg_strength(self, s):
++		if self.__debug: print "Weapon strength : %s" %s
++		self.sendNetworkMessage("weapon", "force", s)
++		
++	def msg_world_create(self, m):
++		if self.__debug: print "World create : %s" %m
++		self.sendNetworkMessage("world", "create", m)
++		
++	def msg_character_move(self, m):
++		if self.__debug: print "Character move : %s" %m
++		self.sendNetworkMessage("character", "move", m)
++		
++	def msg_new_item(self, type, id):
++		if self.__debug: print "New item : %s,%s" %(type, id)
++		self.__items.append((type, id))
++		
++	def msg_current_character(self, char, team):
++		if self.__debug: print "Current character : %s,%s" %(char, team)
++		self.sendNetworkMessage("game", "active_character", char)
+\ No newline at end of file
+
+Deleted: happyboom/trunk/boomboom_server.py
+===================================================================
+--- happyboom/trunk/boomboom_server.py	2005-08-05 09:05:36 UTC (rev 94)
++++ happyboom/trunk/boomboom_server.py	2005-08-05 09:18:23 UTC (rev 95)
+@@ -1,106 +0,0 @@
+-#!/usr/bin/python
+-# -*- coding: ISO-8859-1 -*-
+-VERSION="0.0.0"
+-PROGRAM="BoomBoom"
+-
+-import time
+-from boomboom_server import *
+-import getopt
+-import sys
+-
+-def usage(defval):
+-	print "%s server version %s" % (PROGRAM, VERSION)
+-	print ""
+-	print "Usage: %s [-v,--verbose] [-d,--debug] [-h,--help]" % (sys.argv[0])
+-	print ""
+-	print "Arguments :"
+-	print "\t-h,--help         : Show this help"
+-	print "\t-v,--verbose      : Activate verbose mode"
+-	print "\t-d,--debug        : Activate debug mode"
+-	print ""
+-	print "Other arguments :"
+-	print "\t--max-input NB    : Max input clients (default %u)" % (defval["max-input"])
+-	print "\t--max-view NB     : Max view clients (default %u)" % (defval["max-view"])
+-	print "\t--view-port PORT  : Port number for view clients (default %u)" % (defval["view-port"])
+-	print "\t--input-port PORT : Port number for input clients (default %u)" % (defval["input-port"])
+-
+-def parseArgs(val):
+-	import getopt
+-	def_val = val.copy()
+-	
+-	try:
+-		short = "hdv"
+-		long = ["debug", "verbose", "help", \
+-			"max-input=", "max-view=", \
+-			"view-port=", "input-port="]
+-		opts, args = getopt.getopt(sys.argv[1:], short, long)
+-	except getopt.GetoptError:
+-		usage(def_val)
+-		sys.exit(2)
+-	
+-	if 0<len(args):
+-		usage(def_val)
+-		sys.exit(2)
+-		
+-	for o, a in opts:
+-		if o == "--help":
+-			usage(def_val)
+-			sys.exit()
+-		if o == "--input-port":
+-			a = int(a)
+-			if a == val["view-port"]:
+-				print "Sorry, input port should be different than view port!"
+-			else:
+-				val["input-port"] = a 			
+-		if o == "--view-port":
+-			a = int(a)
+-			if a == val["input-port"]:
+-				print "Sorry, view port should be different than input port!"
+-			else:
+-				val["view-port"] = a 
+-		if o == "--max-input":
+-			a = int(a)
+-			if a < 1: 
+-				a=1
+-			elif 100 < a:
+-				a = 100
+-			val["max-input"] = a
+-		if o == "--max-view":
+-			a = int(a)
+-			if a < 1: 
+-				a=1
+-			elif 100 < a:
+-				a = 100
+-			val["max-view"] = a
+-		if o in ("-v", "--verbose"):
+-			val["verbose"] = True
+-		if o in ("-d", "--debug"):
+-			val["debug"] = True
+-	return val
+-
+-def main():
+-	val = { \
+-		"view-port": 12430, \
+-		"input-port": 12431, \
+-		"max-input": 4, \
+-		"max-view": 4, \
+-		"verbose": False,
+-		"debug": False}
+-	arg = parseArgs(val)
+-	
+-	server = BoomBoomServer()
+-	server.setVerbose(arg["verbose"])
+-	server.setDebug(arg["debug"])
+-
+-	server.start(arg)
+-	try:
+-		while server.quit==False:
+-			server.live()
+-			time.sleep(0.010)
+-	except KeyboardInterrupt:
+-		print "Program interrupted (CTRL+C)."
+-		pass
+-	server.stop()
+-	print "Server quit."
+-
+-if __name__=="__main__": main()
+
+
+
+From dboucard at berlios.de  Fri Aug  5 11:47:04 2005
+From: dboucard at berlios.de (Damien Boucard at BerliOS)
+Date: Fri, 5 Aug 2005 11:47:04 +0200
+Subject: [Happyboom-svn] r96 - in happyboom/trunk: . boomboom
+Message-ID: <200508050947.j759l4vS007095@sheep.berlios.de>
+
+Author: dboucard
+Date: 2005-08-05 11:47:04 +0200 (Fri, 05 Aug 2005)
+New Revision: 96
+
+Modified:
+   happyboom/trunk/ChangeLog
+   happyboom/trunk/README
+   happyboom/trunk/TODO
+   happyboom/trunk/boomboom/makedoc
+Log:
+information files update
+
+
+Modified: happyboom/trunk/ChangeLog
+===================================================================
+--- happyboom/trunk/ChangeLog	2005-08-05 09:18:23 UTC (rev 95)
++++ happyboom/trunk/ChangeLog	2005-08-05 09:47:04 UTC (rev 96)
+@@ -1,3 +1,14 @@
++2005-08-05
++	o Rewrite of the BoomBoom server (based on multi-agent-system)
++	o The server requires the PySMA library (see README)
++
++2005-08-03
++	o Rewrite of the BoomBoom client (based on event-system)
++	o The BoomBoom client source code is documented with Epydoc
++
++2005-08-02
++	o The 'net' package is documented with Epydoc
++
+ 2005-04-28
+ 	o Fix network client : use buffer to keep unfinished lines, and support
+ 	  wrong host name error
+
+Modified: happyboom/trunk/README
+===================================================================
+--- happyboom/trunk/README	2005-08-05 09:18:23 UTC (rev 95)
++++ happyboom/trunk/README	2005-08-05 09:47:04 UTC (rev 96)
+@@ -2,11 +2,26 @@
+ ========
+ 
+ BoomBoom is a rewrite of old game "Gorilla" (a Quick Basic game written
+-by Microsoft). It's just a test for the HappyBoom kernel. To play, first run
++by Microsoft). It's just a test for the HappyBoom kernel.
++
++  Requirements
++  ------------
++- Python : version 2.3 or earlier (tested until 2.4.1)
++--> http://python.org/download/
++
++- pygame : version 1.6 or earlier (just tested 1.6)
++--> http://www.pygame.org/download.shtml
++
++- pysma : version 0.3 (tested until 0.3)
++--> https://developer.berlios.de/project/showfiles.php?group_id=3535
++
++  How to play
++  -----------
++To play, launch a term, go to the boomboom subdirectory and run
+ a server :
+   python boomboom_server.py
+   
+-And then a client :
++Next, launch another term, go to the boomboom subdirectory again and run a client :
+   python boomboom_client.py <yourname>
+ 
+ You can play it over Internet by giving a host name to client :
+@@ -14,11 +29,11 @@
+ 
+    Controls
+    --------
+-   
+-- Left/Right : Change force
+-- Up/Down    : Change angle
+-- Space      : Shoot
++- Left/Right : Changes strength
++- Up/Down    : Changes angle
++- Space      : Shoots
+ 
++
+ HappyBoom
+ =========
+ 
+@@ -26,6 +41,7 @@
+ - inputs, server & "view" are well separated
+ - it uses multi-agents system
+ 
++
+ Console
+ =======
+ 
+@@ -33,4 +49,12 @@
+ it should be compatible with new games. It can be used to display server stats
+ for example :
+   python console_view.py --stats
++  
++  
++Documentation
++=============
+ 
++You can generate the API documentation of some package (presently 'boomboom'
++and 'net'). To do that, you must install Epydoc (version 2.1 or earlier, just
++tested 2.1) and run the 'makedoc' shell script in the concerned directory,
++or read the Epydoc manpage.
+
+Modified: happyboom/trunk/TODO
+===================================================================
+--- happyboom/trunk/TODO	2005-08-05 09:18:23 UTC (rev 95)
++++ happyboom/trunk/TODO	2005-08-05 09:47:04 UTC (rev 96)
+@@ -1,3 +1,4 @@
++# -*- coding: UTF-8 -*-
+ TODO LIST
+ =========
+ o Improve network security
+
+Modified: happyboom/trunk/boomboom/makedoc
+===================================================================
+--- happyboom/trunk/boomboom/makedoc	2005-08-05 09:18:23 UTC (rev 95)
++++ happyboom/trunk/boomboom/makedoc	2005-08-05 09:47:04 UTC (rev 96)
+@@ -1 +1 @@
+-epydoc -o doc/api -n "BoomBoom Client 0.2" --private-css blue client common/
++epydoc $* -o doc/api -n "BoomBoom 0.2" --private-css blue client common net server
+
+
+
+From haypo at berlios.de  Sat Aug  6 02:14:55 2005
+From: haypo at berlios.de (Victor STINNER at BerliOS)
+Date: Sat, 6 Aug 2005 02:14:55 +0200
+Subject: [Happyboom-svn] r98 - in happyboom/trunk/boomboom: . client
+Message-ID: <200508060014.j760EtSO004732@sheep.berlios.de>
+
+Author: haypo
+Date: 2005-08-06 02:14:54 +0200 (Sat, 06 Aug 2005)
+New Revision: 98
+
+Modified:
+   happyboom/trunk/boomboom/client/bb_drawer.py
+   happyboom/trunk/boomboom/makedoc
+Log:
+Mega patch
+
+
+Modified: happyboom/trunk/boomboom/client/bb_drawer.py
+===================================================================
+--- happyboom/trunk/boomboom/client/bb_drawer.py	2005-08-05 10:33:46 UTC (rev 97)
++++ happyboom/trunk/boomboom/client/bb_drawer.py	2005-08-06 00:14:54 UTC (rev 98)
+@@ -82,7 +82,7 @@
+             self.surface = pygame.Surface((width,height))
+         else:
+             self.type = "window"
+-            self.surface = pygame.display.set_mode((width,height))
++            self.surface = pygame.display.set_mode((width,height), pygame.HWSURFACE | pygame.DOUBLEBUF)
+         self.pos = (0,0)
+         self.view_pos = (0,0)
+         self.scale = 1
+@@ -91,4 +91,4 @@
+ 
+     def blit(self, surface, pos):
+         new_pos = (pos[0] - self.view_pos[0], pos[1] - self.view_pos[1],)
+-        self.surface.blit(surface, new_pos)
+\ No newline at end of file
++        self.surface.blit(surface, new_pos)
+
+Modified: happyboom/trunk/boomboom/makedoc
+===================================================================
+--- happyboom/trunk/boomboom/makedoc	2005-08-05 10:33:46 UTC (rev 97)
++++ happyboom/trunk/boomboom/makedoc	2005-08-06 00:14:54 UTC (rev 98)
+@@ -1 +1,2 @@
++mkdir doc
+ epydoc $* -o doc/api -n "BoomBoom 0.2" --private-css blue client common net server
+
+
+
+From haypo at berlios.de  Sat Aug  6 08:39:46 2005
+From: haypo at berlios.de (Victor STINNER at BerliOS)
+Date: Sat, 6 Aug 2005 08:39:46 +0200
+Subject: [Happyboom-svn] r99 - in happyboom/trunk: boomboom boomboom/client/items boomboom/server net/io_tcp net/io_udp
+Message-ID: <200508060639.j766dkeq003208@sheep.berlios.de>
+
+Author: haypo
+Date: 2005-08-06 08:39:43 +0200 (Sat, 06 Aug 2005)
+New Revision: 99
+
+Modified:
+   happyboom/trunk/boomboom/client/items/projectile.py
+   happyboom/trunk/boomboom/makedoc
+   happyboom/trunk/boomboom/server/bb_server.py
+   happyboom/trunk/net/io_tcp/tcp.py
+   happyboom/trunk/net/io_tcp/tcp_client.py
+   happyboom/trunk/net/io_udp/udp.py
+Log:
+Corrige un vieux printf ("%u" -> "%i") pour des coordon?\195?\169es.
+
+
+Modified: happyboom/trunk/boomboom/client/items/projectile.py
+===================================================================
+--- happyboom/trunk/boomboom/client/items/projectile.py	2005-08-06 00:14:54 UTC (rev 98)
++++ happyboom/trunk/boomboom/client/items/projectile.py	2005-08-06 06:39:43 UTC (rev 99)
+@@ -44,4 +44,4 @@
+         @param event: Event with "projectile_activate" type.
+         @type event: C{L{common.simple_event.Event}}
+         """
+-        self.visual.setVisibility(event.content == '1')
+\ No newline at end of file
++        self.visual.setVisibility(event.content == '1')
+
+Modified: happyboom/trunk/boomboom/makedoc
+===================================================================
+--- happyboom/trunk/boomboom/makedoc	2005-08-06 00:14:54 UTC (rev 98)
++++ happyboom/trunk/boomboom/makedoc	2005-08-06 06:39:43 UTC (rev 99)
+@@ -1,2 +1,3 @@
+-mkdir doc
++#!/bin/sh
++test -e doc || mkdir doc
+ epydoc $* -o doc/api -n "BoomBoom 0.2" --private-css blue client common net server
+
+Modified: happyboom/trunk/boomboom/server/bb_server.py
+===================================================================
+--- happyboom/trunk/boomboom/server/bb_server.py	2005-08-06 00:14:54 UTC (rev 98)
++++ happyboom/trunk/boomboom/server/bb_server.py	2005-08-06 06:39:43 UTC (rev 99)
+@@ -295,7 +295,7 @@
+ 	
+ 	def msg_projectile_move(self, x, y):
+ 		if self.__debug: print "Projectile move : %s,%s" %(x, y)
+-		self.sendNetworkMessage("projectile", "move", "%u,%u" %(x,y), True)
++		self.sendNetworkMessage("projectile", "move", "%i,%i" %(x,y), True)
+ 		
+ 	def msg_projectile_activate(self, flag):
+ 		if self.__debug: print "Projectile activate : %s" %flag
+@@ -323,4 +323,4 @@
+ 		
+ 	def msg_game_current_character(self, char, team):
+ 		if self.__debug: print "Current character : %s,%s" %(char, team)
+-		self.sendNetworkMessage("game", "active_character", char)
+\ No newline at end of file
++		self.sendNetworkMessage("game", "active_character", char)
+
+Modified: happyboom/trunk/net/io_tcp/tcp.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/tcp.py	2005-08-06 00:14:54 UTC (rev 98)
++++ happyboom/trunk/net/io_tcp/tcp.py	2005-08-06 06:39:43 UTC (rev 99)
+@@ -12,6 +12,25 @@
+ from server_waiter import NetworkServerWaiter
+ 
+ class IO_TCP(io.BaseIO):
++	""" IO for TCP transport
++	@ivar packet_timeout: Timeout of packets (in seconds)
++	@type packet_timeout: C{float}
++	@ivar thread_sleep: Sleep time used in the thread (in seconds).
++	@type thread_sleep: C{float}
++	@ivar __is_server: ??? 
++	@type __is_server: C{bool}
++	@ivar __waiter: Class which wait for clients.
++	@type __waiter: NetworkServerWaiter
++	@ivar __addr: The IO network address (host, port).
++	@type __addr: C{(string, string,)}
++	@ivar __clients: List of clients connected to this IO.
++	@type __clients: C{list<L{IO_client<io.IO_Client>}>?}
++	@ivar __clients_sema: Semaphore used to access L{__clients}.
++	@type __clients_sema: C{threading.Semaphore}
++	@ivar __running: Is the thread running ?
++	@type __running: C{bool}
++	"""
++	
+ 	def __init__(self, is_server=False):
+ 		io.BaseIO.__init__(self)
+ 		self.packet_timeout = 1.000
+@@ -27,8 +46,8 @@
+ 		self.__running = True
+ 		io.Packet.use_tcp = True
+ 
+-	# Connect to host:port
+ 	def connect(self, host, port):
++	""" Connect to host:port """
+ 		max_connection = 50
+ 	
+ 		self.__addr = (host, port,)
+@@ -51,8 +70,8 @@
+ 		if self.on_connect != None: self.on_connect()
+ 		io.BaseIO.connect(self, host, port)
+ 
+-	# Close connection
+ 	def disconnect(self):
++	""" Close connection """
+ 		self.__clients_sema.acquire()
+ 		clients = self.__clients.copy()
+ 		self.__clients_sema.release()
+@@ -61,8 +80,8 @@
+ 		if self.on_disconnect != None: self.on_disconnect()
+ 		self.stop()
+ 
+-	# Disconnect a client.
+ 	def disconnectClient(self, client):
++	""" Disconnect a client. """
+ 		self.__clients_sema.acquire()
+ 		if  self.__clients.has_key(client.addr): del self.__clients[client.addr]
+ 		self.__clients_sema.release()
+@@ -71,8 +90,10 @@
+ 		if self.on_client_disconnect != None: self.on_client_disconnect (client)
+ 		if self.__server == client: self.disconnect()
+ 	
+-	# Send a packet to the server or to all clients
+ 	def send(self, packet, to=None):
++	""" Send a packet to the server or to all clients
++	@type packet: Packet
++	"""
+ 		if not self.__running: return
+ 		
+ 		# Read binary version of the packet
+@@ -90,8 +111,11 @@
+ 		else:
+ 			self.__server.sendBinary(data)
+ 
+-	# Keep the connection alive
+ 	def live(self):				
++	""" Keep the connection alive :
++	- Get clients new packets
++	- Process packets (eg. ping/pong)
++	"""
+ 		clients = self.clients
+ 		for client_addr, client in clients.items():
+ 			data = client.receiveNonBlocking()
+@@ -109,8 +133,8 @@
+ 			if self.debug: print "Received %s:%u => \"%s\"" % (client.host, client.port, packet.data)
+ 			if self.on_new_packet: self.on_new_packet(packet)
+ 	
+-	# Function which should be called in a thread
+ 	def run_thread(self):
++	""" Function which should be called in a thread. """
+ 		try:
+ 			while self.__running:
+ 				self.live()				
+
+Modified: happyboom/trunk/net/io_tcp/tcp_client.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/tcp_client.py	2005-08-06 00:14:54 UTC (rev 98)
++++ happyboom/trunk/net/io_tcp/tcp_client.py	2005-08-06 06:39:43 UTC (rev 99)
+@@ -2,6 +2,14 @@
+ import socket
+ 
+ class TCP_Client(io.IO_Client):
++	""" An TCP client.
++	@ivar __socket: The TCP socket
++	@type __socket: C{socket}
++	@ivar on_send: Event called when a packet is sent to the client.
++	@type on_send: C{function}
++	@ivar on_receive: Event called when a new packet is received.
++	@type on_receive: C{function}
++	"""
+ 	def __init__(self, io_tcp, addr, name=None, socket=None):
+ 		io.IO_Client.__init__(self, io_tcp, addr, name)
+ 		self.__socket = socket 
+@@ -9,9 +17,15 @@
+ 		self.on_receive = None
+ 
+ 	def send(self, packet):
++	""" Send a packet to the client.
++	@type packet: Packet
++	"""
+ 		self.sendBinary( packet.pack() )
+ 	
+ 	def sendBinary(self, data):
++	""" Send binary datas to the client.
++	@type data: str
++	"""
+ 		if not self.connected: return
+ 		self.__socket.send(data)
+ 
+@@ -19,6 +33,7 @@
+ 		if self.on_send != None: self.on_send(data)
+ 
+ 	def receiveNonBlocking(self, max_size=1024):
++	""" Non blocking read on the socket. """
+ 		if not self.connected: return
+ 		try:
+ 			self.__socket.setblocking(0)
+@@ -33,6 +48,7 @@
+ 		return self.__processRecvData(data)
+ 
+ 	def receiveBlocking(self, max_size=1024):
++	""" Blocking read on the socket. """
+ 		if not self.connected: return
+ 		try:
+ 			self.__socket.setblocking(1)
+@@ -47,6 +63,7 @@
+ 		return self.__processRecvData(data)
+ 
+ 	def disconnect(self):
++	""" Disconned the client : close the socket. """
+ 		self.__socket.close()
+ 		io.IO_Client.disconnect(self)
+ 
+
+Modified: happyboom/trunk/net/io_udp/udp.py
+===================================================================
+--- happyboom/trunk/net/io_udp/udp.py	2005-08-06 00:14:54 UTC (rev 98)
++++ happyboom/trunk/net/io_udp/udp.py	2005-08-06 06:39:43 UTC (rev 99)
+@@ -25,6 +25,7 @@
+ 	@ivar __socket_open: Is the network socket L{__socket} opened ?
+ 	@type __socket_open: C{bool}
+ 	@ivar __addr: The IO network address (host, port).
++	@type __addr: C{(string, string,)}
+ 	@ivar __packet_id: ???
+ 	@type __packet_id: C{int}
+ 	@ivar __clients: List of clients connected to this IO.
+
+
+
+From haypo at berlios.de  Sat Aug  6 08:43:03 2005
+From: haypo at berlios.de (Victor STINNER at BerliOS)
+Date: Sat, 6 Aug 2005 08:43:03 +0200
+Subject: [Happyboom-svn] r100 - happyboom/trunk
+Message-ID: <200508060643.j766h3Y8004588@sheep.berlios.de>
+
+Author: haypo
+Date: 2005-08-06 08:43:00 +0200 (Sat, 06 Aug 2005)
+New Revision: 100
+
+Added:
+   happyboom/trunk/makedoc
+Removed:
+   happyboom/trunk/boomboom_client.py
+   happyboom/trunk/console_input.py
+   happyboom/trunk/console_input/
+   happyboom/trunk/console_server.py
+   happyboom/trunk/console_view.py
+   happyboom/trunk/console_view/
+Log:
+Gros nettoyage.
+
+
+Deleted: happyboom/trunk/boomboom_client.py
+===================================================================
+--- happyboom/trunk/boomboom_client.py	2005-08-06 06:39:43 UTC (rev 99)
++++ happyboom/trunk/boomboom_client.py	2005-08-06 06:43:00 UTC (rev 100)
+@@ -1,94 +0,0 @@
+-#!/usr/bin/python
+-# -*- coding: ISO-8859-1 -*-
+-VERSION="0.0.0"
+-PROGRAM="BoomBoom client"
+-
+-import time
+-import socket
+-import sys
+-from boomboom_client import *
+-
+-def usage(defval):
+-	print "%s version %s" % (PROGRAM, VERSION)
+-	print ""
+-	print "Usage: %s [options] [yourname]" % (sys.argv[0])
+-	print
+-	print "Options :"
+-	print "\t--help            : Show this help"
+-	print "\t-h,--host HOST    : Server ip/name (default %s)" % (defval["host"])
+-	print "\t--view_port PORT  : Server view port (default %u)" % (defval["view_port"])
+-	print "\t--input_port PORT : Server input port (default %u)" % (defval["input_port"])
+-	print "\t-d,--debug        : Enable debug mode"
+-	print "\t-v,--verbose      : Enable verbose mode"
+-	print "\t--max-fps MAX     : Set maximum frame par second (fps)"
+-
+-def parseArgs(val):
+-	import getopt
+-
+-	defval = val.copy()
+-	try:
+-		short = "h:dv"
+-		long = ["debug", "help", "verbose", \
+-			"view_port=", "input_port=",
+-			"host=", "max-fps="]
+-		opts, args = getopt.getopt(sys.argv[1:], short, long)
+-	except getopt.GetoptError:
+-		usage(defval)
+-		sys.exit(2)
+-
+-	if 0<len(args): val["name"] = args[0]
+-		
+-	for o, a in opts:
+-		if o == "--help":
+-			usage(defval)
+-			sys.exit()
+-		if o in ("-p", "--port",):
+-			val["port"] = int(a)
+-		if o in ("-h", "--host",):
+-			val["host"] = a
+-		if o in ("-v", "--verbose",):
+-			val["verbose"] = True
+-		if o == "--max-fps":
+-			a = int(a)
+-			if a < 1: a=1
+-			elif 100<a: a=100
+-			val["max_fps"] = a
+-		if o in ("-d", "--debug",):
+-			val["debug"] = True
+-	return val
+-
+-def main():
+-	val = {
+-		"host": "127.0.0.1", \
+-		"view_port": 12430, \
+-		"input_port": 12431, \
+-		"max_fps": 50, \
+-		"verbose": False, \
+-		"name": "-", \
+-		"debug": False}
+-	arg = parseArgs(val)
+-
+-	client = BoomBoomClient()
+-	client.view.name = arg["name"]
+-	client.view.setDebugMode( arg["debug"] )
+-	client.view.setVerbose( arg["verbose"] )
+-	client.view.max_fps = arg["max_fps"]
+-
+-	client.input.name = arg["name"]
+-	client.input.setDebugMode (arg["debug"])
+-	client.input.setVerbose (arg["verbose"])
+-
+-	try:
+-		# Try to connect to server
+-		client.start(arg["host"], arg["view_port"], arg["input_port"])
+-	
+-		# Main loop
+-		while client.view.loop and (not client.input.quit):
+-			client.live()
+-
+-	except KeyboardInterrupt:
+-		print "Program interrupted (CTRL+C)."
+-		pass
+-	client.stop()
+-
+-if __name__=="__main__": main()
+
+Deleted: happyboom/trunk/console_input.py
+===================================================================
+--- happyboom/trunk/console_input.py	2005-08-06 06:39:43 UTC (rev 99)
++++ happyboom/trunk/console_input.py	2005-08-06 06:43:00 UTC (rev 100)
+@@ -1,87 +0,0 @@
+-#!/usr/bin/python
+-VERSION="0.1.4"
+-
+-import sys
+-import time
+-from console_input import *
+-
+-def usage(defval):
+-	print "HappyBoom input version %s" % (VERSION)
+-	print ""
+-	print "Usage: %s [options] [yourname]" % (sys.argv[0])
+-	print ""
+-	print "Options :"
+-	print "\t--help         : Show this help"
+-	print "\t-h,--host HOST : Server name/ip (default %s)" % (defval["host"])
+-	print "\t-p,--port PORT : Server port (default %u)" % (defval["port"])
+-	print "\t-d,--debug     : Enable debug mode"
+-	print "\t-v,--verbose   : Enable verbose mode"
+-	print "\t--no-readline  : Don't use readline (eg. library is missing)"
+-
+-def parseArgs(val):
+-	import getopt
+-	
+-	defval = val.copy()
+-	try:
+-		short = "h:p:dv"
+-		long = ["debug", "port=", "host=", "help", "verbose", "no-readline"]
+-		opts, args = getopt.getopt(sys.argv[1:], short, long)
+-	except getopt.GetoptError:
+-		usage(defval)
+-		sys.exit(2)
+-	
+-	if 0<len(args): val["name"] = args[0]	
+-
+-	for o, a in opts:
+-		if o == "--help":
+-			usage(defval)
+-			sys.exit()
+-		if o in ("-p", "--port"):
+-			val["port"] = int(a)
+-		if o in ("-h", "--host"):
+-			val["host"] = a
+-		if o in ("-v", "--verbose"):
+-			val["verbose"] = True
+-		if o in ("-d", "--debug"):
+-			val["debug"] = True
+-		if o == "--no-readline":
+-			val["readline"] = False
+-	return val
+-
+-def displayCommands():
+-	print "Commands :"
+-	print ""
+-	print "* +        : increment controlable agent"
+-	print "* -        : increment controlable agent"
+-	print "* close    : close input"
+-	print "* quit     : quit game"
+-	print "* chat:MSG : Send messages"
+-
+-def main():
+-	arg = { \
+-		"host": "127.0.0.1",
+-		"port": 12431,
+-		"name": "-",
+-		"verbose": False,
+-		"readline": True,
+-		"debug": False}
+-	arg = parseArgs(arg)
+-	input = ConsoleInput()
+-	input.name = arg["name"]
+-	input.setDebugMode (arg["debug"])
+-	input.setVerbose (arg["verbose"])
+-	input.use_readline = arg["readline"]
+-
+-	try:
+-		input.start(arg["host"], arg["port"])
+-	
+-		if input.quit == False:
+-			displayCommands()
+-			while input.quit == False:
+-				input.live()
+-
+-	except KeyboardInterrupt:
+-		print "Program interrupted (CTRL+C)."
+-	input.stop()
+-
+-if __name__=="__main__": main()
+
+Deleted: happyboom/trunk/console_server.py
+===================================================================
+--- happyboom/trunk/console_server.py	2005-08-06 06:39:43 UTC (rev 99)
++++ happyboom/trunk/console_server.py	2005-08-06 06:43:00 UTC (rev 100)
+@@ -1,104 +0,0 @@
+-#!/usr/bin/python
+-# -*- coding: ISO-8859-1 -*-
+-VERSION="0.1.4"
+-import time
+-from console_server import *
+-import getopt
+-import sys
+-
+-def usage(defval):
+-	print "HappyBoom server version %s" % (VERSION)
+-	print ""
+-	print "Usage: %s [-v,--verbose] [-d,--debug] [-h,--help]" % (sys.argv[0])
+-	print ""
+-	print "Arguments :"
+-	print "\t-h,--help         : Show this help"
+-	print "\t-v,--verbose      : Activate verbose mode"
+-	print "\t-d,--debug        : Activate debug mode"
+-	print ""
+-	print "Other arguments :"
+-	print "\t--max-input NB    : Max input clients (default %u)" % (defval["max-input"])
+-	print "\t--max-view NB     : Max view clients (default %u)" % (defval["max-view"])
+-	print "\t--view-port PORT  : Port number for view clients (default %u)" % (defval["view-port"])
+-	print "\t--input-port PORT : Port number for input clients (default %u)" % (defval["input-port"])
+-
+-def parseArgs(val):
+-	import getopt
+-	def_val = val.copy()
+-	
+-	try:
+-		short = "hdv"
+-		long = ["debug", "verbose", "help", \
+-			"max-input=", "max-view=", \
+-			"view-port=", "input-port="]
+-		opts, args = getopt.getopt(sys.argv[1:], short, long)
+-	except getopt.GetoptError:
+-		usage(def_val)
+-		sys.exit(2)
+-		
+-	if 0<len(args):
+-		usage(def_val)
+-		sys.exit(2)
+-	
+-	for o, a in opts:
+-		if o == "--help":
+-			usage(def_val)
+-			sys.exit()
+-		if o == "--input-port":
+-			a = int(a)
+-			if a == val["view-port"]:
+-				print "Sorry, input port should be different than view port!"
+-			else:
+-				val["input-port"] = a 			
+-		if o == "--view-port":
+-			a = int(a)
+-			if a == val["input-port"]:
+-				print "Sorry, view port should be different than input port!"
+-			else:
+-				val["view-port"] = a 
+-		if o == "--max-input":
+-			a = int(a)
+-			if a < 1: 
+-				a=1
+-			elif 100 < a:
+-				a = 100
+-			val["max-input"] = a
+-		if o == "--max-view":
+-			a = int(a)
+-			if a < 1: 
+-				a=1
+-			elif 100 < a:
+-				a = 100
+-			val["max-view"] = a
+-		if o in ("-v", "--verbose"):
+-			val["verbose"] = True
+-		if o in ("-d", "--debug"):
+-			val["debug"] = True
+-	return val
+-
+-def main():
+-	val = { \
+-		"view-port": 12430, \
+-		"input-port": 12431, \
+-		"max-input": 4, \
+-		"max-view": 4, \
+-		"verbose": False,
+-		"debug": False}
+-	arg = parseArgs(val)
+-	
+-	server = ConsoleServer()
+-	server.setVerbose(arg["verbose"])
+-	server.setDebug(arg["debug"])
+-
+-	server.start(arg)
+-	try:
+-		while server.quit==False:
+-			server.live()
+-			time.sleep(0.010)
+-	except KeyboardInterrupt:
+-		print "Program interrupted (CTRL+C)."
+-		pass
+-	server.stop()
+-	print "Server quit."
+-
+-if __name__=="__main__": main()
+
+Deleted: happyboom/trunk/console_view.py
+===================================================================
+--- happyboom/trunk/console_view.py	2005-08-06 06:39:43 UTC (rev 99)
++++ happyboom/trunk/console_view.py	2005-08-06 06:43:00 UTC (rev 100)
+@@ -1,100 +0,0 @@
+-#!/usr/bin/python
+-VERSION="0.1.4"
+-PROGRAM_FULL_NAME="HappyBoom console viewer"
+-
+-import time
+-import socket
+-import sys
+-from console_view import *
+-
+-def usage(defval):
+-	print "%s version %s" % (PROGRAM_FULL_NAME, VERSION)
+-	print ""
+-	print "Usage: %s [options] [yourname]" % (sys.argv[0])
+-	print
+-	print "Options :"
+-	print "\t--help         : Show this help"
+-	print "\t-h,--host HOST : Server ip/name (default %s)" % (defval["host"])
+-	print "\t-p,--port PORT : Server port (default %u)" % (defval["port"])
+-	print "\t--stats        : Display a lot of stats"
+-	print "\t--watch-server : Only display server stats (set stat mode and max-fps=5)"
+-	print "\t-d,--debug     : Enable debug mode"
+-	print "\t-v,--verbose   : Enable verbose mode"
+-	print "\t--max-fps MAX  : Set maximum frame par second (fps)"
+-
+-def parseArgs(val):
+-	import getopt
+-
+-	defval = val.copy()
+-	try:
+-		short = "h:p:dv"
+-		long = ["debug", "help", "verbose", \
+-			"port=", "host=", "max-fps=", 
+-			"stats", "watch-server"]
+-		opts, args = getopt.getopt(sys.argv[1:], short, long)
+-	except getopt.GetoptError:
+-		usage(defval)
+-		sys.exit(2)
+-
+-	if 0<len(args): val["name"] = args[0]
+-		
+-	for o, a in opts:
+-		if o == "--help":
+-			usage(defval)
+-			sys.exit()
+-		if o in ("-p", "--port",):
+-			val["port"] = int(a)
+-		if o in ("-h", "--host",):
+-			val["host"] = a
+-		if o == "--stats":
+-			val["stats"] = True
+-		if o in ("-v", "--verbose",):
+-			val["verbose"] = True
+-		if o == "--max-fps":
+-			a = int(a)
+-			if a < 1: a=1
+-			elif 100<a: a=100
+-			val["max_fps"] = a
+-		if o == "--watch-server":
+-			val["watch-server"] = True
+-		if o in ("-d", "--debug",):
+-			val["debug"] = True
+-	return val
+-
+-def main():
+-	val = {
+-		"host": "127.0.0.1", \
+-		"port": 12430, \
+-		"max_fps": 50, \
+-		"stats": False, \
+-		"verbose": False, \
+-		"name": "-", \
+-		"watch-server": False, \
+-		"debug": False}
+-	arg = parseArgs(val)
+-	
+-	view = console_view.ConsoleView()
+-	view.name = arg["name"]
+-	view.setDebugMode( arg["debug"] )
+-	view.setVerbose( arg["verbose"] )
+-	view.only_watch_server = arg["watch-server"]
+-	if view.only_watch_server:
+-		view.stats = False 
+-		view.max_fps = 5 
+-	else:
+-		view.stats = arg["stats"]
+-		view.max_fps = arg["max_fps"]
+-
+-	try:
+-		# Try to connect to server
+-		view.start(arg["host"], arg["port"])
+-	
+-		# Main loop
+-		while view.loop==True: view.live()
+-
+-	except KeyboardInterrupt:
+-		print "Program interrupted (CTRL+C)."
+-		pass
+-	view.stop()
+-
+-if __name__=="__main__": main()
+
+Added: happyboom/trunk/makedoc
+===================================================================
+--- happyboom/trunk/makedoc	2005-08-06 06:39:43 UTC (rev 99)
++++ happyboom/trunk/makedoc	2005-08-06 06:43:00 UTC (rev 100)
+@@ -0,0 +1,3 @@
++#!/bin/sh
++test -e doc || mkdir doc
++epydoc -o doc/api -n "BoomBoom Client 0.2" --private-css blue net
+
+
+Property changes on: happyboom/trunk/makedoc
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+
+
+From haypo at berlios.de  Sat Aug  6 08:43:39 2005
+From: haypo at berlios.de (Victor STINNER at BerliOS)
+Date: Sat, 6 Aug 2005 08:43:39 +0200
+Subject: [Happyboom-svn] r101 - happyboom/trunk
+Message-ID: <200508060643.j766hdW1004856@sheep.berlios.de>
+
+Author: haypo
+Date: 2005-08-06 08:43:38 +0200 (Sat, 06 Aug 2005)
+New Revision: 101
+
+Removed:
+   happyboom/trunk/console_server/
+Log:
+Vire le dernier truc de console_server
+
+
+
+
+From haypo at berlios.de  Sat Aug  6 09:00:00 2005
+From: haypo at berlios.de (Victor STINNER at BerliOS)
+Date: Sat, 6 Aug 2005 09:00:00 +0200
+Subject: [Happyboom-svn] r102 - happyboom/trunk/net/io_tcp
+Message-ID: <200508060700.j76700fg013010@sheep.berlios.de>
+
+Author: haypo
+Date: 2005-08-06 08:59:56 +0200 (Sat, 06 Aug 2005)
+New Revision: 102
+
+Modified:
+   happyboom/trunk/net/io_tcp/tcp.py
+   happyboom/trunk/net/io_tcp/tcp_client.py
+Log:
+Corrige les commentaires TCP
+
+
+Modified: happyboom/trunk/net/io_tcp/tcp.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/tcp.py	2005-08-06 06:43:38 UTC (rev 101)
++++ happyboom/trunk/net/io_tcp/tcp.py	2005-08-06 06:59:56 UTC (rev 102)
+@@ -47,7 +47,7 @@
+ 		io.Packet.use_tcp = True
+ 
+ 	def connect(self, host, port):
+-	""" Connect to host:port """
++		""" Connect to host:port """
+ 		max_connection = 50
+ 	
+ 		self.__addr = (host, port,)
+@@ -71,7 +71,7 @@
+ 		io.BaseIO.connect(self, host, port)
+ 
+ 	def disconnect(self):
+-	""" Close connection """
++		""" Close connection """
+ 		self.__clients_sema.acquire()
+ 		clients = self.__clients.copy()
+ 		self.__clients_sema.release()
+@@ -81,7 +81,7 @@
+ 		self.stop()
+ 
+ 	def disconnectClient(self, client):
+-	""" Disconnect a client. """
++		""" Disconnect a client. """
+ 		self.__clients_sema.acquire()
+ 		if  self.__clients.has_key(client.addr): del self.__clients[client.addr]
+ 		self.__clients_sema.release()
+@@ -91,9 +91,9 @@
+ 		if self.__server == client: self.disconnect()
+ 	
+ 	def send(self, packet, to=None):
+-	""" Send a packet to the server or to all clients
+-	@type packet: Packet
+-	"""
++		""" Send a packet to the server or to all clients
++		@type packet: Packet
++		"""
+ 		if not self.__running: return
+ 		
+ 		# Read binary version of the packet
+@@ -112,10 +112,10 @@
+ 			self.__server.sendBinary(data)
+ 
+ 	def live(self):				
+-	""" Keep the connection alive :
+-	- Get clients new packets
+-	- Process packets (eg. ping/pong)
+-	"""
++		""" Keep the connection alive :
++		- Get clients new packets
++		- Process packets (eg. ping/pong)
++		"""
+ 		clients = self.clients
+ 		for client_addr, client in clients.items():
+ 			data = client.receiveNonBlocking()
+@@ -134,7 +134,7 @@
+ 			if self.on_new_packet: self.on_new_packet(packet)
+ 	
+ 	def run_thread(self):
+-	""" Function which should be called in a thread. """
++		""" Function which should be called in a thread. """
+ 		try:
+ 			while self.__running:
+ 				self.live()				
+
+Modified: happyboom/trunk/net/io_tcp/tcp_client.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/tcp_client.py	2005-08-06 06:43:38 UTC (rev 101)
++++ happyboom/trunk/net/io_tcp/tcp_client.py	2005-08-06 06:59:56 UTC (rev 102)
+@@ -17,15 +17,15 @@
+ 		self.on_receive = None
+ 
+ 	def send(self, packet):
+-	""" Send a packet to the client.
+-	@type packet: Packet
+-	"""
++		""" Send a packet to the client.
++		@type packet: Packet
++		"""
+ 		self.sendBinary( packet.pack() )
+ 	
+ 	def sendBinary(self, data):
+-	""" Send binary datas to the client.
+-	@type data: str
+-	"""
++		""" Send binary datas to the client.
++		@type data: str
++		"""
+ 		if not self.connected: return
+ 		self.__socket.send(data)
+ 
+@@ -33,7 +33,7 @@
+ 		if self.on_send != None: self.on_send(data)
+ 
+ 	def receiveNonBlocking(self, max_size=1024):
+-	""" Non blocking read on the socket. """
++		""" Non blocking read on the socket. """
+ 		if not self.connected: return
+ 		try:
+ 			self.__socket.setblocking(0)
+@@ -48,7 +48,7 @@
+ 		return self.__processRecvData(data)
+ 
+ 	def receiveBlocking(self, max_size=1024):
+-	""" Blocking read on the socket. """
++		""" Blocking read on the socket. """
+ 		if not self.connected: return
+ 		try:
+ 			self.__socket.setblocking(1)
+@@ -63,7 +63,7 @@
+ 		return self.__processRecvData(data)
+ 
+ 	def disconnect(self):
+-	""" Disconned the client : close the socket. """
++		""" Disconned the client : close the socket. """
+ 		self.__socket.close()
+ 		io.IO_Client.disconnect(self)
+ 
+
+
+
+From haypo at berlios.de  Tue Aug  9 10:45:39 2005
+From: haypo at berlios.de (Victor STINNER at BerliOS)
+Date: Tue, 9 Aug 2005 10:45:39 +0200
+Subject: [Happyboom-svn] r103 - / happyboom/trunk/boomboom/server happyboom/trunk/server poilu poilu/trunk
+Message-ID: <200508090845.j798jdSJ020223@sheep.berlios.de>
+
+Author: haypo
+Date: 2005-08-09 10:45:38 +0200 (Tue, 09 Aug 2005)
+New Revision: 103
+
+Added:
+   poilu/
+   poilu/trunk/
+   poilu/trunk/dico.txt
+   poilu/trunk/dico_poilu.py
+   poilu/trunk/insulte.txt
+   poilu/trunk/motcle.py
+   poilu/trunk/motcle_regex.txt
+   poilu/trunk/muet.txt
+   poilu/trunk/pypoil.py
+   poilu/trunk/terminaison.txt
+   poilu/trunk/wormux.sh
+Modified:
+   happyboom/trunk/boomboom/server/bb_server.py
+   happyboom/trunk/server/base_server.py
+Log:
+Ajoute le poilu.
+
+
+Modified: happyboom/trunk/boomboom/server/bb_server.py
+===================================================================
+--- happyboom/trunk/boomboom/server/bb_server.py	2005-08-06 06:59:56 UTC (rev 102)
++++ happyboom/trunk/boomboom/server/bb_server.py	2005-08-09 08:45:38 UTC (rev 103)
+@@ -1,14 +1,14 @@
+ from bb_agent import BoomBoomAgent, BoomBoomMessage
+ from agents import Character, Projectile, Weapon, World, Game
+-from net import io, io_udp, net_buffer
++from net import io, io_udp, io_tcp, net_buffer
+ from pysma import Kernel, DummyScheduler
+ import re, random, thread, traceback, time
+ 
+ class BoomBoomServer(BoomBoomAgent):
+ 	def __init__(self, maxDisplay=2, displayPort=12430, maxInput=2, inputPort=12431, verbose=False, debug=False):
+ 		BoomBoomAgent.__init__(self, "network")
+-		self.__display_io = io_udp.IO_UDP(is_server=True)
+-		self.__input_io = io_udp.IO_UDP(is_server=True)
++		self.__display_io = io_tcp.IO_TCP(is_server=True)
++		self.__input_io = io_tcp.IO_TCP(is_server=True)
+ 		self.__input_buffer = net_buffer.NetBuffer()
+ 		self.__display_buffer = net_buffer.NetBuffer()
+ 		self.__input_protocol_version = "0.1.4"
+
+Modified: happyboom/trunk/server/base_server.py
+===================================================================
+--- happyboom/trunk/server/base_server.py	2005-08-06 06:59:56 UTC (rev 102)
++++ happyboom/trunk/server/base_server.py	2005-08-09 08:45:38 UTC (rev 103)
+@@ -8,8 +8,8 @@
+ import random
+ from net import net_buffer
+ from net import io
+-from net import io_udp
+-#from net import io_tcp
++#from net import io_udp
++from net import io_tcp
+ import traceback
+ 
+ class BaseServer(object):
+@@ -18,10 +18,10 @@
+ 	def __init__(self):
+ 		BaseServer.instance = self
+ 		self.agents = []
+-		self.__view_io = io_udp.IO_UDP(is_server=True)
+-		self.__input_io = io_udp.IO_UDP(is_server=True)
+-		#self.__view_io = io_tcp.IO_TCP(is_server=True)
+-		#self.__input_io = io_tcp.IO_TCP(is_server=True)
++#		self.__view_io = io_udp.IO_UDP(is_server=True)
++#		self.__input_io = io_udp.IO_UDP(is_server=True)
++		self.__view_io = io_tcp.IO_TCP(is_server=True)
++		self.__input_io = io_tcp.IO_TCP(is_server=True)
+ 		self.__inputs = []
+ 		self.mailing_list = mailing_list.MailingList()
+ 		self.net_mailing_list = {}
+
+Added: poilu/trunk/dico.txt
+===================================================================
+--- poilu/trunk/dico.txt	2005-08-06 06:59:56 UTC (rev 102)
++++ poilu/trunk/dico.txt	2005-08-09 08:45:38 UTC (rev 103)
+@@ -0,0 +1,77 @@
++aisselles
++poules
++doigt
++foie
++noix
++petits pois
++dents
++sang
++gland
++divan
++p??dants
++rapes
++mains
++vagin
++seins
++lutins
++thorax
++moustiques
++comique
++loup
++meules
++poing
++coin
++babouin
++marsouin
++chien
++croutes
++pubis
++docteur
++poignet
++mollet
++superettes
++baskets
++chaussettes
++bras
++tas de gras
++tibia
++dessous de bras
++avant-bras
++citron
++fion
++t??ton
++menton
++c??lon
++poumon
++front
++cale??on
++sexe
++kiki
++zizi
++trilili
++gros zizi
++bordelais
++porcelais
++chapeau
++poireau
++pectoraux
++abdominaux
++cakos
++blaireaux
++chalumeau
++pieds
++nez
++n??n??
++gosier
++cul
++dahu
++pointu
++poilu
++tout nu
++cr??pu
++cou
++genou
++toutou
++minou
++roudoudou
++dinosaures
+
+Added: poilu/trunk/dico_poilu.py
+===================================================================
+--- poilu/trunk/dico_poilu.py	2005-08-06 06:59:56 UTC (rev 102)
++++ poilu/trunk/dico_poilu.py	2005-08-09 08:45:38 UTC (rev 103)
+@@ -0,0 +1,99 @@
++#! /usr/bin/env python
++# -*- coding: ISO8859-1      -*-
++
++import re
++import random
++
++def unicode2term(str): 
++	return str.encode("latin-1")
++
++class dico_poilu:
++    def __init__(self, bot):
++        self.bot = bot
++        self.dico = {}
++        self.regex = []
++        self.muet = " "
++        self.charge_regex()
++        self.charge_muet()
++        self.charge_dico()
++
++    def echo(self, message):
++        print message
++#        self.bot.echo(message)
++		
++    def ajoute_terme(self, terme):
++        cle = self.terminaison(terme)
++        if cle==None: return None
++        if self.dico.has_key(cle):
++            if terme in self.dico[cle]: return None
++            self.dico[cle].append(terme)
++        else:
++            self.dico[cle] = [terme]
++        return True
++
++    def supprime_terme(self, terme):
++        fin = self.terminaison(terme)
++        if fin==None: return None
++        if not self.dico.has_key(fin): return None
++        if not terme in self.dico[fin]: return None
++        self.echo ("Supprime le mot %s" %(terme))
++        self.dico[fin].remove(terme)
++        return True
++
++    def termes(self,terme):
++        fin = self.terminaison(terme)
++        if fin==None: return
++        if not self.dico.has_key(fin): return []
++        return self.dico[fin]
++
++    def sauve(self):
++        self.echo ("Sauve le dico.")
++        f = file("dico.txt", "w")
++        for key in self.dico:
++            for terme in self.dico[key]: 
++                f.write ("%s\n" %(terme.encode("utf-8")))
++        f.close()
++
++    def charge_dico(self):
++        f = file("dico.txt","r")
++        for ligne in f:
++            ligne = unicode(ligne.strip(), "utf8")
++            if ligne != '': self.ajoute_terme(ligne)
++        f.close()
++
++    def charge_regex(self):
++        self.regex = []
++        f = file("terminaison.txt","r")
++        for ligne in f:
++            ligne = unicode(ligne.strip(), "utf8")
++            a = ligne.split(':')
++            if len(a)==2: self.regex.append(a)
++        f.close()
++
++    def charge_muet(self):
++        f = file("muet.txt","r")
++        for ligne in f:
++            ligne = unicode(ligne.strip(), "latin-1")
++            self.muet += ligne
++        f.close()
++
++    def terminaison(self, str):
++        str = unicode.rstrip(str, self.muet)
++        for item in self.regex:
++            fin = item[0]
++            expr = item[1]
++            if re.compile(expr).search(str) != None: return fin
++        self.echo ("Je n'ai pas trouv? la terminaison de \"%s\" !" %( unicode2term(str) ))
++        return None 
++
++    def reponse(self, str):
++        fin = self.terminaison(str)
++        if fin==None: return None
++        if not self.dico.has_key(fin): return None
++        if len(self.dico[fin])==0: return None
++        x = random.choice(self.dico[fin])
++        if re.compile("[sx]$").search(x)!=None:
++            return "Poils aux "+x
++        else:
++            return "Poils au "+x
++
+
+Added: poilu/trunk/insulte.txt
+===================================================================
+--- poilu/trunk/insulte.txt	2005-08-06 06:59:56 UTC (rev 102)
++++ poilu/trunk/insulte.txt	2005-08-09 08:45:38 UTC (rev 103)
+@@ -0,0 +1 @@
++mdr:Ta gueule grosse vache !
+
+Added: poilu/trunk/motcle.py
+===================================================================
+--- poilu/trunk/motcle.py	2005-08-06 06:59:56 UTC (rev 102)
++++ poilu/trunk/motcle.py	2005-08-09 08:45:38 UTC (rev 103)
+@@ -0,0 +1,89 @@
++#! /usr/bin/env python
++# -*- coding: utf-8      -*-
++
++import re
++import random
++
++def unicode2term(str): 
++	return str.encode("latin-1")
++
++class motcle_poilu:
++    def __init__(self):
++		print "init motcle."
++		self.insulte = dict()
++		self.regex = []
++		print "regex = ", self.regex
++		self.charge_regex()
++		print "regex = ", self.regex
++		self.charge()
++		print "regex = ", self.regex
++
++    def echo(self, message):
++        print message
++		
++    def ajoute(self, cle, reponse):
++        if self.insulte.has_key(cle):
++            if terme in self.dico[cle]: return None
++            self.insulte[cle].append(reponse)			
++        else:
++            self.insulte[cle] = [reponse]
++        return True
++
++    def supprime(self, cle, reponse):
++        if not self.dico.has_key(cle): return None
++        if not terme in self.dico[cle]: return None
++        self.echo ("Supprime l'insulte %s" %(reponse))
++        self.dico[fin].remove(reponse)
++        return True
++
++    def insultes(self,cle):
++        if not self.dico.has_key(cle): return []
++        return self.dico[cle]
++
++    def sauve(self):
++        self.echo ("Sauve les insultes.")
++        f = file("insulte.txt", "w")
++        for cle in self.insulte:
++			cle_utf8 = cle.encode("utf-8")
++			for reponse in self.insulte[cle]: 
++				f.write ("%s:%s\n" %(cle_utf8, terme.encode("utf-8")))
++        f.close()
++		
++    def charge(self):
++        f = file("insulte.txt","r")
++        for ligne in f:
++			ligne = unicode(ligne.strip(), "utf8")
++			regs = re.compile("^(.+):(.+)$").search(ligne)
++			if regs != None: self.ajoute(regs.group(1), regs.group(2))
++        f.close()
++
++    def charge_regex(self):
++        print "Charge les regex"
++        self.regex = []
++        f = file("motcle_regex.txt","r")
++        for ligne in f:
++            ligne = unicode(ligne.strip(), "utf8")
++            regs = re.compile("^(.+):(.+)$").search(ligne)
++            if regs != None: 
++                print "Ajoute ", ligne
++                regex = re.compile(regs.group(2))
++                self.regex.append( (regs.group(1), regex,) )
++        f.close()
++
++    def calcule_cle(self, str):
++        print "regex = ", self.regex
++        print "la"
++        for item in self.regex:
++            r = regex.search(item[1])
++            if r != None: return item[0] 
++        return None
++
++    def reponse(self, str):
++        print "regex = ", self.regex
++        print "Self = ", self
++        print "str = ", str
++        cle = self.calcule_cle(str)
++        if cle==None: return None
++        if not self.insulte.has_key(cle): return None
++        if len(self.insulte[cle])==0: return None
++        return random.choice(self.insulte[cle])
+
+Added: poilu/trunk/motcle_regex.txt
+===================================================================
+--- poilu/trunk/motcle_regex.txt	2005-08-06 06:59:56 UTC (rev 102)
++++ poilu/trunk/motcle_regex.txt	2005-08-09 08:45:38 UTC (rev 103)
+@@ -0,0 +1 @@
++mdr:(mdr|lo+l|ptdr+)
+
+Added: poilu/trunk/muet.txt
+===================================================================
+--- poilu/trunk/muet.txt	2005-08-06 06:59:56 UTC (rev 102)
++++ poilu/trunk/muet.txt	2005-08-09 08:45:38 UTC (rev 103)
+@@ -0,0 +1 @@
++ h!?;-,:./\'"[](){}
+
+Added: poilu/trunk/pypoil.py
+===================================================================
+--- poilu/trunk/pypoil.py	2005-08-06 06:59:56 UTC (rev 102)
++++ poilu/trunk/pypoil.py	2005-08-09 08:45:38 UTC (rev 103)
+@@ -0,0 +1,259 @@
++#! /usr/bin/env python
++# -*- coding: ISO8859-1      -*-
++#
++# Bot IRC po?te (ou presque) bas? sur un exemple de Joel Rosdahl 
++# <joel at rosdahl.net>
++#
++# Commandes priv?es
++# -----------------
++#
++#   rime <mot>        : ajoute un mot au dictionnaire des rimes
++#   derime <mot>      : supprime un mot du dictinnaire des rimes
++#   liste rimes <mot> : liste toutes les rimes connues pour le nom donn?
++#   reload_regex      : recharge les regex pour les rimes
++#   join <chan>       : joindre le canal <chan> (ne pas oublier le pr?fixe #)
++#   backup            : sauve toutes les donn?es sur le disque dur
++#   utf-8             : passe en UTF-8
++#   iso               : passe en iso-xxx
++#   muet              : liste des caract?res muets
++#   taux_reponse      : affiche le taux de r?ponse
++#   taux_reponse xx   : fixe le taux de r?ponse (en pourcent), 0% : ne r?pond
++#                       jamais, 100% r?pond chaque fois qu'il trouve une rime
++#
++# Commandes publiques 
++# -------------------
++#   ta gueule        : Fait taire le bot
++#   casse toi        : Le bot se d?connecte
++#
++
++import string, random, re
++from ircbot import SingleServerIRCBot
++from irclib import nm_to_n, nm_to_h, ip_numstr_to_quad, ip_quad_to_numstr
++from motcle import *
++from dico_poilu import *
++from dico_poilu import unicode2term 
++
++class TestBot(SingleServerIRCBot):
++	def __init__(self, channel, utf8_channel, nickname, server, port=6667):
++		SingleServerIRCBot.__init__(self, [(server, port)], nickname, nickname)
++		self.god = "haypo"
++		self.channel = channel
++		self.enmarche = 1
++		self.utf8_chan = utf8_channel
++		self.dico = dico_poilu(self)
++		self.motcle = motcle_poilu()
++		self.taux_reponse = 20
++		self.welcome = u"Salut"
++		self.start()
++
++	def on_nicknameinuse(self, c, e):
++		c.nick(c.get_nickname() + "_")
++
++	def on_welcome(self, c, e):
++		c.join(self.channel)
++		self.send_privmsgu(self.channel, self.welcome) 
++
++	def get_command(self, e): 
++		cmd = e.arguments()[0]
++		if self.utf8_chan: 
++			try:
++				cmd=unicode(cmd, "utf-8")
++			except:
++				self.echo("Et?s-vous s?r d'?tre en UTF-8 ?")
++				cmd=unicode(cmd, "latin-1")
++		else:
++			cmd=unicode(cmd, "iso-8859-1")
++		return cmd.strip() 
++
++	def on_privmsg(self, c, e):
++		cmd = self.get_command(e)
++		print "on_privmsg: \"%s\"." %(cmd)
++		self.do_priv_command(cmd) 
++
++	def on_pubmsg(self, c, e):
++		nick = nm_to_n(e.source())
++		cmd = self.get_command(e)
++		print "on_pubmsg %s:%s" %(nick, unicode2term(cmd) )
++
++		# Commande pour le bot
++		regs = re.compile("^"+self.connection.get_nickname()+"[:,] *(.*)$", re.IGNORECASE).search(cmd)
++		if regs != None:
++			if nick==self.god and self.do_priv_command(regs.group(1)): return
++			self.do_pub_command(nick, regs.group(1))
++			return
++
++		# Bot d?sactiv? ? Exit !
++		if self.enmarche == 0:
++			return
++			
++		# Sinon, cherche une rime
++		cmd = cmd.lower()
++		#reponse = self.dico.reponse(cmd)
++		reponse = self.motcle.reponse(cmd)
++		if reponse==None: return
++		
++		if self.taux_reponse <= random.uniform(0,101): return
++		self.send_privmsgu(self.channel, nick+": "+reponse)
++		return
++            
++	def send_privmsg(self, nick, message):
++		if self.utf8_chan: 
++			self.connection.privmsg(nick, message.decode("latin-1").encode("utf-8"))
++		else:
++			self.connection.privmsg(nick, message)
++            
++	def send_privmsgu(self, nick, message):
++		if self.utf8_chan: 
++			self.connection.privmsg(nick, message.encode("utf-8"))
++		else:
++			self.connection.privmsg(nick, message.encode("iso-8859-1"))
++
++	def echo(self, message):
++		print "%s" %( message )
++		self.send_privmsg(self.god, message)
++	
++	def echou(self, message):
++		print "%s" %( unicode2term(message) )
++		self.send_privmsgu(self.god, message)
++
++	def before_dying(self):
++		self.dico.sauve()
++
++	def do_pub_command(self, nick, cmd):
++		c = self.connection
++
++		if (re.compile("^ta gueule", re.IGNORECASE).search(cmd) != None):
++			if self.enmarche!=0: self.send_privmsg(self.channel, "Ok, je me tais")
++			self.enmarche = 0
++		else:
++			if self.enmarche==0: self.send_privmsg(self.channel, "re")
++			self.enmarche = 1
++
++	def do_priv_command(self, cmd):
++		c = self.connection
++
++		if cmd == "disconnect":
++			self.disconnect()
++			return True
++			
++		if (re.compile("^casse toi", re.IGNORECASE).search(cmd) != None):
++			self.before_dying()
++			self.die()
++			return True
++			
++		regs = re.compile("^insulte (.+) (.+)$", re.IGNORECASE).search(cmd)
++		if regs != None:
++			if self.dico.ajoute(regs.group(1), regs.group(2)): 
++				self.echou(u"Ajoute l'insulte %s pour %s" \
++					%(regs.group(2), regs.group(1)))
++			return True
++			
++		regs = re.compile("^rime (.+)$", re.IGNORECASE).search(cmd)
++		if regs != None:
++			if self.dico.ajoute_terme(regs.group(1)): 
++				self.echou(u"Ajoute la rime %s" %(regs.group(1)))
++			return True
++			
++		if cmd == "utf8":
++			if self.utf8_chan==False: self.echo("Passe en UTF-8")
++			self.utf8_chan = True
++			return True
++
++		if cmd == "iso":
++			if self.utf8_chan==True: self.echo("Passe en ISO-XXXX-X")
++			self.utf8_chan = False 
++			return True
++			
++		regs = re.compile("^derime (.*)$", re.IGNORECASE).search(cmd)
++		if regs != None:
++			if self.dico.supprime_terme(regs.group(1)) != None:
++				self.echou(u"Supprime la rime %s" %(regs.group(1)))
++			return True
++			
++		regs = re.compile("^liste rimes (.+)$", re.IGNORECASE).search(cmd)
++		if regs != None:
++			termes = self.dico.termes(regs.group(1))
++			if termes!=None: 
++				self.echou("Rimes en %s: %s" %(regs.group(1), ", ".join(termes)))
++			return True
++			
++		regs = re.compile("^liste insultes (.+)$", re.IGNORECASE).search(cmd)
++		if regs != None:
++			termes = self.motcle.insultes(regs.group(1))
++			if termes!=None: 
++				self.echou("Insultes pour %s: %s" \
++					%(regs.group(1), ", ".join(termes)))
++			return True
++			
++		regs = re.compile("^taux_reponse (.*)$", re.IGNORECASE).search(cmd)
++		if regs != None:
++			try:
++				taux = int(regs.group(1))
++				if taux<0: taux=0
++				if 100<taux: taux=100
++				self.taux_reponse = taux
++				return True
++			except:
++				self.echou(u"%s n'est pas un taux valide" %(regs.group(1)))
++			
++		if cmd=="taux_reponse":
++			self.echo ("Taux r?ponse = %s" %(self.taux_reponse) )
++			return True
++
++		if cmd=="muet":
++			self.echou(self.dico.muet)
++			return True
++
++		if (cmd == "reload_regex"):
++			self.echo("(recharge les regex)")
++			self.dico.charge_regex()
++			return True
++			
++		if (cmd == "backup"):
++			self.dico.sauve()
++			self.echo("backup done.")
++			return True
++			 
++		regs = re.compile("^join (.*)$", re.IGNORECASE).search(cmd)
++		if regs != None:
++			self.channel = regs.group(1) 
++			self.connection.join(self.channel)
++			return True
++		return None
++
++def main():
++	import sys
++	if len(sys.argv) != 4:
++		print "Usage: testbot <server[:port]> <channel>[:utf8] <nickname>"
++		sys.exit(1)
++
++	s = string.split(sys.argv[1], ":", 1)
++	server = s[0]
++	if len(s) == 2:
++		try:
++			port = int(s[1])
++		except ValueError:
++			print "Error: Erroneous port."
++			sys.exit(1)
++	else:
++		port = 6667
++		
++	channel = sys.argv[2]
++	regs = re.compile("^(.*):utf8$").search(channel)
++	if regs != None:
++		utf8 = True
++		channel = regs.group(1)
++	else:
++		utf8 = False
++	
++	nickname = sys.argv[3]
++
++	print "Creation de TestBot ..."
++	bot = TestBot(channel, utf8, nickname, server, port)
++	print "Lance TestBot ..."
++	bot.start()
++
++if __name__ == "__main__":
++	main()
++
++
+
+Added: poilu/trunk/terminaison.txt
+===================================================================
+--- poilu/trunk/terminaison.txt	2005-08-06 06:59:56 UTC (rev 102)
++++ poilu/trunk/terminaison.txt	2005-08-09 08:45:38 UTC (rev 103)
+@@ -0,0 +1,30 @@
++r:(er(re)?|ier)$
++or:(aur(es?)?|or[te]?)$
++aite:(aite?|et(te)?s?|??tes?)$
++ouin:(oin[g]?|ouin)$
++oua:oi([exst]|gts?|ent)?$
++ien:ien[ts]?$
++a:(a[st]?|??)$
++??:(??[ts]?|ai([ets]|ent)?|a??)$
++??:(ied[s]?|??e?s?|ez)$
++an:(en(s|ts?)?|an([dg]|ts?)?)$
++is:is$
++o:(au[xt]?|o[st]?|eaux?)$
++ou:ou[setx]?$
++on:on([st]?|ds?)$
++in:(in[ts]?|ein|ains?)$
++u:[u??][slt]?$
++i:i([et]|ls?)?$
++el:el(le)?s?$
++ic:i(c|ke?|que)s?$
++eul:eul(es?)?$
++oup:oupe?$
++exe:ex(es?)?$
++ax:ax$
++oul:(oules?|ool)$
++eur:eur$
++in:(aim|in)s?$
++ir:ir[e]?$
++op:opp?(es?)?$
++ap:ap[p]?(es?)?$
++te:tes?$
+
+Added: poilu/trunk/wormux.sh
+===================================================================
+--- poilu/trunk/wormux.sh	2005-08-06 06:59:56 UTC (rev 102)
++++ poilu/trunk/wormux.sh	2005-08-09 08:45:38 UTC (rev 103)
+@@ -0,0 +1,3 @@
++#!/bin/sh
++set -x
++python pypoil.py irc.eu.freenode.net:6667 '#wormux:utf8' poil_au
+
+
+Property changes on: poilu/trunk/wormux.sh
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+
+
+From haypo at berlios.de  Sun Aug 14 21:31:22 2005
+From: haypo at berlios.de (Victor STINNER at BerliOS)
+Date: Sun, 14 Aug 2005 21:31:22 +0200
+Subject: [Happyboom-svn] r104 - in happyboom/trunk: . specification
+Message-ID: <200508141931.j7EJVM1E010997@sheep.berlios.de>
+
+Author: haypo
+Date: 2005-08-14 21:31:21 +0200 (Sun, 14 Aug 2005)
+New Revision: 104
+
+Added:
+   happyboom/trunk/specification/
+   happyboom/trunk/specification/socket_at_server_side.dia
+Log:
+Ajoute le r?\195?\169pertoire sp?\195?\169cification.
+
+
+Added: happyboom/trunk/specification/socket_at_server_side.dia
+===================================================================
+(Binary files differ)
+
+
+Property changes on: happyboom/trunk/specification/socket_at_server_side.dia
+___________________________________________________________________
+Name: svn:mime-type
+   + application/octet-stream
+
+
+
+From haypo at berlios.de  Sun Aug 14 22:54:15 2005
+From: haypo at berlios.de (Victor STINNER at BerliOS)
+Date: Sun, 14 Aug 2005 22:54:15 +0200
+Subject: [Happyboom-svn] r105 - happyboom/trunk/specification
+Message-ID: <200508142054.j7EKsFuc016045@sheep.berlios.de>
+
+Author: haypo
+Date: 2005-08-14 22:54:15 +0200 (Sun, 14 Aug 2005)
+New Revision: 105
+
+Added:
+   happyboom/trunk/specification/client.dia
+   happyboom/trunk/specification/server.dia
+Modified:
+   happyboom/trunk/specification/socket_at_server_side.dia
+Log:
+Ajout des diagrammes pour serveur et client.
+
+
+Added: happyboom/trunk/specification/client.dia
+===================================================================
+(Binary files differ)
+
+
+Property changes on: happyboom/trunk/specification/client.dia
+___________________________________________________________________
+Name: svn:mime-type
+   + application/octet-stream
+
+Added: happyboom/trunk/specification/server.dia
+===================================================================
+(Binary files differ)
+
+
+Property changes on: happyboom/trunk/specification/server.dia
+___________________________________________________________________
+Name: svn:mime-type
+   + application/octet-stream
+
+Modified: happyboom/trunk/specification/socket_at_server_side.dia
+===================================================================
+(Binary files differ)
+
+
+

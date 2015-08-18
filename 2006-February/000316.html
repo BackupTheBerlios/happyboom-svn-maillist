@@ -1,0 +1,437 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r412 - haypo/hachoir/trunk
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-February/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r412%20-%20haypo/hachoir/trunk&In-Reply-To=%3C200602110236.k1B2a4ZV026700%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="000317.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r412 - haypo/hachoir/trunk</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r412%20-%20haypo/hachoir/trunk&In-Reply-To=%3C200602110236.k1B2a4ZV026700%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r412 - haypo/hachoir/trunk">haypo at berlios.de
+       </A><BR>
+    <I>Sat Feb 11 03:36:04 CET 2006</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="000317.html">[Happyboom-svn] r413 - in haypo/hachoir: . branches branches/hachoir-yield
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#316">[ date ]</a>
+              <a href="thread.html#316">[ thread ]</a>
+              <a href="subject.html#316">[ subject ]</a>
+              <a href="author.html#316">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-02-11 03:35:49 +0100 (Sat, 11 Feb 2006)
+New Revision: 412
+
+Modified:
+   haypo/hachoir/trunk/hachoir.py
+   haypo/hachoir/trunk/mime.py
+   haypo/hachoir/trunk/text_handler.py
+Log:
+Add some documents
+
+
+Modified: haypo/hachoir/trunk/hachoir.py
+===================================================================
+--- haypo/hachoir/trunk/hachoir.py	2006-01-25 03:46:07 UTC (rev 411)
++++ haypo/hachoir/trunk/hachoir.py	2006-02-11 02:35:49 UTC (rev 412)
+@@ -7,7 +7,7 @@
+ Author: Victor Stinner
+ &quot;&quot;&quot;
+ 
+-import sys, os, re
++import getopt, os, re, sys
+ import config
+ from program import PROGRAM, VERSION, WEBSITE
+ from log import log
+@@ -16,6 +16,7 @@
+ import ui.ui as ui
+ 
+ def usage():
++    &quot;&quot;&quot; Print Hachoir command line usage to stdout. &quot;&quot;&quot;
+     print &quot;%s version %s&quot; % (PROGRAM, VERSION)
+     print &quot;%s\n&quot; % WEBSITE
+     print &quot;Usage: %s [options] file&quot; % (sys.argv[0])
+@@ -42,7 +43,13 @@
+             print &quot;   --%s : %s&quot; % (opt[0].ljust(width), opt[1])
+ 
+ def parseArgs(val):
+-    import getopt
++    &quot;&quot;&quot; Parse command line arguments using getopt module.
++   
++    @parameter val: Default values.
++    @type: C{dict}
++    @return: Final values
++    @rtype: C{dict}
++    &quot;&quot;&quot;
+     try:
+         allowed = ( \
+             &quot;verbose&quot;, &quot;help&quot;, &quot;version&quot;, &quot;debug&quot;,
+@@ -80,6 +87,9 @@
+     return (val, filename,)
+ 
+ def main():
++    &quot;&quot;&quot; Main function of the program Hachoir: read command line
++    arguments, instanciate the Hachoir class, load user interface,
++    load plugins, and then run the Hachoir. &quot;&quot;&quot;
+     try:        
+         # Welcome message
+         print &quot;%s version %s&quot; % (PROGRAM, VERSION)
+@@ -137,7 +147,8 @@
+                     __import__(module)
+                     modules.append(module_name.group(1))
+                 except Exception, msg:
+-                    warning(&quot;Error while loading the plugin \&quot;%s\&quot;: %s&quot; % (module, msg))
++                    warning(&quot;Error while loading the plugin \&quot;%s\&quot;: %s&quot; % \
++                        (module, msg))
+         modules.sort()
+         log.info(&quot;Loaded: %u plugings (%s)&quot; % (len(modules), &quot;, &quot;.join(modules)))
+ 
+
+Modified: haypo/hachoir/trunk/mime.py
+===================================================================
+--- haypo/hachoir/trunk/mime.py	2006-01-25 03:46:07 UTC (rev 411)
++++ haypo/hachoir/trunk/mime.py	2006-02-11 02:35:49 UTC (rev 412)
+@@ -1,5 +1,3 @@
+-#!/usr/bin/env python
+-
+ &quot;&quot;&quot;
+ MIME type detection using libmagic library.
+ 
+@@ -10,155 +8,199 @@
+ - files in /usr/share/misc/file/* (on Unix/BSD systems)
+ &quot;&quot;&quot;
+ 
+-import os, sys, stat, string, re
++import os, sys, stat, re
+ from error import warning
+ 
+-instance = None
+-
+ _mime_by_ext = {
+     '.gz':  'application/x-gzip',
+     '.ico': 'image/x-ico'
+ }
+ 
+-class GuessMime:
+-    def __init__(self):
+-        self.use_fallback = False
+-        self.func = None
+-        try:
+-            path = os.path.dirname(__file__)
+-            sys.path.append(path)
+-            import magic
+-            self.func = magic.open(magic.MAGIC_MIME)
+-            self.func.load()
+-        except ImportError:
+-            warning(&quot;Warning: The library libmagic for Python is unavailable. Using internal fallback engine.&quot;)
+-            self.use_fallback = True
+-        if self.use_fallback:
+-            from  fallback.magic import whatis
+-            self.func = whatis
++# Regular expression used to split a list of MIME types
++_mime_splitter_regex = re.compile(&quot;[^/]+/[^; ]+(?:;[^;]+)*&quot;)
+ 
+-    def guess(self, buffer):
+-        if not self.use_fallback:
+-            return self.func.buffer(buffer)
+-        else:
+-            mime = self.func(buffer)
+-            return mime
++def getGuessFunc():
++    &quot;&quot;&quot;
++    Find a function to guess MIME type of a buffer. Try to load libmagic
++    (python module &quot;magic&quot;), or use internal fallback.
++    @return: Function used to guess MIME type
++    @rtype: C{func}
++    &quot;&quot;&quot;
++    try:
++        path = os.path.dirname(__file__)
++        sys.path.append(path)
++        import magic
++        func = magic.open(magic.MAGIC_MIME)
++        func.load()
++        return func.buffer
++    except ImportError:
++        warning(&quot;Warning: The library libmagic for Python is unavailable. &quot;
++        &quot;Using internal fallback engine.&quot;)
++        from fallback.magic import whatis
++        return whatis
+ 
++guessMime = getGuessFunc()
++
+ def getFileMime(realname, filename=None):
++    &quot;&quot;&quot; Guess MIME type of a file.
++
++    @parameter realname: Physical filename (used to open the file)
++    @type host: C{str}
++    @parameter filename: Filename used to detect MIME type using its extension
++    @type host: C{str}
++    @return: MIME type, or None if fails
++    @rtype: C{str}
++    &quot;&quot;&quot;
+     if filename == None:
+         filename = realname
+     mode = os.stat(filename)[stat.ST_MODE]
+     assert not stat.S_ISDIR(mode) and not stat.S_ISLNK(mode)
+     
+-    f = file(filename, &quot;rb&quot;)
+-    buffer = f.read(4096)
+-    f.close()
+-    return getBufferMime(buffer, filename)
++    content = file(filename, &quot;rb&quot;).read(4096)
++    return getBufferMime(content, filename)
+ 
+ def getMimeByExt(ext):    
+-    global _mime_by_ext
++    &quot;&quot;&quot; Guess MIME type of a file using its extension
++
++    @parameter ext: Filename extension (eg. &quot;.zip&quot;)
++    @type: C{str}
++    @return: MIME type, or None if fails
++    @rtype: C{str}
++    &quot;&quot;&quot;
+     return _mime_by_ext.get(ext, None)
+ 
+ def getStreamMime(stream, filename):
++    &quot;&quot;&quot; Guess MIME type of a stream using first 4 KB
++
++    @parameter stream: Stream containing data
++    @type: C{Stream}
++    @parameter filename: Filename of the stream source, can be None
++    @type: C{str}
++    @return: MIME type, or None if fails
++    @rtype: C{str}
++    &quot;&quot;&quot;
++
+     oldpos = stream.tell()
+     stream.seek(0)
+     size = stream.getSize()
+-    if 4096&lt;size:
++    if 4096 &lt; size:
+         size = 4096
+     data = stream.getN(size)
+     stream.seek(oldpos)
+     return getBufferMime(data, filename)
+ 
+-def getAnotherBufferMime(buffer):    
+-    if buffer[:2] == &quot;\x4d\x4d&quot; and buffer[6:12]==&quot;\x02\0\x0A\0\0\0&quot;:
++def getAnotherBufferMime(content):    
++    &quot;&quot;&quot; Another method (L{guessMime}) to guess MIME type. This
++    function is used for uncommon MIME types like Gimp picture
++    (image/x-xcf).
++
++    @parameter content: First 4 KB of file/stream content.
++    @type: C{str}
++    @return: MIME type, or None if fails
++    @rtype: C{str}
++    &quot;&quot;&quot;
++
++    if content[:2] == &quot;\x4d\x4d&quot; and content[6:12] == &quot;\x02\0\x0A\0\0\0&quot;:
+         return &quot;image/x-3ds&quot;
+ 
+-    if 2&lt;=len(buffer) and ord(buffer[0])==31 and ord(buffer[1])==139:
++    if 2 &lt;= len(content) and ord(content[0]) == 31 and ord(content[1]) == 139:
+         return &quot;application/x-gzip&quot;
+ 
+     # Text
+-    if buffer[0:4] == &quot;%PDF&quot;:
++    if content[0:4] == &quot;%PDF&quot;:
+         return &quot;application/pdf&quot;
+ 
+     # Pictures
+-    if buffer[0:14] == &quot;gimp xcf file\0&quot;:
++    if content[0:14] == &quot;gimp xcf file\0&quot;:
+         return &quot;image/x-xcf&quot;
+ 
+-    if buffer[0:2] == &quot;\0\0&quot; \
+-    and buffer[2:4] in (&quot;\x01\0&quot;, &quot;\x02\0&quot;) \
+-    and buffer[9] == &quot;\0&quot;:
++    if content[0:2] == &quot;\0\0&quot; \
++    and content[2:4] in (&quot;\x01\0&quot;, &quot;\x02\0&quot;) \
++    and content[9] == &quot;\0&quot;:
+         return &quot;image/x-ico&quot;
+ 
+-    if buffer[0] == &quot;\x0A&quot; \
+-    and buffer[1] in &quot;\x00\x02\x03\x04\x05&quot; \
+-    and buffer[64] == &quot;\0&quot;:
++    if content[0] == &quot;\x0A&quot; \
++    and content[1] in &quot;\x00\x02\x03\x04\x05&quot; \
++    and content[64] == &quot;\0&quot;:
+         return &quot;image/x-pcx&quot;
+ 
+     # File system        
+-    if 4096&lt;=len(buffer) \
+-    and buffer[1080:1082]==&quot;\x53\xEF&quot; \
+-    and buffer[1116:1120]==&quot;\x04\x00\x00\x00&quot;:
++    if 4096 &lt;= len(content) \
++    and content[1080:1082] == &quot;\x53\xEF&quot; \
++    and content[1116:1120] == &quot;\x04\x00\x00\x00&quot;:
+         return &quot;hachoir/fs-ext2&quot;
+         
+-    if 512&lt;=len(buffer) \
+-    and buffer[0] in &quot;\xEB\xFA&quot; \
+-    and buffer[510:512] == &quot;\x55\xAA&quot; \
+-    and buffer[446] in &quot;\x00\x80&quot; \
+-    and buffer[446+16*1] in &quot;\x00\x80&quot; \
+-    and buffer[446+16*2] in &quot;\x00\x80&quot; \
+-    and buffer[446+16*3] in &quot;\x00\x80&quot;:
++    if 512 &lt;= len(content) \
++    and content[0] in &quot;\xEB\xFA&quot; \
++    and content[510:512] == &quot;\x55\xAA&quot; \
++    and content[446] in &quot;\x00\x80&quot; \
++    and content[446+16*1] in &quot;\x00\x80&quot; \
++    and content[446+16*2] in &quot;\x00\x80&quot; \
++    and content[446+16*3] in &quot;\x00\x80&quot;:
+         return &quot;hachoir/master-boot-record&quot;
+     
+     # Worms2 files
+-    if buffer[0:4] == &quot;IMG\x1A&quot;:
++    if content[0:4] == &quot;IMG\x1A&quot;:
+         return &quot;hachoir/worms2-image&quot;
+-    if buffer[0:4] == &quot;SPR\x1A&quot;:
++    if content[0:4] == &quot;SPR\x1A&quot;:
+         return &quot;hachoir/worms2-sprite&quot;
+-    if buffer[0:4] == &quot;FNT\x1A&quot;:
++    if content[0:4] == &quot;FNT\x1A&quot;:
+         return &quot;hachoir/worms2-font&quot;
+-    if buffer[0:4] == &quot;DIR\x1A&quot;:
++    if content[0:4] == &quot;DIR\x1A&quot;:
+         return &quot;hachoir/worms2-directory&quot;
+     return None        
+ 
+ def splitMimes(mimes):
+-    &quot;&quot;&quot;
+-    Split MIME types into a list.
++    &quot;&quot;&quot; Split flat MIME type string into a list in which each entry has
++    the following format: [&quot;type&quot;, {&quot;key1&quot;: value1, &quot;key2&quot;: value2, ...}]
++
+     Examples:
+     - &quot;text/plain; encoding=latin-1&quot; =&gt; [[&quot;text/plain&quot;, {&quot;encoding&quot;: latin-1&quot;}]
+-    - &quot;text/plain, text/xml&quot; =&gt; [[&quot;text/plain&quot;],[&quot;text/xml&quot;]]
++    - &quot;text/plain, text/xml&quot; =&gt; [[&quot;text/plain&quot;, {}],[&quot;text/xml&quot;, {}]]
+     - &quot;text/plain; charset=ISO-8859-1; format=flowed&quot;
+       =&gt; [['text/plain', {'charset': 'ISO-8859-1', 'format': 'flowed'}]]
+-    - &quot;application/x-archive application/x-debian-package&quot;
++
++    @parameter mimes: Flat MIME type string
++    @type: C{str}
++    @return: MIME type in a list
++    @rtype: C{list}
+     &quot;&quot;&quot;
+ 
+-    regex = re.compile(&quot;[^/]+/[^; ]+(?:;[^;]+)*&quot;)
+-    mimes = regex.findall(mimes)    
++    mimes = _mime_splitter_regex.findall(mimes)    
+     
+-    list = []
++    mime_list = []
+     for mime in mimes:
+-        mime = mime.strip(&quot; ,&quot;)
+-        parts = mime.split(&quot;;&quot;)
++        parts = mime.strip(&quot; ,&quot;).split(&quot;;&quot;)
+         mime = parts[0]
+-        parts = map(string.strip, parts[1:])
++        parts = [ item.strip() for item in parts[1:] ]
+         values = {}
+         for part in parts:
+             if part != &quot;&quot;:
+                 split_part = part.split(&quot;=&quot;, 1)             
+                 values[ split_part[0] ] = split_part[1]
+-        list.append([mime,values])
+-    return list
++        mime_list.append([mime, values])
++    return mime_list
+ 
+-def getBufferMime(buffer, filename):
+-    global instance
+-    if instance == None:
+-        instance = GuessMime()
+-    mimes = instance.guess(buffer)
++def getBufferMime(content, filename):
++    &quot;&quot;&quot; Main function used to guess the MIME types. It calls L{guessMime},
++    and then L{getAnotherBufferMime} if needed.
++
++    @parameter content: First 4 KB of file/stream content.
++    @type: C{str}
++    @parameter filename: Filename of the file/stream, can be None.
++    @type: C{str}
++    @return: MIME type list (same format than L{splitMimes} result)
++    @rtype: C{str}
++    &quot;&quot;&quot;
++
++    mimes = guessMime(content)
+     mimes = splitMimes(mimes)
+-    if len(mimes) == 0 or mimes[0][0] in ('application/octet-stream', 'image/tiff'):
+-        new_mime = getAnotherBufferMime(buffer)
++    if len(mimes) == 0 \
++    or mimes[0][0] in ('application/octet-stream', 'image/tiff'):
++        new_mime = getAnotherBufferMime(content)
+         if new_mime == None and filename != None:
+             ext = os.path.splitext(filename)[1]
+             new_mime = getMimeByExt(ext)
+         if new_mime != None:
+-            mimes = ((new_mime,),)
++            mimes = ((new_mime, {}),)
+     return mimes
+
+Modified: haypo/hachoir/trunk/text_handler.py
+===================================================================
+--- haypo/hachoir/trunk/text_handler.py	2006-01-25 03:46:07 UTC (rev 411)
++++ haypo/hachoir/trunk/text_handler.py	2006-02-11 02:35:49 UTC (rev 412)
+@@ -6,13 +6,13 @@
+     assert chunk.size == 4
+     val = chunk.value
+     sec = 2 * (val &amp; 31)              # 5 bits: second
+-    min = (val &gt;&gt; 5) &amp; 63             # 6 bits: minute
++    minute = (val &gt;&gt; 5) &amp; 63          # 6 bits: minute
+     hour = (val &gt;&gt; 11) &amp; 31           # 5 bits: hour
+-    day = (val &gt;&gt; 16) &amp; 31            # 5 bits: day
++    day = (val &gt;&gt; 16) &amp; 31            # 5 bits: day of the month
+     month = (val &gt;&gt; 21) &amp; 15          # 4 bits: month
+     year = 1980 + ((val &gt;&gt; 25) &amp; 127) # 7 bits: year
+     try:
+-        return str(datetime.datetime(year, month, day, hour, min, sec))
++        return str(datetime.datetime(year, month, day, hour, minute, sec))
+     except:
+         return &quot;invalid msdos datetime (%s)&quot; % val
+     
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="000317.html">[Happyboom-svn] r413 - in haypo/hachoir: . branches branches/hachoir-yield
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#316">[ date ]</a>
+              <a href="thread.html#316">[ thread ]</a>
+              <a href="subject.html#316">[ subject ]</a>
+              <a href="author.html#316">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

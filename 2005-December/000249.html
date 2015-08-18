@@ -1,0 +1,786 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r344 - in haypo/hachoir: . plugins stream ui
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r344%20-%20in%20haypo/hachoir%3A%20.%20plugins%20stream%20ui&In-Reply-To=%3C200512201404.jBKE4f5O001986%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000248.html">
+   <LINK REL="Next"  HREF="000250.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r344 - in haypo/hachoir: . plugins stream ui</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r344%20-%20in%20haypo/hachoir%3A%20.%20plugins%20stream%20ui&In-Reply-To=%3C200512201404.jBKE4f5O001986%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r344 - in haypo/hachoir: . plugins stream ui">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec 20 15:04:41 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000248.html">[Happyboom-svn] r343 - haypo/hachoir
+</A></li>
+        <LI>Next message: <A HREF="000250.html">[Happyboom-svn] r345 - haypo/hachoir/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#249">[ date ]</a>
+              <a href="thread.html#249">[ thread ]</a>
+              <a href="subject.html#249">[ subject ]</a>
+              <a href="author.html#249">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-20 15:04:36 +0100 (Tue, 20 Dec 2005)
+New Revision: 344
+
+Modified:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/filter.py
+   haypo/hachoir/mime.py
+   haypo/hachoir/plugins/3ds.py
+   haypo/hachoir/plugins/ext2.py
+   haypo/hachoir/stream/stream.py
+   haypo/hachoir/ui/ui_popup.py
+   haypo/hachoir/ui/ui_window.py
+Log:
+- OnlyFormatChunksFilter can now also read strings.
+- OnlyFormatChunksFilter can add keywords to chunks
+- Fix 3DS filter: can read map uv, polygon list and vertex list (using
+  new fast OnlyFormatChunksFilter filter class). Fix also readPolygonList
+  which was buggy (didn't read sub-chunks).
+- Only use OnlyFormatChunksFilter in EXT2 plugin
+- EXT2 plugin can read groups (and rename Group class to GroupDescriptor)
+- EXT2 plugin can read superblock copies (in groups).
+- Small bugfix in LimitedStream: smallest size is 1 and not 2 ;-)
+- Chunk.getFormat() now returns full chunk format (class + parameters) and
+  Chunk.getSmallFormat() is used in display (just parameters).
+- Replace event button_release_event with cursor-changed in window ui, so
+  changing active cell in table also update informations about active chunk.
+- Add Worms2 dir file MIME tester
+- Small bugfix in MIME (only test filename extension if filename is
+  defined...)
+
+
+Modified: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-12-20 13:51:03 UTC (rev 343)
++++ haypo/hachoir/chunk.py	2005-12-20 14:04:36 UTC (rev 344)
+@@ -23,8 +23,11 @@
+             self.display = self.post_process(self)
+ 
+     def getFormat(self):
+-        return self.__class__
++        return self.__class__.__name__
+ 
++    def getSmallFormat(self):
++        return self.__class__.__name__
++
+     def update(self):
+         self.display = None
+         self.postProcess()
+@@ -94,8 +97,11 @@
+         return FilterChunk(self.id, filter_copy, self.getParent(), parent_addr)
+     
+     def getFormat(self):
+-        return self._filter.getId()
++        return self.__class__.__name__ + &quot; (%s)&quot; % self._filter.__class__.__name__
+ 
++    def getSmallFormat(self):
++        return self._filter.__class__.__name__
++
+     def update(self):
+         new = self._filter.clone()
+         if new != None:
+@@ -167,9 +173,11 @@
+         self.strip = strip
+ 
+     def getFormat(self):
+-        assert self._str_type in StringChunk.names
+         return StringChunk.names[self._str_type]
+ 
++    def getSmallFormat(self):
++        return StringChunk.names[self._str_type]
++
+     def _findSize(self):
+         self._stream.seek(self.addr)
+         if self._str_type == &quot;Pascal16&quot;:
+@@ -282,6 +290,9 @@
+     addr = property(Chunk._getAddr, _setAddr)
+ 
+     def getFormat(self):
++        return self.__class__.__name__ + &quot; (%s)&quot; % self._format
++
++    def getSmallFormat(self):
+         return self._format
+ 
+     def isString(self):
+@@ -303,7 +314,6 @@
+         size = getFormatSize(format)
+         if self._stream.getLastPos() &lt; (self.addr + size - 1):
+             raise Exception(&quot;Can't set chunk %s to format \&quot;%s\&quot;: size too big!&quot; % (self.id, format))
+-        self._cache.setFormat(format)
+ 
+         # Update format
+         old_size = self._size
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-12-20 13:51:03 UTC (rev 343)
++++ haypo/hachoir/filter.py	2005-12-20 14:04:36 UTC (rev 344)
+@@ -31,6 +31,7 @@
+     def getStream(self): return self._stream
+     def purgeCache(self): pass
+     def updateChunkDescription(self, id, desc): pass
++    def __len__(self): return len(self._chunks_dict)
+ 
+     def getPath(self):
+         &quot;&quot;&quot;
+@@ -53,25 +54,30 @@
+         return self._chunks_counter[root]
+ 
+     def getUniqChunkId(self, id):
++        # No collision
++        if id not in self._chunks_dict and id[-2:] != &quot;[]&quot;:
++            return id
++
+         # Pattern like &quot;block[]&quot;
+         if id[-2:] == &quot;[]&quot;:
+             root = id[:-2]
+-            index = self._getUniqChunkId(root, 0)
+-            return root+&quot;[&quot;+str(index)+&quot;]&quot; 
+-
+-        # No collision
+-        if id not in self._chunks_dict:
+-            return id
+-
+-        # Manage id collision
+-        m = Filter.regex_chunk_uniq_id.match(id)
+-        if m != None:
+-            root = m.group(1)
+-            index = self._getUniqChunkId(root, int(m.group(2))+1)
++            start = 0
++            pattern = &quot;%s[%u]&quot;
+         else:
+-            root = id
+-            index = self._getUniqChunkId(root, 2)
+-        return root+str(index)
++            # Manage id collision
++            m = Filter.regex_chunk_uniq_id.match(id)
++            if m != None:
++                root = m.group(1)
++                start = int(m.group(2)) + 1
++            else:
++                root = id
++                start = 2
++            pattern = &quot;%s%u&quot;
++        if root in self._chunks_counter:
++            self._chunks_counter[root] = self._chunks_counter[root] + 1
++        else:
++            self._chunks_counter[root] = start 
++        return pattern % (root, self._chunks_counter[root])
+ 
+     # --- Pure virtual methods -----------
+     def getSize(self): assert False
+@@ -92,18 +98,8 @@
+         assert pos != -1
+         self._chunks_dict[id][1] = desc
+ 
+-        info = self._chunks_dict[id]
+-        chunk_class = info[4][0]
+-        if issubclass(chunk_class, BasicFilter):
+-            display = &quot;(...)&quot;
+-            format = chunk_class.__name__ 
+-        else:
+-            chunk = self.getChunk(id)
+-            display = chunk.getDisplayData()
+-            format = chunk.getFormat()
+-        addr = info[2]
+-        size = info[3]
+-        ui.window.update_table(self, pos, None, addr, size, format, info[0], info[1], display)
++        info = self.displayChunkInfo(id)
++        ui.window.update_table(self, pos, *info)
+ 
+     def purgeCache(self):
+         if len(self._chunks_cache) != 0:
+@@ -130,6 +126,8 @@
+         
+         if size == None:
+             filter = filter_class(filter_stream, self, *args)
++            description = filter.getDescription()
++            filter.setId(id)
+             chunk = FilterChunk(id, filter, self, addr)
+             size = filter.getSize()
+             if config.verbose:
+@@ -138,13 +136,12 @@
+             chunk = None
+ 
+         chunk_info = [id, description, addr, size, \
+-                (filter_class, filter_stream, filter_addr, args), None]
++                (filter_class, filter_stream, filter_addr, args), None, {}]
+         self._chunks_dict[id] = chunk_info
+         self._chunks.append(id)
+         if chunk != None:
+             filter.updateParent(chunk)
+             self._chunks_cache[id] = chunk
+-
+         self._size = self._size + size
+         self._stream.seek(addr + size)
+         return id
+@@ -158,29 +155,49 @@
+         size = getFormatSize(format)
+         addr = self._stream.tell()
+         chunk_info = [id, description, addr, size, \
+-                (FormatChunk, id, description, self._stream, addr, format, self,), post]
++                (FormatChunk, id, description, self._stream, addr, format, self,), post, {}]
+         self._chunks_dict[id] = chunk_info
+         self._chunks.append(id)
+         self._stream.seek(size, 1)
+         self._size = self._size + size
+         return id
+ 
++    def readString(self, id, format, description, post=None, strip=None):
++        id = self.getUniqChunkId(id)
++        addr = self._stream.tell()
++
++        chunk = StringChunk(id, description, self._stream, format, self, strip=strip)
++        size = chunk.size
++
++        chunk_info = [id, description, addr, size, \
++                (StringChunk, id, description, self._stream, format, self,), post, {&quot;strip&quot;: strip}]
++        self._chunks_dict[id] = chunk_info
++        self._chunks.append(id)
++        self._chunks_cache[id] = chunk
++#        self._stream.seek(size, 1)
++        self._size = self._size + size
++        return id
++
++    def displayChunkInfo(self, id):
++        info = self._chunks_dict[id]
++        chunk_class = info[4][0]
++        if issubclass(chunk_class, BasicFilter):
++            display = &quot;(...)&quot;
++            format = chunk_class.__name__
++        else:
++            chunk = self.getChunk(id)
++            display = chunk.getDisplayData()
++            format = chunk.getSmallFormat()
++        addr = info[2]
++        size = info[3]
++        return (None, addr, size, format, info[0], info[1], display)
++
+     def display(self):
+         ui.window.enableParentButton(self.getParent() != None)
+         ui.window.clear_table()
+         for id in self._chunks:
+-            info = self._chunks_dict[id]
+-            chunk_class = info[4][0]
+-            if issubclass(chunk_class, BasicFilter):
+-                display = &quot;(...)&quot;
+-                format = chunk_class.__name__ 
+-            else:
+-                chunk = self.getChunk(id)
+-                display = chunk.getDisplayData()
+-                format = chunk.getFormat()
+-            addr = info[2]
+-            size = info[3]
+-            ui.window.add_table(None, addr, size, format, info[0], info[1], display)
++            info = self.displayChunkInfo(id)
++            ui.window.add_table(*info)
+  
+     def getSize(self): return self._size
+ 
+@@ -188,6 +205,7 @@
+         addr = self._chunks_dict[id][2]
+         desc = self._chunks_dict[id][4]
+         post = self._chunks_dict[id][5]
++        chunks_kw = self._chunks_dict[id][6]
+         oldpos = self._stream.tell()
+         self._stream.seek(addr)
+         if config.verbose:
+@@ -195,7 +213,7 @@
+         if not issubclass(desc[0], BasicFilter):
+             chunk_class = desc[0]
+             chunk_args = desc[1:]
+-            chunk = chunk_class(*chunk_args)
++            chunk = chunk_class(*chunk_args, **chunks_kw)
+             if post != None:
+                 chunk.display = post(chunk)
+         else:
+@@ -203,7 +221,10 @@
+             if filter_stream != self._stream:
+                 filter_stream.seek(desc[2])
+             filter = desc[0] (filter_stream, self, *desc[3])
++            filter.setId(id)
+             chunk = FilterChunk(id, filter, self, addr)
++            if filter.getDescription() != desc[1]:
++                self.updateChunkDescription(id, filter.getDescription())
+             filter.updateParent(chunk)
+         self._stream.seek(oldpos)
+         return chunk
+@@ -479,7 +500,7 @@
+         return chunk
+ 
+     def displayChunk(self, chunk):
+-        type = chunk.getFormat()
++        type = chunk.getSmallFormat()
+         if isinstance(chunk, FilterChunk):
+             addr = chunk.parent_addr
+         else:
+
+Modified: haypo/hachoir/mime.py
+===================================================================
+--- haypo/hachoir/mime.py	2005-12-20 13:51:03 UTC (rev 343)
++++ haypo/hachoir/mime.py	2005-12-20 14:04:36 UTC (rev 344)
+@@ -84,6 +84,9 @@
+     and buffer[1116:1120]==&quot;\x04\x00\x00\x00&quot;:
+         return &quot;hachoir/fs-ext2&quot;
+         
++    if buffer[0:3] == &quot;DIR&quot;:
++        return &quot;hachoir/worms2&quot;
++        
+     if 512&lt;=len(buffer) \
+     and buffer[0] in &quot;\xEB\xFA&quot; \
+     and buffer[510:512] == &quot;\x55\xAA&quot; \
+@@ -129,9 +132,9 @@
+     mimes = instance.guess(buffer)
+     mimes = splitMimes(mimes)
+     if len(mimes) == 0 or mimes[0][0] in ('application/octet-stream', 'image/tiff'):
+-        ext = os.path.splitext(filename)[1]
+         new_mime = getAnotherBufferMime(buffer)
+-        if new_mime == None:
++        if new_mime == None and filename != None:
++            ext = os.path.splitext(filename)[1]
+             new_mime = getMimeByExt(ext)
+         if new_mime != None:
+             mimes = ((new_mime,),)
+
+Modified: haypo/hachoir/plugins/3ds.py
+===================================================================
+--- haypo/hachoir/plugins/3ds.py	2005-12-20 13:51:03 UTC (rev 343)
++++ haypo/hachoir/plugins/3ds.py	2005-12-20 14:04:36 UTC (rev 344)
+@@ -3,10 +3,10 @@
+ Author: Victor Stinner
+ &quot;&quot;&quot;
+ 
+-from filter import Filter
++from filter import Filter, OnlyFormatChunksFilter
+ from plugin import registerPlugin
+ 
+-def readTextureFilename(filter, stream):
++def readTextureFilename(filter, stream, last_pos):
+     filter.readString(&quot;filename&quot;, &quot;C&quot;, &quot;Texture filename&quot;)
+ 
+ def readVersion(filter, stream, last_pos):
+@@ -14,13 +14,11 @@
+ 
+ def readMaterialName(filter, stream, last_pos):
+     filter.readString(&quot;name&quot;, &quot;C&quot;, &quot;Material name&quot;)
+-#    while not stream.eof():
+-#        filter.readChild(&quot;chunk[]&quot;, Filter_3DS_Chunk)
+ 
+ def readObject(filter, stream, last_pos):
+     chunk = filter.readString(&quot;name&quot;, &quot;C&quot;, &quot;Object name&quot;)
+     while stream.tell() &lt; last_pos:
+-        filter.readChild(&quot;chunk[]&quot;, Filter_3DS_Chunk)
++        filter.readChild(&quot;chunk[]&quot;, &quot;Chunk&quot;, Filter_3DS_Chunk)
+ 
+ class Filter_3DS_MapUV(Filter):
+     def __init__(self, stream, parent):
+@@ -46,7 +44,7 @@
+ def readMapList(filter, stream, last_pos):
+     filter.read(&quot;count&quot;, &quot;&lt;H&quot;, &quot;Map count&quot;)
+     for i in range(0, filter[&quot;count&quot;]):
+-        filter.readChild(&quot;map[]&quot;, Filter_3DS_MapUV)
++        filter.readSizedChild(&quot;map[]&quot;, &quot;Map UV&quot;, 2*4, Filter_3DS_MapUV)
+ 
+ def readColor(filter, stream, last_pos):
+     filter.read(&quot;red&quot;, &quot;B&quot;, &quot;Red componant&quot;)
+@@ -56,14 +54,16 @@
+ def readVertexList(filter, stream, last_pos):
+     filter.read(&quot;count&quot;, &quot;&lt;H&quot;, &quot;Vertex count&quot;)
+     for i in range(0, filter[&quot;count&quot;]):
+-        filter.readChild(&quot;vertex[]&quot;, Filter_3DS_Vertex)
++        filter.readSizedChild(&quot;vertex[]&quot;, &quot;Vertex&quot;, 3*4, Filter_3DS_Vertex)
+     
+ def readPolygonList(filter, stream, last_pos):
+     filter.read(&quot;count&quot;, &quot;&lt;H&quot;, &quot;Vertex count&quot;)
+     for i in range(0, filter[&quot;count&quot;]):
+-        filter.readChild(&quot;polygon[]&quot;, Filter_3DS_Polygon)
++        filter.readSizedChild(&quot;polygon[]&quot;, &quot;Polygon&quot;, 4*2, Filter_3DS_Polygon)
++    while stream.tell() &lt; last_pos:
++        filter.readChild(&quot;chunk[]&quot;, &quot;Chunk&quot;, Filter_3DS_Chunk)
+ 
+-class Filter_3DS_Chunk(Filter):
++class Filter_3DS_Chunk(OnlyFormatChunksFilter):
+     # List of chunk type name
+     type_name = {
+         0x0011: &quot;Color&quot;,
+@@ -119,14 +119,14 @@
+         0x0011: readColor,
+         0x0002: readVersion,
+ # TODO: Uncomment these functions, it's too slow yet            
+-#         0x4110: readVertexList,
+-#         0x4120: readPolygonList,
+-#         0x4140: readMapList
++         0x4110: readVertexList,
++         0x4120: readPolygonList,
++         0x4140: readMapList
+     }
+     
+     def __init__(self, stream, parent):
+-        Filter.__init__(self, &quot;3ds_chunk&quot;, &quot;3DS chunk&quot;, stream, parent)
+-        chunk = self.read(&quot;type&quot;, &quot;&lt;H&quot;, &quot;Chunk type&quot;, post=self.toHex)
++        OnlyFormatChunksFilter.__init__(self, &quot;3ds_chunk&quot;, &quot;3DS chunk&quot;, stream, parent)
++        chunk = self.doRead(&quot;type&quot;, &quot;&lt;H&quot;, &quot;Chunk type&quot;, post=self.toHex)
+         chunk.description = &quot;Chunk type (%s)&quot; % self.getType()
+         self.read(&quot;size&quot;, &quot;&lt;L&quot;, &quot;Chunk size&quot;)
+         size = self[&quot;size&quot;] - 6
+@@ -134,7 +134,7 @@
+         end = stream.tell() + size
+         if type in Filter_3DS_Chunk.sub_chunks:
+             while stream.tell() &lt; end:
+-                self.readChild(&quot;chunk[]&quot;, Filter_3DS_Chunk)
++                self.readChild(&quot;chunk[]&quot;, &quot;Chunk&quot;, Filter_3DS_Chunk)
+             assert stream.tell() == end 
+         else:
+             if type in Filter_3DS_Chunk.handlers: 
+@@ -153,12 +153,12 @@
+         self.setDescription(&quot;Chunk type (%s)&quot; % type)
+         if self[&quot;type&quot;] in Filter_3DS_Chunk.chunk_id_by_type:
+             id = Filter_3DS_Chunk.chunk_id_by_type[self[&quot;type&quot;]]
++# TODO: Re-enable that            
+ #            chunk.id = id
+             self.setId(id) 
+         else:
+             self.setId(&quot;chunk_%04x&quot; % self[&quot;type&quot;])
+ 
+-
+     def toHex(self, chunk):
+         return &quot;%04X&quot; % chunk.value
+         
+
+Modified: haypo/hachoir/plugins/ext2.py
+===================================================================
+--- haypo/hachoir/plugins/ext2.py	2005-12-20 13:51:03 UTC (rev 343)
++++ haypo/hachoir/plugins/ext2.py	2005-12-20 14:04:36 UTC (rev 344)
+@@ -11,7 +11,7 @@
+ from datetime import datetime
+ from filter import Filter, OnlyFormatChunksFilter, OnlyFiltersFilter
+ from plugin import registerPlugin
+-from tools import humanDuration, getUnixRWX 
++from tools import humanDuration, getUnixRWX, humanFilesize
+ 
+ class DirectoryEntry(OnlyFormatChunksFilter):
+     file_type = {
+@@ -80,7 +80,7 @@
+         self.read(&quot;file_acl&quot;, &quot;&lt;L&quot;, &quot;File ACL&quot;)
+         self.read(&quot;dir_acl&quot;, &quot;&lt;L&quot;, &quot;Directory ACL&quot;)
+         self.read(&quot;faddr&quot;, &quot;&lt;L&quot;, &quot;Block where the fragment of the file resides&quot;)
+-        os = parent.getParent().superblock[&quot;creator_os&quot;]
++        os = parent.getParent().getParent().superblock[&quot;creator_os&quot;]
+         if os == SuperBlock.OS_LINUX:
+             self.read(&quot;frag&quot;, &quot;B&quot;, &quot;Number of fragments in the block&quot;)
+             self.read(&quot;fsize&quot;, &quot;B&quot;, &quot;Fragment size&quot;)
+@@ -100,7 +100,7 @@
+ 
+     def updateParent(self, chunk):
+         desc = &quot;Inode %s: &quot; % self.index
+-        size = self[&quot;size&quot;]
++        size = humanFilesize(self[&quot;size&quot;])
+         if 11 &lt;= self.index:
+             desc = desc + &quot;file, size=%s, mode=%s&quot; % (size, self.getChunk(&quot;mode&quot;).display)
+         else:
+@@ -145,9 +145,10 @@
+             return &quot;(empty)&quot;
+ 
+ class Bitmap(OnlyFormatChunksFilter):
+-    def __init__(self, stream, parent, size, start):
+-        OnlyFormatChunksFilter.__init__(self, &quot;group&quot;, &quot;EXT2 group&quot;, stream, parent)
++    def __init__(self, stream, parent, description, count, start):
++        OnlyFormatChunksFilter.__init__(self, &quot;bitmap&quot;, &quot;%s: %s items&quot; % (description, count), stream, parent)
+         self.start = start
++        size = count / 8
+         self.read(&quot;block_bitmap&quot;, &quot;%us&quot; % size, &quot;Bitmap&quot;)
+ 
+     def showFree(self, type=&quot;Block&quot;):
+@@ -165,9 +166,10 @@
+ BlockBitmap = Bitmap
+ InodeBitmap = Bitmap
+ 
+-class EXT2_Group(OnlyFormatChunksFilter):
+-    def __init__(self, stream, parent):
+-        OnlyFormatChunksFilter.__init__(self, &quot;group&quot;, &quot;EXT2 group&quot;, stream, parent)
++class GroupDescriptor(OnlyFormatChunksFilter):
++    def __init__(self, stream, parent, index):
++        OnlyFormatChunksFilter.__init__(self, &quot;group&quot;, &quot;Group descriptor&quot;, stream, parent)
++        self.index = index
+         self.read(&quot;block_bitmap&quot;, &quot;&lt;L&quot;, &quot;Points to the blocks bitmap block&quot;)
+         self.read(&quot;inode_bitmap&quot;, &quot;&lt;L&quot;, &quot;Points to the inodes bitmap block&quot;)
+         self.read(&quot;inode_table&quot;, &quot;&lt;L&quot;, &quot;Points to the inodes table first block&quot;)
+@@ -177,6 +179,14 @@
+         self.read(&quot;padding&quot;, &quot;&lt;H&quot;, &quot;Padding&quot;)
+         self.read(&quot;reserved&quot;, &quot;12s&quot;, &quot;Reserved&quot;)
+ 
++    def updateParent(self, chunk):
++        superblock = self.getParent().getParent().superblock
++        blocks_per_group = superblock[&quot;blocks_per_group&quot;]
++        start = self.index * blocks_per_group
++        end = start + blocks_per_group 
++        chunk.description = &quot;Group descriptor: blocks %s-%s&quot; % (start, end)
++    
++
+ class SuperBlock(OnlyFormatChunksFilter):
+     error_handling = {
+         1: &quot;Continue&quot;
+@@ -197,7 +207,7 @@
+     }
+     
+     def __init__(self, stream, parent):
+-        OnlyFormatChunksFilter.__init__(self, &quot;super_block&quot;, &quot;EXT2 super block&quot;, stream, parent)
++        OnlyFormatChunksFilter.__init__(self, &quot;super_block&quot;, &quot;Super block&quot;, stream, parent)
+         self.read(&quot;inodes_count&quot;, &quot;&lt;L&quot;, &quot;Inodes count&quot;)
+         self.read(&quot;blocks_count&quot;, &quot;&lt;L&quot;, &quot;Blocks count&quot;)
+         self.read(&quot;r_blocks_count&quot;, &quot;&lt;L&quot;, &quot;Reserved blocks count&quot;)
+@@ -276,7 +286,7 @@
+             type = &quot;ext3&quot;
+         else:
+             type = &quot;ext2&quot;
+-        desc = &quot;EXT2 Superblock: %s file system&quot; % type
++        desc = &quot;Superblock: %s file system&quot; % type
+         self.setDescription(desc)
+         chunk.description = desc
+ 
+@@ -286,23 +296,21 @@
+     def getTime(self, chunk):
+         return datetime.fromtimestamp(chunk.value)
+ 
+-class Groups(OnlyFormatChunksFilter):
+-    def __init__(self, stream, parent, count):
+-        OnlyFormatChunksFilter.__init__(self, &quot;groups&quot;, &quot;EXT2 groups&quot;, stream, parent)
+-        self.items = []
++class GroupDescriptors(OnlyFormatChunksFilter):
++    def __init__(self, stream, parent, count, start):
++        OnlyFormatChunksFilter.__init__(self, &quot;groups&quot;, &quot;Group descriptors: %s items&quot; % count, stream, parent)
++        self.start = start
+         for i in range(0, count):
+-            group = self.doReadChild(&quot;group[]&quot;, &quot;Group&quot;, EXT2_Group).getFilter()
+-            self.items.append(group)
++            self.readSizedChild(&quot;group[]&quot;, &quot;Group&quot;, 32, GroupDescriptor, i)
+ 
+-    def __getitem__(self, index):
+-        return self.items[index]
++    def getGroup(self, index):
++        return self[&quot;group[%s]&quot; % (self.start + index)]
+ 
+ class InodeTable(OnlyFormatChunksFilter):
+     def __init__(self, stream, parent, start, count):
+-        OnlyFormatChunksFilter.__init__(self, &quot;ino_table&quot;, &quot;EXT2 inode table&quot;, stream, parent)
+-        self.inodes = {}
++        OnlyFormatChunksFilter.__init__(self, &quot;ino_table&quot;, &quot;Inode table: %s inodes&quot; % count, stream, parent)
+         self.start = start
+-        chunk_size = parent.superblock[&quot;inode_size&quot;]
++        chunk_size = parent.getParent().superblock[&quot;inode_size&quot;]
+         for index in range(self.start, self.start+count):
+             self.readSizedChild(&quot;inode[]&quot;, &quot;Inode %s&quot; % index, chunk_size, Inode, index)
+ 
+@@ -310,11 +318,64 @@
+         index = index - self.start - 1
+         return self.getChunk(&quot;inode[%u]&quot; % index).getFilter()
+ 
+-#class Directory(Filter):
+-#    def __init__(self, stream, parent):
+-#        Filter.__init__(self, &quot;dir&quot;, &quot;EXT2 directory&quot;, stream, parent)
+-#        self.read(&quot;inode&quot;, &quot;&lt;L&quot;, &quot;Inode&quot;)
++def testSuperblock(stream):
++    oldpos = stream.tell()
++    stream.seek(80-24, 1)
++    is_super = stream.getN(2) == &quot;\x53\xEF&quot;    
++    stream.seek(oldpos)
++    return is_super
+ 
++class Group(OnlyFormatChunksFilter):
++    def __init__(self, stream, parent, index):
++        OnlyFormatChunksFilter.__init__(self, &quot;group&quot;, &quot;Group %u&quot; % index, stream, parent)
++        self.index = index
++        group = parent[&quot;group_desc&quot;].getGroup(index)
++        superblock = parent.superblock
++        block_size = parent.block_size
++    
++        # Read block bitmap
++        self.superblock_copy = False
++        if testSuperblock(stream):
++            self.readChild(&quot;superblock_copy&quot;, &quot;Superblock&quot;, SuperBlock)
++            self.superblock_copy = True
++        self.seek(group[&quot;block_bitmap&quot;] * block_size)
++            
++        count = superblock[&quot;blocks_per_group&quot;]
++        self.readSizedChild(&quot;block_bitmap[]&quot;, &quot;Block bitmap&quot;, count / 8, BlockBitmap, &quot;Block bitmap&quot;, count, 0)
++
++        # Read inode bitmap
++        assert (group[&quot;inode_bitmap&quot;] * block_size) == stream.tell()
++        count = superblock[&quot;inodes_per_group&quot;]
++        self.readSizedChild(&quot;inode_bitmap[]&quot;, &quot;Inode bitmap&quot;, count / 8, InodeBitmap, &quot;Inode bitmap&quot;, count, 1)
++        addr = stream.tell() % 4096
++        if addr != 0:
++            addr = stream.tell() + (4096 - addr % 4096)
++            self.seek(addr)
++             
++        count = superblock[&quot;inodes_per_group&quot;]
++        size = superblock[&quot;inode_size&quot;] * count
++        inode_index = 1 + index * count
++        self.readSizedChild(&quot;inode_table[]&quot;, &quot;Inode table&quot;, size, InodeTable, inode_index, count)
++
++        size = (index+1) * superblock[&quot;blocks_per_group&quot;] * block_size
++        if stream.getSize() &lt; size:
++            size = stream.getSize()
++        size = size - stream.tell() 
++        self.read(&quot;data&quot;, &quot;%us&quot; % size, &quot;Data&quot;)
++
++    def updateParent(self, chunk):
++        desc = &quot;Group %s: %s&quot; % (self.index, humanFilesize(self.getSize()))
++        if self.superblock_copy:
++            desc = desc + &quot; (with superblock copy)&quot;
++        chunk.description = desc 
++
++    def seek(self, to):
++        size = to - self.getStream().tell()
++        assert 0 &lt;= size
++        if 0 &lt; size:
++            self.read(&quot;raw[]&quot;, &quot;%us&quot; % size, &quot;Raw&quot;)
++
++
+ class EXT2_FS(OnlyFormatChunksFilter):
+     def __init__(self, stream, parent):
+         OnlyFormatChunksFilter.__init__(self, &quot;ext2&quot;, &quot;EXT2 file system&quot;, stream, parent)
+@@ -326,35 +387,14 @@
+ 
+         # Read groups
+         self.seek(4096) 
+-        groups = self.doReadChild(&quot;groups&quot;, &quot;Groups&quot;, Groups, self.superblock.group_count).getFilter()
+-        inode_index = 1
+-        for i in range(0,2):
+-            group = groups[i]
+-        
+-            # Read block bitmap
+-            self.seek(group[&quot;block_bitmap&quot;] * self.block_size)
+-            count = self.superblock[&quot;blocks_per_group&quot;]
+-            self.readSizedChild(&quot;block_bitmap[]&quot;, &quot;Block bitmap&quot;, count / 8, BlockBitmap, count / 8, 0)
++        groups = self.doReadChild(&quot;group_desc&quot;, &quot;Group descriptors&quot;, GroupDescriptors, self.superblock.group_count, 0).getFilter()
++        self.seek(groups.getGroup(0)[&quot;block_bitmap&quot;] * self.block_size)
++        for i in range(0,self.superblock.group_count):
++            self.readChild(&quot;group[]&quot;, &quot;Group&quot;, Group, i)
+ 
+-            # Read inode bitmap
+-            assert (group[&quot;inode_bitmap&quot;] * self.block_size) == stream.tell()
+-            count = self.superblock[&quot;inodes_per_group&quot;]
+-            self.readSizedChild(&quot;inode_bitmap[]&quot;, &quot;Inode bitmap&quot;, count / 8, InodeBitmap, count / 8, 1)
+-            addr = stream.tell() % 4096
+-            if addr != 0:
+-                addr = stream.tell() + (4096 - addr % 4096)
+-                self.seek(addr)
+-                 
+-            count = self.superblock[&quot;inodes_per_group&quot;]
+-            inode_table = self.readChild(&quot;inode_table[]&quot;, &quot;Inode table&quot;, InodeTable, inode_index, count)
+-            inode_index += count
+-            return
+-            if i == 0:
+-                root = self[inode_table][2]
+-                self.readDirectory(root)
+-
+         size = stream.getSize() - stream.tell()
+-        self.read(&quot;end&quot;, &quot;%us&quot; % size, &quot;End (raw)&quot;)
++        if size != 0:
++            self.read(&quot;end&quot;, &quot;%us&quot; % size, &quot;End (raw)&quot;)
+ 
+     def seek(self, to):
+         size = to - self.getStream().tell()
+
+Modified: haypo/hachoir/stream/stream.py
+===================================================================
+--- haypo/hachoir/stream/stream.py	2005-12-20 13:51:03 UTC (rev 343)
++++ haypo/hachoir/stream/stream.py	2005-12-20 14:04:36 UTC (rev 344)
+@@ -132,7 +132,7 @@
+ class LimitedStream(Stream):
+     def __init__(self, stream, start=0, size=0, filename=None):
+         Stream.__init__(self, filename)
+-        assert 1&lt;size            
++        assert 1 &lt;= size            
+         assert 0 &lt;= start
+         assert not(stream.getLastPos()+1 &lt; start+size)
+         self._stream = stream.clone()
+
+Modified: haypo/hachoir/ui/ui_popup.py
+===================================================================
+--- haypo/hachoir/ui/ui_popup.py	2005-12-20 13:51:03 UTC (rev 343)
++++ haypo/hachoir/ui/ui_popup.py	2005-12-20 14:04:36 UTC (rev 344)
+@@ -44,11 +44,13 @@
+         self.convert.set_sensitive(is_format_chunk or is_filter_chunk)
+         self.set_format.set_sensitive(is_format_chunk)
+ 
+-        chunks = self.chunk.getParent().getChunks()
++        chunk_parent = self.chunk.getParent()
+         if self.chunk.getParent().getParent() != None:
+-            can_delete = (1 &lt; len(chunks)) or not is_format_chunk
++            can_delete = (1 &lt; len(chunk_parent)) or not is_format_chunk
+         else:
+-            can_delete = chunks.index(self.chunk) &lt; (len(chunks)-1) or not is_format_chunk
++            # TODO: Re-enable this
++            #can_delete = chunks.index(self.chunk) &lt; (len(chunk_parent)-1) or not is_format_chunk
++            can_delete = not is_format_chunk
+ 
+         self.delete_chunk.set_sensitive(can_delete)
+         can_copy = (self.chunk.size &lt; MAX_CHUNK_SIZE) and not is_filter_chunk
+
+Modified: haypo/hachoir/ui/ui_window.py
+===================================================================
+--- haypo/hachoir/ui/ui_window.py	2005-12-20 13:51:03 UTC (rev 343)
++++ haypo/hachoir/ui/ui_window.py	2005-12-20 14:04:36 UTC (rev 344)
+@@ -27,7 +27,7 @@
+             self.chunk_description.set_text(chunk.description)
+             self.chunk_address.set_text(str(chunk.addr))
+             self.chunk_size.set_text(str(chunk.size))
+-            self.chunk_type.set_text(chunk.__class__.__name__)
++            self.chunk_type.set_text(chunk.getFormat())
+         chunk_present = (chunk != None)
+         self.info_chunk_save = chunk_present
+         self.info_chunk_delete = chunk_present
+@@ -177,7 +177,7 @@
+     def build_table(self):
+         self.table_store = gtk.TreeStore(str, str, str, str, str, str)
+         self.table.set_model(self.table_store)
+-        self.table.connect(&quot;button_release_event&quot;, self.onTableClick)
++        self.table.connect(&quot;cursor-changed&quot;, self.onTableClick)
+         self.table.connect(&quot;row-activated&quot;, self.onTableRowActivate)
+         self.treeview_add_column(self.table, &quot;Address&quot;, 0)
+         self.treeview_add_column(self.table, &quot;Format&quot;, 1)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000248.html">[Happyboom-svn] r343 - haypo/hachoir
+</A></li>
+	<LI>Next message: <A HREF="000250.html">[Happyboom-svn] r345 - haypo/hachoir/plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#249">[ date ]</a>
+              <a href="thread.html#249">[ thread ]</a>
+              <a href="subject.html#249">[ subject ]</a>
+              <a href="author.html#249">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,295 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r300 - in haypo: . greycstoration_gimp greycstoration_gimp/po
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r300%20-%20in%20haypo%3A%20.%20greycstoration_gimp%20greycstoration_gimp/po&In-Reply-To=%3C200512060048.jB60mAU1016837%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000205.html">
+   <LINK REL="Next"  HREF="000207.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r300 - in haypo: . greycstoration_gimp greycstoration_gimp/po</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r300%20-%20in%20haypo%3A%20.%20greycstoration_gimp%20greycstoration_gimp/po&In-Reply-To=%3C200512060048.jB60mAU1016837%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r300 - in haypo: . greycstoration_gimp greycstoration_gimp/po">haypo at berlios.de
+       </A><BR>
+    <I>Tue Dec  6 01:48:10 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000205.html">[Happyboom-svn] r299 - in haypo/greycstoration_gimp: . src
+</A></li>
+        <LI>Next message: <A HREF="000207.html">[Happyboom-svn] r301 - haypo
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#206">[ date ]</a>
+              <a href="thread.html#206">[ thread ]</a>
+              <a href="subject.html#206">[ subject ]</a>
+              <a href="author.html#206">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-12-06 01:48:08 +0100 (Tue, 06 Dec 2005)
+New Revision: 300
+
+Added:
+   haypo/greycstoration_gimp/po/ChangeLog
+   haypo/tachatte.py
+Modified:
+   haypo/apache_log.py
+   haypo/greycstoration_gimp/configure.in
+Log:
+- GREYCstoration 0.2.0 is out :-)
+- Add Tachatte project
+- Fix apache_log Python header
+
+
+Modified: haypo/apache_log.py
+===================================================================
+--- haypo/apache_log.py	2005-12-05 17:54:32 UTC (rev 299)
++++ haypo/apache_log.py	2005-12-06 00:48:08 UTC (rev 300)
+@@ -1,8 +1,9 @@
+ #!/usr/bin/python
++# -*- coding: iso-8859-1 -*-
++#
+ # Python script to parse Apache log file
+-# 21 septembre 2005
++# Creation: 21 septembre 2005
+ # Author: Victor Stinner
+-#
+ 
+ import re, time, sys, traceback
+ 
+
+Modified: haypo/greycstoration_gimp/configure.in
+===================================================================
+--- haypo/greycstoration_gimp/configure.in	2005-12-05 17:54:32 UTC (rev 299)
++++ haypo/greycstoration_gimp/configure.in	2005-12-06 00:48:08 UTC (rev 300)
+@@ -3,8 +3,8 @@
+ m4_define([plugin_name], [greycstoration])
+ 
+ m4_define([plugin_major_version], [0])
+-m4_define([plugin_minor_version], [1])
+-m4_define([plugin_micro_version], [3])
++m4_define([plugin_minor_version], [2])
++m4_define([plugin_micro_version], [0])
+ m4_define([plugin_version],
+           [plugin_major_version.plugin_minor_version.plugin_micro_version])
+ 
+
+Added: haypo/greycstoration_gimp/po/ChangeLog
+===================================================================
+--- haypo/greycstoration_gimp/po/ChangeLog	2005-12-05 17:54:32 UTC (rev 299)
++++ haypo/greycstoration_gimp/po/ChangeLog	2005-12-06 00:48:08 UTC (rev 300)
+@@ -0,0 +1,3 @@
++2005-12-05 Victor Stinner
++
++        * Add russian translation, thanks Alexandre Prokoudine
+
+Added: haypo/tachatte.py
+===================================================================
+--- haypo/tachatte.py	2005-12-05 17:54:32 UTC (rev 299)
++++ haypo/tachatte.py	2005-12-06 00:48:08 UTC (rev 300)
+@@ -0,0 +1,170 @@
++#!/usr/bin/python
++# -*- coding: iso-8859-1 -*-
++#
++# Tachatte: obsursify C source code.
++# Creation: 6 decembre 2005
++# Author: Victor Stinner
++
++import sys, re, random, string
++
++class Word:
++    def __init__(self, old, new):
++        self.old = old
++        self.new = new
++
++class Tachatter:
++    def __init__(self, file):
++        # Options
++        self.encode_number = True
++        self.encode_string = True
++        self.obscure = \
++            [&quot;tachatte&quot;, &quot;zob&quot;, &quot;couille&quot;, &quot;merde&quot;,
++             &quot;poil&quot;, &quot;grossepute&quot;, &quot;putain&quot;, &quot;encule&quot;,
++             &quot;batard&quot;, &quot;tarace&quot;, &quot;chameau&quot;]
++        
++        # Attributes
++        self.word=None
++        self.thesaurus={}
++        self.exclude = [&quot;if&quot;, &quot;else&quot;, &quot;return&quot;, &quot;for&quot;, &quot;while&quot;, &quot;do&quot;]
++        self.file = file
++        self.regex_c_include = re.compile(&quot;^include&quot;)
++        self.c_include = &quot;&quot;
++        self.start_word = &quot;abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ&quot;
++        if self.encode_number:
++            self.start_word = self.start_word + &quot;0123456789&quot;
++        self.content = []
++        self.process()
++
++    def getContent(self):
++        text = &quot;&quot;
++        for item in self.content:
++            if isinstance(item, Word):
++                text = text + item.new
++            else:
++                text = text + item
++        return text                
++
++    def getHeaders(self):
++        content = self.c_include
++        for word in self.thesaurus:
++            item = self.thesaurus[word]
++            content = content + &quot;#define %s %s\n&quot; % (item.new, item.old)
++        return content
++
++    def readComment(self):
++        while True:
++            c=self.file.read(1)
++            assert c != &quot;&quot;
++            if c == &quot;*&quot;:
++                c = self.file.read(1)
++                if c == &quot;/&quot;:
++                    return
++
++    def readString(self, quote):
++        str = quote
++        while True:
++            c=self.file.read(1)
++            str = str + c
++            assert c != &quot;&quot;
++            if c == quote:
++                break
++        if self.encode_string:                
++            self.unputWord(str)                
++        else:
++            self.unput(str)
++
++    def process(self, c):
++        if self.word != None:
++            self.word = self.word + c
++        else:
++            self.word = c
++
++    def generateWord(self, new_thesaurus):
++        tries = 0
++        while tries &lt; 100:
++            tries = tries + 1
++            index = random.randint(0, len(self.obscure)-1)
++            obscure = self.obscure[index]
++            new = &quot;&quot;
++            for c in obscure:
++                if 70 &lt; random.randint(0,100):
++                    # Take 30% of upper case
++                    new = new + string.upper(c)
++                else:
++                    new = new + c
++            if new not in self.thesaurus \
++            and new not in new_thesaurus:
++                return new
++        raise Exception(&quot;No more shit!&quot;)
++        
++    def unput(self, str):
++        self.content.append(str)
++
++    def unputWord(self, word):
++        if word not in self.thesaurus:
++            key = len(self.thesaurus)+1
++            self.thesaurus[word] = Word(word, None) 
++        self.content.append( self.thesaurus[word] )
++
++    def processEOL(self, c):
++        if self.word != None:
++            if self.word in self.exclude:
++                self.unput(self.word)
++            else:
++                self.unputWord(self.word)
++            self.word = None
++        if c != None:
++            self.unput(c)
++
++    def process(self):       
++        while True:
++            c = self.file.read(1)
++            if c == '':
++                break
++            elif c==&quot;#&quot;:
++                line = self.file.readline()
++                if self.regex_c_include.match(line) != None:
++                    self.c_include = self.c_include + &quot;#%s&quot; % line 
++                else:
++                    self.unput('#'+line)
++            elif c in (&quot;'&quot;, &quot;\&quot;&quot;):
++                self.readString(c)
++            elif c==&quot;/&quot;:
++                c=f.read(1)
++                if c == &quot;/&quot;:
++                    line = self.file.readline()
++                    self.unput('/'+line)
++                elif c==&quot;*&quot;:
++                    self.readComment()
++                else:
++                    f.seek(-1,1)
++            elif c in self.start_word:
++                if self.word != None:
++                    self.word = self.word + c
++                else:
++                    self.word = c
++            else:
++                self.processEOL(c)
++        self.processEOL(None)
++        self.generateThesaurus()
++
++    def generateThesaurus(self):        
++        new_words = {}
++        for word in self.thesaurus:
++            item = self.thesaurus[word]
++            item.new = self.generateWord(new_words)
++            new_words[item.new] = item
++
++def usage():
++    print &quot;Usage: %s file.c&quot; % sys.argv[0]
++    sys.exit(1)
++
++if __name__==&quot;__main__&quot;:
++    if len(sys.argv)&lt;2:
++        usage()
++    f=open(sys.argv[1])
++    random.seed()
++    t=Tachatter(f)
++    sys.stdout.write(t.getHeaders())
++    sys.stdout.write(t.getContent())
++    f.close()
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000205.html">[Happyboom-svn] r299 - in haypo/greycstoration_gimp: . src
+</A></li>
+	<LI>Next message: <A HREF="000207.html">[Happyboom-svn] r301 - haypo
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#206">[ date ]</a>
+              <a href="thread.html#206">[ thread ]</a>
+              <a href="subject.html#206">[ subject ]</a>
+              <a href="author.html#206">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

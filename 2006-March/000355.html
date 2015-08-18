@@ -1,0 +1,89 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r451 - haypo/hachoir/trunk
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r451%20-%20haypo/hachoir/trunk&In-Reply-To=%3C200603142248.k2EMmGb8017024%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000353.html">
+   <LINK REL="Next"  HREF="000356.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r451 - haypo/hachoir/trunk</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r451%20-%20haypo/hachoir/trunk&In-Reply-To=%3C200603142248.k2EMmGb8017024%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r451 - haypo/hachoir/trunk">haypo at berlios.de
+       </A><BR>
+    <I>Tue Mar 14 23:48:16 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000353.html">[Happyboom-svn] r450 - in haypo/hachoir: . branches/hachoir-yield
+</A></li>
+        <LI>Next message: <A HREF="000356.html">[Happyboom-svn] r452 - haypo/hachoir/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#355">[ date ]</a>
+              <a href="thread.html#355">[ thread ]</a>
+              <a href="subject.html#355">[ subject ]</a>
+              <a href="author.html#355">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-14 23:48:16 +0100 (Tue, 14 Mar 2006)
+New Revision: 451
+
+Modified:
+   haypo/hachoir/trunk/reverse.py
+Log:
+Cleanup entropy() function
+
+
+Modified: haypo/hachoir/trunk/reverse.py
+===================================================================
+--- haypo/hachoir/trunk/reverse.py	2006-03-12 20:04:29 UTC (rev 450)
++++ haypo/hachoir/trunk/reverse.py	2006-03-14 22:48:16 UTC (rev 451)
+@@ -31,10 +31,9 @@
+         if count[i] != 0:
+             p.append( float(count[i]) / length )
+     h = 0
+-    n = len(p)
+     for p_i in p:
+-        h += p_i * math.log(p_i, 2)
+-    return -h
++        h -= p_i * math.log(p_i, 2)
++    return h
+ 
+ class Pattern:
+     def check(self, stream):
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000353.html">[Happyboom-svn] r450 - in haypo/hachoir: . branches/hachoir-yield
+</A></li>
+	<LI>Next message: <A HREF="000356.html">[Happyboom-svn] r452 - haypo/hachoir/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#355">[ date ]</a>
+              <a href="thread.html#355">[ thread ]</a>
+              <a href="subject.html#355">[ subject ]</a>
+              <a href="author.html#355">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

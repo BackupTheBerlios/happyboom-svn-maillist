@@ -1,0 +1,182 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r256 - haypo/mediawiki
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r256%20-%20haypo/mediawiki&In-Reply-To=%3C200511172120.jAHLK39D012427%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000162.html">
+   <LINK REL="Next"  HREF="000164.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r256 - haypo/mediawiki</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r256%20-%20haypo/mediawiki&In-Reply-To=%3C200511172120.jAHLK39D012427%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r256 - haypo/mediawiki">haypo at berlios.de
+       </A><BR>
+    <I>Thu Nov 17 22:20:03 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000162.html">[Happyboom-svn] r255 - in haypo: . mediawiki
+</A></li>
+        <LI>Next message: <A HREF="000164.html">[Happyboom-svn] r257 - greycstoration_gimp
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#163">[ date ]</a>
+              <a href="thread.html#163">[ thread ]</a>
+              <a href="subject.html#163">[ subject ]</a>
+              <a href="author.html#163">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-17 22:20:01 +0100 (Thu, 17 Nov 2005)
+New Revision: 256
+
+Modified:
+   haypo/mediawiki/import_pages.py
+Log:
+Improve import_pages: Download all pages at same time instead of download
+each page separatly.
+
+
+Modified: haypo/mediawiki/import_pages.py
+===================================================================
+--- haypo/mediawiki/import_pages.py	2005-11-17 20:34:48 UTC (rev 255)
++++ haypo/mediawiki/import_pages.py	2005-11-17 21:20:01 UTC (rev 256)
+@@ -23,6 +23,9 @@
+     arg = arg.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;'&quot;, &quot;\\'&quot;)
+     return &quot;'&quot;+arg+&quot;'&quot;
+ 
++def error(msg):
++    print msg
++
+ def warning(msg):
+     print msg
+ 
+@@ -49,54 +52,63 @@
+     for link in links:
+         page = link.getAttribute('href').encode(&quot;ASCII&quot;)
+         page = page.split(&quot;/&quot;)
+-        pages.append( page[-1] )
++        page = urllib.unquote(page[-1])
++        if type(page) == types.UnicodeType:
++            page = page.encode(&quot;UTF-8&quot;)            
++        pages.append( page )
+     return pages
+ 
+-def cleanupUrl(url):
+-    name = urllib.unquote(url)
+-    if type(name) != types.UnicodeType:
+-        name = unicode(name,&quot;UTF-8&quot;)
+-    return name.replace(&quot;_&quot;, &quot; &quot;)
+-
+ def importNamespace(url, dir, namespace, only_last):
+-    print &quot;Download list of pages ...&quot;
++    print &quot;Download document list.&quot;
+     pages = getAllpages(url, namespace)
+     if pages == None:
+-        print &quot;Error: Can't get list of pages.&quot;
++        print &quot;Error: Can't get document list.&quot;
+         sys.exit(1)
+-    i = 1
+-    for page in pages:
+-        print &quot;Download \&quot;%s\&quot; (%u/%u) ...&quot; \
+-                % (cleanupUrl(page), i, len(pages))
+-        args = {&quot;action&quot;: &quot;submit&quot;, &quot;pages&quot;: page}
+-        if only_last:
+-            args[&quot;curonly&quot;] = &quot;on&quot;
+-        data = download(url+&quot;Special:Export&quot;, args)
+-        if data == None:
+-            error(&quot;Fail to download page \&quot;%s\&quot;.&quot; % page)
+-            sys.exit(1)
+-        filename = os.path.join(dir, page)
+-        f = open(filename, 'w')
+-        f.write(data)
+-        f.close()
+-#        print &quot;  \--&gt; saved into \&quot;%s\&quot;.&quot; % (filename) 
+-        i = i + 1
++    if len(pages) == 0:
++        print &quot;(empty)&quot;
++        return
++    print &quot;Download XML data (%u documents) ...&quot; % len(pages)
++    args = { \
++        &quot;action&quot;: &quot;submit&quot;,
++        &quot;pages&quot;: &quot;\n&quot;.join(pages)
++    }
++    if only_last:
++        args[&quot;curonly&quot;] = &quot;on&quot;
++    data = download(url+&quot;Special:Export&quot;, args)
++    if data == None:
++        error(&quot;Fail to download namespace %s.&quot; % namespace)
++        sys.exit(1)
++    filename = os.path.join(dir, &quot;namespace_%s.xml&quot; % namespace)
++    f = open(filename, 'w')
++    f.write(data)
++    f.close()
+ 
+ def importPages(url, only_last=False):
++    # Add &quot;/&quot; prefix to url if needed
+     if url[-1] != &quot;/&quot;:
+         url = url + &quot;/&quot;
++
++    # Create pages/ if needed
+     dir = &quot;pages&quot;
+     try:
+       os.mkdir(dir)
+     except OSError, err:
+         if err[0] != 17:
+             raise
+-    nb_namespace = 16            
+-    for i in range(0,nb_namespace):    
+-        print &quot;================== Import namespace %u/%u ============== &quot; \
+-                % (i, nb_namespace-1)
+-        importNamespace(url, dir, i, only_last)
+ 
++    # Which namespaces have to be downloaded?
++    namespaces = range(0,16)
++    namespaces.remove(8) # MediaWiki
++    namespaces.remove(9) # Talk:MediaWiki
++    
++    # Download each namespace
++    i = 1
++    for namespace in namespaces: 
++        print &quot;================== Import namespace %u (%u/%u) ============== &quot; \
++                % (namespace, i, len(namespaces))
++        importNamespace(url, dir, namespace, only_last)
++        i = i + 1
++
+ def exportPages(url):
+     print &quot;TODO&quot;
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000162.html">[Happyboom-svn] r255 - in haypo: . mediawiki
+</A></li>
+	<LI>Next message: <A HREF="000164.html">[Happyboom-svn] r257 - greycstoration_gimp
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#163">[ date ]</a>
+              <a href="thread.html#163">[ thread ]</a>
+              <a href="subject.html#163">[ subject ]</a>
+              <a href="author.html#163">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

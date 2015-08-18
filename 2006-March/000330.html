@@ -1,0 +1,339 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r427 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/file/image
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-March/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r427%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/file/image&In-Reply-To=%3C200603040026.k240Q7gH032616%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000329.html">
+   <LINK REL="Next"  HREF="000331.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r427 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/file/image</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r427%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield%20branches/hachoir-yield/file/image&In-Reply-To=%3C200603040026.k240Q7gH032616%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r427 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/file/image">haypo at berlios.de
+       </A><BR>
+    <I>Sat Mar  4 01:26:07 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000329.html">[Happyboom-svn] r426 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field
+</A></li>
+        <LI>Next message: <A HREF="000331.html">[Happyboom-svn] r428 - in haypo/hachoir: . branches/hachoir-yield
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#330">[ date ]</a>
+              <a href="thread.html#330">[ thread ]</a>
+              <a href="subject.html#330">[ subject ]</a>
+              <a href="author.html#330">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-03-04 01:25:53 +0100 (Sat, 04 Mar 2006)
+New Revision: 427
+
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/doc.txt
+   haypo/hachoir/branches/hachoir-yield/file/image/bmp.py
+   haypo/hachoir/branches/hachoir-yield/file/image/pcx.py
+   haypo/hachoir/branches/hachoir-yield/file/image/png.py
+   haypo/hachoir/branches/hachoir-yield/hachoir.py
+   haypo/hachoir/branches/hachoir-yield/metadata.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r21 at haypopc</A>:  haypo | 2006-03-03 01:25:02 +0100
+  * Move all metadata things to metadata.py file
+  * Write a function to create meta datas from a FieldSet instance (choose
+    right class by the instance class)
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:20
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:21
+
+Modified: haypo/hachoir/branches/hachoir-yield/doc.txt
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/doc.txt	2006-03-04 00:25:12 UTC (rev 426)
++++ haypo/hachoir/branches/hachoir-yield/doc.txt	2006-03-04 00:25:53 UTC (rev 427)
+@@ -1,5 +1,5 @@
+ Introduction
+-------------
++============
+ 
+ Hachoir is a library written in Python to access binary streams using
+ nice API. It aims to be easy to use (hide complex mechanisms) and only read
+@@ -106,7 +106,7 @@
+  * is_field_set: If the value is True, the field contains other fields, it's
+    a field set.
+ 
+-Example:
++Examples:
+ &gt;&gt;&gt; field = format[&quot;text&quot;]
+ &gt;&gt;&gt; field.name
+ 'text'
+@@ -253,3 +253,9 @@
+  * FieldSet.connect(event, handler)
+  * FieldSet.raiseEvent(event,  arg1, arg2, ...)
+ 
++Get more informations
++=====================
++
++Hachoir website:
++   <A HREF="http://www.haypocalc.com/wiki/Hachoir">http://www.haypocalc.com/wiki/Hachoir</A>
++
+
+Modified: haypo/hachoir/branches/hachoir-yield/file/image/bmp.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/file/image/bmp.py	2006-03-04 00:25:12 UTC (rev 426)
++++ haypo/hachoir/branches/hachoir-yield/file/image/bmp.py	2006-03-04 00:25:53 UTC (rev 427)
+@@ -7,22 +7,7 @@
+ &quot;&quot;&quot;
+ 
+ from field import FieldSet, Integer, String, ParserError
+-from metadata import ImageMetaData
+ 
+-class BmpMetaData(ImageMetaData):
+-    def __init__(self, bmp):
+-        width, height = bmp[&quot;width&quot;].value, bmp[&quot;height&quot;].value
+-        bpp = bmp[&quot;bpp&quot;].value
+-        if &quot;used_colors&quot; in bmp:
+-            nb_colors = bmp[&quot;used_colors&quot;].value 
+-        else:
+-            nb_colors = None
+-        if bmp[&quot;compression&quot;].value != 0:
+-            compression = &quot;(compressed)&quot;
+-        else:
+-            compression = &quot;No&quot;
+-        ImageMetaData.__init__(self, width, height, bpp, nb_colors=nb_colors)
+-
+ class BmpFile(FieldSet):
+     mime_types = [&quot;image/x-ms-bmp&quot;, &quot;image/x-bmp&quot;]
+     endian = &quot;&lt;&quot;
+
+Modified: haypo/hachoir/branches/hachoir-yield/file/image/pcx.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/file/image/pcx.py	2006-03-04 00:25:12 UTC (rev 426)
++++ haypo/hachoir/branches/hachoir-yield/file/image/pcx.py	2006-03-04 00:25:53 UTC (rev 427)
+@@ -4,14 +4,7 @@
+ 
+ from field import FieldSet, Integer, String
+ from generic.image import Palette
+-from metadata import ImageMetaData
+ 
+-class PcxMetaData(ImageMetaData):
+-    def __init__(self, pcx):
+-        width, height = pcx[&quot;xmax&quot;].value+1, pcx[&quot;ymax&quot;].value+1
+-        bpp = pcx[&quot;bpp&quot;].value
+-        ImageMetaData.__init__(self, width, height, bpp)
+-
+ class PcxFile(FieldSet):
+     endian = &quot;&lt;&quot;
+     mime_types = &quot;image/x-pcx&quot;
+
+Modified: haypo/hachoir/branches/hachoir-yield/file/image/png.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/file/image/png.py	2006-03-04 00:25:12 UTC (rev 426)
++++ haypo/hachoir/branches/hachoir-yield/file/image/png.py	2006-03-04 00:25:53 UTC (rev 427)
+@@ -1,29 +1,7 @@
+ from field import FieldSet, Integer, String, IntegerHex, Bit, Bits, ParserError
+ from generic.image import RGB
+ from bits import str2hex
+-from metadata import ImageMetaData
+ 
+-class PngMetaData(ImageMetaData):
+-    def __init__(self, png):
+-        header = png[&quot;/header/content&quot;]
+-        color_type = header[&quot;color_type&quot;]
+-        width, height = header[&quot;width&quot;].value, header[&quot;height&quot;].value
+-        bpp = header[&quot;bpp&quot;].value
+-        if color_type[&quot;palette&quot;].value:
+-            nb_colors = png[&quot;/palette/content&quot;].nb_colors
+-        else:
+-            nb_colors = None
+-        if color_type[&quot;alpha&quot;].value:
+-            format = &quot;RGBA&quot;
+-        else:
+-            format = &quot;RGB&quot;
+-#        if header[&quot;compression&quot;].value != 0:
+-#            compression = &quot;(compressed)&quot;
+-#        else:
+-#            compression = &quot;No&quot;
+-        ImageMetaData.__init__(self, width, height, bpp, \
+-            nb_colors=nb_colors, format=format)
+-
+ class HeaderFlags(FieldSet):
+     def createFields(self):
+         yield Bit(self, &quot;palette&quot;, &quot;Palette used?&quot;)
+
+Modified: haypo/hachoir/branches/hachoir-yield/hachoir.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:25:12 UTC (rev 426)
++++ haypo/hachoir/branches/hachoir-yield/hachoir.py	2006-03-04 00:25:53 UTC (rev 427)
+@@ -8,6 +8,7 @@
+ from log import log
+ from error import error
+ from mime import getStreamMime
++from metadata import createMetaData
+ import sys, os
+ 
+ def usage():
+@@ -32,18 +33,25 @@
+ 
+     # Look for right plugin
+     plugin = guessPlugin(stream, filename, None)
+-    if plugin != None:
+-        # Create field set and display it
+-        field_set = plugin(None, &quot;file&quot;, stream)
+-        displayFieldSet(field_set, 1)
+-#        meta = PngMetaData(png) ; print meta
+-#        meta = PcxMetaData(pcx) ; print meta
+-#        meta = BmpMetaData(bmp) ; print meta
+-    else:
++    if plugin == None:
+         msg  = &quot;Sorry, can't find plugin for file \&quot;%s\&quot;!&quot; % filename
+         mimes = [ mime[0] for mime in getStreamMime(stream, filename) ]
+         msg += &quot;\n\nFile mimes: %s&quot; % &quot;, &quot;.join(mimes)
+         error(msg)
++        sys.exit(1)
+ 
++    # Create field set and display it
++    field_set = plugin(None, &quot;file&quot;, stream)
++
++    # Display the field set 
++#    displayFieldSet(field_set, 1)
++
++    # Metadata
++    metadata = createMetaData(field_set)
++    if metadata != None:
++        print metadata
++    else:
++        warning(&quot;Can't create meta datas&quot;)
++
+ if __name__ == &quot;__main__&quot;:
+     main()
+
+Modified: haypo/hachoir/branches/hachoir-yield/metadata.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/metadata.py	2006-03-04 00:25:12 UTC (rev 426)
++++ haypo/hachoir/branches/hachoir-yield/metadata.py	2006-03-04 00:25:53 UTC (rev 427)
+@@ -1,5 +1,10 @@
++from file.image.png import PngFile
++from file.image.pcx import PcxFile
++from file.image.bmp import BmpFile
++
+ class MetaData:
+-    pass
++    def __str__(self):
++        raise NotImplementedError()
+ 
+ class ImageMetaData(MetaData):
+     def __init__(self, width, height, bits_per_pixel, **kw):
+@@ -13,7 +18,7 @@
+         self.format = kw.get(&quot;format&quot;, None)
+ 
+     def __str__(self):
+-        text = &quot;ImageMetaData &lt;&quot;
++        text = &quot;Image: &quot;
+         if self.format != None:
+             text += &quot;format=%s, &quot; % self.format 
+         text += &quot;size=%sx%s, bpp=%s&quot; % \
+@@ -22,6 +27,62 @@
+             text += &quot;, nb_colors=%s&quot; % self.nb_colors
+         if self.compression != None:
+             text += &quot;, compression=%s&quot; % self.compression
+-        return text+&quot;&gt;&quot;
+-    
++        return text
+ 
++class BmpMetaData(ImageMetaData):
++    def __init__(self, bmp):
++        width, height = bmp[&quot;width&quot;].value, bmp[&quot;height&quot;].value
++        bpp = bmp[&quot;bpp&quot;].value
++        if &quot;used_colors&quot; in bmp:
++            nb_colors = bmp[&quot;used_colors&quot;].value 
++        else:
++            nb_colors = None
++        if bmp[&quot;compression&quot;].value != 0:
++            compression = &quot;(compressed)&quot;
++        else:
++            compression = &quot;No&quot;
++        ImageMetaData.__init__(self, width, height, bpp, nb_colors=nb_colors)
++
++class PcxMetaData(ImageMetaData):
++    def __init__(self, pcx):
++        width, height = pcx[&quot;xmax&quot;].value+1, pcx[&quot;ymax&quot;].value+1
++        bpp = pcx[&quot;bpp&quot;].value
++        ImageMetaData.__init__(self, width, height, bpp)
++
++class PngMetaData(ImageMetaData):
++    def __init__(self, png):
++        header = png[&quot;/header/content&quot;]
++        color_type = header[&quot;color_type&quot;]
++        width, height = header[&quot;width&quot;].value, header[&quot;height&quot;].value
++        bpp = header[&quot;bpp&quot;].value
++        if color_type[&quot;palette&quot;].value:
++            nb_colors = png[&quot;/palette/content&quot;].nb_colors
++        else:
++            nb_colors = None
++        if color_type[&quot;alpha&quot;].value:
++            format = &quot;RGBA&quot;
++        else:
++            format = &quot;RGB&quot;
++#        if header[&quot;compression&quot;].value != 0:
++#            compression = &quot;(compressed)&quot;
++#        else:
++#            compression = &quot;No&quot;
++        ImageMetaData.__init__(self, width, height, bpp, \
++            nb_colors=nb_colors, format=format)
++
++_metadata_class = {
++    PngFile: PngMetaData,
++    PcxFile: PcxMetaData,
++    BmpFile: BmpMetaData
++}    
++
++def createMetaData(field_set):
++    &quot;&quot;&quot;
++    Create a MetaData class from a FieldSet instance.
++    Returns None if we don't know about this format
++    &quot;&quot;&quot;
++    cls = field_set.__class__
++    if cls not in _metadata_class:
++        return None
++    return _metadata_class[cls] (field_set)
++
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000329.html">[Happyboom-svn] r426 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field
+</A></li>
+	<LI>Next message: <A HREF="000331.html">[Happyboom-svn] r428 - in haypo/hachoir: . branches/hachoir-yield
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#330">[ date ]</a>
+              <a href="thread.html#330">[ thread ]</a>
+              <a href="subject.html#330">[ subject ]</a>
+              <a href="author.html#330">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

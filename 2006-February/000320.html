@@ -1,0 +1,108 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r416 - in haypo/hachoir: . branches/hachoir-yield/field
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-February/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r416%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield/field&In-Reply-To=%3C200602281157.k1SBvH8e013151%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000319.html">
+   <LINK REL="Next"  HREF="000321.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r416 - in haypo/hachoir: . branches/hachoir-yield/field</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r416%20-%20in%20haypo/hachoir%3A%20.%20branches/hachoir-yield/field&In-Reply-To=%3C200602281157.k1SBvH8e013151%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r416 - in haypo/hachoir: . branches/hachoir-yield/field">haypo at berlios.de
+       </A><BR>
+    <I>Tue Feb 28 12:57:17 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000319.html">[Happyboom-svn] r415 - in haypo/hachoir: . branches/hachoir-yield
+</A></li>
+        <LI>Next message: <A HREF="000321.html">[Happyboom-svn] r417 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/unit_test
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#320">[ date ]</a>
+              <a href="thread.html#320">[ thread ]</a>
+              <a href="subject.html#320">[ subject ]</a>
+              <a href="author.html#320">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-02-28 12:57:13 +0100 (Tue, 28 Feb 2006)
+New Revision: 416
+
+Modified:
+   haypo/hachoir/
+   haypo/hachoir/branches/hachoir-yield/field/field_set.py
+Log:
+ <A HREF="https://lists.berlios.de/mailman/listinfo/happyboom-svn">r6 at haypopc</A>:  haypo | 2006-02-28 12:56:41 +0100
+ Add docstring and root attribute to FieldSet
+
+
+
+Property changes on: haypo/hachoir
+___________________________________________________________________
+Name: svk:merge
+   - f1182766-d90d-0410-bb94-dc577a833def:/hachoir:5
+   + f1182766-d90d-0410-bb94-dc577a833def:/hachoir:6
+
+Modified: haypo/hachoir/branches/hachoir-yield/field/field_set.py
+===================================================================
+--- haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-02-28 11:56:53 UTC (rev 415)
++++ haypo/hachoir/branches/hachoir-yield/field/field_set.py	2006-02-28 11:57:13 UTC (rev 416)
+@@ -6,6 +6,11 @@
+     pass
+ 
+ class FieldSet(Field):
++    &quot;&quot;&quot;
++    Ordered list of fields. Use operator [] to access fields using their
++    name (field names are unique in a field set, but not in the whole
++    document).
++    &quot;&quot;&quot;
+     is_field_set = True
+ 
+     def __init__(self, parent, name, stream, description=None):
+@@ -18,6 +23,10 @@
+         self._size = None
+         self._total_field_size = 0
+         self.endian = &quot;!&quot;
++        if parent != None:
++            self.root = parent.root
++        else:
++            self.root = self
+ 
+     def __str__(self):
+         return &quot;(...)&quot; 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000319.html">[Happyboom-svn] r415 - in haypo/hachoir: . branches/hachoir-yield
+</A></li>
+	<LI>Next message: <A HREF="000321.html">[Happyboom-svn] r417 - in haypo/hachoir: . branches/hachoir-yield branches/hachoir-yield/field branches/hachoir-yield/unit_test
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#320">[ date ]</a>
+              <a href="thread.html#320">[ thread ]</a>
+              <a href="subject.html#320">[ subject ]</a>
+              <a href="author.html#320">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

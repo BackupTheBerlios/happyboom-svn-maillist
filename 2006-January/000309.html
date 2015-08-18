@@ -1,0 +1,469 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r405 - in haypo/hachoir/trunk: . stream
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2006-January/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r405%20-%20in%20haypo/hachoir/trunk%3A%20.%20stream&In-Reply-To=%3C200601200231.k0K2VKLJ014339%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000308.html">
+   <LINK REL="Next"  HREF="000310.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r405 - in haypo/hachoir/trunk: . stream</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r405%20-%20in%20haypo/hachoir/trunk%3A%20.%20stream&In-Reply-To=%3C200601200231.k0K2VKLJ014339%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r405 - in haypo/hachoir/trunk: . stream">haypo at berlios.de
+       </A><BR>
+    <I>Fri Jan 20 03:31:20 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000308.html">[Happyboom-svn] r404 - haypo/hachoir/trunk/plugins
+</A></li>
+        <LI>Next message: <A HREF="000310.html">[Happyboom-svn] r406 - in haypo/hachoir/trunk: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#309">[ date ]</a>
+              <a href="thread.html#309">[ thread ]</a>
+              <a href="subject.html#309">[ subject ]</a>
+              <a href="author.html#309">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2006-01-20 03:30:52 +0100 (Fri, 20 Jan 2006)
+New Revision: 405
+
+Added:
+   haypo/hachoir/trunk/int_values.py
+Modified:
+   haypo/hachoir/trunk/hachoir.py
+   haypo/hachoir/trunk/hachoir_class.py
+   haypo/hachoir/trunk/reverse.py
+   haypo/hachoir/trunk/stream/file.py
+Log:
+- Check if a file is empty when loading it
+- Need Python 2.4 and check Python version at startup
+
+
+Modified: haypo/hachoir/trunk/hachoir.py
+===================================================================
+--- haypo/hachoir/trunk/hachoir.py	2006-01-09 04:26:32 UTC (rev 404)
++++ haypo/hachoir/trunk/hachoir.py	2006-01-20 02:30:52 UTC (rev 405)
+@@ -72,6 +72,10 @@
+     try:        
+         print &quot;%s version %s&quot; % (PROGRAM, VERSION)
+         print &quot;%s\n&quot; % WEBSITE
++
++        if sys.hexversion &lt; 0x02040000:
++            print &quot;Fatal error: you need Python 2.4 or greater!&quot;
++            sys.exit(1)
+     
+         import imp
+         plugins_dir = os.path.join(os.path.dirname(__file__), &quot;plugins&quot;)
+
+Modified: haypo/hachoir/trunk/hachoir_class.py
+===================================================================
+--- haypo/hachoir/trunk/hachoir_class.py	2006-01-09 04:26:32 UTC (rev 404)
++++ haypo/hachoir/trunk/hachoir_class.py	2006-01-20 02:30:52 UTC (rev 405)
+@@ -92,6 +92,11 @@
+         try:
+             print &quot;Load file %s&quot; % filename
+             file = open(filename, 'r')
++            file.seek(0,2)
++            if file.tell() == 0:
++                error(&quot;Error: file \&quot;%s\&quot; is empty.&quot; % filename)
++                return
++            file.seek(0)
+             stream = FileStream(file, filename)
+         except IOError, err:
+             error(&quot;Can't load file %s:\n%s&quot; % (filename, err))
+
+Added: haypo/hachoir/trunk/int_values.py
+===================================================================
+--- haypo/hachoir/trunk/int_values.py	2006-01-09 04:26:32 UTC (rev 404)
++++ haypo/hachoir/trunk/int_values.py	2006-01-20 02:30:52 UTC (rev 405)
+@@ -0,0 +1,160 @@
++# 10
++# (10,12)
++# [1,2,3]
++# [1, (3,4), 6]        
++class IntValues:
++    def __init__(self, data=None):
++        self.items = None
++        self.min = None
++        self.max = None
++        if data != None:
++            self.set(data)
++
++    def __hash__(self):
++        return hash(self.items)
++
++    def hasValue(self, value):
++        return self._in(self.items, value)
++        
++    def _in(self, values, x):
++        if isinstance(values, tuple):
++            return values[0] &lt;= x and x &lt;= values[1]
++        elif isinstance(values, list):
++            result = 0
++            for item in values:
++                if self._in(item, x):
++                    return True
++            return False
++        elif values != None:        
++            return values == x
++        else:
++            return False
++
++    def set(self, value):
++        self.items = None
++        self.min = self.max = None
++        self.add(value)
++
++    def __str__(self):
++        return str(self.items)        
++
++    def isEmpty(self):
++        return self.items == None
++
++    def __len__(self):
++        return self._length(self.items)
++        
++    def _length(self, values):
++        if isinstance(values, tuple):
++            return values[1] - values[0] + 1
++        elif isinstance(values, list):
++            result = 0
++            for item in values:
++                result += self._length(item)
++            return result
++        elif values != None:        
++            return 1 
++        else:
++            return 0
++
++    def values(self):
++        return self._values(self.items)
++
++    def __iter__(self):
++        for x in self.values():
++            yield x
++
++    def _values(self, values):
++        if isinstance(values, tuple):
++            return range(values[0], values[1]+1)
++        elif isinstance(values, list):
++            result = []
++            for item in values:
++                result.extend( self._values(item) )
++            return result
++        elif values != None:        
++            return [values]
++        else:
++            return []
++
++    def add(self, new):
++        if isinstance(new, IntValues):
++            new = new.items
++
++        # TODO: Fix that!
++        if isinstance(new, int):
++            if self.min == None or new &lt; self.min:
++                self.min = new
++            if self.max == None or new &gt; self.max:
++                self.max = new
++        elif isinstance(new, tuple):
++            if self.min == None or new[0] &lt; self.min:
++                self.min = new[0]
++            if self.max == None or new[1] &gt; self.max:
++                self.max = new[1]
++
++        if isinstance(self.items, tuple):
++            if isinstance(new, tuple):
++                if self.items[0] &lt;= new[0] and new[1] &lt;= self.items[1]:
++                    return
++                assert False # TODO: Finish ..
++            elif isinstance(new, int):
++                if (new - self.items[1]) == 1:
++                    self.items = (self.items[0], new)
++                else:
++                    self.items = [self.items, new]
++            else:            
++                assert False # TODO: Finish ..
++            return
++        elif isinstance(self.items, list):
++            for index in range(0, len(self.items)):
++                item = self.items[index]
++                if item == new:
++                    return
++                print &quot;two&quot;
++                if isinstance(item, int) and new &lt; item:
++                    self.items.insert(index-1, new)
++                    return
++                if isinstance(item, tuple) and (new-item[1])==1:
++                    self.items[index] = (item[0], new)
++                    return
++                if isinstance(new, tuple) and new[1] &lt; item:
++                    self.items.insert(index-1, new)
++                    return
++
++            # Can create an interval?
++            item = self.items[-1]
++            if isinstance(item, int) and isinstance(new, int) and (new-item) == 1:
++                self.items[-1] = (item, new)
++                return
++
++            if isinstance(new, list):
++                # Extend current vector
++                for item in new:
++                    self.add(item)
++            else:
++                # Just append value to vector
++                self.items.append(new)
++        elif self.items != None:        
++            if isinstance(self.items, int):
++                if isinstance(new, int):
++                    if (self.items-new) == 1:
++                        self.items = (new, self.items)
++                        return
++                    elif (self.items-new) == -1:
++                        self.items = (self.items, new)
++                        return
++            self.items = [self.items]
++            self.add(new)
++        else:
++            self.items = new
++
++    def intersection(self, second):
++        first = set( self.values() ) 
++        second = set( second.values() )
++        result = first.intersection(second)
++        if 0 &lt; len(result):
++            result = list(result)
++        else:
++            result = None
++        return IntValues(result)
+
+Modified: haypo/hachoir/trunk/reverse.py
+===================================================================
+--- haypo/hachoir/trunk/reverse.py	2006-01-09 04:26:32 UTC (rev 404)
++++ haypo/hachoir/trunk/reverse.py	2006-01-20 02:30:52 UTC (rev 405)
+@@ -1,14 +1,12 @@
+-from stream.file import FileStream
+-from plugins.worms2 import Worms2_Dir_File
+-from plugins.gzip import GzipFile
+ from format import getFormatSize, getFormatEndian
+-from bits import countBits, long2bin, str2hex
++from bits import countBits
+ from error import error, warning
+ from chunk import FormatChunk
+ from default import EmptyFilter
+ from tools import humanFilesize
++from int_values import IntValues
+ import config
+-import sys, math
++import math
+ 
+ def entropy(stream):
+     assert 0 &lt; stream.getSize()
+@@ -81,155 +79,7 @@
+             stream.seek(last_ok)
+             filter.addPadding()
+             return filter
+-        
+-class IntValues:
+-    def __init__(self, data=None):
+-        self.items = None
+-        self.min = None
+-        self.max = None
+-        if data != None:
+-            self.set(data)
+ 
+-    def __hash__(self):
+-        return hash(self.items)
+-
+-    def hasValue(self, value):
+-        return self._in(self.items, value)
+-        
+-    def _in(self, values, x):
+-        if isinstance(values, tuple):
+-            return values[0] &lt;= x and x &lt;= values[1]
+-        elif isinstance(values, list):
+-            result = 0
+-            for item in values:
+-                if self._in(item, x):
+-                    return True
+-            return False
+-        elif values != None:        
+-            return values == x
+-        else:
+-            return False
+-
+-    def set(self, value):
+-        self.items = None
+-        self.min = self.max = None
+-        self.add(value)
+-
+-    def __str__(self):
+-        return str(self.items)        
+-
+-    def isEmpty(self):
+-        return self.items == None
+-
+-    def __len__(self):
+-        return self._length(self.items)
+-        
+-    def _length(self, values):
+-        if isinstance(values, tuple):
+-            return values[1] - values[0] + 1
+-        elif isinstance(values, list):
+-            result = 0
+-            for item in values:
+-                result += self._length(item)
+-            return result
+-        elif values != None:        
+-            return 1 
+-        else:
+-            return 0
+-
+-    def values(self):
+-        return self._values(self.items)
+-        
+-    def _values(self, values):
+-        if isinstance(values, tuple):
+-            return range(values[0], values[1]+1)
+-        elif isinstance(values, list):
+-            result = []
+-            for item in values:
+-                result.extend( self._values(item) )
+-            return result
+-        elif values != None:        
+-            return [values]
+-        else:
+-            return []
+-
+-    def add(self, new):
+-        if isinstance(new, IntValues):
+-            new = new.items
+-
+-        # TODO: Fix that!
+-        if isinstance(new, int):
+-            if self.min == None or new &lt; self.min:
+-                self.min = new
+-            if self.max == None or new &gt; self.max:
+-                self.max = new
+-        elif isinstance(new, tuple):
+-            if self.min == None or new[0] &lt; self.min:
+-                self.min = new[0]
+-            if self.max == None or new[1] &gt; self.max:
+-                self.max = new[1]
+-
+-        if isinstance(self.items, tuple):
+-            if isinstance(new, tuple):
+-                if self.items[0] &lt;= new[0] and new[1] &lt;= self.items[1]:
+-                    return
+-                assert False # TODO: Finish ..
+-            elif isinstance(new, int):
+-                if (new - self.items[1]) == 1:
+-                    self.items = (self.items[0], new)
+-                else:
+-                    self.items = [self.items, new]
+-            else:            
+-                assert False # TODO: Finish ..
+-            return
+-        elif isinstance(self.items, list):
+-            for index in range(0, len(self.items)):
+-                item = self.items[index]
+-                if item == new:
+-                    return
+-                if isinstance(item, int) and new &lt; item:
+-                    self.items.insert(index-1, new)
+-                    return
+-                if isinstance(item, tuple) and (new-item[1])==1:
+-                    self.items[index] = (item[0], new)
+-                    return
+-
+-            # Can create an interval?
+-            item = self.items[-1]
+-            if isinstance(item, int) and (new-item) == 1:
+-                self.items[-1] = (item, new)
+-                return
+-
+-            if isinstance(new, list):
+-                # Extend current vector
+-                for item in new:
+-                    self.add(item)
+-            else:
+-                # Just append value to vector
+-                self.items.append(new)
+-        elif self.items != None:        
+-            if isinstance(self.items, int) and isinstance(new, int):
+-                if (self.items-new) == 1:
+-                    self.items = (new, self.items)
+-                    return
+-                elif (self.items-new) == -1:
+-                    self.items = (self.items, new)
+-                    return
+-            self.items = [self.items]
+-            self.add(new)
+-        else:
+-            self.items = new
+-
+-    def intersection(self, second):
+-        first = set( self.values() ) 
+-        second = set( second.values() )
+-        result = first.intersection(second)
+-        if 0 &lt; len(result):
+-            result = list(result)
+-        else:
+-            result = None
+-        return IntValues(result)
+-
+ class Field:
+     def __init__(self, id, type):
+         self.id = id    
+
+Modified: haypo/hachoir/trunk/stream/file.py
+===================================================================
+--- haypo/hachoir/trunk/stream/file.py	2006-01-09 04:26:32 UTC (rev 404)
++++ haypo/hachoir/trunk/stream/file.py	2006-01-20 02:30:52 UTC (rev 405)
+@@ -79,6 +79,8 @@
+             self._file.seek(0,2) # Seek to end
+             self._size = self._file.tell()
+             self._file.seek(0,0) # Seel to beginning
++            if self._size == 0:
++                raise Exception(&quot;Error: file %s is empty!&quot; % filename)
+             self._seed = 0
+             if self._size != 0:
+                 self._end = self._size-1
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000308.html">[Happyboom-svn] r404 - haypo/hachoir/trunk/plugins
+</A></li>
+	<LI>Next message: <A HREF="000310.html">[Happyboom-svn] r406 - in haypo/hachoir/trunk: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#309">[ date ]</a>
+              <a href="thread.html#309">[ thread ]</a>
+              <a href="subject.html#309">[ subject ]</a>
+              <a href="author.html#309">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

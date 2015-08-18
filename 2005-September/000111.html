@@ -1,0 +1,171 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r204 - in boomboom/curses_client: . items
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r204%20-%20in%20boomboom/curses_client%3A%20.%20items&In-Reply-To=%3C200509181022.j8IAMNKg032357%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000110.html">
+   <LINK REL="Next"  HREF="000112.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r204 - in boomboom/curses_client: . items</H1>
+    <B>Damien Boucard at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r204%20-%20in%20boomboom/curses_client%3A%20.%20items&In-Reply-To=%3C200509181022.j8IAMNKg032357%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r204 - in boomboom/curses_client: . items">dboucard at berlios.de
+       </A><BR>
+    <I>Sun Sep 18 12:22:23 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000110.html">[Happyboom-svn] r203 - happyboom/trunk/client
+</A></li>
+        <LI>Next message: <A HREF="000112.html">[Happyboom-svn] r205 - boomboom/client
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#111">[ date ]</a>
+              <a href="thread.html#111">[ thread ]</a>
+              <a href="subject.html#111">[ subject ]</a>
+              <a href="author.html#111">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: dboucard
+Date: 2005-09-18 12:22:23 +0200 (Sun, 18 Sep 2005)
+New Revision: 204
+
+Modified:
+   boomboom/curses_client/display.py
+   boomboom/curses_client/items/character.py
+   boomboom/curses_client/items/projectile.py
+   boomboom/curses_client/items/weapon.py
+   boomboom/curses_client/items/world.py
+Log:
+adding color support for curses client
+
+
+Modified: boomboom/curses_client/display.py
+===================================================================
+--- boomboom/curses_client/display.py	2005-09-18 09:41:10 UTC (rev 203)
++++ boomboom/curses_client/display.py	2005-09-18 10:22:23 UTC (rev 204)
+@@ -44,6 +44,8 @@
+         
+     def mainLoop(self):
+         &quot;&quot;&quot; Display loop. &quot;&quot;&quot;
++        for i in range(1,7):
++            curses.init_pair(i, i, curses.COLOR_BLACK)
+         while not self.stopped:
+             live_begin = time.time()
+             
+
+Modified: boomboom/curses_client/items/character.py
+===================================================================
+--- boomboom/curses_client/items/character.py	2005-09-18 09:41:10 UTC (rev 203)
++++ boomboom/curses_client/items/character.py	2005-09-18 10:22:23 UTC (rev 204)
+@@ -19,5 +19,5 @@
+     def draw(self, screen):
+         if self.x == None: return
+         x, y = convertXY(screen, int(self.x), int(self.y))
+-        screen.addstr(y, x, &quot; oo&quot;)
+-        screen.addstr(y+1, x, &quot;(ww)&quot;+&quot; &quot;*screen.getmaxyx()[1])
++        screen.addstr(y, x, &quot;oo&quot;)
++        screen.addstr(y+1, x-1, &quot;(ww)&quot;+&quot; &quot;*screen.getmaxyx()[1])
+
+Modified: boomboom/curses_client/items/projectile.py
+===================================================================
+--- boomboom/curses_client/items/projectile.py	2005-09-18 09:41:10 UTC (rev 203)
++++ boomboom/curses_client/items/projectile.py	2005-09-18 10:22:23 UTC (rev 204)
+@@ -28,7 +28,7 @@
+         x, y = convertXY(screen, int(self.x), int(self.y))
+         if x &lt; 0 or maxx &lt; x: return
+         if y &lt; 0 or maxy &lt; y: return
+-        screen.addstr(y,x,&quot;)&quot;+&quot; &quot;*maxx)
++        screen.addstr(y,x,&quot;)&quot;+&quot; &quot;*maxx, curses.color_pair(curses.COLOR_YELLOW))
+         
+     def evt_projectile_move(self, x, y):
+         self.x, self.y = (x, y)
+
+Modified: boomboom/curses_client/items/weapon.py
+===================================================================
+--- boomboom/curses_client/items/weapon.py	2005-09-18 09:41:10 UTC (rev 203)
++++ boomboom/curses_client/items/weapon.py	2005-09-18 10:22:23 UTC (rev 204)
+@@ -6,7 +6,6 @@
+ &quot;&quot;&quot;
+ from curses_client.item import Item
+ from curses_client.curses_tools import convertXY
+-from happyboom.common.log import log
+ import curses 
+ 
+ class Weapon(Item):
+@@ -64,7 +63,6 @@
+         else:
+             x = maxx - 20
+         y = 1
+-        log.info(&quot;x=%s, y=%s&quot; %(x, y))
+         txt = &quot;Angle: %s&quot; % self.__angle
+         screen.addstr(y, x, txt)
+         txt = &quot;Strength: %s&quot; % self.__strength
+
+Modified: boomboom/curses_client/items/world.py
+===================================================================
+--- boomboom/curses_client/items/world.py	2005-09-18 09:41:10 UTC (rev 203)
++++ boomboom/curses_client/items/world.py	2005-09-18 10:22:23 UTC (rev 204)
+@@ -1,5 +1,6 @@
+ from curses_client.item import Item
+ from curses_client.curses_tools import convertXY
++import random, curses
+ 
+ class Building:
+     &quot;&quot;&quot; Represents a building which is used as plat-form in the game.
+@@ -21,17 +22,19 @@
+         &quot;&quot;&quot;
+         self.x, self.y = x,y
+         self.width, self.height = width, height
+-#        self.color = None # TODO: Choose color 
++        self.color = None
+ 
+     def draw(self, screen):
+         &quot;&quot;&quot; Drawing method called by C{BoomBoomDrawer}
+         @param screen: Offscreen to draw in.
+         @type screen: C{L{Window&lt;bb_drawer.Window&gt;}}
+         &quot;&quot;&quot;
++        if self.color == None:
++            self.color = random.randint(0, 6)
+         x, y = convertXY(screen, int(self.x), int(self.y))
+         w, h = convertXY(screen, int(self.width), int(self.height))
+         for line in range(y, y+h):
+-            screen.addstr(line, x, &quot;#&quot; * w)
++            screen.addstr(line, x, &quot;#&quot; * w, curses.color_pair(self.color))
+         
+ class World(Item):
+     &quot;&quot;&quot; Represents the ground of the game (collection of buildings).
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000110.html">[Happyboom-svn] r203 - happyboom/trunk/client
+</A></li>
+	<LI>Next message: <A HREF="000112.html">[Happyboom-svn] r205 - boomboom/client
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#111">[ date ]</a>
+              <a href="thread.html#111">[ thread ]</a>
+              <a href="subject.html#111">[ subject ]</a>
+              <a href="author.html#111">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

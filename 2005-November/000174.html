@@ -1,0 +1,526 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r269 - in haypo/hachoir: . plugins stream
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-November/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r269%20-%20in%20haypo/hachoir%3A%20.%20plugins%20stream&In-Reply-To=%3C200511261843.jAQIhm8K002274%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000173.html">
+   <LINK REL="Next"  HREF="000175.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r269 - in haypo/hachoir: . plugins stream</H1>
+    <B>haypo at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r269%20-%20in%20haypo/hachoir%3A%20.%20plugins%20stream&In-Reply-To=%3C200511261843.jAQIhm8K002274%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r269 - in haypo/hachoir: . plugins stream">haypo at berlios.de
+       </A><BR>
+    <I>Sat Nov 26 19:43:48 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000173.html">[Happyboom-svn] r268 - in haypo/hachoir: . plugins stream
+</A></li>
+        <LI>Next message: <A HREF="000175.html">[Happyboom-svn] r270 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#174">[ date ]</a>
+              <a href="thread.html#174">[ thread ]</a>
+              <a href="subject.html#174">[ subject ]</a>
+              <a href="author.html#174">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-11-26 19:43:46 +0100 (Sat, 26 Nov 2005)
+New Revision: 269
+
+Added:
+   haypo/hachoir/plugins/email.py
+Modified:
+   haypo/hachoir/chunk.py
+   haypo/hachoir/filter.py
+   haypo/hachoir/mime.py
+   haypo/hachoir/stream/file.py
+   haypo/hachoir/stream/stream.py
+   haypo/hachoir/stream/string.py
+   haypo/hachoir/tools.py
+Log:
+Add email filter. Reorganize stream methods:
+- move FileStream._doSearch in Stream
+- create read() method (works like Posix read: returns 0 to size bytes)
+Stream.search() and Stream.searchLength() now supports regular expression :-)
+
+Fix StringChunk for AutoLine, it really works now.
+Fix MIME type splitter.
+
+
+Modified: haypo/hachoir/chunk.py
+===================================================================
+--- haypo/hachoir/chunk.py	2005-11-25 05:49:28 UTC (rev 268)
++++ haypo/hachoir/chunk.py	2005-11-26 18:43:46 UTC (rev 269)
+@@ -125,29 +125,26 @@
+     def _read(self):
+         self._stream.seek(self.addr)
+         if self._str_type == &quot;UnixLine&quot;:
+-            end = &quot;\n&quot;
++            self._size = self._stream.searchLength(&quot;\n&quot;, True)
++            len_eol = 1
+         elif self._str_type == &quot;WindowsLine&quot;:
+-            end = &quot;\r\n&quot;
++            self._size = self._stream.searchLength(&quot;\r\n&quot;, True)
++            len_eol = 2
+         elif self._str_type == &quot;MacLine&quot;:
+-            end = &quot;\r&quot;
++            self._size = self._stream.searchLength(&quot;\r&quot;, True)
+         elif self._str_type == &quot;AutoLine&quot;:
+-            end = &quot;\r&quot;
++            self._size = self._stream.searchLength(re.compile(&quot;[\n\r]&quot;), True)
++            len_eol = 1
++            if self._size != -1:
++                self._stream.seek(self.addr + self._size-1)
++                if self._stream.getN(1) == &quot;\r&quot; and self._stream.read(1) == &quot;\n&quot;:
++                    len_eol = 2
+         else: 
+-            # Type: C string
+-            end = &quot;\0&quot;
+-        self._size = self._stream.searchLength(end, True)
++            self._size = self._stream.searchLength(&quot;\0&quot;, True)
++            len_eol = 1
+         assert self._size != -1
+-        if self._str_type == &quot;AutoLine&quot;:
+-            self._stream.seek(self.addr+self._size)
+-            try:
+-                next = self._stream.getN(1)
+-                if next == '\n':
+-                    self._size = self._size + 1
+-                    end = end+&quot;\n&quot;
+-            except Exception, err:
+-                warning(&quot;Warning while getting end of line of \&quot;auto line\&quot;: %s&quot; % err)
+         self._stream.seek(self.addr)
+-        self.str = self._stream.getN(self._size - len(end))
++        self.str = self._stream.getN(self._size - len_eol)
+ 
+     def update(self):
+         Chunk.update(self)
+
+Modified: haypo/hachoir/filter.py
+===================================================================
+--- haypo/hachoir/filter.py	2005-11-25 05:49:28 UTC (rev 268)
++++ haypo/hachoir/filter.py	2005-11-26 18:43:46 UTC (rev 269)
+@@ -69,7 +69,7 @@
+ 
+     def getUniqChunkId(self, id):
+         if id not in self._chunks_dict: return id
+-        m = re.compile(&quot;^(.*)([0-9]+)$&quot;).match(id)
++        m = re.compile(&quot;^(.*?)([0-9]+)$&quot;).match(id)
+         if m != None:
+             root = m.group(1)
+             uniq = int(m.group(2))+1
+
+Modified: haypo/hachoir/mime.py
+===================================================================
+--- haypo/hachoir/mime.py	2005-11-25 05:49:28 UTC (rev 268)
++++ haypo/hachoir/mime.py	2005-11-26 18:43:46 UTC (rev 269)
+@@ -35,9 +35,9 @@
+ def getBufferMime(buffer, filename):
+     magic = getInstance()
+     mimes = magic.buffer(buffer)
+-    mimes = mimes.split(&quot; &quot;)
++    mimes = mimes.split(&quot;, &quot;)
+     import string
+-    mimes = map(string.split, mimes, ',')
++    mimes = map(string.split, mimes, ';')
+     if mimes[0][0] == 'application/octet-stream' and filename != None:
+         ext = os.path.splitext(filename)[1]
+         new_mime = _getBufferMime(buffer)
+
+Added: haypo/hachoir/plugins/email.py
+===================================================================
+--- haypo/hachoir/plugins/email.py	2005-11-25 05:49:28 UTC (rev 268)
++++ haypo/hachoir/plugins/email.py	2005-11-26 18:43:46 UTC (rev 269)
+@@ -0,0 +1,25 @@
++&quot;&quot;&quot;
++Email parser
++
++Author: Victor Stinner
++&quot;&quot;&quot;
++
++from filter import Filter
++from plugin import registerPlugin
++
++class EmailFilter(Filter):
++    def __init__(self, stream, parent=None):
++        Filter.__init__(self, &quot;email&quot;, &quot;Email parser&quot;, stream, parent)
++        print &quot;OK&quot;
++        id = &quot;header&quot;
++        ok = True
++        while ok:
++            id = self.getUniqChunkId(id)
++            chunk = self.readString(id, &quot;AutoLine&quot;, &quot;Header line&quot;)
++            print &quot;+ %s&quot; % chunk.value
++            ok = (0 &lt; len(chunk.value))
++
++#    def checkEnd(self, stream, array, last):        
++#        return stream.eof()
++
++registerPlugin(EmailFilter, &quot;text/x-mail&quot;)
+
+Modified: haypo/hachoir/stream/file.py
+===================================================================
+--- haypo/hachoir/stream/file.py	2005-11-25 05:49:28 UTC (rev 268)
++++ haypo/hachoir/stream/file.py	2005-11-26 18:43:46 UTC (rev 269)
+@@ -12,6 +12,9 @@
+         self.__file.seek(0,2) # Seek to end
+         self.__size = self.__file.tell()
+         self.__file.seek(0,0) # Seel to beginning
++        
++    def read(self, size):        
++        return self.__file.read(size)
+ 
+     def clone(self):
+         return FileStream(self.__file, self.filename)
+@@ -25,46 +28,6 @@
+     def tell(self):
+         return self.__file.tell()
+ 
+-    def __doSearch(self, binary_string, pos_max):
+-        &quot;&quot;&quot;
+-        pos_max: Position of last tested byte
+-        &quot;&quot;&quot;
+-        if 2048&lt;=len(binary_string):
+-            raise StreamError(&quot;Search string too big.&quot;)
+-        size = 2048 
+-        doublesize = size * 2
+-        oldpos = self.tell()
+-        if pos_max-oldpos+1&lt;doublesize:
+-            doublesize = pos_max-oldpos
+-            size = 0 
+-        buffer = self.__file.read(doublesize)
+-        newpos = oldpos + size
+-        while len(buffer) != 0:
+-            pos = buffer.find(binary_string)
+-            if pos != -1: return oldpos + pos
+-            oldpos = newpos
+-            if pos_max &lt; oldpos + size:
+-                size = pos_max - oldpos
+-            if size == 0:
+-                break
+-            buffer = buffer[size:] + self.__file.read(size)
+-            newpos = oldpos + size 
+-        return -1 
+-  
+-    def search(self, binary_string, size_max=None):
+-        if self.__size == 0: return -1
+-        if size_max != None:
+-            pos_max = self.tell()+size_max
+-            if self.__size &lt;= pos_max:
+-                pos_max = sel.__size-1
+-        else:
+-            pos_max = self.__size-1
+-        assert 0&lt;=pos_max  and pos_max&lt;self.__size
+-        oldpos = self.tell()
+-        pos = self.__doSearch(binary_string, pos_max)
+-        self.seek(oldpos)
+-        return pos
+-
+     def getN(self, size, seek=True):
+         data = self.__file.read(size)
+         if len(data) != size:
+@@ -73,17 +36,6 @@
+             self.__file.seek(-size, 1)
+         return data
+ 
+-    def getEnd(self):
+-        &quot;&quot;&quot;
+-        Read everything until the end.
+-        &quot;&quot;&quot;
+-        
+-        data = self.__file.read()
+-        return data
+-
+-    def destroy(self):
+-        self.__file.close()
+-
+     def getSize(self):
+         return self.__size
+ 
+
+Modified: haypo/hachoir/stream/stream.py
+===================================================================
+--- haypo/hachoir/stream/stream.py	2005-11-25 05:49:28 UTC (rev 268)
++++ haypo/hachoir/stream/stream.py	2005-11-26 18:43:46 UTC (rev 269)
+@@ -1,10 +1,13 @@
+ import struct
+ from error import StreamError
++from tools import regexMaxLength
+ 
+ class Stream:
+     def __init__(self, filename):
+         self.filename = filename
+     
++    #--- Virtual functions --------------------------------------------------
++    
+     def getSize(self):
+         return 0
+ 
+@@ -14,36 +17,106 @@
+     def getLastPos(self):
+         return 0
+ 
++    def tell(self):
++        return 0
++    
++    def read(self, size):
++        &quot;&quot;&quot; Works like Posix read (can returns less than size bytes. &quot;&quot;&quot;
++        return None
++    
++    def getN(self, size, seek=True):
++        &quot;&quot;&quot;
++        Read size bytes. If seek=False, stay at the same position in the
++        stream. This function always returns size bytes, else it raise an
++        exception (StreamError).
++        &quot;&quot;&quot;
++        return None
++    
++    #--- End of virtual functions -------------------------------------------    
++
+     def eof(self):
+         return self.getLastPos() &lt;= self.tell() 
+ 
+-    def tell(self):
+-        return 0
+-
+     def createSub(self, start, size):
+         return SubStream(self, start, size, self.filename)
+ 
+     def createLimited(self, start, size):
+         return LimitedStream(self, start, size, self.filename)
+-    
+-    def getN(self, size, seek=True):
+-        return None
+ 
+     def getFormat(self, format, seek=True):
++        &quot;&quot;&quot;
++        Read data using struct format. Eg. getFormat(&quot;BB&quot;) returns (10, 14).
++        &quot;&quot;&quot;
+         size = struct.calcsize(format)
+         data = self.getN(size, seek)
+         return struct.unpack(format, data)
+ 
+-    def searchLength(self, str, include_str, size_max=None):        
+-        pos = self.search(str, size_max)
++    def searchLength(self, needle, include_str, size_max=None):        
++        pos = self.search(needle, size_max)
+         if pos == -1: return -1
+         lg = pos - self.tell()
+-        if include_str: lg = lg + len(str)
++        if include_str:
++            if isinstance(needle, str):
++                lg = lg + len(needle)
++            else:
++                lg = lg + regexMaxLength(needle.pattern)
+         return lg
+-    
+-    def search(self, str, size_max=None):
+-        return -1
++  
++    def search(self, needle, size_max=None):
++        size = self.getSize()
++        if size == 0: return -1
++        if size_max != None:
++            pos_max = self.tell()+size_max
++            if size &lt;= pos_max:
++                pos_max = size-1
++        else:
++            pos_max = size-1
++        assert 0&lt;=pos_max  and pos_max&lt;size
++        oldpos = self.tell()
++        pos = self._doSearch(needle, pos_max)
++        self.seek(oldpos)
++        return pos
+ 
++    def _doSearch(self, needle, pos_max):
++        &quot;&quot;&quot;
++        Search a string between current position and pos_max (which will be
++        also tested). Returns -1 if fails.
++        &quot;&quot;&quot;
++        is_regex =  not isinstance(needle, str)
++        if is_regex:
++            len_needle = regexMaxLength(needle.pattern)
++        else:
++            len_needle = len(needle)
++        if 2048&lt;=len_needle:
++            raise StreamError(&quot;Search string too big.&quot;)
++        size = 2048 
++        doublesize = size * 2
++        oldpos = self.tell()
++        max = pos_max-oldpos+1
++        if max&lt;doublesize:
++            doublesize = max 
++            size = 0 
++        buffer = self.read(doublesize)
++        newpos = oldpos + size
++        while len(buffer) != 0:
++            if is_regex:
++                match = needle.search(buffer)
++                if match != None:
++                    pos = match.start(0)
++                else:
++                    pos = -1
++            else:
++                pos = buffer.find(needle)
++            if pos != -1: return oldpos + pos
++            oldpos = newpos
++            if pos_max &lt; oldpos + size:
++                size = pos_max - oldpos
++            if size == 0:
++                break
++            buffer = buffer[size:] + self.read(size)
++            newpos = oldpos + size 
++        return -1 
++
+ class LimitedStream(Stream):
+     def __init__(self, stream, start=0, size=0, filename=None):
+         Stream.__init__(self, filename)
+
+Modified: haypo/hachoir/stream/string.py
+===================================================================
+--- haypo/hachoir/stream/string.py	2005-11-25 05:49:28 UTC (rev 268)
++++ haypo/hachoir/stream/string.py	2005-11-26 18:43:46 UTC (rev 269)
+@@ -1,4 +1,4 @@
+-from stream.file import FileStream
++from file import FileStream
+ from cStringIO import StringIO
+ 
+ def StringStream(data):
+
+Modified: haypo/hachoir/tools.py
+===================================================================
+--- haypo/hachoir/tools.py	2005-11-25 05:49:28 UTC (rev 268)
++++ haypo/hachoir/tools.py	2005-11-26 18:43:46 UTC (rev 269)
+@@ -1,6 +1,93 @@
+-import traceback, sys
+-import string
++import traceback, sys, string, re
+ 
++def _regexMaxLength(pattern, in_parenthesis=False):
++    &quot;&quot;&quot;
++    Don't use this function directly, use regexMagLength!
++    &quot;&quot;&quot;
++
++    re_letter = re.compile( r&quot;^[^][()|.?+*{}](.*)$&quot;)
++    re_set = re.compile( r&quot;^\[&quot; + r&quot;[^]]*&quot; + r&quot;\](.*)$&quot; )
++    re_min_repetition = re.compile( r&quot;^\{([0-9]+)\}(.*)$&quot; )
++    re_min_max_repetition = re.compile( r&quot;^\{([0-9]+),([0-9]+)\}(.*)$&quot; )
++
++    size = 0
++    atom_size = 0
++    state = 0 # get atom
++    is_end = len(pattern) == 0
++    if in_parenthesis and not is_end:
++        is_end = pattern[0] in (&quot;|&quot;, &quot;)&quot;)
++    while not is_end:
++        if state==0:
++            size = size + atom_size
++
++            # Pattern: [...] =&gt; size=1
++            if pattern[0] == '(':
++                pattern = pattern[1:]
++                atom_size = None
++                while True:
++                    tmp_atom_size, pattern = _regexMaxLength(pattern, True)
++                    if tmp_atom_size == None:
++                        return None, pattern
++                    if atom_size==None or atom_size&lt;tmp_atom_size:
++                        atom_size = tmp_atom_size
++                    if pattern[0] == ')':
++                        break
++                    assert pattern[0] == '|'
++                    pattern = pattern[1:]
++                pattern = pattern[1:]
++            else:
++                m = re_set.match(pattern)
++                if m != None:
++                    pattern = m.group(1)
++                    atom_size = 1
++                else:
++                    m = re_letter.match(pattern)
++                    if m == None:
++                        return (-1, pattern,)
++                    atom_size = 1
++                    pattern = m.group(1)
++            state = 1                
++        else:
++            assert state==1
++
++            # Repetiton: + or * =&gt; no limit
++            if pattern[0] in (&quot;*&quot;, &quot;+&quot;):
++                return (None, pattern,)
++            
++            # Repetition: {2}
++            m = re_min_repetition.match(pattern)
++            if m != None:
++                repetition = int(m.group(1))
++                print &quot;(rep=%sx%s)&quot; % (atom_size, repetition)
++                pattern = m.group(2)
++                atom_size = atom_size * repetition
++            else:
++                # Repetition: {1,2}
++                m = re_min_max_repetition.match(pattern)
++                if m != None:
++                    repetition = int(m.group(2))
++                    pattern = m.group(3)
++                    atom_size = atom_size * repetition
++            state = 0
++
++        is_end = len(pattern) == 0
++        if in_parenthesis and not is_end:
++            is_end = pattern[0] in (&quot;|&quot;, &quot;)&quot;)
++
++    return (size + atom_size, pattern,)
++
++def regexMaxLength(pattern):
++    &quot;&quot;&quot;
++    Get maximum size of a regular expression pattern.
++    Returns (size, pattern). If size=-1, an error occurs (pattern contains
++    the buggy pattern). If size=-1, no limit does exist.
++    &quot;&quot;&quot;
++
++    size, pattern = _regexMaxLength(pattern)
++    if size == -1:
++        raise &quot;Can't parse regular expression: %s&quot; % pattern 
++    return size 
++
+ def humanFilesize(size):
+     if size &lt; 1000:
+         return &quot;%u bytes&quot; % size
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000173.html">[Happyboom-svn] r268 - in haypo/hachoir: . plugins stream
+</A></li>
+	<LI>Next message: <A HREF="000175.html">[Happyboom-svn] r270 - in haypo/hachoir: . plugins
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#174">[ date ]</a>
+              <a href="thread.html#174">[ thread ]</a>
+              <a href="subject.html#174">[ subject ]</a>
+              <a href="author.html#174">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,209 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r118 - in happyboom/trunk: . common happywarry happywarry/server
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r118%20-%20in%20happyboom/trunk%3A%20.%20common%20happywarry%20happywarry/server&In-Reply-To=%3C200509042233.j84MX1OP010026%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000023.html">
+   <LINK REL="Next"  HREF="000026.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r118 - in happyboom/trunk: . common happywarry happywarry/server</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r118%20-%20in%20happyboom/trunk%3A%20.%20common%20happywarry%20happywarry/server&In-Reply-To=%3C200509042233.j84MX1OP010026%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r118 - in happyboom/trunk: . common happywarry happywarry/server">haypo at berlios.de
+       </A><BR>
+    <I>Mon Sep  5 00:33:01 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000023.html">[Happyboom-svn] r117 - languetudes/src
+</A></li>
+        <LI>Next message: <A HREF="000026.html">[Happyboom-svn] r119 - in happyboom/trunk/happywarry: . locale locale/fr locale/fr/LC_MESSAGES
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25">[ date ]</a>
+              <a href="thread.html#25">[ thread ]</a>
+              <a href="subject.html#25">[ subject ]</a>
+              <a href="author.html#25">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-05 00:32:57 +0200 (Mon, 05 Sep 2005)
+New Revision: 118
+
+Added:
+   happyboom/trunk/common/log.py
+   happyboom/trunk/happywarry/
+   happyboom/trunk/happywarry/ChangeLog
+   happyboom/trunk/happywarry/happywarry-server.py
+   happyboom/trunk/happywarry/server/
+   happyboom/trunk/happywarry/server/__init__.py
+   happyboom/trunk/happywarry/server/hw_server.py
+Log:
+Lancement de HappyWarry
+
+
+Added: happyboom/trunk/common/log.py
+===================================================================
+--- happyboom/trunk/common/log.py	2005-09-03 00:19:45 UTC (rev 117)
++++ happyboom/trunk/common/log.py	2005-09-04 22:32:57 UTC (rev 118)
+@@ -0,0 +1,54 @@
++#!/usr/bin/python
++# -*- coding: UTF-8 -*-
++
++import time
++
++class Log:
++    LOG_INFO   = 0
++    LOG_WARN   = 1
++    LOG_ERROR  = 2
++
++    def __init__(self):
++        self.__buffer = {}
++        self.__file = None
++
++    def setFilename(self, filename):
++        try:
++            self.__file = open(filename, &quot;w&quot;)
++        except IOError, errno:
++            if errno[0] == 2:
++                self.__file = None
++                self.info(&quot;Log.setFilename(%s) fails : no such file.&quot; % filename)
++                return
++            raise
++
++    def dump(self):
++        print self.__buffer
++
++    def getLevelPrefix(self, level):
++        if level==Log.LOG_WARN: return &quot;[warn]&quot;
++        if level==Log.LOG_ERROR: return &quot;[error]&quot;
++        return &quot;[info]&quot;
++
++    def new_message(self, level, str):
++        if not self.__buffer.has_key(level):
++            self.__buffer[level] = [str]
++        else:
++            self.__buffer[level].append(str)
++        print str
++        if self.__file:
++            self.__file.write(&quot;%s - %s %s\n&quot; \
++                % (time.strftime(&quot;%Y-%M-%d %H:%M:%S&quot;),
++                   self.getLevelPrefix(level),
++                   str))
++
++    def info(self, str):
++        self.new_message(Log.LOG_INFO, str)
++
++    def warn(self, str):
++        self.new_message(Log.LOG_WARN, str)
++
++    def error(self, str):
++        self.new_message(Log.LOG_WARN, str)
++
++log = Log()        
+
+Added: happyboom/trunk/happywarry/ChangeLog
+===================================================================
+--- happyboom/trunk/happywarry/ChangeLog	2005-09-03 00:19:45 UTC (rev 117)
++++ happyboom/trunk/happywarry/ChangeLog	2005-09-04 22:32:57 UTC (rev 118)
+@@ -0,0 +1,5 @@
++2005/09/04
++	- First line of code
++
++Summer 2005
++	- Project started in haypo's head :-)
+
+Added: happyboom/trunk/happywarry/happywarry-server.py
+===================================================================
+--- happyboom/trunk/happywarry/happywarry-server.py	2005-09-03 00:19:45 UTC (rev 117)
++++ happyboom/trunk/happywarry/happywarry-server.py	2005-09-04 22:32:57 UTC (rev 118)
+@@ -0,0 +1,28 @@
++#!/usr/bin/python
++# -*- coding: UTF-8 -*-
++VERSION=&quot;0.0.0&quot;
++PROGRAM=&quot;HappyWarry&quot;
++
++
++def main():
++    # Ajoute APIBoom au PYTHONPATH (&quot;../&quot; pour l'instant)
++    import sys, os
++    sys.path.append(os.path.join(os.path.dirname(__file__), &quot;..&quot;))
++
++    # Cree le systeme de log
++    from common.log import log
++    log.setFilename(&quot;/home/haypo/.happywarry/server-log&quot;)
++
++    # Instancie une serveur
++    from server.hw_server import HappyWarryServer
++    server = HappyWarryServer()    
++
++    try:
++        log.info(&quot;Server started.&quot;)
++        server.run()
++    except KeyboardInterrupt:
++        log.info(&quot;Program interrupted (CTRL+C).&quot;)
++    server.stop()
++    log.info(&quot;Server quit.&quot;)
++
++if __name__==&quot;__main__&quot;: main()
+
+
+Property changes on: happyboom/trunk/happywarry/happywarry-server.py
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Added: happyboom/trunk/happywarry/server/__init__.py
+===================================================================
+
+Added: happyboom/trunk/happywarry/server/hw_server.py
+===================================================================
+--- happyboom/trunk/happywarry/server/hw_server.py	2005-09-03 00:19:45 UTC (rev 117)
++++ happyboom/trunk/happywarry/server/hw_server.py	2005-09-04 22:32:57 UTC (rev 118)
+@@ -0,0 +1,12 @@
++#!/usr/bin/python
++# -*- coding: UTF-8 -*-
++
++class HappyWarryServer:
++    def __init__(self):
++        self.x = None
++
++    def run(self):
++        pass
++
++    def stop(self):
++        pass
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000023.html">[Happyboom-svn] r117 - languetudes/src
+</A></li>
+	<LI>Next message: <A HREF="000026.html">[Happyboom-svn] r119 - in happyboom/trunk/happywarry: . locale locale/fr locale/fr/LC_MESSAGES
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#25">[ date ]</a>
+              <a href="thread.html#25">[ thread ]</a>
+              <a href="subject.html#25">[ subject ]</a>
+              <a href="author.html#25">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

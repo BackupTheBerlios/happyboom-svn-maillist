@@ -1,0 +1,229 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r160 - happyboom/trunk/common
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-September/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r160%20-%20happyboom/trunk/common&In-Reply-To=%3C200509140726.j8E7QfPX016981%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000066.html">
+   <LINK REL="Next"  HREF="000068.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r160 - happyboom/trunk/common</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r160%20-%20happyboom/trunk/common&In-Reply-To=%3C200509140726.j8E7QfPX016981%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r160 - happyboom/trunk/common">haypo at berlios.de
+       </A><BR>
+    <I>Wed Sep 14 09:26:41 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000066.html">[Happyboom-svn] r159 - poilu/trunk
+</A></li>
+        <LI>Next message: <A HREF="000068.html">[Happyboom-svn] r161 - in boomboom: . client common
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#67">[ date ]</a>
+              <a href="thread.html#67">[ thread ]</a>
+              <a href="subject.html#67">[ subject ]</a>
+              <a href="author.html#67">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-09-14 09:26:40 +0200 (Wed, 14 Sep 2005)
+New Revision: 160
+
+Added:
+   happyboom/trunk/common/file.py
+   happyboom/trunk/common/presentation.py
+   happyboom/trunk/common/simple_event.py
+   happyboom/trunk/common/thread.py
+Modified:
+   happyboom/trunk/common/protocol.py
+Log:
+Add missing files, and move simple_event.py in HappyBoom.
+
+
+Added: happyboom/trunk/common/file.py
+===================================================================
+--- happyboom/trunk/common/file.py	2005-09-14 06:53:25 UTC (rev 159)
++++ happyboom/trunk/common/file.py	2005-09-14 07:26:40 UTC (rev 160)
+@@ -0,0 +1,25 @@
++import os
++
++def getCreateHomeDir(subdir):
++    &quot;&quot;&quot;
++    Get the home directory, and then create a subdirectory.
++    Example: create ~/.subdir/ in Linux.
++    
++    Returns None if fails to find home directory and/or create subdirectory.
++    &quot;&quot;&quot;
++
++    # Get user directory 
++    if os.name==&quot;nt&quot;:
++        home = os.environ['USERHOME']
++    else:
++        subdir = &quot;.&quot;+subdir
++        home = os.environ['HOME']
++
++    # Create happywarry directory if needed
++    logdir = os.path.join(home, subdir)
++    try:
++        os.mkdir(logdir)
++    except OSError, err:
++        if err[0]==17: pass
++        logdir = None
++    return logdir
+
+Added: happyboom/trunk/common/presentation.py
+===================================================================
+--- happyboom/trunk/common/presentation.py	2005-09-14 06:53:25 UTC (rev 159)
++++ happyboom/trunk/common/presentation.py	2005-09-14 07:26:40 UTC (rev 160)
+@@ -0,0 +1,89 @@
++from happyboom.common.simple_event import EventLauncher, EventListener
++from happyboom.common.log import log
++
++class Presentation(EventLauncher, EventListener):
++    
++    CONNECTION    = 0x1
++    DISCONNECTION = 0x2
++    FEATURES      = 0x3
++    CREATE        = 0x4
++    DESTROY       = 0x5
++    EVENT         = 0x6
++    
++    def __init__(self, protocol):
++        self.protocol = protocol
++        self.items = {}
++        self.gateway = None
++        
++    def processPacket(self, newPacket):
++        &quot;&quot;&quot; Processes incomming network packets (converts and launches local event).
++        @param new_packet: incomming network packet.
++        @type new_packet: C{net.io.packet.Packet}
++        &quot;&quot;&quot;
++      
++        # Get packet type
++        data = new_packtet.data
++        fmt = &quot;!B&quot;
++        i = struct.calcsize(fmt)
++        type, data = (struct.unpack(fmt, data[:i]), date[i:],)
++
++        # Choose process function
++        if type == self.CONNECTION:
++            self.recvConnection(data)
++            self.sendFeatures()
++        elif type == self.DISCONNECTION:
++            log.warning(u&quot;Disconnected from server : %s&quot; % self.getReason(data))
++            self.launchEvent(&quot;happyboom&quot;, &quot;stop&quot;)
++        elif type == self.CREATE:
++            self.createItem(data)
++        elif type == self.DESTROY:
++            self.destroyItem(data)
++        elif type == self.EVENT:
++            self.processEvent(data)
++        else:
++            log.warning(&quot;ProtocoleWarning: received unexpected packet type %s.&quot; % type)
++        
++    def recvConnection(self, data):
++        fmt = &quot;!H&quot;
++        i = struct.calcsize(fmt)
++        version_len, data = (struct.unpack(fmt, data[:i]), data[i:])
++        fmt = &quot;!%us&quot; %(version_len)
++        i = struct.calcsize(fmt)
++        version, data = (struct.unpack(fmt, data[:i]), data[i:])
++        
++        fmt = &quot;!H&quot;
++        i = struct.calcsize(fmt)
++        sign_len, data = (struct.unpack(fmt, data[:i]), data[i:])
++        fmt = &quot;!%us&quot; %(version_len)
++        i = struct.calcsize(fmt)
++        signature, data = (struct.unpack(fmt, data[:i]), data[i:])
++        
++        if len(data) != 0:
++            raise TesUneGrosseMerdeError &quot;Received a message with an unexpected length.&quot;
++        
++        if version != protocole.version:
++            pass # TODO
++            
++        self.launchEvent(&quot;happyboom&quot;, &quot;signature&quot;, (signature,))
++            
++    def sendFeatures(self):
++        pass
++    
++    def getReason(self, data):
++        pass
++    
++    def createItem(self, data):
++        pass
++
++    def sendMsg(self, data):
++        data = struct.pack(&quot;!B&quot;, self.EVENT) + data
++        return data
++        
++    def destroyItem(self, data):
++        pass
++    
++    def processEvent(self, data):
++        packer.unpack(data, self.protocol)
++        if self.__debug:
++            log.info(&quot;Received message: feature=%s event=%s arguments=%s.&quot; % (feat, evt, args))
++        self.launchEvent(feat, evt, args)
+
+Modified: happyboom/trunk/common/protocol.py
+===================================================================
+--- happyboom/trunk/common/protocol.py	2005-09-14 06:53:25 UTC (rev 159)
++++ happyboom/trunk/common/protocol.py	2005-09-14 07:26:40 UTC (rev 160)
+@@ -1,3 +1,7 @@
++&quot;&quot;&quot;
++Tools to load HappyBoom protocol in Python from an XML description file.
++&quot;&quot;&quot;
++
+ import xml.dom.minidom
+ 
+ class ProtocolException(Exception):
+
+Copied: happyboom/trunk/common/simple_event.py (from rev 157, boomboom/common/simple_event.py)
+
+Added: happyboom/trunk/common/thread.py
+===================================================================
+--- happyboom/trunk/common/thread.py	2005-09-14 06:53:25 UTC (rev 159)
++++ happyboom/trunk/common/thread.py	2005-09-14 07:26:40 UTC (rev 160)
+@@ -0,0 +1,6 @@
++import traceback, sys
++
++def getBacktrace():
++    bt = traceback.format_exception( \
++        sys.exc_type, sys.exc_value, sys.exc_traceback)
++    return &quot;&quot;.join(bt)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000066.html">[Happyboom-svn] r159 - poilu/trunk
+</A></li>
+	<LI>Next message: <A HREF="000068.html">[Happyboom-svn] r161 - in boomboom: . client common
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#67">[ date ]</a>
+              <a href="thread.html#67">[ thread ]</a>
+              <a href="subject.html#67">[ subject ]</a>
+              <a href="author.html#67">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,288 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Happyboom-svn] r99 - in happyboom/trunk: boomboom boomboom/client/items boomboom/server net/io_tcp net/io_udp
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/happyboom-svn/2005-August/index.html" >
+   <LINK REL="made" HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r99%20-%20in%20happyboom/trunk%3A%20boomboom%20boomboom/client/items%20boomboom/server%20net/io_tcp%20net/io_udp&In-Reply-To=%3C200508060639.j766dkeq003208%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000005.html">
+   <LINK REL="Next"  HREF="000007.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Happyboom-svn] r99 - in happyboom/trunk: boomboom boomboom/client/items boomboom/server net/io_tcp net/io_udp</H1>
+    <B>Victor STINNER at BerliOS</B> 
+    <A HREF="mailto:happyboom-svn%40lists.berlios.de?Subject=Re%3A%20%5BHappyboom-svn%5D%20r99%20-%20in%20happyboom/trunk%3A%20boomboom%20boomboom/client/items%20boomboom/server%20net/io_tcp%20net/io_udp&In-Reply-To=%3C200508060639.j766dkeq003208%40sheep.berlios.de%3E"
+       TITLE="[Happyboom-svn] r99 - in happyboom/trunk: boomboom boomboom/client/items boomboom/server net/io_tcp net/io_udp">haypo at berlios.de
+       </A><BR>
+    <I>Sat Aug  6 08:39:46 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000005.html">[Happyboom-svn] r98 - in happyboom/trunk/boomboom: . client
+</A></li>
+        <LI>Next message: <A HREF="000007.html">[Happyboom-svn] r100 - happyboom/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6">[ date ]</a>
+              <a href="thread.html#6">[ thread ]</a>
+              <a href="subject.html#6">[ subject ]</a>
+              <a href="author.html#6">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: haypo
+Date: 2005-08-06 08:39:43 +0200 (Sat, 06 Aug 2005)
+New Revision: 99
+
+Modified:
+   happyboom/trunk/boomboom/client/items/projectile.py
+   happyboom/trunk/boomboom/makedoc
+   happyboom/trunk/boomboom/server/bb_server.py
+   happyboom/trunk/net/io_tcp/tcp.py
+   happyboom/trunk/net/io_tcp/tcp_client.py
+   happyboom/trunk/net/io_udp/udp.py
+Log:
+Corrige un vieux printf (&quot;%u&quot; -&gt; &quot;%i&quot;) pour des coordon?\195?\169es.
+
+
+Modified: happyboom/trunk/boomboom/client/items/projectile.py
+===================================================================
+--- happyboom/trunk/boomboom/client/items/projectile.py	2005-08-06 00:14:54 UTC (rev 98)
++++ happyboom/trunk/boomboom/client/items/projectile.py	2005-08-06 06:39:43 UTC (rev 99)
+@@ -44,4 +44,4 @@
+         @param event: Event with &quot;projectile_activate&quot; type.
+         @type event: C{L{common.simple_event.Event}}
+         &quot;&quot;&quot;
+-        self.visual.setVisibility(event.content == '1')
+\ No newline at end of file
++        self.visual.setVisibility(event.content == '1')
+
+Modified: happyboom/trunk/boomboom/makedoc
+===================================================================
+--- happyboom/trunk/boomboom/makedoc	2005-08-06 00:14:54 UTC (rev 98)
++++ happyboom/trunk/boomboom/makedoc	2005-08-06 06:39:43 UTC (rev 99)
+@@ -1,2 +1,3 @@
+-mkdir doc
++#!/bin/sh
++test -e doc || mkdir doc
+ epydoc $* -o doc/api -n &quot;BoomBoom 0.2&quot; --private-css blue client common net server
+
+Modified: happyboom/trunk/boomboom/server/bb_server.py
+===================================================================
+--- happyboom/trunk/boomboom/server/bb_server.py	2005-08-06 00:14:54 UTC (rev 98)
++++ happyboom/trunk/boomboom/server/bb_server.py	2005-08-06 06:39:43 UTC (rev 99)
+@@ -295,7 +295,7 @@
+ 	
+ 	def msg_projectile_move(self, x, y):
+ 		if self.__debug: print &quot;Projectile move : %s,%s&quot; %(x, y)
+-		self.sendNetworkMessage(&quot;projectile&quot;, &quot;move&quot;, &quot;%u,%u&quot; %(x,y), True)
++		self.sendNetworkMessage(&quot;projectile&quot;, &quot;move&quot;, &quot;%i,%i&quot; %(x,y), True)
+ 		
+ 	def msg_projectile_activate(self, flag):
+ 		if self.__debug: print &quot;Projectile activate : %s&quot; %flag
+@@ -323,4 +323,4 @@
+ 		
+ 	def msg_game_current_character(self, char, team):
+ 		if self.__debug: print &quot;Current character : %s,%s&quot; %(char, team)
+-		self.sendNetworkMessage(&quot;game&quot;, &quot;active_character&quot;, char)
+\ No newline at end of file
++		self.sendNetworkMessage(&quot;game&quot;, &quot;active_character&quot;, char)
+
+Modified: happyboom/trunk/net/io_tcp/tcp.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/tcp.py	2005-08-06 00:14:54 UTC (rev 98)
++++ happyboom/trunk/net/io_tcp/tcp.py	2005-08-06 06:39:43 UTC (rev 99)
+@@ -12,6 +12,25 @@
+ from server_waiter import NetworkServerWaiter
+ 
+ class IO_TCP(io.BaseIO):
++	&quot;&quot;&quot; IO for TCP transport
++	@ivar packet_timeout: Timeout of packets (in seconds)
++	@type packet_timeout: C{float}
++	@ivar thread_sleep: Sleep time used in the thread (in seconds).
++	@type thread_sleep: C{float}
++	@ivar __is_server: ??? 
++	@type __is_server: C{bool}
++	@ivar __waiter: Class which wait for clients.
++	@type __waiter: NetworkServerWaiter
++	@ivar __addr: The IO network address (host, port).
++	@type __addr: C{(string, string,)}
++	@ivar __clients: List of clients connected to this IO.
++	@type __clients: C{list&lt;L{IO_client&lt;io.IO_Client&gt;}&gt;?}
++	@ivar __clients_sema: Semaphore used to access L{__clients}.
++	@type __clients_sema: C{threading.Semaphore}
++	@ivar __running: Is the thread running ?
++	@type __running: C{bool}
++	&quot;&quot;&quot;
++	
+ 	def __init__(self, is_server=False):
+ 		io.BaseIO.__init__(self)
+ 		self.packet_timeout = 1.000
+@@ -27,8 +46,8 @@
+ 		self.__running = True
+ 		io.Packet.use_tcp = True
+ 
+-	# Connect to host:port
+ 	def connect(self, host, port):
++	&quot;&quot;&quot; Connect to host:port &quot;&quot;&quot;
+ 		max_connection = 50
+ 	
+ 		self.__addr = (host, port,)
+@@ -51,8 +70,8 @@
+ 		if self.on_connect != None: self.on_connect()
+ 		io.BaseIO.connect(self, host, port)
+ 
+-	# Close connection
+ 	def disconnect(self):
++	&quot;&quot;&quot; Close connection &quot;&quot;&quot;
+ 		self.__clients_sema.acquire()
+ 		clients = self.__clients.copy()
+ 		self.__clients_sema.release()
+@@ -61,8 +80,8 @@
+ 		if self.on_disconnect != None: self.on_disconnect()
+ 		self.stop()
+ 
+-	# Disconnect a client.
+ 	def disconnectClient(self, client):
++	&quot;&quot;&quot; Disconnect a client. &quot;&quot;&quot;
+ 		self.__clients_sema.acquire()
+ 		if  self.__clients.has_key(client.addr): del self.__clients[client.addr]
+ 		self.__clients_sema.release()
+@@ -71,8 +90,10 @@
+ 		if self.on_client_disconnect != None: self.on_client_disconnect (client)
+ 		if self.__server == client: self.disconnect()
+ 	
+-	# Send a packet to the server or to all clients
+ 	def send(self, packet, to=None):
++	&quot;&quot;&quot; Send a packet to the server or to all clients
++	@type packet: Packet
++	&quot;&quot;&quot;
+ 		if not self.__running: return
+ 		
+ 		# Read binary version of the packet
+@@ -90,8 +111,11 @@
+ 		else:
+ 			self.__server.sendBinary(data)
+ 
+-	# Keep the connection alive
+ 	def live(self):				
++	&quot;&quot;&quot; Keep the connection alive :
++	- Get clients new packets
++	- Process packets (eg. ping/pong)
++	&quot;&quot;&quot;
+ 		clients = self.clients
+ 		for client_addr, client in clients.items():
+ 			data = client.receiveNonBlocking()
+@@ -109,8 +133,8 @@
+ 			if self.debug: print &quot;Received %s:%u =&gt; \&quot;%s\&quot;&quot; % (client.host, client.port, packet.data)
+ 			if self.on_new_packet: self.on_new_packet(packet)
+ 	
+-	# Function which should be called in a thread
+ 	def run_thread(self):
++	&quot;&quot;&quot; Function which should be called in a thread. &quot;&quot;&quot;
+ 		try:
+ 			while self.__running:
+ 				self.live()				
+
+Modified: happyboom/trunk/net/io_tcp/tcp_client.py
+===================================================================
+--- happyboom/trunk/net/io_tcp/tcp_client.py	2005-08-06 00:14:54 UTC (rev 98)
++++ happyboom/trunk/net/io_tcp/tcp_client.py	2005-08-06 06:39:43 UTC (rev 99)
+@@ -2,6 +2,14 @@
+ import socket
+ 
+ class TCP_Client(io.IO_Client):
++	&quot;&quot;&quot; An TCP client.
++	@ivar __socket: The TCP socket
++	@type __socket: C{socket}
++	@ivar on_send: Event called when a packet is sent to the client.
++	@type on_send: C{function}
++	@ivar on_receive: Event called when a new packet is received.
++	@type on_receive: C{function}
++	&quot;&quot;&quot;
+ 	def __init__(self, io_tcp, addr, name=None, socket=None):
+ 		io.IO_Client.__init__(self, io_tcp, addr, name)
+ 		self.__socket = socket 
+@@ -9,9 +17,15 @@
+ 		self.on_receive = None
+ 
+ 	def send(self, packet):
++	&quot;&quot;&quot; Send a packet to the client.
++	@type packet: Packet
++	&quot;&quot;&quot;
+ 		self.sendBinary( packet.pack() )
+ 	
+ 	def sendBinary(self, data):
++	&quot;&quot;&quot; Send binary datas to the client.
++	@type data: str
++	&quot;&quot;&quot;
+ 		if not self.connected: return
+ 		self.__socket.send(data)
+ 
+@@ -19,6 +33,7 @@
+ 		if self.on_send != None: self.on_send(data)
+ 
+ 	def receiveNonBlocking(self, max_size=1024):
++	&quot;&quot;&quot; Non blocking read on the socket. &quot;&quot;&quot;
+ 		if not self.connected: return
+ 		try:
+ 			self.__socket.setblocking(0)
+@@ -33,6 +48,7 @@
+ 		return self.__processRecvData(data)
+ 
+ 	def receiveBlocking(self, max_size=1024):
++	&quot;&quot;&quot; Blocking read on the socket. &quot;&quot;&quot;
+ 		if not self.connected: return
+ 		try:
+ 			self.__socket.setblocking(1)
+@@ -47,6 +63,7 @@
+ 		return self.__processRecvData(data)
+ 
+ 	def disconnect(self):
++	&quot;&quot;&quot; Disconned the client : close the socket. &quot;&quot;&quot;
+ 		self.__socket.close()
+ 		io.IO_Client.disconnect(self)
+ 
+
+Modified: happyboom/trunk/net/io_udp/udp.py
+===================================================================
+--- happyboom/trunk/net/io_udp/udp.py	2005-08-06 00:14:54 UTC (rev 98)
++++ happyboom/trunk/net/io_udp/udp.py	2005-08-06 06:39:43 UTC (rev 99)
+@@ -25,6 +25,7 @@
+ 	@ivar __socket_open: Is the network socket L{__socket} opened ?
+ 	@type __socket_open: C{bool}
+ 	@ivar __addr: The IO network address (host, port).
++	@type __addr: C{(string, string,)}
+ 	@ivar __packet_id: ???
+ 	@type __packet_id: C{int}
+ 	@ivar __clients: List of clients connected to this IO.
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000005.html">[Happyboom-svn] r98 - in happyboom/trunk/boomboom: . client
+</A></li>
+	<LI>Next message: <A HREF="000007.html">[Happyboom-svn] r100 - happyboom/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6">[ date ]</a>
+              <a href="thread.html#6">[ thread ]</a>
+              <a href="subject.html#6">[ subject ]</a>
+              <a href="author.html#6">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/happyboom-svn">More information about the Happyboom-svn
+mailing list</a><br>
+</body></html>
